@@ -1728,8 +1728,6 @@ values
   ('0f6e5b09-4275-13d7-92e2-20c7f63aabd7', 2026, 1, 'ok', NULL),
   ('7e0a6d78-27d7-1af7-d4a9-95c9920ae42d', 2026, 2, 'ok', NULL),
   ('0fcd692b-dd85-30c5-bb53-125e130bab2c', 2026, 1, 'ok', NULL),
-  ('155a9102-8845-71fe-2acc-5eff9b689f85', 2026, 1, 'ok', NULL),
-  ('155a9102-8845-71fe-2acc-5eff9b689f85', 2026, 2, 'ok', NULL),
   ('139727af-d739-d207-b6fc-21e14129e656', 2026, 1, 'ok', '800 aed - manca ABBO link da mandare entro il 28'),
   ('139727af-d739-d207-b6fc-21e14129e656', 2026, 2, 'no_tentativo', NULL),
   ('c33c05c8-bc48-1e18-549f-24285e782f07', 2026, 1, 'ok', '840AED'),
@@ -1764,8 +1762,6 @@ values
   ('d8f8bd10-aa2b-4cd3-96b0-e6d1252c0f64', 2026, 2, 'ok', NULL),
   ('9afc6625-3c5e-9018-3350-f8718d23338d', 2026, 1, 'no_tentativo', 'Paga annuale ad Aprile'),
   ('9afc6625-3c5e-9018-3350-f8718d23338d', 2026, 2, 'no_tentativo', NULL),
-  ('8d589970-771c-7b80-06a8-2e294f51c667', 2026, 1, 'ok', NULL),
-  ('8d589970-771c-7b80-06a8-2e294f51c667', 2026, 2, 'ok', NULL),
   ('28922c28-b626-9c92-6032-997dbf39586f', 2026, 1, 'ok', NULL);
 
 -- ── VAT REGISTER ───────────────────────────────────────────
