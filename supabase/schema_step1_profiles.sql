@@ -20,16 +20,19 @@ create table if not exists profiles (
 
 alter table profiles enable row level security;
 
-create policy if not exists "Users can read own profile"
-  on profiles for select using (auth.uid() = id);
-
-create policy if not exists "Users can update own profile"
-  on profiles for update using (auth.uid() = id);
-
-create policy if not exists "Admins can read all profiles"
-  on profiles for select using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-  );
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename='profiles' and policyname='Users can read own profile') then
+    create policy "Users can read own profile" on profiles for select using (auth.uid() = id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename='profiles' and policyname='Users can update own profile') then
+    create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
+  end if;
+  if not exists (select 1 from pg_policies where tablename='profiles' and policyname='Admins can read all profiles') then
+    create policy "Admins can read all profiles" on profiles for select using (
+      exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+    );
+  end if;
+end $$;
 
 -- Trigger auto-create profile on signup
 create or replace function handle_new_user()
