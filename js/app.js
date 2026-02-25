@@ -61,6 +61,48 @@
   // Inject sidebar
   document.body.insertAdjacentHTML('afterbegin', sidebar);
 
+  // Inject hamburger menu button for mobile
+  const topbar = document.querySelector('.topbar');
+  if (topbar && !document.getElementById('hamburger-btn')) {
+    const hamburger = document.createElement('button');
+    hamburger.id = 'hamburger-btn';
+    hamburger.className = 'hamburger';
+    hamburger.setAttribute('aria-label', 'Menu');
+    hamburger.innerHTML = '<span></span><span></span><span></span>';
+    topbar.insertBefore(hamburger, topbar.firstChild);
+
+    // Overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    overlay.id = 'sidebar-overlay';
+    document.body.appendChild(overlay);
+
+    const sidebar = document.querySelector('.sidebar');
+
+    hamburger.addEventListener('click', () => {
+      const isOpen = sidebar.classList.toggle('open');
+      overlay.classList.toggle('visible', isOpen);
+      hamburger.classList.toggle('open', isOpen);
+    });
+
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('visible');
+      hamburger.classList.remove('open');
+    });
+
+    // Close sidebar when nav link clicked on mobile
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('open');
+          overlay.classList.remove('visible');
+          hamburger.classList.remove('open');
+        }
+      });
+    });
+  }
+
   // Inject notification bell in every topbar
   document.addEventListener('DOMContentLoaded', () => {
     const topbar = document.querySelector('.topbar');
