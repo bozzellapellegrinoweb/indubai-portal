@@ -346,6 +346,38 @@ async function loadUpcomingAlerts() {
 
 loadMyTasks();
 loadUpcomingAlerts();
+loadRevenue();
+
+async function loadRevenue() {
+  try {
+    const { year, month } = ui.currentYearMonth();
+    // Sum all successful payments this month
+    const payments = await sb.db.select('subscription_payments', {
+      columns: 'amount,status',
+      filter: `year=eq.${year}&month=eq.${month}&status=eq.ok`
+    });
+    // Also get clients with service_cost as fallback
+    const okPayments = payments || [];
+    const total = okPayments.reduce((s, p) => s + (parseFloat(p.amount)||0), 0);
+    
+    // Also count from service_cost for clients with ok status
+    const sub = await sb.db.select('subscription_payments', {
+      columns: 'amount,client_id,status,clients(service_cost)',
+      filter: `year=eq.${year}&month=eq.${month}&status=eq.ok`
+    });
+    const totalFromSub = (sub||[]).reduce((s,p) => {
+      const amt = parseFloat(p.amount) || parseFloat(p.clients?.service_cost) || 0;
+      return s + amt;
+    }, 0);
+    
+    const el = document.getElementById('kpi-revenue');
+    const sub2 = document.getElementById('kpi-revenue-sub');
+    if (el) {
+      el.textContent = totalFromSub > 0 ? 'AED ' + totalFromSub.toLocaleString('it-IT') : '—';
+      if (sub2) sub2.textContent = `${okPayments.length} pagamenti ok`;
+    }
+  } catch(e) { console.error('Revenue:', e); }
+}
 </script>
 </body>
 </html>

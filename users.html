@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Utenti — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <style>
+    .user-card { background: white; border: 1.5px solid var(--border); border-radius: 12px; padding: 20px 24px; display: flex; align-items: center; gap: 16px; margin-bottom: 12px; transition: all .15s; }
+    .user-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(26,58,92,.08); }
+    .u-avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: white; flex-shrink: 0; }
+    .u-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+    .u-email { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .role-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .rb-admin { background: #1a3a5c; color: white; }
+    .rb-mini_admin { background: #c9a84c; color: #1a3a5c; }
+    .rb-senior { background: #dbeafe; color: #1d4ed8; }
+    .rb-junior { background: #f3f4f6; color: #6b7280; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">Gestione Utenti</div>
+      <div class="topbar-actions">
+        <button class="btn btn-accent" onclick="openNewUser()">+ Nuovo Utente</button>
+      </div>
+    </div>
+    <div class="page-content">
+      <div style="max-width:700px">
+        <div id="users-list"><div class="loading-overlay"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New/Edit User Modal -->
+<div class="modal-overlay" id="modal-user" style="display:none">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-user-title">Nuovo Utente</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeUserModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nome Completo *</label>
+        <input type="text" class="form-control" id="u-name" placeholder="Es. Mario Rossi">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input type="email" class="form-control" id="u-email" placeholder="mario@indubai.it">
+      </div>
+      <div class="form-group" id="pwd-group">
+        <label class="form-label">Password *</label>
+        <input type="password" class="form-control" id="u-password" placeholder="Min 8 caratteri">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ruolo</label>
+        <select class="form-control" id="u-role">
+          <option value="junior">Contabilità Junior</option>
+          <option value="senior">Contabilità Senior</option>
+          <option value="mini_admin">Mini Admin (Giuseppe)</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group" id="newpwd-group" style="display:none">
+        <label class="form-label">Nuova Password (lascia vuoto per non cambiare)</label>
+        <input type="password" class="form-control" id="u-newpassword" placeholder="Nuova password...">
+      </div>
+    </div>
+    <div class="modal-footer" id="user-modal-footer">
+      <button class="btn btn-ghost" onclick="closeUserModal()">Annulla</button>
+      <button class="btn btn-accent" id="btn-save-user" onclick="saveUser()">Crea Utente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change my password modal -->
+<div class="modal-overlay" id="modal-pwd" style="display:none">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title">🔐 Cambia Password</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-pwd').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nuova Password *</label>
+        <input type="password" class="form-control" id="new-pwd" placeholder="Min 6 caratteri">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Conferma Password *</label>
+        <input type="password" class="form-control" id="confirm-pwd" placeholder="Ripeti la password">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-pwd').style.display='none'">Annulla</button>
+      <button class="btn btn-accent" id="btn-save-pwd" onclick="changeMyPassword()">Salva Password</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAzMjA1MSwiZXhwIjoyMDg3NjA4MDUxfQ.oEzS7iIAiRW3pYjL-TwXtY4ZOwKwh4L8JZZ6Ztq6RgQ';
+const SUPA = window.ENV_SUPABASE_URL;
+
+let editingUserId = null;
+let authUserId = null;
+
+async function init() {
+  await sb.requireAuth();
+  const profile = sb.getCurrentProfile();
+  if (profile?.role !== 'admin') {
+    document.querySelector('.page-content').innerHTML = '<div class="alert alert-danger">Solo gli amministratori possono gestire gli utenti.</div>';
+    return;
+  }
+  // Get auth user id for current user
+  const me = sb.getCurrentUser();
+  authUserId = me?.id;
+  await loadUsers();
+}
+
+async function loadUsers() {
+  try {
+    const profiles = await sb.db.select('profiles', {columns:'id,full_name,role,created_at', order:'created_at.asc'}) || [];
+    const roleColors = {admin:'#1a3a5c',mini_admin:'#c9a84c',senior:'#2563a8',junior:'#9ca3af'};
+    const roleLabels = {admin:'Admin',mini_admin:'Mini Admin',senior:'Contabilità Senior',junior:'Contabilità Junior'};
+    
+    const myProfile = sb.getCurrentProfile();
+
+    document.getElementById('users-list').innerHTML = `
+      <!-- My password -->
+      <div class="card" style="margin-bottom:20px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:14px;font-weight:700">🔐 La mia password</div>
+          <div style="font-size:12px;color:var(--text-muted)">Cambia la tua password di accesso</div>
+        </div>
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-pwd').style.display='flex'">Cambia Password</button>
+      </div>
+      ${profiles.map(p => `
+        <div class="user-card">
+          <div class="u-avatar" style="background:${roleColors[p.role]||'#6b7a95'}">${(p.full_name||'?').substring(0,2).toUpperCase()}</div>
+          <div style="flex:1">
+            <div class="u-name">${ui.escapeHtml(p.full_name)}</div>
+            <div class="u-email">${p.id === myProfile?.id ? '(tu)' : ''}</div>
+          </div>
+          <span class="role-badge rb-${p.role}">${roleLabels[p.role]||p.role}</span>
+          <button class="btn btn-ghost btn-sm" onclick="openEditUser('${p.id}','${ui.escapeHtml(p.full_name)}','${p.role}')">✎ Modifica</button>
+          ${p.id !== myProfile?.id ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteUser('${p.id}','${ui.escapeHtml(p.full_name)}')">🗑</button>` : ''}
+        </div>`).join('')}`;
+  } catch(e) {
+    document.getElementById('users-list').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+function openNewUser() {
+  editingUserId = null;
+  document.getElementById('modal-user-title').textContent = 'Nuovo Utente';
+  document.getElementById('u-name').value = '';
+  document.getElementById('u-email').value = '';
+  document.getElementById('u-password').value = '';
+  document.getElementById('u-role').value = 'junior';
+  document.getElementById('pwd-group').style.display = 'block';
+  document.getElementById('newpwd-group').style.display = 'none';
+  document.getElementById('btn-save-user').textContent = 'Crea Utente';
+  document.getElementById('modal-user').style.display = 'flex';
+}
+
+function openEditUser(id, name, role) {
+  editingUserId = id;
+  document.getElementById('modal-user-title').textContent = '✎ Modifica Utente';
+  document.getElementById('u-name').value = name;
+  document.getElementById('u-email').value = '';
+  document.getElementById('u-role').value = role;
+  document.getElementById('pwd-group').style.display = 'none';
+  document.getElementById('newpwd-group').style.display = 'block';
+  document.getElementById('u-newpassword').value = '';
+  document.getElementById('btn-save-user').textContent = 'Salva';
+  document.getElementById('modal-user').style.display = 'flex';
+}
+
+function closeUserModal() {
+  document.getElementById('modal-user').style.display = 'none';
+}
+
+async function saveUser() {
+  const btn = document.getElementById('btn-save-user');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    if (editingUserId) {
+      // Update profile
+      await sb.db.update('profiles', `id=eq.${editingUserId}`, {
+        full_name: document.getElementById('u-name').value.trim(),
+        role: document.getElementById('u-role').value
+      });
+      // Change password if provided
+      const newPwd = document.getElementById('u-newpassword').value;
+      if (newPwd) {
+        const r = await fetch(SUPA+'/auth/v1/admin/users/'+editingUserId, {
+          method:'PUT',
+          headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
+          body:JSON.stringify({password:newPwd})
+        });
+        if (!r.ok) throw new Error('Errore cambio password: '+(await r.text()).substring(0,100));
+      }
+      ui.showToast('Utente aggiornato ✓','success');
+    } else {
+      // Create new user
+      const email = document.getElementById('u-email').value.trim();
+      const pwd = document.getElementById('u-password').value;
+      const name = document.getElementById('u-name').value.trim();
+      const role = document.getElementById('u-role').value;
+      if (!email||!pwd||!name) throw new Error('Compila tutti i campi obbligatori');
+      const r = await fetch(SUPA+'/auth/v1/admin/users', {
+        method:'POST',
+        headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
+        body:JSON.stringify({email,password:pwd,email_confirm:true,user_metadata:{full_name:name,role}})
+      });
+      const d = await r.json();
+      if (!d.id) throw new Error(d.msg||d.error||JSON.stringify(d).substring(0,100));
+      // Set role in profiles (trigger creates it as staff)
+      setTimeout(async () => {
+        await sb.db.update('profiles', `id=eq.${d.id}`, {role, full_name:name}).catch(()=>{});
+      }, 1000);
+      ui.showToast('Utente '+name+' creato ✓','success');
+    }
+    closeUserModal();
+    await loadUsers();
+  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+  finally { btn.disabled=false; btn.textContent=editingUserId?'Salva':'Crea Utente'; }
+}
+
+async function deleteUser(id, name) {
+  if (!confirm(`Eliminare l'utente "${name}"?`)) return;
+  try {
+    const r = await fetch(SUPA+'/auth/v1/admin/users/'+id, {
+      method:'DELETE',
+      headers:{'apikey':SK,'Authorization':'Bearer '+SK}
+    });
+    if (!r.ok) throw new Error((await r.text()).substring(0,100));
+    ui.showToast('Utente eliminato','success');
+    await loadUsers();
+  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+}
+
+async function changeMyPassword() {
+  const pwd = document.getElementById('new-pwd').value;
+  const confirm = document.getElementById('confirm-pwd').value;
+  if (!pwd) { ui.showToast('Inserisci la nuova password','error'); return; }
+  if (pwd !== confirm) { ui.showToast('Le password non coincidono','error'); return; }
+  if (pwd.length < 6) { ui.showToast('Password troppo corta (min 6 caratteri)','error'); return; }
+  const btn = document.getElementById('btn-save-pwd');
+  btn.disabled=true; btn.textContent='...';
+  try {
+    const r = await fetch(SUPA+'/auth/v1/admin/users/'+authUserId, {
+      method:'PUT',
+      headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
+      body:JSON.stringify({password:pwd})
+    });
+    if (!r.ok) throw new Error((await r.text()).substring(0,100));
+    document.getElementById('modal-pwd').style.display='none';
+    ui.showToast('Password cambiata ✓ Effettua di nuovo il login','success');
+    setTimeout(() => sb.signOut(), 2000);
+  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+  finally { btn.disabled=false; btn.textContent='Salva Password'; }
+}
+
+init();
+</script>
+</body>
+</html>

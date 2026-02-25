@@ -301,10 +301,193 @@ function newTaskForClient() {
 }
 
 function openEdit() {
-  window.location.href = `/clients.html?edit=${clientId}`;
+  // Populate edit modal with current data
+  const c = clientData;
+  document.getElementById('e-company').value = c.company_name||'';
+  document.getElementById('e-contact').value = c.contact_name||'';
+  document.getElementById('e-email').value = c.email||'';
+  document.getElementById('e-phone').value = c.phone_uae||'';
+  document.getElementById('e-partner').value = c.accounting_partner||'';
+  document.getElementById('e-vat-partner').value = c.vat_partner||'';
+  document.getElementById('e-cost').value = c.service_cost||'';
+  document.getElementById('e-sub-day').value = c.subscription_day||'';
+  document.getElementById('e-start').value = c.start_date||'';
+  document.getElementById('e-tl-date').value = c.trade_license_date||'';
+  document.getElementById('e-ct-expiry').value = c.corporate_tax_expiry||'';
+  document.getElementById('e-bank-notes').value = c.bank_notes||'';
+  document.getElementById('e-notes').value = c.notes||'';
+  document.getElementById('e-active').checked = c.is_active!==false;
+  document.getElementById('e-bilancio').checked = c.in_bilancio!==false;
+  document.getElementById('e-vat-reg').checked = c.vat_registered||false;
+  document.getElementById('e-ct-reg').checked = c.corporate_tax_registered||false;
+  // Banks
+  document.querySelectorAll('#e-banks input[type=checkbox]').forEach(cb => {
+    cb.checked = (c.bank_accounts||[]).includes(cb.value);
+  });
+  document.getElementById('modal-edit').style.display = 'flex';
 }
 
 init();
+</script>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="modal-edit" style="display:none">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div class="modal-title">✎ Modifica Cliente</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-edit').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Ragione Sociale *</label>
+          <input type="text" class="form-control" id="e-company">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Referente</label>
+          <input type="text" class="form-control" id="e-contact">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" id="e-email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telefono UAE</label>
+          <input type="text" class="form-control" id="e-phone">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Partner Contabilità</label>
+          <select class="form-control" id="e-partner">
+            <option value="">—</option>
+            <option value="noi">Noi</option>
+            <option value="vat_consultant">VAT Consultant</option>
+            <option value="affinitas">Affinitas</option>
+            <option value="in_sospeso">In Sospeso</option>
+            <option value="altro">Altro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Partner VAT</label>
+          <select class="form-control" id="e-vat-partner">
+            <option value="">—</option>
+            <option value="noi">Noi</option>
+            <option value="vat_consultant">VAT Consultant</option>
+            <option value="affinitas">Affinitas</option>
+            <option value="in_sospeso">In Sospeso</option>
+            <option value="altro">Altro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Costo Abbonamento (AED)</label>
+          <input type="number" class="form-control" id="e-cost" step="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Giorno Addebito</label>
+          <input type="number" class="form-control" id="e-sub-day" min="1" max="31">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data Avvio</label>
+          <input type="date" class="form-control" id="e-start">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Trade License Date</label>
+          <input type="date" class="form-control" id="e-tl-date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Scad. Corporate Tax</label>
+          <input type="date" class="form-control" id="e-ct-expiry">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Conti Bancari</label>
+          <div id="e-banks" style="display:flex;gap:10px;flex-wrap:wrap;padding:10px;background:var(--surface2);border-radius:8px">
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="wio"> Wio</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="stripe"> Stripe</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="paypal"> PayPal</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="mashreq"> Mashreq</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="payoneer"> Payoneer</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="hubpay"> Hubpay</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="credium"> Credium</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="ziina"> Ziina</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="mamo"> Mamo</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Note Bancarie</label>
+          <input type="text" class="form-control" id="e-bank-notes">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Note</label>
+          <textarea class="form-control" id="e-notes" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;font-weight:600">
+            <input type="checkbox" id="e-active"> Cliente Attivo
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;font-weight:600;margin-top:8px">
+            <input type="checkbox" id="e-bilancio"> In Bilancio
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;font-weight:600;margin-top:8px">
+            <input type="checkbox" id="e-vat-reg"> VAT Registrato
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;font-weight:600;margin-top:8px">
+            <input type="checkbox" id="e-ct-reg"> Corporate Tax Registrato
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteClient()">🗑 Elimina Cliente</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-edit').style.display='none'">Annulla</button>
+        <button class="btn btn-accent" id="btn-save-edit" onclick="saveEdit()">Salva Modifiche</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function saveEdit() {
+  const company = document.getElementById('e-company').value.trim();
+  if (!company) { ui.showToast('Nome azienda obbligatorio','error'); return; }
+  const btn = document.getElementById('btn-save-edit');
+  btn.disabled = true; btn.textContent = 'Salvo...';
+  const banks = [...document.querySelectorAll('#e-banks input:checked')].map(el => el.value);
+  try {
+    await sb.db.update('clients', `id=eq.${clientId}`, {
+      company_name: company,
+      contact_name: document.getElementById('e-contact').value.trim()||null,
+      email: document.getElementById('e-email').value.trim()||null,
+      phone_uae: document.getElementById('e-phone').value.trim()||null,
+      accounting_partner: document.getElementById('e-partner').value||null,
+      vat_partner: document.getElementById('e-vat-partner').value||null,
+      service_cost: parseFloat(document.getElementById('e-cost').value)||null,
+      subscription_day: parseInt(document.getElementById('e-sub-day').value)||null,
+      start_date: document.getElementById('e-start').value||null,
+      trade_license_date: document.getElementById('e-tl-date').value||null,
+      corporate_tax_expiry: document.getElementById('e-ct-expiry').value||null,
+      bank_accounts: banks.length ? banks : null,
+      bank_notes: document.getElementById('e-bank-notes').value.trim()||null,
+      notes: document.getElementById('e-notes').value.trim()||null,
+      is_active: document.getElementById('e-active').checked,
+      in_bilancio: document.getElementById('e-bilancio').checked,
+      vat_registered: document.getElementById('e-vat-reg').checked,
+      corporate_tax_registered: document.getElementById('e-ct-reg').checked,
+    });
+    document.getElementById('modal-edit').style.display = 'none';
+    ui.showToast('Cliente aggiornato ✓','success');
+    await loadClient();
+  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+  finally { btn.disabled=false; btn.textContent='Salva Modifiche'; }
+}
+
+async function deleteClient() {
+  if (!confirm('Eliminare questo cliente? L\'operazione è irreversibile.')) return;
+  try {
+    await sb.db.delete('clients', `id=eq.${clientId}`);
+    ui.showToast('Cliente eliminato','success');
+    setTimeout(() => window.location.href='/clients.html', 800);
+  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+}
 </script>
 </body>
 </html>
