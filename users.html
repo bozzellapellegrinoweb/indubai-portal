@@ -215,17 +215,22 @@ async function saveUser() {
       const name = document.getElementById('u-name').value.trim();
       const role = document.getElementById('u-role').value;
       if (!email||!pwd||!name) throw new Error('Compila tutti i campi obbligatori');
+      // Don't pass role in metadata - trigger will default to 'staff', we update after
       const r = await fetch(SUPA+'/auth/v1/admin/users', {
         method:'POST',
         headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
-        body:JSON.stringify({email,password:pwd,email_confirm:true,user_metadata:{full_name:name,role}})
+        body:JSON.stringify({email, password:pwd, email_confirm:true, user_metadata:{full_name:name}})
       });
       const d = await r.json();
-      if (!d.id) throw new Error(d.msg||d.error||JSON.stringify(d).substring(0,100));
-      // Set role in profiles (trigger creates it as staff)
-      setTimeout(async () => {
-        await sb.db.update('profiles', `id=eq.${d.id}`, {role, full_name:name}).catch(()=>{});
-      }, 1000);
+      if (!d.id) {
+        const errMsg = d.message || d.msg || d.error || d.error_description || JSON.stringify(d);
+        throw new Error(errMsg);
+      }
+      // Update role and name in profiles after trigger creates it as 'staff'
+      await new Promise(res => setTimeout(res, 1500));
+      await sb.db.update('profiles', `id=eq.${d.id}`, {role, full_name:name}).catch(e => {
+        console.error('Profile update error:', e);
+      });
       ui.showToast('Utente '+name+' creato ✓','success');
     }
     closeUserModal();
