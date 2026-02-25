@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>InDubai Portal — Login</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/config.js"></script>
@@ -21,7 +20,7 @@
 
       <div class="form-group">
         <label class="form-label">Email</label>
-        <input type="email" id="email" class="form-control" placeholder="nome@indubai.it" autocomplete="email">
+        <input type="email" id="email" class="form-control" placeholder="pellegrino@indubai.it" autocomplete="email">
       </div>
       <div class="form-group">
         <label class="form-label">Password</label>
@@ -31,45 +30,59 @@
       <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" id="btn-login">
         Accedi
       </button>
+      
+      <div style="text-align:center;margin-top:16px">
+        <a href="/setup.html" style="font-size:12px;color:var(--text-muted)">Setup / Problemi di accesso?</a>
+      </div>
     </div>
   </div>
 
   <script src="/js/supabase.js"></script>
   <script>
-    // Redirect if already logged in
     if (sb.getSession()?.access_token) window.location.href = '/index.html';
 
     const emailEl = document.getElementById('email');
-    const passEl = document.getElementById('password');
-    const btn = document.getElementById('btn-login');
-    const alert = document.getElementById('alert');
+    const passEl  = document.getElementById('password');
+    const btn     = document.getElementById('btn-login');
+    const alertEl = document.getElementById('alert');
 
     async function doLogin() {
       const email = emailEl.value.trim();
-      const pass = passEl.value;
+      const pass  = passEl.value;
       if (!email || !pass) { showAlert('Inserisci email e password'); return; }
 
       btn.textContent = 'Accesso in corso...';
       btn.disabled = true;
-      alert.style.display = 'none';
+      alertEl.style.display = 'none';
 
       try {
         await sb.signIn(email, pass);
         window.location.href = '/index.html';
-      } catch (e) {
-        showAlert('Credenziali non valide. Riprova.');
+      } catch(e) {
+        // Show actual error from Supabase
+        const msg = e.message || '';
+        if (msg.includes('Invalid login') || msg.includes('invalid_credentials')) {
+          showAlert('Email o password non corretti.');
+        } else if (msg.includes('Email not confirmed')) {
+          showAlert('Email non confermata. Controlla la casella email.');
+        } else if (msg.includes('User not found')) {
+          showAlert('Utente non trovato. Vai al setup per creare gli utenti.');
+        } else {
+          showAlert('Errore: ' + msg);
+        }
         btn.textContent = 'Accedi';
         btn.disabled = false;
       }
     }
 
     function showAlert(msg) {
-      alert.textContent = msg;
-      alert.style.display = 'flex';
+      alertEl.innerHTML = msg;
+      alertEl.style.display = 'flex';
     }
 
     btn.addEventListener('click', doLogin);
     passEl.addEventListener('keydown', e => e.key === 'Enter' && doLogin());
+    emailEl.addEventListener('keydown', e => e.key === 'Enter' && passEl.focus());
   </script>
 </body>
 </html>
