@@ -62,11 +62,16 @@
 
   // Inject notification bell in every topbar
   document.addEventListener('DOMContentLoaded', () => {
-    const topbarActions = document.querySelector('.topbar-actions');
-    if (topbarActions) {
+    const topbar = document.querySelector('.topbar');
+    const topbarActions = document.querySelector('.topbar-actions') || topbar;
+    if (topbar) {
+      // Ensure topbar is flex
+      topbar.style.display = 'flex';
+      topbar.style.alignItems = 'center';
+      topbar.style.justifyContent = 'space-between';
       const bell = document.createElement('div');
       bell.className = 'notif-bell';
-      bell.style.cssText = 'position:relative;display:inline-flex;margin-right:8px';
+      bell.style.cssText = 'position:relative;display:inline-flex;align-items:center;margin-left:auto;margin-right:0';
       bell.innerHTML = `
         <button id="bell-btn" onclick="toggleNotifPanel()" style="
           width:36px;height:36px;border-radius:50%;border:1px solid var(--border);
@@ -92,7 +97,7 @@
             <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">Caricamento...</div>
           </div>
         </div>`;
-      topbarActions.insertBefore(bell, topbarActions.firstChild);
+      topbar.appendChild(bell);
       loadNotifications();
     }
   });
