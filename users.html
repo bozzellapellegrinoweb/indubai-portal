@@ -175,48 +175,87 @@ function closeModal() { document.getElementById('modal-user').style.display = 'n
 
 async function saveUser() {
   const btn = document.getElementById('btn-save');
-  btn.disabled = true; btn.textContent = '...';
-  try {
-    if (editingId) {
-      // Update name + role
+
+  if (editingId) {
+    // Edit: update profile directly in DB (this works fine)
+    btn.disabled = true; btn.textContent = '...';
+    try {
       await sb.db.update('profiles', `id=eq.${editingId}`, {
         full_name: document.getElementById('u-name').value.trim(),
         role: document.getElementById('u-role').value
       });
-      // Change password if provided
+      // Password change via SQL modal
       const newPwd = document.getElementById('u-newpwd').value;
       if (newPwd) {
         if (newPwd.length < 6) throw new Error('Password minimo 6 caratteri');
-        const r = await fetch('/api/update-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sb.getSession()?.access_token },
-          body: JSON.stringify({ userId: editingId, password: newPwd })
-        });
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || 'Errore cambio password');
+        showPwdSQL(editingId, newPwd);
+        return;
       }
       ui.showToast('Utente aggiornato ✓', 'success');
-    } else {
-      const name = document.getElementById('u-name').value.trim();
-      const email = document.getElementById('u-email').value.trim();
-      const pwd = document.getElementById('u-pwd').value;
-      const role = document.getElementById('u-role').value;
-      if (!name || !email || !pwd) throw new Error('Compila tutti i campi');
-      if (pwd.length < 8) throw new Error('Password minimo 8 caratteri');
+      closeModal();
+      await loadUsers();
+    } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Salva'; }
 
-      const r = await fetch('/api/create-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sb.getSession()?.access_token },
-        body: JSON.stringify({ email, password: pwd, full_name: name, role })
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'Errore creazione utente');
-      ui.showToast(`Utente ${name} creato ✓`, 'success');
-    }
+  } else {
+    // New user: generate SQL and show copy modal
+    const name = document.getElementById('u-name').value.trim();
+    const email = document.getElementById('u-email').value.trim();
+    const pwd = document.getElementById('u-pwd').value;
+    const role = document.getElementById('u-role').value;
+    if (!name || !email || !pwd) { ui.showToast('Compila tutti i campi', 'error'); return; }
+    if (pwd.length < 8) { ui.showToast('Password minimo 8 caratteri', 'error'); return; }
+    showCreateSQL(name, email, pwd, role);
+  }
+}
+
+function showCreateSQL(name, email, pwd, role) {
+  const sql = `DO $$
+DECLARE new_id uuid := gen_random_uuid();
+BEGIN
+  INSERT INTO auth.users (
+    instance_id, id, aud, role, email,
+    encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at,
+    confirmation_token, recovery_token,
+    email_change_token_new, email_change
+  ) VALUES (
+    '00000000-0000-0000-0000-000000000000',
+    new_id, 'authenticated', 'authenticated',
+    '${email}',
+    crypt('${pwd}', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"full_name":"${name}"}'::jsonb,
+    now(), now(), '', '', '', ''
+  );
+  INSERT INTO profiles (id, full_name, role)
+  VALUES (new_id, '${name}', '${role}')
+  ON CONFLICT (id) DO UPDATE SET role = '${role}', full_name = '${name}';
+END $$;`;
+  
+  document.getElementById('sql-content').textContent = sql;
+  document.getElementById('modal-sql').style.display = 'flex';
+}
+
+function showPwdSQL(userId, pwd) {
+  const sql = `UPDATE auth.users
+SET encrypted_password = crypt('${pwd}', gen_salt('bf'))
+WHERE id = '${userId}';`;
+  document.getElementById('sql-content').textContent = sql;
+  document.getElementById('modal-sql').style.display = 'flex';
+}
+
+function copyAndOpenSQL() {
+  const sql = document.getElementById('sql-content').textContent;
+  navigator.clipboard.writeText(sql).then(() => {
+    window.open('https://supabase.com/dashboard/project/gvdoqcgkzbziqufahhxh/sql/new', '_blank');
+    ui.showToast('SQL copiato! Incollalo nel SQL Editor', 'success');
+    document.getElementById('modal-sql').style.display = 'none';
     closeModal();
-    await loadUsers();
-  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
-  finally { btn.disabled = false; btn.textContent = editingId ? 'Salva' : 'Crea Utente'; }
+    setTimeout(() => loadUsers(), 3000);
+  });
 }
 
 async function deleteUser(id, name) {
@@ -266,5 +305,25 @@ async function changePassword() {
 
 init();
 </script>
+
+<!-- SQL Copy Modal -->
+<div class="modal-overlay" id="modal-sql" style="display:none">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <div class="modal-title">📋 Esegui nel SQL Editor</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-sql').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#1e293b;color:#e2e8f0;border-radius:10px;padding:16px;font-family:monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto" id="sql-content"></div>
+      <div style="margin-top:12px;padding:10px 14px;background:#fef9ec;border-radius:8px;font-size:12px;color:#92400e;border:1px solid #fcd34d">
+        Clicca il pulsante — copia il SQL e apre il SQL Editor. Incolla ed esegui.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-sql').style.display='none'">Annulla</button>
+      <button class="btn btn-accent" onclick="copyAndOpenSQL()">📋 Copia SQL e apri Editor →</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
