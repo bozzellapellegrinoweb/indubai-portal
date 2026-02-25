@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   // Decode JWT to get user ID
   const decoded = decodeJWT(token);
   const userId = decoded?.sub;
-  if (!userId) return res.status(401).json({ error: 'Invalid token' });
+  if (!userId) return res.status(401).json({ error: 'Invalid token', tokenPreview: token?.substring(0,20) });
 
   // Check admin role using service key
   const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=role`, {
@@ -27,7 +27,10 @@ export default async function handler(req, res) {
   const userRole = profiles?.[0]?.role;
 
   if (userRole !== 'admin') {
-    return res.status(403).json({ error: `Admin only (your role: ${userRole || 'not found'})` });
+    return res.status(403).json({ 
+      error: `Admin only (your role: ${userRole || 'not found'})`,
+      debug: { userId, profilesFound: profiles?.length, profiles }
+    });
   }
 
   const { email, password, full_name, role } = req.body;
