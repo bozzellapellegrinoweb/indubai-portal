@@ -29,12 +29,15 @@ create table if not exists profiles (
 
 alter table profiles enable row level security;
 
+drop policy if exists "Users can view all profiles" on profiles;
 create policy "Users can view all profiles" on profiles
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "Users can update own profile" on profiles;
 create policy "Users can update own profile" on profiles
   for update using (auth.uid() = id);
 
+drop policy if exists "Admins can manage all profiles" on profiles;
 create policy "Admins can manage all profiles" on profiles
   for all using (
     exists (select 1 from profiles where id = auth.uid() and role = 'admin')
@@ -89,15 +92,19 @@ create table if not exists clients (
 
 alter table clients enable row level security;
 
+drop policy if exists "Authenticated users can read clients" on clients;
 create policy "Authenticated users can read clients" on clients
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "Authenticated users can insert clients" on clients;
 create policy "Authenticated users can insert clients" on clients
   for insert with check (auth.role() = 'authenticated');
 
+drop policy if exists "Authenticated users can update clients" on clients;
 create policy "Authenticated users can update clients" on clients
   for update using (auth.role() = 'authenticated');
 
+drop policy if exists "Only admins can delete clients" on clients;
 create policy "Only admins can delete clients" on clients
   for delete using (
     exists (select 1 from profiles where id = auth.uid() and role = 'admin')
@@ -133,6 +140,7 @@ create table if not exists onboarding_checklist (
 );
 
 alter table onboarding_checklist enable row level security;
+drop policy if exists "Authenticated users full access onboarding" on onboarding_checklist;
 create policy "Authenticated users full access onboarding" on onboarding_checklist
   for all using (auth.role() = 'authenticated');
 
@@ -157,6 +165,7 @@ create table if not exists bank_statements (
 );
 
 alter table bank_statements enable row level security;
+drop policy if exists "Authenticated users full access bank_statements" on bank_statements;
 create policy "Authenticated users full access bank_statements" on bank_statements
   for all using (auth.role() = 'authenticated');
 
@@ -181,6 +190,7 @@ create table if not exists subscription_payments (
 );
 
 alter table subscription_payments enable row level security;
+drop policy if exists "Authenticated users full access subscription_payments" on subscription_payments;
 create policy "Authenticated users full access subscription_payments" on subscription_payments
   for all using (auth.role() = 'authenticated');
 
@@ -214,6 +224,7 @@ create table if not exists vat_register (
 );
 
 alter table vat_register enable row level security;
+drop policy if exists "Authenticated users full access vat_register" on vat_register;
 create policy "Authenticated users full access vat_register" on vat_register
   for all using (auth.role() = 'authenticated');
 
@@ -236,6 +247,7 @@ create table if not exists corporate_tax (
 );
 
 alter table corporate_tax enable row level security;
+drop policy if exists "Authenticated users full access corporate_tax" on corporate_tax;
 create policy "Authenticated users full access corporate_tax" on corporate_tax
   for all using (auth.role() = 'authenticated');
 
@@ -261,6 +273,7 @@ create table if not exists monthly_balance (
 );
 
 alter table monthly_balance enable row level security;
+drop policy if exists "Authenticated users full access monthly_balance" on monthly_balance;
 create policy "Authenticated users full access monthly_balance" on monthly_balance
   for all using (auth.role() = 'authenticated');
 
@@ -288,6 +301,7 @@ create table if not exists affinitas_subscriptions (
 );
 
 alter table affinitas_subscriptions enable row level security;
+drop policy if exists "Authenticated users full access affinitas" on affinitas_subscriptions;
 create policy "Authenticated users full access affinitas" on affinitas_subscriptions
   for all using (auth.role() = 'authenticated');
 
@@ -305,8 +319,10 @@ create table if not exists activity_log (
 );
 
 alter table activity_log enable row level security;
+drop policy if exists "Authenticated users can read log" on activity_log;
 create policy "Authenticated users can read log" on activity_log
   for select using (auth.role() = 'authenticated');
+drop policy if exists "Authenticated users can insert log" on activity_log;
 create policy "Authenticated users can insert log" on activity_log
   for insert with check (auth.role() = 'authenticated');
 
@@ -322,22 +338,31 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists trg_clients_updated_at on clients;
 create trigger trg_clients_updated_at before update on clients
   for each row execute function update_updated_at();
+drop trigger if exists trg_profiles_updated_at on profiles;
 create trigger trg_profiles_updated_at before update on profiles
   for each row execute function update_updated_at();
+drop trigger if exists trg_onboarding_updated_at on onboarding_checklist;
 create trigger trg_onboarding_updated_at before update on onboarding_checklist
   for each row execute function update_updated_at();
+drop trigger if exists trg_bank_stmt_updated_at on bank_statements;
 create trigger trg_bank_stmt_updated_at before update on bank_statements
   for each row execute function update_updated_at();
+drop trigger if exists trg_sub_pay_updated_at on subscription_payments;
 create trigger trg_sub_pay_updated_at before update on subscription_payments
   for each row execute function update_updated_at();
+drop trigger if exists trg_vat_updated_at on vat_register;
 create trigger trg_vat_updated_at before update on vat_register
   for each row execute function update_updated_at();
+drop trigger if exists trg_ct_updated_at on corporate_tax;
 create trigger trg_ct_updated_at before update on corporate_tax
   for each row execute function update_updated_at();
+drop trigger if exists trg_balance_updated_at on monthly_balance;
 create trigger trg_balance_updated_at before update on monthly_balance
   for each row execute function update_updated_at();
+drop trigger if exists trg_affinitas_updated_at on affinitas_subscriptions;
 create trigger trg_affinitas_updated_at before update on affinitas_subscriptions
   for each row execute function update_updated_at();
 
@@ -358,6 +383,7 @@ begin
 end;
 $$ language plpgsql security definer;
 
+drop trigger if exists on_auth_user_created on auth;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function handle_new_user();
@@ -374,6 +400,7 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists trg_new_client_onboarding on clients;
 create trigger trg_new_client_onboarding after insert on clients
   for each row execute function handle_new_client();
 
