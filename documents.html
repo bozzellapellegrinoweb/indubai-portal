@@ -656,7 +656,7 @@ function setView(mode) {
   localStorage.setItem('drive_view', mode);
 }
 
-init();
+window.addEventListener("load", init);
 </script>
 </body>
 </html>
