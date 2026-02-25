@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documenti — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <style>
+    /* ── Drive Layout ── */
+    .drive-wrap { display: grid; grid-template-columns: 220px 1fr; gap: 0; height: calc(100vh - 57px); overflow: hidden; }
+    .drive-sidebar { background: white; border-right: 1.5px solid var(--border); padding: 16px 12px; overflow-y: auto; }
+    .drive-main { display: flex; flex-direction: column; overflow: hidden; }
+    .drive-toolbar { padding: 14px 20px; background: white; border-bottom: 1.5px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .drive-content { flex: 1; overflow-y: auto; padding: 16px 20px; }
+
+    /* ── Client Picker ── */
+    .client-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text); margin-bottom: 2px; transition: background .12s; }
+    .client-item:hover { background: var(--bg); }
+    .client-item.active { background: #e8f0fe; color: var(--primary); font-weight: 700; }
+    .client-av { width: 28px; height: 28px; border-radius: 7px; background: var(--primary); color: white; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .client-search { width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 12px; font-family: inherit; outline: none; margin-bottom: 10px; }
+    .client-search:focus { border-color: var(--primary); }
+
+    /* ── Breadcrumb ── */
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; flex: 1; }
+    .bc-item { color: var(--text-muted); cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+    .bc-item:hover { background: var(--bg); color: var(--text); }
+    .bc-item.active { color: var(--text); font-weight: 600; cursor: default; }
+    .bc-sep { color: var(--border); }
+
+    /* ── Folder & File Grid ── */
+    .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .file-item { background: white; border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 12px 12px; cursor: pointer; transition: all .15s; position: relative; text-align: center; }
+    .file-item:hover { border-color: var(--primary); box-shadow: 0 2px 12px rgba(26,58,92,0.1); transform: translateY(-1px); }
+    .file-item.selected { border-color: var(--primary); background: #e8f0fe; }
+    .file-icon { font-size: 36px; margin-bottom: 8px; line-height: 1; }
+    .file-name { font-size: 12px; font-weight: 600; word-break: break-word; line-height: 1.3; color: var(--text); }
+    .file-meta { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+    .file-item .file-actions { position: absolute; top: 6px; right: 6px; display: none; gap: 3px; }
+    .file-item:hover .file-actions { display: flex; }
+    .file-act-btn { width: 24px; height: 24px; border-radius: 6px; background: rgba(255,255,255,0.95); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; }
+    .file-act-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+    /* ── Empty State ── */
+    .empty-drive { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-drive .empty-icon { font-size: 48px; margin-bottom: 16px; }
+
+    /* ── Upload Zone ── */
+    .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; transition: all .18s; margin-bottom: 16px; display: none; }
+    .upload-zone.visible { display: block; }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: #f0f7ff; }
+    .upload-zone .uz-icon { font-size: 28px; margin-bottom: 8px; }
+    .upload-zone .uz-text { font-size: 13px; color: var(--text-muted); }
+    .upload-zone .uz-text strong { color: var(--primary); }
+
+    /* ── Progress ── */
+    .upload-progress { background: white; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; display: none; }
+    .up-bar-wrap { height: 6px; background: var(--bg); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+    .up-bar { height: 100%; background: var(--primary); border-radius: 3px; transition: width .2s; }
+
+    /* ── New Folder ── */
+    .section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin: 16px 0 8px; }
+
+    /* ── View toggle ── */
+    .view-btn { padding: 6px 10px; border-radius: 7px; border: 1.5px solid var(--border); background: white; cursor: pointer; font-size: 14px; }
+    .view-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    /* List view */
+    .file-list { display: none; }
+    .file-list-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: white; border: 1.5px solid var(--border); border-radius: 10px; margin-bottom: 6px; cursor: pointer; transition: all .12s; }
+    .file-list-item:hover { border-color: var(--primary); background: #f8faff; }
+    .file-list-item .fl-icon { font-size: 22px; flex-shrink: 0; }
+    .file-list-item .fl-name { flex: 1; font-size: 13px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-list-item .fl-meta { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+    .file-list-item .fl-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+    body.list-view .file-grid { display: none; }
+    body.list-view .file-list { display: block; }
+
+    @media (max-width: 768px) {
+      .drive-wrap { grid-template-columns: 1fr; height: auto; }
+      .drive-sidebar { display: none; }
+      .drive-sidebar.mobile-open { display: block; position: fixed; inset: 0; z-index: 300; overflow-y: auto; padding-bottom: 80px; }
+      .file-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content" style="display:flex;flex-direction:column;height:100vh;overflow:hidden">
+    <div class="topbar" style="flex-shrink:0">
+      <div class="topbar-title">📁 Documenti Clienti</div>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="view-btn active" id="btn-grid" onclick="setView('grid')" title="Griglia">⊞</button>
+        <button class="view-btn" id="btn-list" onclick="setView('list')" title="Lista">☰</button>
+      </div>
+    </div>
+
+    <div class="drive-wrap">
+      <!-- Sidebar: client list -->
+      <div class="drive-sidebar" id="drive-sidebar">
+        <input type="text" class="client-search" id="client-search" placeholder="🔍 Cerca cliente..." oninput="filterClients()">
+        <div id="client-list"><div style="text-align:center;padding:20px"><div class="spinner"></div></div></div>
+      </div>
+
+      <!-- Main area -->
+      <div class="drive-main">
+        <!-- Toolbar -->
+        <div class="drive-toolbar">
+          <div class="breadcrumb" id="breadcrumb">
+            <span class="bc-item active">Seleziona un cliente</span>
+          </div>
+          <div id="toolbar-actions" style="display:none;gap:8px;display:none">
+            <button class="btn btn-ghost btn-sm" onclick="showNewFolder()">📁 Nuova Cartella</button>
+            <label class="btn btn-accent btn-sm" style="cursor:pointer;margin:0">
+              ⬆ Carica
+              <input type="file" id="file-input" multiple style="display:none" onchange="handleFiles(this.files)">
+            </label>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="drive-content" id="drive-content">
+          <div class="empty-drive">
+            <div class="empty-icon">📁</div>
+            <div style="font-size:15px;font-weight:700;margin-bottom:8px">Seleziona un cliente</div>
+            <div style="font-size:13px">Scegli un cliente dalla lista per vedere i suoi documenti</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rename Modal -->
+<div class="modal-overlay" id="modal-rename" style="display:none">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">✎ Rinomina</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeRename()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nuovo nome</label>
+        <input type="text" class="form-control" id="rename-input" onkeydown="if(event.key==='Enter')saveRename()">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeRename()">Annulla</button>
+      <button class="btn btn-accent" onclick="saveRename()">Rinomina</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Folder Modal -->
+<div class="modal-overlay" id="modal-folder" style="display:none">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title">📁 Nuova Cartella</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-folder').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nome cartella</label>
+        <input type="text" class="form-control" id="folder-name-input" placeholder="Es. Contratti, Trade License..." onkeydown="if(event.key==='Enter')createFolder()">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-folder').style.display='none'">Annulla</button>
+      <button class="btn btn-accent" onclick="createFolder()">Crea</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+const BUCKET = 'client-documents';
+const SUPABASE_URL = window.ENV_SUPABASE_URL;
+const ANON_KEY = window.ENV_SUPABASE_ANON_KEY;
+
+let allClients = [];
+let currentClient = null;
+let currentFolder = '/';
+let renameTarget = null; // { id, type: 'file'|'folder' }
+
+// ── File type icons ──────────────────────────────────────────
+function fileIcon(mime, name) {
+  if (!mime && name) {
+    const ext = name.split('.').pop().toLowerCase();
+    const extMap = { pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊', jpg:'🖼', jpeg:'🖼', png:'🖼', webp:'🖼', zip:'🗜', txt:'📃' };
+    return extMap[ext] || '📎';
+  }
+  if (mime?.includes('pdf')) return '📄';
+  if (mime?.includes('word')) return '📝';
+  if (mime?.includes('excel') || mime?.includes('spreadsheet')) return '📊';
+  if (mime?.includes('image')) return '🖼';
+  if (mime?.includes('zip')) return '🗜';
+  if (mime?.includes('text')) return '📃';
+  return '📎';
+}
+
+function formatSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+// ── Init ─────────────────────────────────────────────────────
+async function init() {
+  await sb.requireAuth();
+  const clients = await sb.db.select('clients', { columns: 'id,company_name,is_active', filter: 'is_active=eq.true', order: 'company_name.asc' }) || [];
+  allClients = clients;
+  renderClientList(clients);
+  setupDrop();
+}
+
+function filterClients() {
+  const q = document.getElementById('client-search').value.toLowerCase();
+  renderClientList(allClients.filter(c => c.company_name.toLowerCase().includes(q)));
+}
+
+function renderClientList(clients) {
+  document.getElementById('client-list').innerHTML = clients.map(c => `
+    <div class="client-item ${currentClient?.id === c.id ? 'active' : ''}" onclick="selectClient('${c.id}')">
+      <div class="client-av">${c.company_name.substring(0,2).toUpperCase()}</div>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ui.escapeHtml(c.company_name)}</span>
+    </div>`).join('');
+}
+
+// ── Select client ────────────────────────────────────────────
+async function selectClient(id) {
+  currentClient = allClients.find(c => c.id === id);
+  currentFolder = '/';
+  renderClientList(allClients.filter(c => {
+    const q = document.getElementById('client-search').value.toLowerCase();
+    return !q || c.company_name.toLowerCase().includes(q);
+  }));
+  document.getElementById('toolbar-actions').style.display = 'flex';
+  document.querySelector('.upload-zone')?.classList.add('visible');
+  await loadFolder();
+}
+
+// ── Load folder ───────────────────────────────────────────────
+async function loadFolder() {
+  if (!currentClient) return;
+  const content = document.getElementById('drive-content');
+  content.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
+  updateBreadcrumb();
+
+  try {
+    // Get files in current folder for this client
+    let filter = `client_id=eq.${currentClient.id}&folder=eq.${encodeURIComponent(currentFolder)}`;
+    const files = await sb.db.select('client_files', {
+      columns: 'id,display_name,original_name,file_size,mime_type,folder,storage_path,created_at',
+      filter,
+      order: 'display_name.asc'
+    }) || [];
+
+    // Get subfolders (folders that have this as parent)
+    const allFiles = await sb.db.select('client_files', {
+      columns: 'folder',
+      filter: `client_id=eq.${currentClient.id}`
+    }) || [];
+
+    // Derive immediate subfolders
+    const subfolders = new Set();
+    allFiles.forEach(f => {
+      if (f.folder === currentFolder) return;
+      if (!f.folder.startsWith(currentFolder)) return;
+      // Get immediate subfolder
+      const rest = f.folder.slice(currentFolder.length).replace(/^\//, '');
+      const immediate = rest.split('/')[0];
+      if (immediate) subfolders.add(immediate);
+    });
+
+    renderContent(files, [...subfolders]);
+  } catch(e) {
+    content.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+// ── Render content ────────────────────────────────────────────
+function renderContent(files, folders) {
+  const content = document.getElementById('drive-content');
+  const isEmpty = !files.length && !folders.length;
+
+  let html = `
+    <div class="upload-zone visible" id="upload-zone" onclick="document.getElementById('file-input').click()">
+      <div class="uz-icon">☁</div>
+      <div class="uz-text">Trascina file qui o <strong>clicca per caricare</strong></div>
+      <div class="uz-text" style="font-size:11px;margin-top:4px">PDF, Word, Excel, Immagini, ZIP — max 50MB</div>
+    </div>
+    <div class="upload-progress" id="upload-progress">
+      <div style="display:flex;justify-content:space-between;font-size:13px">
+        <span id="up-filename">Caricamento...</span>
+        <span id="up-pct">0%</span>
+      </div>
+      <div class="up-bar-wrap"><div class="up-bar" id="up-bar" style="width:0%"></div></div>
+    </div>`;
+
+  if (isEmpty) {
+    html += `<div class="empty-drive"><div class="empty-icon">📂</div><div style="font-weight:700;margin-bottom:6px">Cartella vuota</div><div style="font-size:13px">Carica i primi documenti</div></div>`;
+  } else {
+    // Grid view
+    html += '<div class="file-grid">';
+    folders.forEach(name => {
+      html += `
+        <div class="file-item" ondblclick="openFolder('${ui.escapeHtml(name)}')">
+          <div class="file-actions">
+            <div class="file-act-btn" onclick="event.stopPropagation();renameFolderModal('${ui.escapeHtml(name)}')" title="Rinomina">✎</div>
+            <div class="file-act-btn" onclick="event.stopPropagation();deleteFolder('${ui.escapeHtml(name)}')" title="Elimina" style="color:var(--danger)">🗑</div>
+          </div>
+          <div class="file-icon">📁</div>
+          <div class="file-name">${ui.escapeHtml(name)}</div>
+        </div>`;
+    });
+    files.forEach(f => {
+      html += `
+        <div class="file-item" ondblclick="downloadFile('${f.id}','${ui.escapeHtml(f.storage_path)}','${ui.escapeHtml(f.display_name)}')">
+          <div class="file-actions">
+            <div class="file-act-btn" onclick="event.stopPropagation();downloadFile('${f.id}','${ui.escapeHtml(f.storage_path)}','${ui.escapeHtml(f.display_name)}')" title="Scarica">⬇</div>
+            <div class="file-act-btn" onclick="event.stopPropagation();renameFileModal('${f.id}','${ui.escapeHtml(f.display_name)}')" title="Rinomina">✎</div>
+            <div class="file-act-btn" onclick="event.stopPropagation();deleteFile('${f.id}','${ui.escapeHtml(f.storage_path)}','${ui.escapeHtml(f.display_name)}')" title="Elimina" style="color:var(--danger)">🗑</div>
+          </div>
+          <div class="file-icon">${fileIcon(f.mime_type, f.display_name)}</div>
+          <div class="file-name">${ui.escapeHtml(f.display_name)}</div>
+          <div class="file-meta">${formatSize(f.file_size)}</div>
+        </div>`;
+    });
+    html += '</div>';
+
+    // List view
+    html += '<div class="file-list">';
+    folders.forEach(name => {
+      html += `
+        <div class="file-list-item" ondblclick="openFolder('${ui.escapeHtml(name)}')">
+          <span class="fl-icon">📁</span>
+          <span class="fl-name">${ui.escapeHtml(name)}</span>
+          <span class="fl-meta">Cartella</span>
+          <div class="fl-actions">
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();renameFolderModal('${ui.escapeHtml(name)}')">✎</button>
+            <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="event.stopPropagation();deleteFolder('${ui.escapeHtml(name)}')">🗑</button>
+          </div>
+        </div>`;
+    });
+    files.forEach(f => {
+      html += `
+        <div class="file-list-item" ondblclick="downloadFile('${f.id}','${ui.escapeHtml(f.storage_path)}','${ui.escapeHtml(f.display_name)}')">
+          <span class="fl-icon">${fileIcon(f.mime_type, f.display_name)}</span>
+          <span class="fl-name">${ui.escapeHtml(f.display_name)}</span>
+          <span class="fl-meta">${formatSize(f.file_size)} · ${ui.formatDate(f.created_at)}</span>
+          <div class="fl-actions">
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();downloadFile('${f.id}','${ui.escapeHtml(f.storage_path)}','${ui.escapeHtml(f.display_name)}')">⬇</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();renameFileModal('${f.id}','${ui.escapeHtml(f.display_name)}')">✎</button>
+            <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="event.stopPropagation();deleteFile('${f.id}','${ui.escapeHtml(f.storage_path)}','${ui.escapeHtml(f.display_name)}')">🗑</button>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+  }
+
+  content.innerHTML = html;
+  setupDrop();
+}
+
+// ── Breadcrumb ────────────────────────────────────────────────
+function updateBreadcrumb() {
+  const bc = document.getElementById('breadcrumb');
+  if (!currentClient) { bc.innerHTML = '<span class="bc-item active">Seleziona un cliente</span>'; return; }
+  const parts = currentFolder.split('/').filter(Boolean);
+  let html = `<span class="bc-item" onclick="navigateTo('/')">📁 ${ui.escapeHtml(currentClient.company_name)}</span>`;
+  let path = '/';
+  parts.forEach((p, i) => {
+    path += p + '/';
+    const isLast = i === parts.length - 1;
+    html += `<span class="bc-sep">›</span>`;
+    if (isLast) html += `<span class="bc-item active">${ui.escapeHtml(p)}</span>`;
+    else { const fp = path; html += `<span class="bc-item" onclick="navigateTo('${fp}')">${ui.escapeHtml(p)}</span>`; }
+  });
+  bc.innerHTML = html;
+}
+
+function navigateTo(path) {
+  currentFolder = path;
+  loadFolder();
+}
+
+function openFolder(name) {
+  currentFolder = (currentFolder === '/' ? '/' : currentFolder) + name + '/';
+  loadFolder();
+}
+
+// ── Upload ────────────────────────────────────────────────────
+function setupDrop() {
+  const zone = document.getElementById('upload-zone');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+  });
+}
+
+async function handleFiles(files) {
+  if (!currentClient) { ui.showToast('Seleziona un cliente prima', 'error'); return; }
+  const token = sb.getSession()?.access_token;
+  for (const file of files) {
+    if (file.size > 52428800) { ui.showToast(`${file.name} è troppo grande (max 50MB)`, 'error'); continue; }
+    await uploadFile(file, token);
+  }
+  await loadFolder();
+}
+
+async function uploadFile(file, token) {
+  const prog = document.getElementById('upload-progress');
+  const bar = document.getElementById('up-bar');
+  const pct = document.getElementById('up-pct');
+  const fname = document.getElementById('up-filename');
+  prog.style.display = 'block';
+  fname.textContent = file.name;
+
+  const storagePath = `${currentClient.id}${currentFolder}${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const p = Math.round(e.loaded/e.total*100);
+        bar.style.width = p + '%';
+        pct.textContent = p + '%';
+      }
+    };
+    xhr.onload = async () => {
+      if (xhr.status === 200 || xhr.status === 201) {
+        // Save metadata
+        await sb.db.insert('client_files', {
+          client_id: currentClient.id,
+          storage_path: storagePath,
+          display_name: file.name,
+          original_name: file.name,
+          file_size: file.size,
+          mime_type: file.type,
+          folder: currentFolder,
+          uploaded_by: sb.getCurrentUser()?.id
+        }, { returning: false });
+        ui.showToast(`${file.name} caricato ✓`, 'success');
+      } else {
+        ui.showToast(`Errore caricamento: ${xhr.status}`, 'error');
+      }
+      prog.style.display = 'none';
+      bar.style.width = '0%';
+      resolve();
+    };
+    xhr.onerror = () => { ui.showToast('Errore di rete', 'error'); prog.style.display = 'none'; resolve(); };
+    xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${storagePath}`);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.setRequestHeader('apikey', ANON_KEY);
+    xhr.setRequestHeader('x-upsert', 'false');
+    xhr.send(file);
+  });
+}
+
+// ── Download ──────────────────────────────────────────────────
+async function downloadFile(id, storagePath, displayName) {
+  try {
+    const token = sb.getSession()?.access_token;
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/authenticated/${BUCKET}/${storagePath}`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: ANON_KEY }
+    });
+    if (!res.ok) throw new Error('Download fallito');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = displayName; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { ui.showToast('Errore download: ' + e.message, 'error'); }
+}
+
+// ── Delete file ───────────────────────────────────────────────
+async function deleteFile(id, storagePath, name) {
+  if (!confirm(`Eliminare "${name}"?`)) return;
+  try {
+    const token = sb.getSession()?.access_token;
+    // Delete from storage
+    await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${storagePath}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}`, apikey: ANON_KEY }
+    });
+    // Delete metadata
+    await sb.db.delete('client_files', `id=eq.${id}`);
+    ui.showToast('File eliminato', 'success');
+    await loadFolder();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+// ── Rename file ───────────────────────────────────────────────
+function renameFileModal(id, currentName) {
+  renameTarget = { type: 'file', id };
+  document.getElementById('rename-input').value = currentName;
+  document.getElementById('modal-rename').style.display = 'flex';
+  setTimeout(() => document.getElementById('rename-input').select(), 100);
+}
+
+function renameFolderModal(name) {
+  renameTarget = { type: 'folder', name };
+  document.getElementById('rename-input').value = name;
+  document.getElementById('modal-rename').style.display = 'flex';
+  setTimeout(() => document.getElementById('rename-input').select(), 100);
+}
+
+function closeRename() { document.getElementById('modal-rename').style.display = 'none'; renameTarget = null; }
+
+async function saveRename() {
+  const newName = document.getElementById('rename-input').value.trim();
+  if (!newName) { ui.showToast('Inserisci un nome', 'error'); return; }
+  try {
+    if (renameTarget.type === 'file') {
+      await sb.db.update('client_files', `id=eq.${renameTarget.id}`, { display_name: newName, updated_at: new Date().toISOString() });
+    } else {
+      // Rename folder: update all files with old folder path
+      const oldFolder = currentFolder + renameTarget.name + '/';
+      const newFolder = currentFolder + newName + '/';
+      const files = await sb.db.select('client_files', { filter: `client_id=eq.${currentClient.id}` }) || [];
+      for (const f of files) {
+        if (f.folder.startsWith(oldFolder) || f.folder === oldFolder.slice(0,-1)) {
+          const updatedFolder = f.folder.replace(oldFolder, newFolder);
+          await sb.db.update('client_files', `id=eq.${f.id}`, { folder: updatedFolder });
+        }
+      }
+    }
+    ui.showToast('Rinominato ✓', 'success');
+    closeRename();
+    await loadFolder();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+// ── Folders ───────────────────────────────────────────────────
+function showNewFolder() {
+  document.getElementById('folder-name-input').value = '';
+  document.getElementById('modal-folder').style.display = 'flex';
+  setTimeout(() => document.getElementById('folder-name-input').focus(), 100);
+}
+
+async function createFolder() {
+  const name = document.getElementById('folder-name-input').value.trim();
+  if (!name) { ui.showToast('Inserisci un nome', 'error'); return; }
+  if (name.includes('/')) { ui.showToast('Il nome non può contenere /', 'error'); return; }
+  // Create a placeholder file to represent the folder
+  const folderPath = currentFolder + name + '/';
+  try {
+    const token = sb.getSession()?.access_token;
+    const storagePath = `${currentClient.id}${folderPath}.keep`;
+    await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${storagePath}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, apikey: ANON_KEY, 'Content-Type': 'text/plain' },
+      body: ''
+    });
+    await sb.db.insert('client_files', {
+      client_id: currentClient.id,
+      storage_path: storagePath,
+      display_name: '.keep',
+      original_name: '.keep',
+      file_size: 0,
+      mime_type: 'text/plain',
+      folder: folderPath,
+      uploaded_by: sb.getCurrentUser()?.id
+    }, { returning: false });
+    document.getElementById('modal-folder').style.display = 'none';
+    ui.showToast(`Cartella "${name}" creata ✓`, 'success');
+    await loadFolder();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+async function deleteFolder(name) {
+  if (!confirm(`Eliminare la cartella "${name}" e tutto il suo contenuto?`)) return;
+  const folderPath = currentFolder + name + '/';
+  try {
+    const files = await sb.db.select('client_files', { filter: `client_id=eq.${currentClient.id}` }) || [];
+    const toDelete = files.filter(f => f.folder.startsWith(folderPath));
+    const token = sb.getSession()?.access_token;
+    for (const f of toDelete) {
+      await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${f.storage_path}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}`, apikey: ANON_KEY }
+      });
+      await sb.db.delete('client_files', `id=eq.${f.id}`);
+    }
+    ui.showToast('Cartella eliminata', 'success');
+    await loadFolder();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+// ── View toggle ───────────────────────────────────────────────
+function setView(mode) {
+  document.body.classList.toggle('list-view', mode === 'list');
+  document.getElementById('btn-grid').classList.toggle('active', mode === 'grid');
+  document.getElementById('btn-list').classList.toggle('active', mode === 'list');
+}
+
+init();
+</script>
+</body>
+</html>

@@ -19,6 +19,7 @@
     { id: 'vat',        icon: '◇', label: 'VAT Register',   href: '/vat.html',        section: 'COMPLIANCE' },
     { id: 'corp-tax',   icon: '◈', label: 'Corporate Tax',  href: '/corp-tax.html' },
     { id: 'affinitas',  icon: '◉', label: 'Affinitas',      href: '/affinitas.html' },
+    { id: 'documents', icon: '📁', label: 'Documenti', href: '/documents.html', section: 'GESTIONE' },
     { id: 'reports', icon: '📊', label: 'Report', href: '/reports.html', section: 'ANALYTICS' },
     { id: 'search', icon: '🔍', label: 'Ricerca', href: '/search.html' },
     ...(profile?.role === 'admin' ? [{ id: 'users', icon: '👥', label: 'Utenti', href: '/users.html', section: 'ADMIN' }] : []),
