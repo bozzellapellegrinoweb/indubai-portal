@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/config.js"></script>
   <style>
-    .tasks-wrap { display: grid; grid-template-columns: 260px 1fr; gap: 20px; min-height: calc(100vh - 120px); }
+    .tasks-wrap { display: grid; grid-template-columns: 220px 340px 1fr; gap: 16px; min-height: calc(100vh - 120px); align-items: start; }
     /* Sidebar */
     .t-sidebar { display: flex; flex-direction: column; gap: 2px; }
     .t-filter { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 8px; border: none; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); width: 100%; text-align: left; transition: all .12s; }
@@ -76,29 +76,31 @@
     <div class="page-content">
       <div class="tasks-wrap">
 
-        <!-- Left: filters + list -->
-        <div>
-          <div class="t-sidebar card" style="padding:10px;margin-bottom:16px">
-            <div class="t-section-label">Vista</div>
-            <button class="t-filter active" data-f="all" onclick="setFilter('all',this)">📋 Tutte <span class="cnt" id="cnt-all">0</span></button>
-            <button class="t-filter" data-f="mine" onclick="setFilter('mine',this)">👤 Mie <span class="cnt" id="cnt-mine">0</span></button>
-            <div class="t-sep"></div>
-            <div class="t-section-label">Stato</div>
-            <button class="t-filter" data-f="open" onclick="setFilter('open',this)">🟡 Aperte <span class="cnt" id="cnt-open">0</span></button>
-            <button class="t-filter" data-f="in_progress" onclick="setFilter('in_progress',this)">🔵 In corso <span class="cnt" id="cnt-in_progress">0</span></button>
-            <button class="t-filter" data-f="completed" onclick="setFilter('completed',this)">✅ Completate <span class="cnt" id="cnt-completed">0</span></button>
-            <div class="t-sep"></div>
-            <div class="t-section-label">Categoria</div>
-            <button class="t-filter" data-f="vat" onclick="setFilter('vat',this)">◇ VAT</button>
-            <button class="t-filter" data-f="corporate_tax" onclick="setFilter('corporate_tax',this)">◈ Corporate Tax</button>
-            <button class="t-filter" data-f="onboarding" onclick="setFilter('onboarding',this)">✦ Onboarding</button>
-            <button class="t-filter" data-f="estratti" onclick="setFilter('estratti',this)">◎ Estratti</button>
-            <button class="t-filter" data-f="pagamenti" onclick="setFilter('pagamenti',this)">◆ Pagamenti</button>
-          </div>
+        <!-- Col 1: Filters -->
+        <div class="t-sidebar card" style="padding:10px">
+          <div class="t-section-label">Vista</div>
+          <button class="t-filter active" data-f="all" onclick="setFilter('all',this)">📋 Tutte <span class="cnt" id="cnt-all">0</span></button>
+          <button class="t-filter" data-f="mine" onclick="setFilter('mine',this)">👤 Mie <span class="cnt" id="cnt-mine">0</span></button>
+          <div class="t-sep"></div>
+          <div class="t-section-label">Stato</div>
+          <button class="t-filter" data-f="open" onclick="setFilter('open',this)">🟡 Aperte <span class="cnt" id="cnt-open">0</span></button>
+          <button class="t-filter" data-f="in_progress" onclick="setFilter('in_progress',this)">🔵 In corso <span class="cnt" id="cnt-in_progress">0</span></button>
+          <button class="t-filter" data-f="completed" onclick="setFilter('completed',this)">✅ Completate <span class="cnt" id="cnt-completed">0</span></button>
+          <div class="t-sep"></div>
+          <div class="t-section-label">Categoria</div>
+          <button class="t-filter" data-f="vat" onclick="setFilter('vat',this)">◇ VAT</button>
+          <button class="t-filter" data-f="corporate_tax" onclick="setFilter('corporate_tax',this)">◈ Corporate Tax</button>
+          <button class="t-filter" data-f="onboarding" onclick="setFilter('onboarding',this)">✦ Onboarding</button>
+          <button class="t-filter" data-f="estratti" onclick="setFilter('estratti',this)">◎ Estratti</button>
+          <button class="t-filter" data-f="pagamenti" onclick="setFilter('pagamenti',this)">◆ Pagamenti</button>
+        </div>
+
+        <!-- Col 2: Task list -->
+        <div style="display:flex;flex-direction:column;gap:8px">
           <div id="t-list"></div>
         </div>
 
-        <!-- Right: detail -->
+        <!-- Col 3: Detail -->
         <div>
           <div id="t-detail" class="t-detail" style="align-items:center;justify-content:center">
             <div style="text-align:center;padding:40px;color:var(--text-muted)">

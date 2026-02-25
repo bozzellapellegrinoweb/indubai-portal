@@ -74,7 +74,7 @@
             </div>
             <a href="/tasks.html?filter=mine" class="btn btn-ghost btn-sm">Vedi tutte →</a>
           </div>
-          <div id="my-tasks" class="loading-overlay"><div class="spinner"></div></div>
+          <div id="my-tasks"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
         </div>
 
         <!-- Scadenze prossime aggregate (VAT + CT + Trade License) -->
@@ -85,7 +85,7 @@
               <div class="card-subtitle">Prossimi 14 giorni</div>
             </div>
           </div>
-          <div id="upcoming-alerts" class="loading-overlay"><div class="spinner"></div></div>
+          <div id="upcoming-alerts"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
         </div>
       </div>
     </div>
@@ -128,6 +128,12 @@ async function loadKPIs() {
         <div class="kpi-value">${kpis.vat_deadlines_next_30_days ?? '—'}</div>
         <div class="kpi-sub">Prossimi 30 giorni</div>
         <div class="kpi-icon">📋</div>
+      </div>
+      <div class="kpi-card" style="background:linear-gradient(135deg,#1a3a5c,#2563a8)">
+        <div class="kpi-label" style="color:rgba(255,255,255,.7)">Incassato Mese</div>
+        <div class="kpi-value" id="kpi-revenue" style="color:white">—</div>
+        <div class="kpi-sub" id="kpi-revenue-sub" style="color:rgba(255,255,255,.6)">Caricamento...</div>
+        <div class="kpi-icon" style="color:rgba(255,255,255,.2)">💰</div>
       </div>
     `;
   } catch(e) {
@@ -331,14 +337,15 @@ async function loadUpcomingAlerts() {
     }
 
     const typeColor = { vat:'#0369a1', license:'#d97706', ct:'#7c3aed' };
-    el.innerHTML = alerts.map(a => `
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--border)">
-        <div style="flex:1;min-width:0">
+    el.style.display = 'block';
+    el.innerHTML = '<div style="width:100%">' + alerts.map(a => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--border);width:100%;box-sizing:border-box">
+        <div style="flex:1;min-width:0;overflow:hidden">
           <div style="font-size:13px;font-weight:700;color:${typeColor[a.type]||'#1a3a5c'}">${a.label}</div>
-          <div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ui.escapeHtml(a.client||'')}</div>
+          <div style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ui.escapeHtml(a.client||'')}</div>
         </div>
-        <span style="font-size:12px;font-weight:700;flex-shrink:0" class="${ui.deadlineClass(a.date)}">${ui.formatDate(a.date)}</span>
-      </div>`).join('');
+        <span style="font-size:12px;font-weight:700;flex-shrink:0;white-space:nowrap" class="${ui.deadlineClass(a.date)}">${ui.formatDate(a.date)}</span>
+      </div>`).join('') + '</div>';
   } catch(e) {
     el.innerHTML = `<div class="alert alert-danger" style="margin:12px">${e.message}</div>`;
   }
@@ -351,32 +358,40 @@ loadRevenue();
 async function loadRevenue() {
   try {
     const { year, month } = ui.currentYearMonth();
-    // Sum all successful payments this month
+    // Get ok payments this month with amounts
     const payments = await sb.db.select('subscription_payments', {
-      columns: 'amount,status',
+      columns: 'amount,status,client_id',
       filter: `year=eq.${year}&month=eq.${month}&status=eq.ok`
     });
-    // Also get clients with service_cost as fallback
     const okPayments = payments || [];
-    const total = okPayments.reduce((s, p) => s + (parseFloat(p.amount)||0), 0);
     
-    // Also count from service_cost for clients with ok status
-    const sub = await sb.db.select('subscription_payments', {
-      columns: 'amount,client_id,status,clients(service_cost)',
-      filter: `year=eq.${year}&month=eq.${month}&status=eq.ok`
-    });
-    const totalFromSub = (sub||[]).reduce((s,p) => {
-      const amt = parseFloat(p.amount) || parseFloat(p.clients?.service_cost) || 0;
-      return s + amt;
-    }, 0);
-    
-    const el = document.getElementById('kpi-revenue');
-    const sub2 = document.getElementById('kpi-revenue-sub');
-    if (el) {
-      el.textContent = totalFromSub > 0 ? 'AED ' + totalFromSub.toLocaleString('it-IT') : '—';
-      if (sub2) sub2.textContent = `${okPayments.length} pagamenti ok`;
+    // For payments without amount, get service_cost from clients
+    let total = 0;
+    const missingAmount = okPayments.filter(p => !p.amount).map(p => p.client_id);
+    let clientCosts = {};
+    if (missingAmount.length > 0) {
+      const clients = await sb.db.select('clients', {
+        columns: 'id,service_cost',
+        filter: `id=in.(${missingAmount.join(',')})`
+      });
+      (clients||[]).forEach(c => { clientCosts[c.id] = c.service_cost; });
     }
-  } catch(e) { console.error('Revenue:', e); }
+    
+    total = okPayments.reduce((s, p) => {
+      return s + (parseFloat(p.amount) || parseFloat(clientCosts[p.client_id]) || 0);
+    }, 0);
+
+    const el = document.getElementById('kpi-revenue');
+    const sub = document.getElementById('kpi-revenue-sub');
+    if (el) {
+      el.textContent = total > 0 ? ui.formatAED(total) : '—';
+      if (sub) sub.textContent = okPayments.length + ' pagamenti ok';
+    }
+  } catch(e) { 
+    console.error('Revenue error:', e);
+    const el = document.getElementById('kpi-revenue');
+    if (el) el.textContent = 'Err';
+  }
 }
 </script>
 </body>
