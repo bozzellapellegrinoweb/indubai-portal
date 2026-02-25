@@ -224,32 +224,32 @@ function generateSQL() {
   if (!name || !email || !pwd) { ui.showToast('Compila tutti i campi','error'); return; }
   if (pwd.length < 8) { ui.showToast('Password minimo 8 caratteri','error'); return; }
 
-  const h = () => Math.floor(Math.random()*0x10000).toString(16).padStart(4,'0');
-  const newId = `${h()}${h()}-${h()}-4${h().substring(1)}-a${h().substring(1)}-${h()}${h()}${h()}`;
-
   const sql = `-- Crea utente: ${name}
-INSERT INTO auth.users (
-  instance_id, id, aud, role, email,
-  encrypted_password, email_confirmed_at,
-  raw_app_meta_data, raw_user_meta_data,
-  created_at, updated_at,
-  confirmation_token, recovery_token,
-  email_change_token_new, email_change
-) VALUES (
-  '00000000-0000-0000-0000-000000000000',
-  '${newId}',
-  'authenticated', 'authenticated',
-  '${email}',
-  crypt('${pwd}', gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}'::jsonb,
-  '{"full_name":"${name}"}'::jsonb,
-  now(), now(), '', '', '', ''
-);
-
--- Imposta ruolo corretto (il trigger crea 'staff' di default)
-UPDATE profiles SET role = '${role}', full_name = '${name}'
-WHERE id = '${newId}';`;
+DO $$
+DECLARE new_id uuid := gen_random_uuid();
+BEGIN
+  INSERT INTO auth.users (
+    instance_id, id, aud, role, email,
+    encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at,
+    confirmation_token, recovery_token,
+    email_change_token_new, email_change
+  ) VALUES (
+    '00000000-0000-0000-0000-000000000000',
+    new_id,
+    'authenticated', 'authenticated',
+    '${email}',
+    crypt('${pwd}', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"full_name":"${name}"}'::jsonb,
+    now(), now(), '', '', '', ''
+  );
+  -- Imposta ruolo corretto
+  UPDATE profiles SET role = '${role}', full_name = '${name}'
+  WHERE id = new_id;
+END $$;`;
 
   document.getElementById('sql-output').textContent = sql;
   document.getElementById('form-step').style.display = 'none';
