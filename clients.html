@@ -117,11 +117,15 @@
       <div class="form-group">
         <label class="form-label">Conti Bancari</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap" id="bank-checkboxes">
-          ${['wio', 'stripe', 'paypal', 'mashreq', 'payoneer', 'hubpay', 'credium', 'ziina', 'mamo'].map(b =>
-            `<label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
-              <input type="checkbox" value="${b}" name="bank"> ${b.charAt(0).toUpperCase() + b.slice(1)}
-            </label>`
-          ).join('')}
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="wio" name="bank"> Wio</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="stripe" name="bank"> Stripe</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="paypal" name="bank"> Paypal</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="mashreq" name="bank"> Mashreq</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="payoneer" name="bank"> Payoneer</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="hubpay" name="bank"> Hubpay</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="credium" name="bank"> Credium</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="ziina" name="bank"> Ziina</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="mamo" name="bank"> Mamo</label>
         </div>
       </div>
       <div class="form-group">

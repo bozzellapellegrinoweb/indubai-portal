@@ -127,7 +127,7 @@ async function loadMissingStatements() {
               <tr>
                 <td class="td-company">${ui.escapeHtml(r.company_name)}</td>
                 <td>${(r.bank_accounts || []).join(', ') || '—'}</td>
-                <td><a href="/clients.html?id=${r.id}" class="btn btn-ghost btn-sm">Apri</a></td>
+
               </tr>`).join('')}
           </tbody>
         </table>
