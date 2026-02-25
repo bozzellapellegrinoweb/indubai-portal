@@ -2,6 +2,26 @@
 // InDubai Portal — Supabase Client
 // ============================================================
 
+// Check configuration
+if (!window.ENV_SUPABASE_URL || window.ENV_SUPABASE_ANON_KEY === 'REPLACE_WITH_ANON_KEY') {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body.innerHTML = `
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#1a3a5c;font-family:Inter,sans-serif">
+        <div style="background:white;border-radius:16px;padding:40px;max-width:500px;width:100%">
+          <div style="font-size:28px;font-weight:900;color:#1a3a5c;margin-bottom:8px">InDubai Portal</div>
+          <div style="color:#c9a84c;font-weight:700;margin-bottom:24px">⚙ Setup richiesto</div>
+          <p style="color:#6b7a95;font-size:14px;margin-bottom:20px">
+            Inserisci la <strong>Anon Key</strong> di Supabase nel file <code>js/config.js</code> su GitHub,
+            oppure aggiungila come variabile d'ambiente <code>SUPABASE_ANON_KEY</code> su Vercel.
+          </p>
+          <div style="background:#f0f4f8;border-radius:8px;padding:16px;font-size:12px;font-family:monospace;color:#1a3a5c">
+            Supabase → Settings → API → anon public key
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
 const SUPABASE_URL = window.ENV_SUPABASE_URL;
 const SUPABASE_ANON_KEY = window.ENV_SUPABASE_ANON_KEY;
 
