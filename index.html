@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script>
+    window.ENV_SUPABASE_URL = '__SUPABASE_URL__';
+    window.ENV_SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+  </script>
+</head>
+<body>
+<div class="app-layout">
+  <!-- Sidebar injected by app.js -->
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Dashboard</div>
+        <div class="topbar-subtitle" id="date-label"></div>
+      </div>
+      <button class="btn btn-accent btn-sm" onclick="location.href='/clients.html?action=new'">+ Nuovo Cliente</button>
+    </div>
+
+    <div class="page-content">
+      <!-- KPIs -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Two columns -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+
+        <!-- Estratti mancanti -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">⚠ Estratti Mancanti</div>
+              <div class="card-subtitle">Mese corrente</div>
+            </div>
+          </div>
+          <div id="missing-statements" class="loading-overlay"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Pagamenti problematici -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">⚡ Abbonamenti da Verificare</div>
+              <div class="card-subtitle">Mese corrente</div>
+            </div>
+          </div>
+          <div id="payment-issues" class="loading-overlay"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- VAT scadenze -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">📅 Scadenze VAT — Prossimi 30 giorni</div>
+          </div>
+          <a href="/vat.html" class="btn btn-ghost btn-sm">Vedi tutti →</a>
+        </div>
+        <div id="vat-deadlines" class="loading-overlay"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+const { year, month } = ui.currentYearMonth();
+
+document.getElementById('date-label').textContent =
+  `${ui.MONTHS_FULL[month - 1]} ${year}`;
+
+// ── KPIs ────────────────────────────────────────────────────
+async function loadKPIs() {
+  try {
+    const kpis = await sb.db.getDashboardKPIs();
+    document.getElementById('kpi-grid').innerHTML = `
+      <div class="kpi-card">
+        <div class="kpi-label">Clienti Attivi</div>
+        <div class="kpi-value">${kpis.total_active_clients ?? '—'}</div>
+        <div class="kpi-sub">${kpis.clients_in_bilancio ?? 0} in bilancio</div>
+        <div class="kpi-icon">👥</div>
+      </div>
+      <div class="kpi-card danger">
+        <div class="kpi-label">Estratti Mancanti</div>
+        <div class="kpi-value">${kpis.bank_statements_missing ?? '—'}</div>
+        <div class="kpi-sub">Mese corrente</div>
+        <div class="kpi-icon">📄</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Abbonamenti ⚠</div>
+        <div class="kpi-value">${kpis.subscriptions_issue ?? '—'}</div>
+        <div class="kpi-sub">Da verificare</div>
+        <div class="kpi-icon">💳</div>
+      </div>
+      <div class="kpi-card info">
+        <div class="kpi-label">VAT in Scadenza</div>
+        <div class="kpi-value">${kpis.vat_deadlines_next_30_days ?? '—'}</div>
+        <div class="kpi-sub">Prossimi 30 giorni</div>
+        <div class="kpi-icon">📋</div>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('kpi-grid').innerHTML = `<div class="alert alert-danger">Errore caricamento KPIs: ${e.message}</div>`;
+  }
+}
+
+// ── Estratti mancanti ────────────────────────────────────────
+async function loadMissingStatements() {
+  try {
+    const rows = await sb.db.select('clients_missing_bank_statements');
+    const el = document.getElementById('missing-statements');
+    if (!rows?.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">✓</div><h3>Tutti a posto!</h3><p>Nessun estratto mancante.</p></div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cliente</th><th>Conti</th><th></th></tr></thead>
+          <tbody>
+            ${rows.slice(0, 8).map(r => `
+              <tr>
+                <td class="td-company">${ui.escapeHtml(r.company_name)}</td>
+                <td>${(r.bank_accounts || []).join(', ') || '—'}</td>
+                <td><a href="/clients.html?id=${r.id}" class="btn btn-ghost btn-sm">Apri</a></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+        ${rows.length > 8 ? `<div style="padding:12px 16px;font-size:12px;color:var(--text-muted)">+ altri ${rows.length - 8} clienti</div>` : ''}
+      </div>`;
+  } catch(e) {
+    document.getElementById('missing-statements').innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+  }
+}
+
+// ── Pagamenti problematici ───────────────────────────────────
+async function loadPaymentIssues() {
+  try {
+    const rows = await sb.db.select('clients_subscription_status', {
+      filter: `current_month_status=in.(failed,no_tentativo,pending)&is_active=eq.true`
+    });
+    const el = document.getElementById('payment-issues');
+    if (!rows?.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">✓</div><h3>Tutto OK!</h3><p>Nessun problema di pagamento.</p></div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cliente</th><th>Status</th><th>Note</th></tr></thead>
+          <tbody>
+            ${rows.slice(0, 8).map(r => `
+              <tr>
+                <td class="td-company">${ui.escapeHtml(r.company_name)}</td>
+                <td>${ui.statusBadge(r.current_month_status)}</td>
+                <td style="font-size:12px;color:var(--text-muted)">${ui.escapeHtml(r.payment_notes) || '—'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+        ${rows.length > 8 ? `<div style="padding:12px 16px;font-size:12px;color:var(--text-muted)">+ altri ${rows.length - 8} clienti</div>` : ''}
+      </div>`;
+  } catch(e) {
+    document.getElementById('payment-issues').innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+  }
+}
+
+// ── VAT scadenze ─────────────────────────────────────────────
+async function loadVatDeadlines() {
+  try {
+    const rows = await sb.db.select('vat_register', {
+      columns: 'client_id,accounting_partner,return_deadline_1,return_deadline_2,return_deadline_3,return_deadline_4,clients(company_name)',
+    });
+    const today = new Date();
+    const in30 = new Date(today.getTime() + 30 * 86400000);
+    const deadlines = [];
+
+    (rows || []).forEach(r => {
+      [1, 2, 3, 4].forEach(i => {
+        const d = r[`return_deadline_${i}`];
+        if (d) {
+          const dt = new Date(d);
+          if (dt >= today && dt <= in30) {
+            deadlines.push({ company: r.clients?.company_name, date: d, partner: r.accounting_partner });
+          }
+        }
+      });
+    });
+
+    const el = document.getElementById('vat-deadlines');
+    if (!deadlines.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><h3>Nessuna scadenza</h3><p>Nessun VAT return nei prossimi 30 giorni.</p></div>`;
+      return;
+    }
+
+    deadlines.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    el.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cliente</th><th>Scadenza VAT Return</th><th>Partner</th></tr></thead>
+          <tbody>
+            ${deadlines.map(r => `
+              <tr>
+                <td class="td-company">${ui.escapeHtml(r.company)}</td>
+                <td><span class="${ui.deadlineClass(r.date)}">${ui.formatDate(r.date)}</span></td>
+                <td>${ui.partnerLabel(r.partner)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    document.getElementById('vat-deadlines').innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+  }
+}
+
+// Init
+loadKPIs();
+loadMissingStatements();
+loadPaymentIssues();
+loadVatDeadlines();
+</script>
+</body>
+</html>

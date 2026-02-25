@@ -1,0 +1,9 @@
+{
+  "name": "indubai-portal",
+  "version": "1.0.0",
+  "description": "InDubai Portal - Gestionale clienti",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "npx serve . -p 3000"
+  }
+}

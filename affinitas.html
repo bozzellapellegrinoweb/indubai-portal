@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Affinitas — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script>
+    window.ENV_SUPABASE_URL = '__SUPABASE_URL__';
+    window.ENV_SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+  </script>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">Abbonati Affinitas</div>
+    </div>
+    <div class="page-content">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Subscriptions Affinitas</div></div>
+        <div id="table-wrap"><div class="loading-overlay"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+async function load() {
+  try {
+    const rows = await sb.db.select('affinitas_subscriptions', { order: 'start_date.desc' });
+    if (!rows?.length) {
+      document.getElementById('table-wrap').innerHTML = '<div class="empty-state"><div class="empty-icon">◉</div><h3>Nessun dato</h3></div>';
+      return;
+    }
+    document.getElementById('table-wrap').innerHTML = `
+      <table>
+        <thead><tr><th>Rif.</th><th>Azienda</th><th>Status</th><th>Inizio</th><th>Prossimo Pag.</th><th>Ordini</th><th>Segreteria</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `<tr>
+            <td style="font-size:12px;color:var(--text-muted)">${ui.escapeHtml(r.subscription_ref)}</td>
+            <td class="td-company">${ui.escapeHtml(r.company_name)}</td>
+            <td><span class="badge badge-ok">${ui.escapeHtml(r.status)}</span></td>
+            <td style="font-size:12px">${ui.formatDate(r.start_date)}</td>
+            <td style="font-size:12px">${ui.formatDate(r.next_payment)}</td>
+            <td style="text-align:center">${r.orders_count || '—'}</td>
+            <td>${r.in_segreteria ? '<span class="badge badge-ok">✓</span>' : '<span class="badge badge-warn">No</span>'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) {
+    document.getElementById('table-wrap').innerHTML = '<div class="alert alert-danger" style="margin:16px">' + e.message + '</div>';
+  }
+}
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clienti — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script>
+    window.ENV_SUPABASE_URL = '__SUPABASE_URL__';
+    window.ENV_SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+  </script>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Clienti</div>
+        <div class="topbar-subtitle" id="clients-count">Caricamento...</div>
+      </div>
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="form-control" id="search" placeholder="Cerca cliente..." style="min-width:260px">
+        </div>
+        <select class="form-control" id="filter-partner" style="width:auto">
+          <option value="">Tutti i partner</option>
+          <option value="noi">Noi</option>
+          <option value="vat_consultant">VAT Consultant</option>
+          <option value="affinitas">Affinitas</option>
+          <option value="in_sospeso">In Sospeso</option>
+        </select>
+        <button class="btn btn-accent" id="btn-add">+ Nuovo Cliente</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="card">
+        <div class="table-wrap">
+          <table id="clients-table">
+            <thead>
+              <tr>
+                <th>Azienda / Contatto</th>
+                <th>Partner</th>
+                <th>Conti Bancari</th>
+                <th>Abbonamento</th>
+                <th>CT Scadenza</th>
+                <th>VAT</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="clients-tbody">
+              <tr><td colspan="7"><div class="loading-overlay"><div class="spinner"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CLIENT MODAL -->
+<div class="modal-overlay" id="modal-add" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nuovo Cliente</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nome Azienda *</label>
+          <input type="text" class="form-control" id="f-company" placeholder="ACME FZCO">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nome Contatto</label>
+          <input type="text" class="form-control" id="f-contact" placeholder="Mario Rossi">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" id="f-email" placeholder="mario@azienda.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telefono UAE</label>
+          <input type="text" class="form-control" id="f-phone" placeholder="+971 50 000 0000">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Acquisito da</label>
+          <select class="form-control" id="f-source">
+            <option value="pellegrino">Pellegrino</option>
+            <option value="giuseppe">Giuseppe</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Partner Contabilità</label>
+          <select class="form-control" id="f-partner">
+            <option value="">—</option>
+            <option value="noi">Noi</option>
+            <option value="vat_consultant">VAT Consultant</option>
+            <option value="affinitas">Affinitas</option>
+            <option value="in_sospeso">In Sospeso</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Costo Servizio (AED)</label>
+          <input type="number" class="form-control" id="f-cost" placeholder="1200" step="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data Avvio</label>
+          <input type="date" class="form-control" id="f-start">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Conti Bancari</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap" id="bank-checkboxes">
+          ${['wio', 'stripe', 'paypal', 'mashreq', 'payoneer', 'hubpay', 'credium', 'ziina', 'mamo'].map(b =>
+            `<label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
+              <input type="checkbox" value="${b}" name="bank"> ${b.charAt(0).toUpperCase() + b.slice(1)}
+            </label>`
+          ).join('')}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note Bancarie</label>
+        <input type="text" class="form-control" id="f-bank-notes" placeholder="Es. Wio Business - emettere fattura mensile">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-accent" id="btn-save-client">Crea Cliente</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+let allClients = [];
+
+async function loadClients() {
+  try {
+    allClients = await sb.db.getClients();
+    renderClients(allClients);
+  } catch(e) {
+    document.getElementById('clients-tbody').innerHTML =
+      `<tr><td colspan="7"><div class="alert alert-danger" style="margin:16px">${e.message}</div></td></tr>`;
+  }
+}
+
+function renderClients(clients) {
+  document.getElementById('clients-count').textContent = `${clients.length} clienti`;
+  if (!clients.length) {
+    document.getElementById('clients-tbody').innerHTML =
+      `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">👥</div><h3>Nessun cliente trovato</h3></div></td></tr>`;
+    return;
+  }
+
+  document.getElementById('clients-tbody').innerHTML = clients.map(c => `
+    <tr>
+      <td>
+        <div class="td-company">${ui.escapeHtml(c.company_name)}</div>
+        <div class="td-contact">${ui.escapeHtml(c.contact_name) || ''}</div>
+      </td>
+      <td>${ui.partnerLabel(c.accounting_partner)}</td>
+      <td style="font-size:12px">${(c.bank_accounts || []).join(', ') || '—'}</td>
+      <td>
+        ${c.service_cost ? `<strong>${ui.formatAED(c.service_cost)}</strong>` : '—'}
+        ${c.subscription_day ? `<div style="font-size:11px;color:var(--text-muted)">Giorno ${c.subscription_day}</div>` : ''}
+      </td>
+      <td>
+        ${c.corporate_tax_expiry
+          ? `<span class="${ui.deadlineClass(c.corporate_tax_expiry)}">${ui.formatDate(c.corporate_tax_expiry)}</span>`
+          : '—'}
+      </td>
+      <td>${c.vat_registered ? '<span class="badge badge-ok">VAT ✓</span>' : '—'}</td>
+      <td>
+        <a href="/client-detail.html?id=${c.id}" class="btn btn-ghost btn-sm">Apri →</a>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// Search & filter
+function applyFilters() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const partner = document.getElementById('filter-partner').value;
+  let filtered = allClients;
+  if (q) filtered = filtered.filter(c =>
+    (c.company_name || '').toLowerCase().includes(q) ||
+    (c.contact_name || '').toLowerCase().includes(q)
+  );
+  if (partner) filtered = filtered.filter(c => c.accounting_partner === partner);
+  renderClients(filtered);
+}
+
+document.getElementById('search').addEventListener('input', applyFilters);
+document.getElementById('filter-partner').addEventListener('change', applyFilters);
+
+// Add client
+document.getElementById('btn-add').addEventListener('click', () => {
+  document.getElementById('modal-add').style.display = 'flex';
+});
+
+function closeModal() {
+  document.getElementById('modal-add').style.display = 'none';
+}
+
+document.getElementById('modal-add').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-add')) closeModal();
+});
+
+document.getElementById('btn-save-client').addEventListener('click', async () => {
+  const company = document.getElementById('f-company').value.trim();
+  if (!company) { ui.showToast('Inserisci il nome azienda', 'error'); return; }
+
+  const banks = [...document.querySelectorAll('#bank-checkboxes input:checked')].map(el => el.value);
+
+  const btn = document.getElementById('btn-save-client');
+  btn.textContent = 'Salvataggio...'; btn.disabled = true;
+
+  try {
+    const result = await sb.db.insert('clients', {
+      company_name: company,
+      contact_name: document.getElementById('f-contact').value.trim() || null,
+      email: document.getElementById('f-email').value.trim() || null,
+      phone_uae: document.getElementById('f-phone').value.trim() || null,
+      source: document.getElementById('f-source').value,
+      accounting_partner: document.getElementById('f-partner').value || null,
+      service_cost: parseFloat(document.getElementById('f-cost').value) || null,
+      start_date: document.getElementById('f-start').value || null,
+      bank_accounts: banks.length ? banks : null,
+      bank_notes: document.getElementById('f-bank-notes').value.trim() || null,
+      is_active: true,
+      in_bilancio: true,
+    });
+
+    await sb.db.log('client_created', result[0]?.id, { company });
+    ui.showToast(`Cliente "${company}" creato!`, 'success');
+    closeModal();
+    loadClients();
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  } finally {
+    btn.textContent = 'Crea Cliente'; btn.disabled = false;
+  }
+});
+
+// Check for ?action=new in URL
+if (new URLSearchParams(location.search).get('action') === 'new') {
+  document.getElementById('modal-add').style.display = 'flex';
+}
+
+loadClients();
+</script>
+</body>
+</html>

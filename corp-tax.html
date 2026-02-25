@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corporate Tax — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script>
+    window.ENV_SUPABASE_URL = '__SUPABASE_URL__';
+    window.ENV_SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+  </script>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">Corporate Tax</div>
+    </div>
+    <div class="page-content">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Corporate Tax Tracker</div></div>
+        <div id="table-wrap"><div class="loading-overlay"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+async function load() {
+  try {
+    const rows = await sb.db.select('corporate_tax', {
+      columns: 'id,client_id,deadline,application_submitted,approval_date,month_group,notes,clients(company_name,contact_name)',
+      order: 'application_submitted.desc'
+    });
+    if (!rows?.length) {
+      document.getElementById('table-wrap').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><h3>Nessun dato</h3></div>';
+      return;
+    }
+    document.getElementById('table-wrap').innerHTML = `
+      <table>
+        <thead><tr><th>Cliente</th><th>Deadline</th><th>Application</th><th>Approval</th><th>Note</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `<tr>
+            <td><div class="td-company">${ui.escapeHtml(r.clients?.company_name)}</div></td>
+            <td>${ui.escapeHtml(r.deadline) || '—'}</td>
+            <td style="font-size:12px">${r.application_submitted ? '<span class="badge badge-ok">' + ui.formatDate(r.application_submitted) + '</span>' : '<span class="badge badge-pending">Pending</span>'}</td>
+            <td style="font-size:12px">${r.approval_date ? '<span class="badge badge-ok">' + ui.formatDate(r.approval_date) + '</span>' : '—'}</td>
+            <td style="font-size:12px;color:var(--text-muted)">${ui.escapeHtml(r.notes) || ''}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) {
+    document.getElementById('table-wrap').innerHTML = '<div class="alert alert-danger" style="margin:16px">' + e.message + '</div>';
+  }
+}
+load();
+</script>
+</body>
+</html>

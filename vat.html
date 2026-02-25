@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VAT Register — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script>
+    window.ENV_SUPABASE_URL = '__SUPABASE_URL__';
+    window.ENV_SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+  </script>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">VAT Register</div>
+        <div class="topbar-subtitle">Scadenze e stato registrazioni VAT</div>
+      </div>
+      <div class="toolbar">
+        <select class="form-control" id="filter-partner" style="width:auto">
+          <option value="">Tutti i partner</option>
+          <option value="noi">Noi</option>
+          <option value="vat_consultant">VAT Consultant</option>
+          <option value="affinitas">Affinitas</option>
+        </select>
+        <select class="form-control" id="filter-deadline" style="width:auto">
+          <option value="">Tutte le scadenze</option>
+          <option value="overdue">Scadute</option>
+          <option value="soon">Prossimi 30 gg</option>
+          <option value="future">Oltre 30 gg</option>
+        </select>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="form-control" id="search" placeholder="Cerca..." style="min-width:200px">
+        </div>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">VAT Return Scadenze</div>
+          <div class="card-subtitle" id="vat-summary">Caricamento...</div>
+        </div>
+        <div class="table-wrap" id="table-wrap">
+          <div class="loading-overlay"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit VAT modal -->
+<div class="modal-overlay" id="modal-vat" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-vat-title">VAT Register</div>
+        <div style="font-size:12px;color:var(--text-muted)" id="modal-vat-company"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Data Application</label>
+          <input type="date" class="form-control" id="vat-application">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data Approval</label>
+          <input type="date" class="form-control" id="vat-approval">
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Scadenza 1</label>
+          <input type="date" class="form-control" id="vat-d1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Scadenza 2</label>
+          <input type="date" class="form-control" id="vat-d2">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Scadenza 3</label>
+          <input type="date" class="form-control" id="vat-d3">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Scadenza 4</label>
+        <input type="date" class="form-control" id="vat-d4" style="max-width:200px">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Pagamento Studio</label>
+          <input type="text" class="form-control" id="vat-pay-studio" placeholder="Es. 18sep, -">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pagamento VAT</label>
+          <input type="text" class="form-control" id="vat-pay-vat" placeholder="Es. ft. ottobre">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-accent" id="btn-save-vat">Salva</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+let vatRows = [];
+let activeVatId = null;
+
+async function loadData() {
+  try {
+    vatRows = await sb.db.select('vat_register', {
+      columns: 'id,client_id,accounting_partner,application_date,approval_date,return_deadline_1,return_deadline_2,return_deadline_3,return_deadline_4,payment_to_studio,payment_vat,clients(id,company_name,contact_name,is_active)'
+    });
+    vatRows = (vatRows || []).filter(r => r.clients?.is_active);
+    renderTable();
+  } catch(e) {
+    document.getElementById('table-wrap').innerHTML =
+      `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+  }
+}
+
+function getNextDeadline(row) {
+  const now = new Date();
+  const deadlines = [row.return_deadline_1, row.return_deadline_2, row.return_deadline_3, row.return_deadline_4]
+    .filter(Boolean)
+    .map(d => new Date(d))
+    .filter(d => d >= now)
+    .sort((a, b) => a - b);
+  return deadlines[0] || null;
+}
+
+function deadlineFilter(row, filterVal) {
+  const next = getNextDeadline(row);
+  if (!filterVal) return true;
+  if (!next && filterVal === 'overdue') {
+    // Check if any deadline is in the past
+    const allDates = [row.return_deadline_1, row.return_deadline_2, row.return_deadline_3, row.return_deadline_4]
+      .filter(Boolean).map(d => new Date(d));
+    return allDates.some(d => d < new Date());
+  }
+  if (!next) return false;
+  const days = Math.ceil((next - new Date()) / 86400000);
+  if (filterVal === 'overdue') return days < 0;
+  if (filterVal === 'soon') return days >= 0 && days <= 30;
+  if (filterVal === 'future') return days > 30;
+  return true;
+}
+
+function renderTable() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const partner = document.getElementById('filter-partner').value;
+  const deadlineF = document.getElementById('filter-deadline').value;
+
+  let filtered = vatRows;
+  if (search) filtered = filtered.filter(r => (r.clients?.company_name || '').toLowerCase().includes(search));
+  if (partner) filtered = filtered.filter(r => r.accounting_partner === partner);
+  if (deadlineF) filtered = filtered.filter(r => deadlineFilter(r, deadlineF));
+
+  document.getElementById('vat-summary').textContent =
+    `${filtered.length} clienti · ${filtered.filter(r => r.application_date).length} registrati`;
+
+  if (!filtered.length) {
+    document.getElementById('table-wrap').innerHTML =
+      `<div class="empty-state"><div class="empty-icon">📋</div><h3>Nessun risultato</h3></div>`;
+    return;
+  }
+
+  document.getElementById('table-wrap').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th style="min-width:200px">Cliente</th>
+          <th>Partner</th>
+          <th>Application</th>
+          <th>Approval</th>
+          <th>Prossima Scadenza</th>
+          <th>Scadenze</th>
+          <th>Pag. Studio</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(r => {
+          const next = getNextDeadline(r);
+          const allDeadlines = [r.return_deadline_1, r.return_deadline_2, r.return_deadline_3, r.return_deadline_4]
+            .filter(Boolean)
+            .map(d => `<div class="${ui.deadlineClass(d)}" style="font-size:11px">${ui.formatDate(d)}</div>`)
+            .join('');
+
+          return `<tr>
+            <td>
+              <div class="td-company">${ui.escapeHtml(r.clients?.company_name)}</div>
+              <div class="td-contact">${ui.escapeHtml(r.clients?.contact_name) || ''}</div>
+            </td>
+            <td>${ui.partnerLabel(r.accounting_partner)}</td>
+            <td style="font-size:12px">${r.application_date ? `<span class="badge badge-ok">${ui.formatDate(r.application_date)}</span>` : '<span class="badge badge-pending">Non fatto</span>'}</td>
+            <td style="font-size:12px">${r.approval_date ? `<span class="badge badge-ok">${ui.formatDate(r.approval_date)}</span>` : '—'}</td>
+            <td>${next ? `<strong class="${ui.deadlineClass(next.toISOString())}">${ui.formatDate(next.toISOString())}</strong>` : '<span style="color:var(--text-muted);font-size:12px">—</span>'}</td>
+            <td style="font-size:11px;line-height:1.8">${allDeadlines || '—'}</td>
+            <td style="font-size:12px">${ui.escapeHtml(r.payment_to_studio) || '—'}</td>
+            <td><button class="btn btn-ghost btn-sm" onclick="openEdit('${r.id}')">✎ Modifica</button></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function openEdit(vatId) {
+  const row = vatRows.find(r => r.id === vatId);
+  if (!row) return;
+  activeVatId = vatId;
+  document.getElementById('modal-vat-title').textContent = 'VAT Register';
+  document.getElementById('modal-vat-company').textContent = row.clients?.company_name || '';
+  document.getElementById('vat-application').value = row.application_date || '';
+  document.getElementById('vat-approval').value = row.approval_date || '';
+  document.getElementById('vat-d1').value = row.return_deadline_1 || '';
+  document.getElementById('vat-d2').value = row.return_deadline_2 || '';
+  document.getElementById('vat-d3').value = row.return_deadline_3 || '';
+  document.getElementById('vat-d4').value = row.return_deadline_4 || '';
+  document.getElementById('vat-pay-studio').value = row.payment_to_studio || '';
+  document.getElementById('vat-pay-vat').value = row.payment_vat || '';
+  document.getElementById('modal-vat').style.display = 'flex';
+}
+
+function closeModal() { document.getElementById('modal-vat').style.display = 'none'; }
+
+document.getElementById('btn-save-vat').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-vat');
+  btn.textContent = 'Salvataggio...'; btn.disabled = true;
+  try {
+    const updates = {
+      application_date: document.getElementById('vat-application').value || null,
+      approval_date: document.getElementById('vat-approval').value || null,
+      return_deadline_1: document.getElementById('vat-d1').value || null,
+      return_deadline_2: document.getElementById('vat-d2').value || null,
+      return_deadline_3: document.getElementById('vat-d3').value || null,
+      return_deadline_4: document.getElementById('vat-d4').value || null,
+      payment_to_studio: document.getElementById('vat-pay-studio').value || null,
+      payment_vat: document.getElementById('vat-pay-vat').value || null,
+    };
+    await sb.db.update('vat_register', `id=eq.${activeVatId}`, updates);
+    // Update local
+    const idx = vatRows.findIndex(r => r.id === activeVatId);
+    if (idx >= 0) vatRows[idx] = { ...vatRows[idx], ...updates };
+    ui.showToast('VAT aggiornato', 'success');
+    closeModal();
+    renderTable();
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  } finally {
+    btn.textContent = 'Salva'; btn.disabled = false;
+  }
+});
+
+['search', 'filter-partner', 'filter-deadline'].forEach(id => {
+  document.getElementById(id).addEventListener('change', renderTable);
+  if (id === 'search') document.getElementById(id).addEventListener('input', renderTable);
+});
+
+loadData();
+</script>
+</body>
+</html>

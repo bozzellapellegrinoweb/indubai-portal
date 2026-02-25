@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InDubai Portal — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script>
+    // Inject from Vercel env
+    window.ENV_SUPABASE_URL = '__SUPABASE_URL__';
+    window.ENV_SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+  </script>
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="mark">InDubai</div>
+        <div class="sub">Portal Gestionale</div>
+      </div>
+
+      <div id="alert" class="alert alert-danger" style="display:none"></div>
+
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="email" class="form-control" placeholder="nome@indubai.it" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="password" class="form-control" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" id="btn-login">
+        Accedi
+      </button>
+    </div>
+  </div>
+
+  <script src="/js/supabase.js"></script>
+  <script>
+    // Redirect if already logged in
+    if (sb.getSession()?.access_token) window.location.href = '/index.html';
+
+    const emailEl = document.getElementById('email');
+    const passEl = document.getElementById('password');
+    const btn = document.getElementById('btn-login');
+    const alert = document.getElementById('alert');
+
+    async function doLogin() {
+      const email = emailEl.value.trim();
+      const pass = passEl.value;
+      if (!email || !pass) { showAlert('Inserisci email e password'); return; }
+
+      btn.textContent = 'Accesso in corso...';
+      btn.disabled = true;
+      alert.style.display = 'none';
+
+      try {
+        await sb.signIn(email, pass);
+        window.location.href = '/index.html';
+      } catch (e) {
+        showAlert('Credenziali non valide. Riprova.');
+        btn.textContent = 'Accedi';
+        btn.disabled = false;
+      }
+    }
+
+    function showAlert(msg) {
+      alert.textContent = msg;
+      alert.style.display = 'flex';
+    }
+
+    btn.addEventListener('click', doLogin);
+    passEl.addEventListener('keydown', e => e.key === 'Enter' && doLogin());
+  </script>
+</body>
+</html>

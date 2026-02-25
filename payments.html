@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abbonamenti — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .status-cell { text-align:center; padding:6px 3px !important; cursor:pointer; white-space:nowrap; }
+    .status-cell:hover { background:var(--surface2); }
+    .month-h { text-align:center; padding:8px 4px !important; font-size:11px; }
+  </style>
+  <script>
+    window.ENV_SUPABASE_URL = '__SUPABASE_URL__';
+    window.ENV_SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+  </script>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Abbonamenti</div>
+        <div class="topbar-subtitle">Pagamenti mensili segreteria</div>
+      </div>
+      <div class="toolbar">
+        <select class="form-control" id="filter-year" style="width:auto">
+          <option value="2026">2026</option>
+          <option value="2025">2025</option>
+        </select>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="form-control" id="search" placeholder="Cerca..." style="min-width:200px">
+        </div>
+      </div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- Summary cards -->
+      <div class="kpi-grid" id="summary-cards" style="margin-bottom:20px"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Stato Pagamenti</div>
+          <div style="font-size:12px;color:var(--text-muted)">Click su una cella per cambiare stato</div>
+        </div>
+        <div class="table-wrap" id="table-wrap">
+          <div class="loading-overlay"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status picker popup -->
+<div id="status-picker" style="display:none;position:fixed;z-index:300;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:8px;min-width:160px">
+  <div style="font-size:11px;font-weight:600;color:var(--text-muted);padding:4px 8px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Cambia status</div>
+  <button class="status-opt" data-status="ok" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--success-bg)'" onmouseout="this.style.background='none'">✓ OK</button>
+  <button class="status-opt" data-status="no_tentativo" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--warning-bg)'" onmouseout="this.style.background='none'">⚠ No Tentativo</button>
+  <button class="status-opt" data-status="failed" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--danger-bg)'" onmouseout="this.style.background='none'">✕ Failed</button>
+  <button class="status-opt" data-status="manual" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--info-bg)'" onmouseout="this.style.background='none'">✎ Manuale</button>
+  <button class="status-opt" data-status="annual" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--info-bg)'" onmouseout="this.style.background='none'">★ Annuale</button>
+  <button class="status-opt" data-status="pending" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--pending-bg)'" onmouseout="this.style.background='none'">○ Pending</button>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+let clients = [], payments = {};
+let currentYear = 2026;
+let activePicker = null; // { clientId, month, tdEl }
+
+async function loadData() {
+  try {
+    clients = await sb.db.select('clients', {
+      filter: 'is_active=eq.true',
+      order: 'company_name.asc',
+      columns: 'id,company_name,contact_name,service_cost,subscription_day,accounting_partner'
+    });
+
+    const pRows = await sb.db.select('subscription_payments', {
+      filter: `year=eq.${currentYear}`,
+      columns: 'client_id,month,status,notes'
+    });
+
+    payments = {};
+    (pRows || []).forEach(p => { payments[`${p.client_id}_${p.month}`] = p; });
+
+    renderSummary();
+    renderGrid();
+  } catch(e) {
+    document.getElementById('table-wrap').innerHTML =
+      `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+  }
+}
+
+function renderSummary() {
+  const thisMonth = ui.currentYearMonth().month;
+  let ok = 0, issues = 0, total = 0;
+
+  clients.forEach(c => {
+    const key = `${c.id}_${thisMonth}`;
+    const p = payments[key];
+    total++;
+    if (p?.status === 'ok') ok++;
+    else if (p?.status === 'failed' || p?.status === 'no_tentativo') issues++;
+  });
+
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="kpi-card success">
+      <div class="kpi-label">Pagamenti OK (${ui.MONTHS[thisMonth-1]})</div>
+      <div class="kpi-value">${ok}</div>
+      <div class="kpi-sub">su ${total} clienti</div>
+    </div>
+    <div class="kpi-card danger">
+      <div class="kpi-label">Da Verificare</div>
+      <div class="kpi-value">${issues}</div>
+      <div class="kpi-sub">Failed / No tentativo</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Pendenti</div>
+      <div class="kpi-value">${total - ok - issues}</div>
+      <div class="kpi-sub">Non ancora registrati</div>
+    </div>
+  `;
+}
+
+function renderGrid() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const filtered = search ? clients.filter(c => (c.company_name || '').toLowerCase().includes(search)) : clients;
+  const thisMonth = ui.currentYearMonth().month;
+
+  const monthHeaders = ui.MONTHS.map((m, i) => {
+    const isFuture = (i + 1) > thisMonth;
+    return `<th class="month-h" style="${isFuture ? 'opacity:0.3' : ''}">${m}</th>`;
+  }).join('');
+
+  const rows = filtered.map(c => {
+    const cells = ui.MONTHS.map((_, i) => {
+      const m = i + 1;
+      const isFuture = m > thisMonth;
+      if (isFuture) return `<td class="status-cell" style="opacity:0.15">·</td>`;
+      const p = payments[`${c.id}_${m}`];
+      const status = p?.status || 'pending';
+      return `<td class="status-cell" onclick="openPicker('${c.id}', ${m}, this)" title="${p?.notes || ''}">${ui.monthBadge(status)}</td>`;
+    }).join('');
+
+    return `<tr>
+      <td>
+        <div class="td-company">${ui.escapeHtml(c.company_name)}</div>
+        <div class="td-contact">${ui.escapeHtml(c.contact_name) || ''}</div>
+      </td>
+      <td style="font-size:12px">${ui.formatAED(c.service_cost)}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${c.subscription_day ? 'Gg. ' + c.subscription_day : '—'}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  document.getElementById('table-wrap').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th style="min-width:200px">Cliente</th>
+          <th>Costo</th>
+          <th>Giorno</th>
+          ${monthHeaders}
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// Status picker
+function openPicker(clientId, month, tdEl) {
+  activePicker = { clientId, month, tdEl };
+  const picker = document.getElementById('status-picker');
+  const rect = tdEl.getBoundingClientRect();
+  picker.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+  picker.style.left = (rect.left + window.scrollX) + 'px';
+  picker.style.display = 'block';
+}
+
+document.getElementById('status-picker').querySelectorAll('.status-opt').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const { clientId, month, tdEl } = activePicker;
+    const status = btn.dataset.status;
+    document.getElementById('status-picker').style.display = 'none';
+
+    try {
+      await sb.db.upsertSubscriptionPayment(clientId, currentYear, month, { status });
+      payments[`${clientId}_${month}`] = { client_id: clientId, month, year: currentYear, status };
+      tdEl.innerHTML = ui.monthBadge(status);
+      renderSummary();
+      await sb.db.log('subscription_updated', clientId, { month, year: currentYear, status });
+      ui.showToast('Status aggiornato', 'success');
+    } catch(e) {
+      ui.showToast('Errore: ' + e.message, 'error');
+    }
+  });
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#status-picker') && !e.target.closest('.status-cell')) {
+    document.getElementById('status-picker').style.display = 'none';
+  }
+});
+
+document.getElementById('search').addEventListener('input', renderGrid);
+document.getElementById('filter-year').addEventListener('change', e => {
+  currentYear = parseInt(e.target.value);
+  loadData();
+});
+
+loadData();
+</script>
+</body>
+</html>

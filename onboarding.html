@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onboarding — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script>
+    window.ENV_SUPABASE_URL = '__SUPABASE_URL__';
+    window.ENV_SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+  </script>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Onboarding Clienti</div>
+        <div class="topbar-subtitle">Checklist per ogni nuovo cliente</div>
+      </div>
+      <div class="search-box" style="min-width:260px">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="form-control" id="search" placeholder="Cerca cliente...">
+      </div>
+    </div>
+
+    <div class="page-content">
+      <!-- Summary -->
+      <div class="kpi-grid" id="summary"></div>
+
+      <!-- Client list -->
+      <div id="client-list">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail panel -->
+<div class="modal-overlay" id="modal-detail" style="display:none">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="detail-company"></div>
+        <div style="font-size:12px;color:var(--text-muted)" id="detail-contact"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="document.getElementById('modal-detail').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body" id="detail-body"></div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+const STEPS = [
+  { key: 'whatsapp_group',       label: 'Gruppo WhatsApp creato' },
+  { key: 'call_scheduled',       label: 'Call onboarding schedulata' },
+  { key: 'docs_in_drive',        label: 'Documenti nel Drive verificati' },
+  { key: 'eid_verified',         label: 'EID verificato' },
+  { key: 'uae_phone_verified',   label: 'Numero UAE verificato' },
+  { key: 'corporate_tax_check',  label: 'Corporate Tax verificata' },
+  { key: 'fta_profile_created',  label: 'Profilo FTA creato' },
+  { key: 'ct_registration_done', label: 'Registrazione CT completata' },
+  { key: 'payment_link_sent',    label: 'Link pagamento segreteria inviato' },
+  { key: 'bank_accounts_noted',  label: 'Conti bancari annotati' },
+];
+
+let clients = [];
+let checklists = {}; // clientId → checklist row
+
+async function loadData() {
+  try {
+    [clients] = await Promise.all([
+      sb.db.select('clients', {
+        filter: 'is_active=eq.true',
+        order: 'created_at.desc',
+        columns: 'id,company_name,contact_name,source,created_at'
+      })
+    ]);
+
+    const checks = await sb.db.select('onboarding_checklist');
+    (checks || []).forEach(c => { checklists[c.client_id] = c; });
+
+    renderSummary();
+    renderList();
+  } catch(e) {
+    document.getElementById('client-list').innerHTML =
+      `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+function getProgress(clientId) {
+  const c = checklists[clientId];
+  if (!c) return { done: 0, total: STEPS.length };
+  const done = STEPS.filter(s => c[s.key]).length;
+  return { done, total: STEPS.length };
+}
+
+function renderSummary() {
+  const complete = clients.filter(c => {
+    const p = getProgress(c.id);
+    return p.done === p.total;
+  }).length;
+  const partial = clients.filter(c => {
+    const p = getProgress(c.id);
+    return p.done > 0 && p.done < p.total;
+  }).length;
+  const notStarted = clients.length - complete - partial;
+
+  document.getElementById('summary').innerHTML = `
+    <div class="kpi-card success">
+      <div class="kpi-label">Completati</div>
+      <div class="kpi-value">${complete}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">In Corso</div>
+      <div class="kpi-value">${partial}</div>
+    </div>
+    <div class="kpi-card danger">
+      <div class="kpi-label">Non Avviati</div>
+      <div class="kpi-value">${notStarted}</div>
+    </div>
+  `;
+}
+
+function renderList() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const filtered = search ? clients.filter(c => (c.company_name || '').toLowerCase().includes(search)) : clients;
+
+  if (!filtered.length) {
+    document.getElementById('client-list').innerHTML =
+      `<div class="empty-state"><div class="empty-icon">✦</div><h3>Nessun cliente</h3></div>`;
+    return;
+  }
+
+  document.getElementById('client-list').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
+      ${filtered.map(c => {
+        const p = getProgress(c.id);
+        const pct = Math.round(p.done / p.total * 100);
+        const barCls = pct === 100 ? 'green' : pct >= 50 ? 'orange' : 'red';
+        return `
+          <div class="card" style="cursor:pointer" onclick="openDetail('${c.id}')">
+            <div style="padding:16px 18px">
+              <div class="td-company" style="font-size:14px">${ui.escapeHtml(c.company_name)}</div>
+              <div class="td-contact">${ui.escapeHtml(c.contact_name) || ''}</div>
+              <div style="margin-top:14px;display:flex;align-items:center;gap:10px">
+                <div class="progress-bar" style="flex:1">
+                  <div class="progress-fill ${barCls}" style="width:${pct}%"></div>
+                </div>
+                <span style="font-size:12px;font-weight:700;color:var(--text-muted);white-space:nowrap">${p.done}/${p.total}</span>
+              </div>
+              <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+                ${STEPS.map(s => {
+                  const done = checklists[c.id]?.[s.key];
+                  return `<span title="${s.label}" style="font-size:14px">${done ? '✅' : '⬜'}</span>`;
+                }).join('')}
+              </div>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+async function openDetail(clientId) {
+  const client = clients.find(c => c.id === clientId);
+  const check = checklists[clientId] || {};
+
+  document.getElementById('detail-company').textContent = client.company_name;
+  document.getElementById('detail-contact').textContent = client.contact_name || '';
+
+  document.getElementById('detail-body').innerHTML = `
+    <div class="checklist" id="checklist-${clientId}">
+      ${STEPS.map(s => `
+        <div class="check-item ${check[s.key] ? 'done' : ''}" onclick="toggleStep('${clientId}', '${s.key}', this)">
+          <div class="check-icon">${check[s.key] ? '✓' : ''}</div>
+          <div class="check-label">${s.label}</div>
+        </div>`).join('')}
+    </div>`;
+
+  document.getElementById('modal-detail').style.display = 'flex';
+}
+
+async function toggleStep(clientId, stepKey, el) {
+  const check = checklists[clientId] || {};
+  const newVal = !check[stepKey];
+
+  try {
+    await sb.db.updateOnboarding(clientId, { [stepKey]: newVal });
+    if (!checklists[clientId]) checklists[clientId] = {};
+    checklists[clientId][stepKey] = newVal;
+
+    // Update UI
+    el.classList.toggle('done', newVal);
+    el.querySelector('.check-icon').textContent = newVal ? '✓' : '';
+    el.querySelector('.check-label').style.textDecoration = newVal ? 'line-through' : '';
+    el.querySelector('.check-label').style.color = newVal ? 'var(--text-muted)' : '';
+
+    renderSummary();
+    renderList();
+
+    await sb.db.log('onboarding_step_updated', clientId, { step: stepKey, value: newVal });
+    ui.showToast(newVal ? 'Step completato ✓' : 'Step rimosso', 'success');
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  }
+}
+
+document.getElementById('search').addEventListener('input', renderList);
+loadData();
+</script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estratti Conto — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .month-header { text-align:center; font-size:11px; padding:8px 4px !important; }
+    .month-cell-td { text-align:center; padding:6px 4px !important; cursor:pointer; }
+    .month-cell-td:hover { background: var(--surface2); }
+    .client-col { min-width: 200px; }
+    .bank-col { min-width: 120px; font-size:11px; color:var(--text-muted); }
+  </style>
+  <script>
+    window.ENV_SUPABASE_URL = '__SUPABASE_URL__';
+    window.ENV_SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+  </script>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Estratti Conto</div>
+        <div class="topbar-subtitle">Griglia ricezione estratti mensili</div>
+      </div>
+      <div class="toolbar">
+        <select class="form-control" id="filter-year" style="width:auto">
+          <option value="2026">2026</option>
+          <option value="2025">2025</option>
+        </select>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="form-control" id="search" placeholder="Cerca cliente..." style="min-width:200px">
+        </div>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Ricezione Estratti Conto</div>
+          <div class="card-subtitle" id="grid-summary">Caricamento...</div>
+        </div>
+        <div class="table-wrap" id="table-wrap">
+          <div class="loading-overlay"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+let clients = [];
+let statements = {}; // { clientId_month: { received, registered } }
+let currentYear = 2026;
+
+async function loadData() {
+  try {
+    // Load active clients in bilancio
+    clients = await sb.db.select('clients', {
+      filter: 'is_active=eq.true&in_bilancio=eq.true',
+      order: 'company_name.asc',
+      columns: 'id,company_name,contact_name,bank_accounts'
+    });
+
+    // Load all statements for the year
+    const stmts = await sb.db.select('bank_statements', {
+      filter: `year=eq.${currentYear}`,
+      columns: 'client_id,month,received,registered'
+    });
+
+    statements = {};
+    (stmts || []).forEach(s => {
+      statements[`${s.client_id}_${s.month}`] = s;
+    });
+
+    renderGrid();
+  } catch(e) {
+    document.getElementById('table-wrap').innerHTML =
+      `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+  }
+}
+
+function renderGrid() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const filtered = search
+    ? clients.filter(c => (c.company_name || '').toLowerCase().includes(search))
+    : clients;
+
+  const thisMonth = ui.currentYearMonth().month;
+
+  // Count received for summary
+  let received = 0, total = 0;
+  filtered.forEach(c => {
+    for (let m = 1; m <= thisMonth; m++) {
+      total++;
+      if (statements[`${c.id}_${m}`]?.received) received++;
+    }
+  });
+
+  document.getElementById('grid-summary').textContent =
+    `${filtered.length} clienti · ${received}/${total} estratti ricevuti (mesi 1-${thisMonth})`;
+
+  const monthHeaders = ui.MONTHS.map((m, i) => {
+    const isFuture = (i + 1) > thisMonth;
+    return `<th class="month-header" style="${isFuture ? 'opacity:0.35' : ''}">${m}</th>`;
+  }).join('');
+
+  const rows = filtered.map(c => {
+    const monthCells = ui.MONTHS.map((_, i) => {
+      const m = i + 1;
+      const key = `${c.id}_${m}`;
+      const s = statements[key];
+      const isFuture = m > thisMonth;
+
+      if (isFuture) return `<td class="month-cell-td" style="opacity:0.2">·</td>`;
+
+      let cls = 'month-empty', symbol = '·';
+      if (s?.received && s?.registered) { cls = 'month-ok'; symbol = '✓'; }
+      else if (s?.received) { cls = 'month-warn'; symbol = '○'; }
+      else { cls = 'month-fail'; symbol = '✕'; }
+
+      const title = s?.received
+        ? (s?.registered ? 'Ricevuto e registrato' : 'Ricevuto, non registrato')
+        : 'Non ricevuto';
+
+      return `<td class="month-cell-td" onclick="toggleStatement('${c.id}', ${m}, this)" title="${title}">
+        <span class="month-cell ${cls}">${symbol}</span>
+      </td>`;
+    }).join('');
+
+    return `<tr>
+      <td class="client-col">
+        <div class="td-company">${ui.escapeHtml(c.company_name)}</div>
+        <div class="td-contact">${ui.escapeHtml(c.contact_name) || ''}</div>
+      </td>
+      <td class="bank-col">${(c.bank_accounts || []).join(', ') || '—'}</td>
+      ${monthCells}
+    </tr>`;
+  }).join('');
+
+  document.getElementById('table-wrap').innerHTML = `
+    <table class="month-grid-table">
+      <thead>
+        <tr>
+          <th class="client-col">Cliente</th>
+          <th class="bank-col">Conti</th>
+          ${monthHeaders}
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:6px 14px;font-size:11px;color:var(--text-muted)">
+            Legenda: <span class="month-cell month-ok">✓</span> Ricevuto+Reg. 
+            <span class="month-cell month-warn">○</span> Ricevuto 
+            <span class="month-cell month-fail">✕</span> Mancante
+          </td>
+          ${ui.MONTHS.map(() => '<td></td>').join('')}
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function toggleStatement(clientId, month, tdEl) {
+  const key = `${clientId}_${month}`;
+  const current = statements[key];
+
+  // Cycle: missing → received → received+registered → missing
+  let newState;
+  if (!current?.received) newState = { received: true, registered: false };
+  else if (!current?.registered) newState = { received: true, registered: true };
+  else newState = { received: false, registered: false };
+
+  try {
+    await sb.db.upsertBankStatement(clientId, currentYear, month, newState);
+    statements[key] = { ...current, ...newState, client_id: clientId, month };
+
+    // Update cell visually
+    let cls = 'month-empty', symbol = '·';
+    if (newState.received && newState.registered) { cls = 'month-ok'; symbol = '✓'; }
+    else if (newState.received) { cls = 'month-warn'; symbol = '○'; }
+    else { cls = 'month-fail'; symbol = '✕'; }
+    tdEl.innerHTML = `<span class="month-cell ${cls}">${symbol}</span>`;
+
+    await sb.db.log('bank_statement_updated', clientId, { month, year: currentYear, ...newState });
+  } catch(e) {
+    ui.showToast('Errore aggiornamento: ' + e.message, 'error');
+  }
+}
+
+document.getElementById('search').addEventListener('input', renderGrid);
+document.getElementById('filter-year').addEventListener('change', e => {
+  currentYear = parseInt(e.target.value);
+  loadData();
+});
+
+loadData();
+</script>
+</body>
+</html>
