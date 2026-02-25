@@ -230,7 +230,8 @@ function formatSize(bytes) {
 
 // ── Init ─────────────────────────────────────────────────────
 async function init() {
-  await sb.requireAuth();
+  sb.requireAuth();
+  if (!sb.getSession()) return;
   const clients = await sb.db.select('clients', { columns: 'id,company_name,is_active', filter: 'is_active=eq.true', order: 'company_name.asc' }) || [];
   allClients = clients;
   renderClientList(clients);
@@ -245,6 +246,10 @@ async function init() {
   });
 
   setupDrop();
+
+  // Restore view preference
+  const savedView = localStorage.getItem('drive_view') || 'grid';
+  setView(savedView);
 
   // Handle ?client=ID from URL (e.g. from client-detail page)
   const params = new URLSearchParams(window.location.search);
@@ -638,9 +643,17 @@ async function deleteFolder(name) {
 
 // ── View toggle ───────────────────────────────────────────────
 function setView(mode) {
-  document.body.classList.toggle('list-view', mode === 'list');
+  const content = document.getElementById('drive-content');
+  if (mode === 'list') {
+    content.querySelectorAll('.file-grid').forEach(el => el.style.display = 'none');
+    content.querySelectorAll('.file-list').forEach(el => el.style.display = 'block');
+  } else {
+    content.querySelectorAll('.file-grid').forEach(el => el.style.display = 'grid');
+    content.querySelectorAll('.file-list').forEach(el => el.style.display = 'none');
+  }
   document.getElementById('btn-grid').classList.toggle('active', mode === 'grid');
   document.getElementById('btn-list').classList.toggle('active', mode === 'list');
+  localStorage.setItem('drive_view', mode);
 }
 
 init();
