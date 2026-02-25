@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InDubai Portal — Setup Database</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, sans-serif; background: #1a3a5c; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .card { background: white; border-radius: 16px; padding: 40px; max-width: 680px; width: 100%; }
+    h1 { font-size: 24px; font-weight: 800; color: #1a3a5c; margin-bottom: 4px; }
+    .subtitle { color: #c9a84c; font-weight: 600; font-size: 13px; margin-bottom: 28px; }
+    .step { background: #f0f4f8; border-radius: 10px; padding: 16px 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 14px; }
+    .step-icon { width: 32px; height: 32px; border-radius: 50%; background: #dde3ed; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+    .step-icon.done { background: #dcfce7; color: #16a34a; }
+    .step-icon.error { background: #fee2e2; color: #dc2626; }
+    .step-icon.running { background: #e0f2fe; color: #0369a1; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .step-label { font-size: 14px; font-weight: 600; flex: 1; }
+    .step-status { font-size: 12px; color: #6b7a95; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; border: none; transition: all 0.2s; }
+    .btn-primary { background: #1a3a5c; color: white; }
+    .btn-primary:hover { background: #2563a8; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-success { background: #16a34a; color: white; }
+    .log { background: #1a3a5c; color: #a5f3b4; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px; height: 160px; overflow-y: auto; margin-top: 20px; white-space: pre-wrap; display: none; }
+    .credentials { background: #f0f4f8; border-radius: 10px; padding: 20px; margin-top: 20px; display: none; }
+    .credentials h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #1a3a5c; }
+    .cred-item { display: flex; gap: 12px; margin-bottom: 8px; font-size: 13px; }
+    .cred-key { color: #6b7a95; width: 80px; }
+    .cred-val { font-weight: 600; font-family: monospace; }
+    .warning { background: #fef3c7; border: 1px solid #d97706; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #92400e; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>InDubai Portal</h1>
+  <div class="subtitle">⚙ Setup Database — esegui una sola volta</div>
+
+  <div class="warning">⚠ Questa pagina crea tutte le tabelle e carica i 97 clienti dall'Excel. Esegui solo su un database vuoto.</div>
+
+  <div id="steps">
+    <div class="step" id="s1"><div class="step-icon" id="i1">1</div><div><div class="step-label">Crea schema (tabelle, RLS, trigger, views)</div><div class="step-status" id="t1">In attesa...</div></div></div>
+    <div class="step" id="s2"><div class="step-icon" id="i2">2</div><div><div class="step-label">Carica 97 clienti dal seed</div><div class="step-status" id="t2">In attesa...</div></div></div>
+    <div class="step" id="s3"><div class="step-icon" id="i3">3</div><div><div class="step-label">Crea utente Pellegrino (admin)</div><div class="step-status" id="t3">In attesa...</div></div></div>
+    <div class="step" id="s4"><div class="step-icon" id="i4">4</div><div><div class="step-label">Crea utente Giuseppe (admin)</div><div class="step-status" id="t4">In attesa...</div></div></div>
+  </div>
+
+  <div style="margin-top:24px;display:flex;gap:12px;align-items:center">
+    <button class="btn btn-primary" id="btn-run" onclick="runSetup()">▶ Avvia Setup</button>
+    <span id="overall-status" style="font-size:13px;color:#6b7a95"></span>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <div class="credentials" id="credentials">
+    <h3>✅ Setup completato! Credenziali di accesso:</h3>
+    <div class="cred-item"><span class="cred-key">URL:</span><span class="cred-val">indubai-portal.vercel.app</span></div>
+    <div class="cred-item"><span class="cred-key">Pellegrino:</span><span class="cred-val">pellegrino@indubai.it / InDubai2026!</span></div>
+    <div class="cred-item"><span class="cred-key">Giuseppe:</span><span class="cred-val">giuseppe@indubai.it / InDubai2026!</span></div>
+    <div style="margin-top:16px">
+      <a href="/login.html" class="btn btn-success">→ Vai al Login</a>
+    </div>
+  </div>
+</div>
+
+<script src="/js/config.js"></script>
+<script>
+const SUPABASE_URL = window.ENV_SUPABASE_URL;
+const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAzMjA1MSwiZXhwIjoyMDg3NjA4MDUxfQ.oEzS7iIAiRW3pYjL-TwXtY4ZOwKwh4L8JZZ6Ztq6RgQ';
+
+const logEl = document.getElementById('log');
+function log(msg) {
+  logEl.style.display = 'block';
+  logEl.textContent += msg + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStep(n, status, text) {
+  const icon = document.getElementById('i' + n);
+  const txt = document.getElementById('t' + n);
+  icon.className = 'step-icon ' + status;
+  icon.textContent = status === 'done' ? '✓' : status === 'error' ? '✕' : '⟳';
+  if (txt) txt.textContent = text;
+}
+
+async function execSQL(sql) {
+  // Use Supabase's pg REST endpoint
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/exec_sql`, {
+    method: 'POST',
+    headers: {
+      'apikey': SERVICE_KEY,
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query: sql })
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
+  }
+  return res.json().catch(() => ({}));
+}
+
+async function execSQLDirect(sql) {
+  // Try the direct SQL execution via Supabase's internal endpoint
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+    method: 'POST',
+    headers: {
+      'apikey': SERVICE_KEY,
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'params=single-object',
+      'Accept-Profile': 'public',
+      'Content-Profile': 'public',
+    },
+    body: sql
+  });
+  return res;
+}
+
+// Split SQL into executable chunks (by semicolon, respecting $$ blocks)
+function splitSQL(sql) {
+  const chunks = [];
+  let current = '';
+  let inDollarQuote = false;
+  let dollarTag = '';
+  
+  const lines = sql.split('\n');
+  for (const line of lines) {
+    // Skip pure comment lines and empty lines
+    if (line.trim().startsWith('--') || line.trim() === '') {
+      current += line + '\n';
+      continue;
+    }
+    
+    // Check for dollar quote start/end
+    const dollarMatches = line.match(/\$\$|\$[a-zA-Z_][a-zA-Z0-9_]*\$/g);
+    if (dollarMatches) {
+      for (const dm of dollarMatches) {
+        if (!inDollarQuote) { inDollarQuote = true; dollarTag = dm; }
+        else if (dm === dollarTag) { inDollarQuote = false; dollarTag = ''; }
+      }
+    }
+    
+    current += line + '\n';
+    
+    if (!inDollarQuote && line.trim().endsWith(';')) {
+      const chunk = current.trim();
+      if (chunk && !chunk.replace(/--.*$/gm, '').replace(/\s/g, '').length === 0) {
+        chunks.push(chunk);
+      }
+      current = '';
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.filter(c => c.replace(/--[^\n]*/g, '').replace(/\s/g, '').length > 0);
+}
+
+async function runSchemaViaRPC(sql) {
+  // Supabase allows executing arbitrary SQL with service_role via the pg endpoint
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/`, {
+    method: 'POST', 
+    headers: {
+      'apikey': SERVICE_KEY,
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query: sql })
+  });
+  return res;
+}
+
+async function runSetup() {
+  const btn = document.getElementById('btn-run');
+  btn.disabled = true;
+  btn.textContent = '⟳ Setup in corso...';
+  document.getElementById('overall-status').textContent = '';
+
+  try {
+    // ── STEP 1: Schema ──────────────────────────────────────
+    setStep(1, 'running', 'Esecuzione schema...');
+    log('📋 Caricamento schema SQL...');
+    
+    const schemaRes = await fetch('/supabase/schema.sql');
+    const schemaSql = await schemaRes.text();
+    log(`   Schema: ${schemaSql.length} caratteri`);
+    
+    // Execute schema via Supabase Management API pg endpoint
+    const schemaExec = await fetch(`https://api.supabase.com/v1/projects/gvdoqcgkzbziqufahhxh/database/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: schemaSql })
+    });
+    
+    if (!schemaExec.ok) {
+      const errText = await schemaExec.text();
+      log('   ⚠ API management non disponibile, uso fallback...');
+      
+      // Fallback: use PostgREST with service_role to create a helper function first
+      // then use it to execute our SQL
+      const createExec = await fetch(`${SUPABASE_URL}/rest/v1/rpc/exec`, {
+        method: 'POST',
+        headers: {
+          'apikey': SERVICE_KEY,
+          'Authorization': `Bearer ${SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sql: schemaSql })
+      });
+      
+      if (!createExec.ok) {
+        // Final fallback: try pg endpoint
+        throw new Error('Non riesco ad eseguire lo schema. Eseguilo manualmente dal SQL Editor di Supabase.');
+      }
+    }
+    
+    log('   ✅ Schema eseguito!');
+    setStep(1, 'done', 'Schema creato con successo');
+
+    // ── STEP 2: Seed ────────────────────────────────────────
+    setStep(2, 'running', 'Caricamento clienti...');
+    log('\n📦 Caricamento seed (97 clienti)...');
+    
+    const seedRes = await fetch('/supabase/seed_data.sql');
+    const seedSql = await seedRes.text();
+    log(`   Seed: ${seedSql.length} caratteri`);
+    
+    const seedExec = await fetch(`https://api.supabase.com/v1/projects/gvdoqcgkzbziqufahhxh/database/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: seedSql })
+    });
+    
+    if (!seedExec.ok) throw new Error('Seed fallito. Esegui seed_data.sql manualmente.');
+    
+    log('   ✅ 97 clienti caricati!');
+    setStep(2, 'done', '97 clienti caricati');
+
+    // ── STEP 3 & 4: Users ───────────────────────────────────
+    const users = [
+      { step: 3, email: 'pellegrino@indubai.it', name: 'Pellegrino Bozzella', label: 'Pellegrino' },
+      { step: 4, email: 'giuseppe@indubai.it', name: 'Giuseppe', label: 'Giuseppe' },
+    ];
+
+    for (const u of users) {
+      setStep(u.step, 'running', `Creazione ${u.label}...`);
+      log(`\n👤 Creazione utente ${u.label}...`);
+      
+      const userRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+        method: 'POST',
+        headers: {
+          'apikey': SERVICE_KEY,
+          'Authorization': `Bearer ${SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: u.email,
+          password: 'InDubai2026!',
+          email_confirm: true,
+          user_metadata: { full_name: u.name, role: 'admin' }
+        })
+      });
+      
+      const userData = await userRes.json();
+      if (!userRes.ok && !userData.id) {
+        if (userData.msg?.includes('already') || userData.error?.includes('already')) {
+          log(`   ℹ ${u.label} esiste già`);
+          setStep(u.step, 'done', 'Utente già esistente');
+        } else {
+          throw new Error(`Errore creazione ${u.label}: ${JSON.stringify(userData)}`);
+        }
+      } else {
+        // Set role to admin in profiles
+        await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userData.id}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SERVICE_KEY,
+            'Authorization': `Bearer ${SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ role: 'admin' })
+        });
+        log(`   ✅ ${u.label} creato: ${u.email}`);
+        setStep(u.step, 'done', `${u.email} creato`);
+      }
+    }
+
+    // ── DONE ────────────────────────────────────────────────
+    log('\n🎉 Setup completato!');
+    document.getElementById('overall-status').textContent = '✅ Tutto fatto!';
+    document.getElementById('credentials').style.display = 'block';
+    btn.textContent = '✅ Setup completato';
+    btn.className = 'btn btn-success';
+
+  } catch(e) {
+    log('\n❌ ERRORE: ' + e.message);
+    document.getElementById('overall-status').textContent = '❌ ' + e.message;
+    btn.disabled = false;
+    btn.textContent = '↺ Riprova';
+    
+    // Show manual fallback
+    log('\n📋 ISTRUZIONE MANUALE:');
+    log('1. Vai su: https://supabase.com/dashboard/project/gvdoqcgkzbziqufahhxh/sql/new');
+    log('2. Copia e incolla il contenuto di supabase/schema.sql');
+    log('3. Poi esegui supabase/seed_data.sql');
+  }
+}
+</script>
+</body>
+</html>
