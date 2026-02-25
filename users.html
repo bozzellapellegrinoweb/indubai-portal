@@ -224,7 +224,8 @@ function generateSQL() {
   if (!name || !email || !pwd) { ui.showToast('Compila tutti i campi','error'); return; }
   if (pwd.length < 8) { ui.showToast('Password minimo 8 caratteri','error'); return; }
 
-  const newId = 'bbbbbbbb-' + Math.random().toString(36).substring(2,6) + '-0000-0000-' + Date.now().toString(16).padStart(12,'0');
+  const h = () => Math.floor(Math.random()*0x10000).toString(16).padStart(4,'0');
+  const newId = `${h()}${h()}-${h()}-4${h().substring(1)}-a${h().substring(1)}-${h()}${h()}${h()}`;
 
   const sql = `-- Crea utente: ${name}
 INSERT INTO auth.users (
