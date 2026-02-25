@@ -8,156 +8,368 @@
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/config.js"></script>
   <style>
-    .drive-layout { display:flex; height:calc(100vh - 57px); overflow:hidden; background:#f0f4f8; }
-    .drive-sidebar { width:260px; background:white; border-right:1.5px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
-    .drive-sidebar-head { padding:14px 14px 10px; border-bottom:1px solid var(--border); }
-    .drive-sidebar-label { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.6px; margin-bottom:8px; }
-    .csearch { width:100%; padding:8px 10px 8px 30px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none; background:var(--bg); }
-    .csearch:focus { border-color:var(--primary); background:white; }
-    .csearch-wrap { position:relative; }
-    .csearch-wrap::before { content:'🔍'; position:absolute; left:8px; top:50%; transform:translateY(-50%); font-size:11px; }
-    .client-list-scroll { flex:1; overflow-y:auto; padding:6px 8px; }
-    .crow { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:9px; cursor:pointer; transition:background .12s; margin-bottom:1px; }
-    .crow:hover { background:var(--bg); }
-    .crow.active { background:#e8f0fe; }
-    .crow.active .crow-name { color:var(--primary); font-weight:700; }
-    .cav { width:28px; height:28px; border-radius:7px; background:var(--primary); color:white; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .crow-name { font-size:13px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); }
-    .drive-main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
-    .drive-toolbar { background:white; border-bottom:1.5px solid var(--border); padding:10px 18px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
-    .bc { display:flex; align-items:center; gap:2px; flex:1; min-width:0; overflow:hidden; }
-    .bc-item { font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; padding:4px 7px; border-radius:6px; white-space:nowrap; transition:all .12s; }
-    .bc-item:hover { background:var(--bg); color:var(--text); }
-    .bc-item.cur { color:var(--text); cursor:default; }
-    .bc-item.cur:hover { background:none; }
-    .bc-sep { color:#ccc; font-size:14px; }
-    .vbtn { width:30px; height:30px; border:1.5px solid var(--border); border-radius:7px; background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; transition:all .12s; }
-    .vbtn:hover, .vbtn.on { background:var(--primary); border-color:var(--primary); color:white; }
-    .upbar { padding:8px 18px; background:linear-gradient(135deg,#1a3a5c,#2563a8); display:none; align-items:center; gap:10px; flex-shrink:0; }
-    .upbar.on { display:flex; }
-    .upbar-name { font-size:13px; font-weight:600; color:white; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .upbar-track { flex:2; height:4px; background:rgba(255,255,255,.3); border-radius:2px; overflow:hidden; }
-    .upbar-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .1s; }
-    .upbar-pct { font-size:12px; color:rgba(255,255,255,.8); flex-shrink:0; min-width:32px; text-align:right; }
-    .drive-content { flex:1; overflow-y:auto; padding:18px; }
-    .dz { border:2px dashed var(--border); border-radius:12px; padding:18px; text-align:center; cursor:pointer; transition:all .18s; margin-bottom:16px; background:white; }
-    .dz:hover, .dz.over { border-color:var(--primary); background:#f0f7ff; }
-    .dz-icon { font-size:22px; margin-bottom:4px; }
-    .dz-txt { font-size:13px; color:var(--text-muted); }
-    .dz-txt strong { color:var(--primary); }
-    .igrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; }
-    .icard { background:white; border:1.5px solid var(--border); border-radius:12px; padding:16px 12px 12px; cursor:pointer; transition:all .15s; position:relative; text-align:center; user-select:none; }
-    .icard:hover { border-color:var(--primary); box-shadow:0 4px 16px rgba(26,58,92,.1); transform:translateY(-2px); }
-    .icard.folder:hover { background:#fffbf0; border-color:var(--accent); }
-    .icard-icon { font-size:36px; margin-bottom:8px; line-height:1; }
-    .icard-name { font-size:12px; font-weight:600; word-break:break-word; line-height:1.4; color:var(--text); overflow:hidden; max-height:3em; }
-    .icard-meta { font-size:10px; color:var(--text-muted); margin-top:4px; }
-    .icard-acts { position:absolute; top:6px; right:6px; display:none; gap:3px; }
-    .icard:hover .icard-acts { display:flex; }
-    .abtn { width:26px; height:26px; border-radius:7px; background:white; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.1); transition:all .12s; }
-    .abtn:hover { background:var(--primary); color:white; border-color:var(--primary); }
-    .abtn.del:hover { background:var(--danger); border-color:var(--danger); }
-    .ilist { display:none; }
-    .lrow { display:flex; align-items:center; gap:12px; padding:11px 14px; background:white; border:1.5px solid var(--border); border-radius:10px; margin-bottom:6px; cursor:pointer; transition:all .12s; }
-    .lrow:hover { border-color:var(--primary); background:#f8faff; }
-    .lrow-icon { font-size:20px; flex-shrink:0; }
-    .lrow-name { flex:1; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
-    .lrow-size { font-size:11px; color:var(--text-muted); flex-shrink:0; min-width:55px; text-align:right; }
-    .lrow-date { font-size:11px; color:var(--text-muted); flex-shrink:0; min-width:80px; text-align:right; }
-    .lrow-acts { display:flex; gap:4px; flex-shrink:0; }
-    .empty-s { text-align:center; padding:50px 20px; color:var(--text-muted); }
-    .no-client { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted); padding:40px; text-align:center; }
-    .dmodal-ov { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(3px); }
-    .dmodal { background:white; border-radius:16px; padding:24px; width:100%; max-width:400px; box-shadow:0 20px 60px rgba(0,0,0,.2); }
-    .dmodal h3 { font-size:16px; font-weight:700; margin-bottom:16px; }
-    .dmodal input { width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:9px; font-size:14px; font-family:inherit; outline:none; }
-    .dmodal input:focus { border-color:var(--primary); }
-    .dmodal-foot { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
-    @media(max-width:768px){
-      .drive-layout { flex-direction:column; height:auto; overflow:visible; }
-      .drive-sidebar { width:100%; height:auto; border-right:none; border-bottom:1.5px solid var(--border); }
-      .client-list-scroll { max-height:180px; }
-      .drive-main { height:auto; overflow:visible; }
-      .drive-content { overflow:visible; }
-      .igrid { grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; }
-      .icard { padding:12px 8px 10px; }
-      .icard-icon { font-size:28px; }
-      .lrow-date { display:none; }
-      .dmodal-ov { align-items:flex-end; padding:0; }
-      .dmodal { border-radius:16px 16px 0 0; max-width:100%; margin:0; }
+    /* Drive occcupa tutto lo spazio dentro main-content */
+    .drive-root {
+      display: flex;
+      height: 100%;
+      overflow: hidden;
+      background: #f0f4f8;
+    }
+
+    /* ── SIDEBAR CLIENTI ── */
+    .drive-clients {
+      width: 250px;
+      min-width: 250px;
+      background: white;
+      border-right: 1.5px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .dc-header {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .dc-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin-bottom: 8px;
+    }
+    .dc-search {
+      width: 100%;
+      padding: 8px 10px 8px 32px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      background: var(--bg);
+      box-sizing: border-box;
+      transition: border-color .15s;
+    }
+    .dc-search:focus { border-color: var(--primary); background: white; }
+    .dc-search-wrap { position: relative; }
+    .dc-search-wrap::before { content: '🔍'; position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 11px; pointer-events: none; }
+    .dc-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 8px;
+    }
+    .dc-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background .12s;
+      margin-bottom: 1px;
+    }
+    .dc-item:hover { background: var(--bg); }
+    .dc-item.sel { background: #e8f0fe; }
+    .dc-item.sel .dc-name { color: var(--primary); font-weight: 700; }
+    .dc-av {
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      background: var(--primary);
+      color: white;
+      font-size: 10px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .dc-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+
+    /* ── MAIN DRIVE AREA ── */
+    .drive-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .drive-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      padding: 40px;
+      text-align: center;
+    }
+
+    /* ── TOOLBAR ── */
+    .drive-bar {
+      background: white;
+      border-bottom: 1.5px solid var(--border);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .drive-bc {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .bc { font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; padding: 4px 7px; border-radius: 6px; white-space: nowrap; transition: all .12s; }
+    .bc:hover { background: var(--bg); color: var(--text); }
+    .bc.here { color: var(--text); cursor: default; }
+    .bc.here:hover { background: none; }
+    .bc-sep { color: #ccc; font-size: 14px; flex-shrink: 0; }
+    .vbtn {
+      width: 30px; height: 30px;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      background: white;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      transition: all .12s;
+      flex-shrink: 0;
+    }
+    .vbtn:hover, .vbtn.on { background: var(--primary); border-color: var(--primary); color: white; }
+
+    /* ── UPLOAD BAR ── */
+    .up-bar {
+      background: linear-gradient(135deg, #1a3a5c 0%, #2a5a9f 100%);
+      padding: 9px 18px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .up-bar.show { display: flex; }
+    .up-name { font-size: 13px; font-weight: 600; color: white; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .up-track { flex: 2; height: 4px; background: rgba(255,255,255,.25); border-radius: 2px; overflow: hidden; }
+    .up-fill { height: 100%; background: #c9a84c; border-radius: 2px; transition: width .08s linear; }
+    .up-pct { font-size: 12px; color: rgba(255,255,255,.8); flex-shrink: 0; min-width: 34px; text-align: right; }
+
+    /* ── CONTENT ── */
+    .drive-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px;
+    }
+
+    /* Drop zone */
+    .drop-z {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .18s;
+      margin-bottom: 18px;
+      background: white;
+    }
+    .drop-z:hover, .drop-z.dragover { border-color: var(--primary); background: #f0f7ff; }
+    .drop-z-icon { font-size: 22px; margin-bottom: 4px; }
+    .drop-z-txt { font-size: 13px; color: var(--text-muted); }
+    .drop-z-txt strong { color: var(--primary); }
+
+    /* Grid */
+    .f-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(138px, 1fr));
+      gap: 12px;
+    }
+    .f-card {
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 10px 12px;
+      cursor: pointer;
+      transition: all .15s;
+      position: relative;
+      text-align: center;
+      user-select: none;
+    }
+    .f-card:hover { border-color: var(--primary); box-shadow: 0 4px 16px rgba(26,58,92,.1); transform: translateY(-2px); }
+    .f-card.isdir:hover { background: #fffbf0; border-color: var(--accent); }
+    .f-ico { font-size: 36px; margin-bottom: 8px; line-height: 1; }
+    .f-nm { font-size: 12px; font-weight: 600; word-break: break-word; line-height: 1.4; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .f-sz { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+    .f-acts { position: absolute; top: 5px; right: 5px; display: none; gap: 3px; }
+    .f-card:hover .f-acts { display: flex; }
+    .a-btn {
+      width: 26px; height: 26px;
+      border-radius: 7px;
+      background: rgba(255,255,255,.95);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,.12);
+      transition: all .12s;
+    }
+    .a-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+    .a-btn.rm:hover { background: var(--danger); border-color: var(--danger); }
+
+    /* List */
+    .f-list { display: none; }
+    .l-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: all .12s;
+    }
+    .l-row:hover { border-color: var(--primary); background: #f8faff; }
+    .l-ico { font-size: 20px; flex-shrink: 0; }
+    .l-nm { flex: 1; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .l-sz { font-size: 11px; color: var(--text-muted); flex-shrink: 0; min-width: 55px; text-align: right; }
+    .l-dt { font-size: 11px; color: var(--text-muted); flex-shrink: 0; min-width: 75px; text-align: right; }
+    .l-acts { display: flex; gap: 4px; flex-shrink: 0; }
+
+    /* Empty */
+    .f-empty { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+
+    /* Modals */
+    .m-ov {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(3px);
+    }
+    .m-box {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 390px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .m-box h3 { font-size: 16px; font-weight: 700; margin: 0 0 16px; }
+    .m-box input {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color .15s;
+    }
+    .m-box input:focus { border-color: var(--primary); }
+    .m-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+    /* Loading */
+    .spin-wrap { padding: 40px; text-align: center; }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      .drive-root { flex-direction: column; height: auto; overflow: visible; }
+      .drive-clients { width: 100%; min-width: unset; height: auto; border-right: none; border-bottom: 1.5px solid var(--border); }
+      .dc-list { max-height: 170px; }
+      .drive-area { height: auto; overflow: visible; }
+      .drive-content { overflow: visible; }
+      .f-grid { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 9px; }
+      .f-card { padding: 12px 8px 10px; }
+      .f-ico { font-size: 28px; }
+      .l-dt { display: none; }
+      .m-ov { align-items: flex-end; }
+      .m-box { border-radius: 16px 16px 0 0; max-width: 100%; margin: 0; }
     }
   </style>
 </head>
 <body>
 <div class="app-layout">
-  <div class="main-content" style="display:flex;flex-direction:column;height:100vh;overflow:hidden">
+  <div class="main-content" style="display:flex;flex-direction:column;overflow:hidden;height:100vh">
+
+    <!-- Topbar -->
     <div class="topbar" style="flex-shrink:0">
       <div class="topbar-title">📁 Drive Documenti</div>
-      <div style="display:flex;gap:6px;margin-left:auto">
-        <button class="vbtn on" id="btn-grid" onclick="setView('grid')" title="Griglia">⊞</button>
-        <button class="vbtn" id="btn-list" onclick="setView('list')" title="Lista">☰</button>
+      <div style="display:flex;gap:6px;margin-left:auto;align-items:center">
+        <button class="vbtn on" id="vbtn-grid" onclick="DRV.setView('grid')">⊞</button>
+        <button class="vbtn" id="vbtn-list" onclick="DRV.setView('list')">☰</button>
       </div>
     </div>
-    <div class="drive-layout">
-      <div class="drive-sidebar">
-        <div class="drive-sidebar-head">
-          <div class="drive-sidebar-label">Clienti</div>
-          <div class="csearch-wrap">
-            <input class="csearch" type="text" id="csearch" placeholder="Cerca cliente..." oninput="filterC(this.value)">
+
+    <!-- Drive root -->
+    <div class="drive-root" style="flex:1;overflow:hidden" id="drive-root">
+
+      <!-- Sidebar clienti -->
+      <div class="drive-clients">
+        <div class="dc-header">
+          <div class="dc-label">Clienti</div>
+          <div class="dc-search-wrap">
+            <input class="dc-search" id="dc-search" type="text" placeholder="Cerca cliente..." autocomplete="off">
           </div>
         </div>
-        <div class="client-list-scroll" id="client-list">
-          <div style="padding:20px;text-align:center"><div class="spinner"></div></div>
+        <div class="dc-list" id="dc-list">
+          <div class="spin-wrap"><div class="spinner"></div></div>
         </div>
       </div>
-      <div class="drive-main" id="drive-main">
-        <div class="no-client" id="no-client">
-          <div style="font-size:60px;margin-bottom:16px;opacity:.35">📁</div>
-          <div style="font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text)">Drive Documenti InDubai</div>
-          <div style="font-size:13px;max-width:280px">Seleziona un cliente dalla lista per gestire i suoi documenti</div>
+
+      <!-- Area principale -->
+      <div class="drive-area" id="drive-area">
+        <div class="drive-empty" id="drive-empty">
+          <div style="font-size:58px;margin-bottom:16px;opacity:.3">📁</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text)">Drive InDubai</div>
+          <div style="font-size:13px;max-width:260px">Seleziona un cliente per accedere ai suoi documenti</div>
         </div>
-        <div id="file-area" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-          <div class="drive-toolbar">
-            <div class="bc" id="bc"></div>
-            <div style="display:flex;gap:8px;flex-shrink:0">
-              <button class="btn btn-ghost btn-sm" onclick="showFolderModal()">📁 Cartella</button>
-              <label class="btn btn-accent btn-sm" style="cursor:pointer;margin:0">
-                ⬆ Carica
-                <input type="file" id="file-input" multiple style="display:none" onchange="onFilePick(this.files)">
-              </label>
-            </div>
+
+        <!-- File browser (hidden until client selected) -->
+        <div id="drive-browser" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+          <!-- Toolbar -->
+          <div class="drive-bar">
+            <div class="drive-bc" id="drive-bc"></div>
+            <button class="btn btn-ghost btn-sm" onclick="DRV.newFolderModal()">📁 Cartella</button>
+            <label class="btn btn-accent btn-sm" style="cursor:pointer;margin:0">
+              ⬆ Carica
+              <input type="file" id="f-input" multiple style="display:none">
+            </label>
           </div>
-          <div class="upbar" id="upbar">
-            <span>⬆</span>
-            <div class="upbar-name" id="upname">Caricamento...</div>
-            <div class="upbar-track"><div class="upbar-fill" id="upfill" style="width:0%"></div></div>
-            <div class="upbar-pct" id="uppct">0%</div>
+          <!-- Upload progress -->
+          <div class="up-bar" id="up-bar">
+            <span style="font-size:16px;flex-shrink:0">⬆</span>
+            <div class="up-name" id="up-name">Caricamento...</div>
+            <div class="up-track"><div class="up-fill" id="up-fill" style="width:0%"></div></div>
+            <div class="up-pct" id="up-pct">0%</div>
           </div>
-          <div class="drive-content" id="dcontent"></div>
+          <!-- Content -->
+          <div class="drive-content" id="drive-content"></div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<div id="modal-rename" style="display:none" class="dmodal-ov" onclick="if(event.target===this)this.style.display='none'">
-  <div class="dmodal">
+<!-- Modal rinomina -->
+<div id="m-rename" class="m-ov" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="m-box">
     <h3>✎ Rinomina</h3>
-    <input type="text" id="rename-in" onkeydown="if(event.key==='Enter')doRename()">
-    <div class="dmodal-foot">
-      <button class="btn btn-ghost" onclick="document.getElementById('modal-rename').style.display='none'">Annulla</button>
-      <button class="btn btn-accent" onclick="doRename()">Salva</button>
+    <input type="text" id="m-rename-val" autocomplete="off">
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="document.getElementById('m-rename').style.display='none'">Annulla</button>
+      <button class="btn btn-accent" id="m-rename-ok">Salva</button>
     </div>
   </div>
 </div>
 
-<div id="modal-folder" style="display:none" class="dmodal-ov" onclick="if(event.target===this)this.style.display='none'">
-  <div class="dmodal">
+<!-- Modal nuova cartella -->
+<div id="m-folder" class="m-ov" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="m-box">
     <h3>📁 Nuova Cartella</h3>
-    <input type="text" id="folder-in" placeholder="Nome cartella..." onkeydown="if(event.key==='Enter')doNewFolder()">
-    <div class="dmodal-foot">
-      <button class="btn btn-ghost" onclick="document.getElementById('modal-folder').style.display='none'">Annulla</button>
-      <button class="btn btn-accent" onclick="doNewFolder()">Crea</button>
+    <input type="text" id="m-folder-val" placeholder="Nome cartella..." autocomplete="off">
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="document.getElementById('m-folder').style.display='none'">Annulla</button>
+      <button class="btn btn-accent" id="m-folder-ok">Crea</button>
     </div>
   </div>
 </div>
@@ -165,316 +377,444 @@
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
 <script>
-const SB  = window.ENV_SUPABASE_URL;
-const AK  = window.ENV_SUPABASE_ANON_KEY;
-const BKT = 'client-documents';
+// ════════════════════════════════════════════════════════════════
+// DRIVE — boots inside DOMContentLoaded so app.js has run first
+// ════════════════════════════════════════════════════════════════
+const DRV = (() => {
+  const SB  = window.ENV_SUPABASE_URL;
+  const AK  = window.ENV_SUPABASE_ANON_KEY;
+  const BKT = 'client-documents';
 
-let clients = [], active = null, path = '/', renCtx = null;
-let view = localStorage.getItem('dview') || 'grid';
+  let clients = [];
+  let client  = null;
+  let cwd     = '/';
+  let renCtx  = null;
+  let view    = localStorage.getItem('drv_view') || 'grid';
 
-function tok() { return sb.getSession()?.access_token || AK; }
-function hdr(extra) { return { apikey:AK, Authorization:`Bearer ${tok()}`, ...extra }; }
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function fmtSz(b){ if(!b)return ''; if(b<1024)return b+'B'; if(b<1048576)return (b/1024).toFixed(0)+'KB'; return (b/1048576).toFixed(1)+'MB'; }
-function fmtDt(d){ return new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
-function ico(m,n){
-  const e=(n||'').split('.').pop().toLowerCase();
-  const mp={pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',jpg:'🖼',jpeg:'🖼',png:'🖼',webp:'🖼',gif:'🖼',zip:'🗜',rar:'🗜',txt:'📃',csv:'📊',ppt:'📑',pptx:'📑'};
-  if(m?.startsWith('image'))return '🖼'; if(m?.includes('pdf'))return '📄'; if(m?.includes('word'))return '📝';
-  if(m?.includes('excel')||m?.includes('spreadsheet'))return '📊'; return mp[e]||'📎';
-}
+  // ── utils ────────────────────────────────────────────────────
+  const tok  = () => sb.getSession()?.access_token || AK;
+  const H    = (x={}) => ({ apikey:AK, Authorization:`Bearer ${tok()}`, ...x });
+  const esc  = s => String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const sz   = b => !b ? '' : b<1024 ? b+'B' : b<1048576 ? (b/1024).toFixed(0)+'KB' : (b/1048576).toFixed(1)+'MB';
+  const dt   = s => new Date(s).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'2-digit'});
+  const icon = (m,n) => {
+    const e = (n||'').split('.').pop().toLowerCase();
+    const mp = {pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',jpg:'🖼',jpeg:'🖼',png:'🖼',webp:'🖼',gif:'🖼',zip:'🗜',rar:'🗜',txt:'📃',csv:'📊',ppt:'📑',pptx:'📑'};
+    if(m?.includes('pdf')) return '📄';
+    if(m?.includes('word')) return '📝';
+    if(m?.includes('excel')||m?.includes('spreadsheet')) return '📊';
+    if(m?.startsWith('image')) return '🖼';
+    return mp[e]||'📎';
+  };
+  const toast = (msg,t) => ui.showToast(msg, t||'default');
 
-// ── BOOT ─────────────────────────────────────────────────────
-(async()=>{
-  const s = sb.getSession();
-  if(!s?.access_token){ window.location.href='/login.html'; return; }
+  // ── REST helpers ─────────────────────────────────────────────
+  async function GET(path) {
+    const r = await fetch(SB+path, {headers:H()});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j?.message || j?.error || 'HTTP '+r.status);
+    return j;
+  }
+  async function PATCH(path, body) {
+    const r = await fetch(SB+path, {method:'PATCH', headers:H({'Content-Type':'application/json',Prefer:'return=minimal'}), body:JSON.stringify(body)});
+    if (!r.ok) { const j=await r.json(); throw new Error(j?.message||'HTTP '+r.status); }
+  }
+  async function POST(path, body) {
+    const r = await fetch(SB+path, {method:'POST', headers:H({'Content-Type':'application/json',Prefer:'return=minimal'}), body:JSON.stringify(body)});
+    if (!r.ok) { const j=await r.json(); throw new Error(j?.message||'HTTP '+r.status); }
+  }
+  async function DEL(path) {
+    await fetch(SB+path, {method:'DELETE', headers:H({Prefer:'return=minimal'})});
+  }
 
-  const r = await fetch(`${SB}/rest/v1/clients?is_active=eq.true&select=id,company_name&order=company_name.asc`,
-    { headers: hdr() });
-  if(!r.ok){ document.getElementById('client-list').innerHTML='<div style="padding:16px;color:var(--danger);font-size:13px">Errore: '+r.status+'</div>'; return; }
-  clients = await r.json();
-  renderList(clients);
-  setView(view);
+  // ── boot ─────────────────────────────────────────────────────
+  async function boot() {
+    // Auth already checked by app.js — if we're here, we're logged in
+    const listEl = document.getElementById('dc-list');
 
-  const cid = new URLSearchParams(location.search).get('client');
-  if(cid){ const c=clients.find(x=>x.id===cid); if(c) pick(c); }
+    try {
+      clients = await GET('/rest/v1/clients?is_active=eq.true&select=id,company_name&order=company_name.asc');
+    } catch(e) {
+      listEl.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--danger)">Errore: ${e.message}</div>`;
+      return;
+    }
+
+    renderClients(clients);
+    setView(view, false);
+
+    // Hooks
+    document.getElementById('dc-search').addEventListener('input', e => {
+      const q = e.target.value.toLowerCase();
+      renderClients(q ? clients.filter(c=>c.company_name.toLowerCase().includes(q)) : clients);
+    });
+    document.getElementById('f-input').addEventListener('change', e => uploadFiles(e.target.files));
+    document.getElementById('m-rename-ok').addEventListener('click', doRename);
+    document.getElementById('m-folder-ok').addEventListener('click', doNewFolder);
+    document.getElementById('m-rename-val').addEventListener('keydown', e => { if(e.key==='Enter') doRename(); });
+    document.getElementById('m-folder-val').addEventListener('keydown', e => { if(e.key==='Enter') doNewFolder(); });
+
+    // URL param
+    const cid = new URLSearchParams(location.search).get('client');
+    if (cid) {
+      const c = clients.find(x=>x.id===cid);
+      if (c) selectClient(c);
+    }
+  }
+
+  // ── client list ──────────────────────────────────────────────
+  function renderClients(list) {
+    const el = document.getElementById('dc-list');
+    if (!list.length) {
+      el.innerHTML = '<div style="padding:14px;font-size:13px;color:var(--text-muted);text-align:center">Nessun risultato</div>';
+      return;
+    }
+    el.innerHTML = list.map(c => `
+      <div class="dc-item${client?.id===c.id?' sel':''}" data-cid="${esc(c.id)}">
+        <div class="dc-av">${c.company_name.slice(0,2).toUpperCase()}</div>
+        <div class="dc-name">${esc(c.company_name)}</div>
+      </div>`).join('');
+    el.querySelectorAll('.dc-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const c = clients.find(x=>x.id===el.dataset.cid);
+        if (c) selectClient(c);
+      });
+    });
+  }
+
+  function selectClient(c) {
+    client = c;
+    cwd    = '/';
+    renderClients(
+      document.getElementById('dc-search').value
+        ? clients.filter(x=>x.company_name.toLowerCase().includes(document.getElementById('dc-search').value.toLowerCase()))
+        : clients
+    );
+    document.getElementById('drive-empty').style.display   = 'none';
+    document.getElementById('drive-browser').style.display = 'flex';
+    loadDir();
+  }
+
+  // ── directory ────────────────────────────────────────────────
+  async function loadDir() {
+    const dc = document.getElementById('drive-content');
+    dc.innerHTML = '<div class="spin-wrap"><div class="spinner"></div></div>';
+    renderBC();
+
+    try {
+      const all = await GET(`/rest/v1/client_files?client_id=eq.${client.id}&select=id,display_name,file_size,mime_type,folder,storage_path,created_at&order=display_name.asc`);
+      const files   = all.filter(f => f.folder===cwd && f.display_name!=='.keep');
+      const subsSet = new Set();
+      all.forEach(f => {
+        if (!f.folder.startsWith(cwd) || f.folder===cwd) return;
+        const seg = f.folder.slice(cwd.length).split('/')[0];
+        if (seg) subsSet.add(seg);
+      });
+      renderDir(files, [...subsSet].sort());
+    } catch(e) {
+      dc.innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+    }
+  }
+
+  // ── render ────────────────────────────────────────────────────
+  function renderDir(files, dirs) {
+    const dc = document.getElementById('drive-content');
+
+    const dz = `
+      <div class="drop-z" id="drop-z">
+        <div class="drop-z-icon">☁️</div>
+        <div class="drop-z-txt">Trascina file qui o <strong>clicca per caricare</strong></div>
+        <div class="drop-z-txt" style="font-size:11px;margin-top:3px">PDF, Word, Excel, Immagini, ZIP — max 50MB</div>
+      </div>`;
+
+    if (!files.length && !dirs.length) {
+      dc.innerHTML = dz + `<div class="f-empty"><div style="font-size:44px;margin-bottom:12px;opacity:.4">📂</div><div style="font-size:14px;font-weight:700;margin-bottom:6px">Cartella vuota</div><div>Carica i primi documenti</div></div>`;
+      bindDZ(); return;
+    }
+
+    // GRID
+    let g = '<div class="f-grid">';
+    dirs.forEach(n => {
+      g += `<div class="f-card isdir" data-dir="${esc(n)}">
+        <div class="f-acts">
+          <div class="a-btn" data-act="rendir" data-n="${esc(n)}" title="Rinomina">✎</div>
+          <div class="a-btn rm" data-act="deldir" data-n="${esc(n)}" title="Elimina">🗑</div>
+        </div>
+        <div class="f-ico">📁</div>
+        <div class="f-nm">${esc(n)}</div>
+        <div class="f-sz">Cartella</div>
+      </div>`;
+    });
+    files.forEach(f => {
+      g += `<div class="f-card" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}">
+        <div class="f-acts">
+          <div class="a-btn" data-act="dl" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}" title="Scarica">⬇</div>
+          <div class="a-btn" data-act="renfile" data-id="${esc(f.id)}" data-nm="${esc(f.display_name)}" title="Rinomina">✎</div>
+          <div class="a-btn rm" data-act="delfile" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}" title="Elimina">🗑</div>
+        </div>
+        <div class="f-ico">${icon(f.mime_type, f.display_name)}</div>
+        <div class="f-nm">${esc(f.display_name)}</div>
+        <div class="f-sz">${sz(f.file_size)}</div>
+      </div>`;
+    });
+    g += '</div>';
+
+    // LIST
+    let l = '<div class="f-list">';
+    dirs.forEach(n => {
+      l += `<div class="l-row" data-dir="${esc(n)}">
+        <span class="l-ico">📁</span>
+        <span class="l-nm">${esc(n)}</span>
+        <span class="l-sz">—</span>
+        <span class="l-dt">Cartella</span>
+        <div class="l-acts">
+          <button class="btn btn-ghost btn-sm" data-act="rendir" data-n="${esc(n)}">✎</button>
+          <button class="btn btn-sm" style="background:#fee2e2;color:var(--danger);border:1px solid #fca5a5" data-act="deldir" data-n="${esc(n)}">🗑</button>
+        </div>
+      </div>`;
+    });
+    files.forEach(f => {
+      l += `<div class="l-row" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}">
+        <span class="l-ico">${icon(f.mime_type, f.display_name)}</span>
+        <span class="l-nm">${esc(f.display_name)}</span>
+        <span class="l-sz">${sz(f.file_size)}</span>
+        <span class="l-dt">${dt(f.created_at)}</span>
+        <div class="l-acts">
+          <button class="btn btn-ghost btn-sm" data-act="dl" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}">⬇</button>
+          <button class="btn btn-ghost btn-sm" data-act="renfile" data-id="${esc(f.id)}" data-nm="${esc(f.display_name)}">✎</button>
+          <button class="btn btn-sm" style="background:#fee2e2;color:var(--danger);border:1px solid #fca5a5" data-act="delfile" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}">🗑</button>
+        </div>
+      </div>`;
+    });
+    l += '</div>';
+
+    dc.innerHTML = dz + g + l;
+    applyView();
+    bindDZ();
+    bindActions();
+  }
+
+  // ── event delegation ─────────────────────────────────────────
+  function bindActions() {
+    const dc = document.getElementById('drive-content');
+
+    // Double-click on folder card or list row
+    dc.querySelectorAll('.f-card.isdir, .l-row[data-dir]').forEach(el => {
+      el.addEventListener('dblclick', () => {
+        cwd = cwd + el.dataset.dir + '/'; loadDir();
+      });
+    });
+
+    // Double-click on file = download
+    dc.querySelectorAll('.f-card:not(.isdir), .l-row[data-nm]:not([data-dir])').forEach(el => {
+      el.addEventListener('dblclick', () => {
+        if(el.dataset.id && el.dataset.sp && el.dataset.nm) dlFile(el.dataset.sp, el.dataset.nm);
+      });
+    });
+
+    // Action buttons
+    dc.querySelectorAll('[data-act]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const a = btn.dataset.act;
+        if (a==='dl')      dlFile(btn.dataset.sp, btn.dataset.nm);
+        if (a==='renfile') openRenameFile(btn.dataset.id, btn.dataset.nm);
+        if (a==='rendir')  openRenameDir(btn.dataset.n);
+        if (a==='delfile') rmFile(btn.dataset.id, btn.dataset.sp, btn.dataset.nm);
+        if (a==='deldir')  rmDir(btn.dataset.n);
+      });
+    });
+  }
+
+  // ── view toggle ──────────────────────────────────────────────
+  function setView(m, save=true) {
+    view = m;
+    if(save) localStorage.setItem('drv_view', m);
+    document.getElementById('vbtn-grid').classList.toggle('on', m==='grid');
+    document.getElementById('vbtn-list').classList.toggle('on', m==='list');
+    applyView();
+  }
+  function applyView() {
+    document.querySelectorAll('.f-grid').forEach(e=>e.style.display=view==='grid'?'grid':'none');
+    document.querySelectorAll('.f-list').forEach(e=>e.style.display=view==='list'?'block':'none');
+  }
+
+  // ── breadcrumb ────────────────────────────────────────────────
+  function renderBC() {
+    const bc    = document.getElementById('drive-bc');
+    const parts = cwd.split('/').filter(Boolean);
+    let html    = `<span class="bc${!parts.length?' here':''}" data-goto="/">📁 ${esc(client?.company_name||'')}</span>`;
+    let built   = '/';
+    parts.forEach((p,i) => {
+      built += p+'/';
+      const isLast = i===parts.length-1;
+      const target = built;
+      html += `<span class="bc-sep">›</span><span class="bc${isLast?' here':''}" data-goto="${target}">${esc(p)}</span>`;
+    });
+    bc.innerHTML = html;
+    bc.querySelectorAll('.bc:not(.here)').forEach(el => {
+      el.addEventListener('click', () => { cwd=el.dataset.goto; loadDir(); });
+    });
+  }
+
+  // ── drag & drop ───────────────────────────────────────────────
+  function bindDZ() {
+    const dz = document.getElementById('drop-z');
+    if (!dz) return;
+    dz.addEventListener('click', () => document.getElementById('f-input').click());
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault(); dz.classList.remove('dragover');
+      if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
+    });
+  }
+
+  // ── upload ────────────────────────────────────────────────────
+  async function uploadFiles(files) {
+    if (!client) return;
+    for (const f of Array.from(files)) {
+      if (f.size > 52428800) { toast(`${f.name}: troppo grande (max 50MB)`, 'error'); continue; }
+      await uploadOne(f);
+    }
+    document.getElementById('f-input').value = '';
+    loadDir();
+  }
+
+  async function uploadOne(file) {
+    const bar  = document.getElementById('up-bar');
+    const fill = document.getElementById('up-fill');
+    const pct  = document.getElementById('up-pct');
+    bar.classList.add('show');
+    document.getElementById('up-name').textContent = file.name;
+
+    const safe = file.name.replace(/[^\w.\- ()]/g,'_');
+    const sp   = `${client.id}${cwd}${Date.now()}_${safe}`;
+
+    await new Promise(res => {
+      const xhr = new XMLHttpRequest();
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) { const p=Math.round(e.loaded/e.total*100); fill.style.width=p+'%'; pct.textContent=p+'%'; }
+      };
+      xhr.onload = async () => {
+        if (xhr.status===200||xhr.status===201) {
+          await POST('/rest/v1/client_files', {
+            client_id: client.id, storage_path: sp,
+            display_name: file.name, original_name: file.name,
+            file_size: file.size, mime_type: file.type||null,
+            folder: cwd, uploaded_by: sb.getCurrentUser()?.id||null
+          });
+          toast(`${file.name} caricato ✓`, 'success');
+        } else { toast(`Errore upload: ${xhr.status}`, 'error'); }
+        bar.classList.remove('show'); fill.style.width='0%'; res();
+      };
+      xhr.onerror = () => { toast('Errore di rete','error'); bar.classList.remove('show'); res(); };
+      xhr.open('POST', `${SB}/storage/v1/object/${BKT}/${sp}`);
+      xhr.setRequestHeader('Authorization', `Bearer ${tok()}`);
+      xhr.setRequestHeader('apikey', AK);
+      xhr.setRequestHeader('x-upsert', 'false');
+      xhr.send(file);
+    });
+  }
+
+  // ── download ─────────────────────────────────────────────────
+  async function dlFile(sp, name) {
+    try {
+      const r = await fetch(`${SB}/storage/v1/object/authenticated/${BKT}/${sp}`, {headers:H()});
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const blob = await r.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+    } catch(e) { toast('Errore download: '+e.message,'error'); }
+  }
+
+  // ── delete file ───────────────────────────────────────────────
+  async function rmFile(id, sp, name) {
+    if (!confirm(`Eliminare "${name}"?`)) return;
+    try {
+      await fetch(`${SB}/storage/v1/object/${BKT}/${sp}`, {method:'DELETE', headers:H()});
+      await DEL(`/rest/v1/client_files?id=eq.${id}`);
+      toast('File eliminato','success'); loadDir();
+    } catch(e) { toast('Errore: '+e.message,'error'); }
+  }
+
+  // ── rename file ───────────────────────────────────────────────
+  function openRenameFile(id, cur) {
+    renCtx = {type:'file', id};
+    const inp = document.getElementById('m-rename-val');
+    inp.value = cur;
+    document.getElementById('m-rename').style.display='flex';
+    setTimeout(()=>inp.select(), 50);
+  }
+
+  async function doRename() {
+    const nv = document.getElementById('m-rename-val').value.trim();
+    if (!nv) return;
+    try {
+      if (renCtx.type==='file') {
+        await PATCH(`/rest/v1/client_files?id=eq.${renCtx.id}`, {display_name:nv, updated_at:new Date().toISOString()});
+      } else {
+        const op = cwd+renCtx.name+'/'; const np = cwd+nv+'/';
+        const all = await GET(`/rest/v1/client_files?client_id=eq.${client.id}&select=id,folder`);
+        for (const f of all) {
+          if (f.folder.startsWith(op)) await PATCH(`/rest/v1/client_files?id=eq.${f.id}`, {folder: f.folder.replace(op,np)});
+        }
+      }
+      toast('Rinominato ✓','success');
+      document.getElementById('m-rename').style.display='none';
+      loadDir();
+    } catch(e) { toast('Errore: '+e.message,'error'); }
+  }
+
+  // ── rename folder ─────────────────────────────────────────────
+  function openRenameDir(name) {
+    renCtx = {type:'dir', name};
+    const inp = document.getElementById('m-rename-val');
+    inp.value = name;
+    document.getElementById('m-rename').style.display='flex';
+    setTimeout(()=>inp.select(), 50);
+  }
+
+  // ── new folder ────────────────────────────────────────────────
+  function newFolderModal() {
+    document.getElementById('m-folder-val').value='';
+    document.getElementById('m-folder').style.display='flex';
+    setTimeout(()=>document.getElementById('m-folder-val').focus(), 50);
+  }
+
+  async function doNewFolder() {
+    const n = document.getElementById('m-folder-val').value.trim();
+    if (!n) return;
+    if (n.includes('/')) { toast('Il nome non può contenere /','error'); return; }
+    try {
+      const fp = cwd+n+'/';
+      const sp = `${client.id}${fp}.keep`;
+      await fetch(`${SB}/storage/v1/object/${BKT}/${sp}`, {method:'POST', headers:{Authorization:`Bearer ${tok()}`,apikey:AK,'Content-Type':'text/plain'}, body:''});
+      await POST('/rest/v1/client_files', {client_id:client.id, storage_path:sp, display_name:'.keep', original_name:'.keep', file_size:0, mime_type:'text/plain', folder:fp, uploaded_by:sb.getCurrentUser()?.id||null});
+      document.getElementById('m-folder').style.display='none';
+      toast(`Cartella "${n}" creata ✓`,'success'); loadDir();
+    } catch(e) { toast('Errore: '+e.message,'error'); }
+  }
+
+  // ── delete folder ─────────────────────────────────────────────
+  async function rmDir(name) {
+    if (!confirm(`Eliminare la cartella "${name}" e tutto il contenuto?`)) return;
+    try {
+      const prefix = cwd+name+'/';
+      const all    = await GET(`/rest/v1/client_files?client_id=eq.${client.id}&select=id,storage_path,folder`);
+      for (const f of all) {
+        if (!f.folder.startsWith(prefix)) continue;
+        await fetch(`${SB}/storage/v1/object/${BKT}/${f.storage_path}`, {method:'DELETE', headers:H()});
+        await DEL(`/rest/v1/client_files?id=eq.${f.id}`);
+      }
+      toast('Cartella eliminata','success'); loadDir();
+    } catch(e) { toast('Errore: '+e.message,'error'); }
+  }
+
+  return { boot, setView, newFolderModal };
 })();
 
-// ── CLIENT LIST ───────────────────────────────────────────────
-function renderList(list){
-  const el=document.getElementById('client-list');
-  if(!list.length){ el.innerHTML='<div style="padding:16px;font-size:13px;color:var(--text-muted);text-align:center">Nessun cliente</div>'; return; }
-  el.innerHTML=list.map(c=>`
-    <div class="crow ${active?.id===c.id?'active':''}" onclick='pick(${JSON.stringify(c)})'>
-      <div class="cav">${c.company_name.slice(0,2).toUpperCase()}</div>
-      <div class="crow-name">${esc(c.company_name)}</div>
-    </div>`).join('');
-}
-function filterC(q){ renderList(q ? clients.filter(c=>c.company_name.toLowerCase().includes(q.toLowerCase())) : clients); }
-
-// ── PICK CLIENT ───────────────────────────────────────────────
-function pick(c){
-  if(typeof c==='string') c=clients.find(x=>x.id===c);
-  if(!c) return;
-  active=c; path='/';
-  renderList(clients.filter(x=>{ const q=document.getElementById('csearch').value; return !q||x.company_name.toLowerCase().includes(q.toLowerCase()); }));
-  document.getElementById('no-client').style.display='none';
-  const fa=document.getElementById('file-area'); fa.style.display='flex';
-  loadDir();
-}
-
-// ── LOAD DIRECTORY ────────────────────────────────────────────
-async function loadDir(){
-  const dc=document.getElementById('dcontent');
-  dc.innerHTML='<div style="padding:40px;text-align:center"><div class="spinner"></div></div>';
-  updateBC();
-  try{
-    const r=await fetch(`${SB}/rest/v1/client_files?client_id=eq.${active.id}&select=id,display_name,file_size,mime_type,folder,storage_path,created_at&order=display_name.asc`,
-      {headers:hdr()});
-    const all=await r.json();
-    if(!Array.isArray(all)) throw new Error(all?.message||'Errore DB');
-    const files=all.filter(f=>f.folder===path && f.display_name!=='.keep');
-    const subs=new Set();
-    all.forEach(f=>{
-      if(!f.folder.startsWith(path)||f.folder===path) return;
-      const seg=f.folder.slice(path.length).split('/')[0];
-      if(seg) subs.add(seg);
-    });
-    render(files,[...subs].sort());
-  }catch(e){ dc.innerHTML=`<div class="alert alert-danger" style="margin:16px">${e.message}</div>`; }
-}
-
-// ── RENDER ────────────────────────────────────────────────────
-function render(files,folders){
-  const dc=document.getElementById('dcontent');
-  const dz=`<div class="dz" id="dz" onclick="document.getElementById('file-input').click()">
-    <div class="dz-icon">☁️</div>
-    <div class="dz-txt">Trascina file qui o <strong>clicca per caricare</strong></div>
-    <div class="dz-txt" style="font-size:11px;margin-top:3px">PDF, Word, Excel, Immagini, ZIP — max 50MB</div>
-  </div>`;
-
-  if(!files.length&&!folders.length){
-    dc.innerHTML=dz+`<div class="empty-s"><div style="font-size:48px;margin-bottom:14px;opacity:.5">📂</div><div style="font-size:14px;font-weight:700;margin-bottom:6px">Cartella vuota</div><div>Carica i primi documenti</div></div>`;
-    bindDZ(); return;
-  }
-
-  // Grid
-  let g='<div class="igrid">';
-  folders.forEach(n=>{
-    g+=`<div class="icard folder" ondblclick="openSub('${esc(n)}')">
-      <div class="icard-acts">
-        <div class="abtn" onclick="event.stopPropagation();renFolder('${esc(n)}')" title="Rinomina">✎</div>
-        <div class="abtn del" onclick="event.stopPropagation();delFolder('${esc(n)}')" title="Elimina">🗑</div>
-      </div>
-      <div class="icard-icon">📁</div>
-      <div class="icard-name">${esc(n)}</div>
-      <div class="icard-meta">Cartella</div>
-    </div>`;
-  });
-  files.forEach(f=>{
-    g+=`<div class="icard" ondblclick="dl('${esc(f.id)}','${esc(f.storage_path)}','${esc(f.display_name)}')">
-      <div class="icard-acts">
-        <div class="abtn" onclick="event.stopPropagation();dl('${esc(f.id)}','${esc(f.storage_path)}','${esc(f.display_name)}')" title="Scarica">⬇</div>
-        <div class="abtn" onclick="event.stopPropagation();renFile('${esc(f.id)}','${esc(f.display_name)}')" title="Rinomina">✎</div>
-        <div class="abtn del" onclick="event.stopPropagation();delFile('${esc(f.id)}','${esc(f.storage_path)}','${esc(f.display_name)}')" title="Elimina">🗑</div>
-      </div>
-      <div class="icard-icon">${ico(f.mime_type,f.display_name)}</div>
-      <div class="icard-name">${esc(f.display_name)}</div>
-      <div class="icard-meta">${fmtSz(f.file_size)}</div>
-    </div>`;
-  });
-  g+='</div>';
-
-  // List
-  let l='<div class="ilist">';
-  folders.forEach(n=>{
-    l+=`<div class="lrow" ondblclick="openSub('${esc(n)}')">
-      <span class="lrow-icon">📁</span>
-      <span class="lrow-name">${esc(n)}</span>
-      <span class="lrow-size">—</span>
-      <span class="lrow-date">Cartella</span>
-      <div class="lrow-acts">
-        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();renFolder('${esc(n)}')">✎</button>
-        <button class="btn btn-sm" style="background:#fee2e2;color:var(--danger);border:1px solid #fca5a5" onclick="event.stopPropagation();delFolder('${esc(n)}')">🗑</button>
-      </div>
-    </div>`;
-  });
-  files.forEach(f=>{
-    l+=`<div class="lrow" ondblclick="dl('${esc(f.id)}','${esc(f.storage_path)}','${esc(f.display_name)}')">
-      <span class="lrow-icon">${ico(f.mime_type,f.display_name)}</span>
-      <span class="lrow-name">${esc(f.display_name)}</span>
-      <span class="lrow-size">${fmtSz(f.file_size)}</span>
-      <span class="lrow-date">${fmtDt(f.created_at)}</span>
-      <div class="lrow-acts">
-        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();dl('${esc(f.id)}','${esc(f.storage_path)}','${esc(f.display_name)}')">⬇</button>
-        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();renFile('${esc(f.id)}','${esc(f.display_name)}')">✎</button>
-        <button class="btn btn-sm" style="background:#fee2e2;color:var(--danger);border:1px solid #fca5a5" onclick="event.stopPropagation();delFile('${esc(f.id)}','${esc(f.storage_path)}','${esc(f.display_name)}')">🗑</button>
-      </div>
-    </div>`;
-  });
-  l+='</div>';
-
-  dc.innerHTML=dz+g+l;
-  applyView(); bindDZ();
-}
-
-// ── VIEW ──────────────────────────────────────────────────────
-function setView(m){
-  view=m; localStorage.setItem('dview',m);
-  document.getElementById('btn-grid').classList.toggle('on',m==='grid');
-  document.getElementById('btn-list').classList.toggle('on',m==='list');
-  applyView();
-}
-function applyView(){
-  document.querySelectorAll('.igrid').forEach(e=>e.style.display=view==='grid'?'grid':'none');
-  document.querySelectorAll('.ilist').forEach(e=>e.style.display=view==='list'?'block':'none');
-}
-
-// ── BREADCRUMB ────────────────────────────────────────────────
-function updateBC(){
-  const bc=document.getElementById('bc');
-  const parts=path.split('/').filter(Boolean);
-  let h=`<span class="bc-item ${!parts.length?'cur':''}" onclick="goto('/')">📁 ${esc(active?.company_name||'')}</span>`;
-  let built='/';
-  parts.forEach((p,i)=>{
-    built+=p+'/'; const fp=built; const last=i===parts.length-1;
-    h+=`<span class="bc-sep">›</span><span class="bc-item ${last?'cur':''}" onclick="goto('${fp}')">${esc(p)}</span>`;
-  });
-  bc.innerHTML=h;
-}
-function goto(p){ path=p; loadDir(); }
-function openSub(n){ path=path+n+'/'; loadDir(); }
-
-// ── DRAG & DROP ───────────────────────────────────────────────
-function bindDZ(){
-  const dz=document.getElementById('dz'); if(!dz) return;
-  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
-  dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
-  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files.length)onFilePick(e.dataTransfer.files);});
-}
-
-// ── UPLOAD ────────────────────────────────────────────────────
-async function onFilePick(files){
-  if(!active) return;
-  for(const f of Array.from(files)){
-    if(f.size>52428800){ui.showToast(`${f.name} troppo grande (max 50MB)`,'error');continue;}
-    await uploadOne(f);
-  }
-  document.getElementById('file-input').value='';
-  loadDir();
-}
-
-async function uploadOne(file){
-  const bar=document.getElementById('upbar');
-  const fill=document.getElementById('upfill');
-  const pct=document.getElementById('uppct');
-  bar.classList.add('on');
-  document.getElementById('upname').textContent=file.name;
-  const safe=file.name.replace(/[^a-zA-Z0-9._\-()\s]/g,'_');
-  const sp=`${active.id}${path}${Date.now()}_${safe}`;
-  await new Promise(res=>{
-    const xhr=new XMLHttpRequest();
-    xhr.upload.onprogress=e=>{
-      if(e.lengthComputable){const p=Math.round(e.loaded/e.total*100);fill.style.width=p+'%';pct.textContent=p+'%';}
-    };
-    xhr.onload=async()=>{
-      if(xhr.status===200||xhr.status===201){
-        await fetch(`${SB}/rest/v1/client_files`,{method:'POST',
-          headers:hdr({'Content-Type':'application/json',Prefer:'return=minimal'}),
-          body:JSON.stringify({client_id:active.id,storage_path:sp,display_name:file.name,original_name:file.name,
-            file_size:file.size,mime_type:file.type||null,folder:path,uploaded_by:sb.getCurrentUser()?.id||null})});
-        ui.showToast(`${file.name} caricato ✓`,'success');
-      } else { ui.showToast(`Errore upload: ${xhr.status}`,'error'); }
-      bar.classList.remove('on'); fill.style.width='0%'; res();
-    };
-    xhr.onerror=()=>{ui.showToast('Errore di rete','error');bar.classList.remove('on');res();};
-    xhr.open('POST',`${SB}/storage/v1/object/${BKT}/${sp}`);
-    xhr.setRequestHeader('Authorization',`Bearer ${tok()}`);
-    xhr.setRequestHeader('apikey',AK);
-    xhr.setRequestHeader('x-upsert','false');
-    xhr.send(file);
-  });
-}
-
-// ── DOWNLOAD ──────────────────────────────────────────────────
-async function dl(id,sp,name){
-  try{
-    const r=await fetch(`${SB}/storage/v1/object/authenticated/${BKT}/${sp}`,{headers:hdr()});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const blob=await r.blob();
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
-  }catch(e){ui.showToast('Errore download: '+e.message,'error');}
-}
-
-// ── DELETE FILE ───────────────────────────────────────────────
-async function delFile(id,sp,name){
-  if(!confirm(`Eliminare "${name}"?`)) return;
-  try{
-    await fetch(`${SB}/storage/v1/object/${BKT}/${sp}`,{method:'DELETE',headers:hdr()});
-    await fetch(`${SB}/rest/v1/client_files?id=eq.${id}`,{method:'DELETE',headers:hdr({Prefer:'return=minimal'})});
-    ui.showToast('File eliminato','success'); loadDir();
-  }catch(e){ui.showToast('Errore: '+e.message,'error');}
-}
-
-// ── RENAME FILE ───────────────────────────────────────────────
-function renFile(id,cur){ renCtx={t:'file',id}; document.getElementById('rename-in').value=cur; document.getElementById('modal-rename').style.display='flex'; setTimeout(()=>document.getElementById('rename-in').select(),50); }
-function renFolder(n){ renCtx={t:'folder',n}; document.getElementById('rename-in').value=n; document.getElementById('modal-rename').style.display='flex'; setTimeout(()=>document.getElementById('rename-in').select(),50); }
-
-async function doRename(){
-  const nv=document.getElementById('rename-in').value.trim(); if(!nv) return;
-  try{
-    if(renCtx.t==='file'){
-      await fetch(`${SB}/rest/v1/client_files?id=eq.${renCtx.id}`,{method:'PATCH',
-        headers:hdr({'Content-Type':'application/json',Prefer:'return=minimal'}),
-        body:JSON.stringify({display_name:nv,updated_at:new Date().toISOString()})});
-    } else {
-      const op=path+renCtx.n+'/'; const np=path+nv+'/';
-      const r=await fetch(`${SB}/rest/v1/client_files?client_id=eq.${active.id}`,{headers:hdr()});
-      const all=await r.json();
-      for(const f of all){
-        if(!f.folder.startsWith(op)) continue;
-        await fetch(`${SB}/rest/v1/client_files?id=eq.${f.id}`,{method:'PATCH',
-          headers:hdr({'Content-Type':'application/json',Prefer:'return=minimal'}),
-          body:JSON.stringify({folder:f.folder.replace(op,np)})});
-      }
-    }
-    ui.showToast('Rinominato ✓','success');
-    document.getElementById('modal-rename').style.display='none';
-    loadDir();
-  }catch(e){ui.showToast('Errore: '+e.message,'error');}
-}
-
-// ── FOLDER ────────────────────────────────────────────────────
-function showFolderModal(){ document.getElementById('folder-in').value=''; document.getElementById('modal-folder').style.display='flex'; setTimeout(()=>document.getElementById('folder-in').focus(),50); }
-
-async function doNewFolder(){
-  const n=document.getElementById('folder-in').value.trim(); if(!n) return;
-  if(n.includes('/')){ ui.showToast('Nome non può contenere /','error'); return; }
-  try{
-    const fp=path+n+'/'; const sp=`${active.id}${fp}.keep`;
-    await fetch(`${SB}/storage/v1/object/${BKT}/${sp}`,{method:'POST',headers:{Authorization:`Bearer ${tok()}`,apikey:AK,'Content-Type':'text/plain'},body:''});
-    await fetch(`${SB}/rest/v1/client_files`,{method:'POST',headers:hdr({'Content-Type':'application/json',Prefer:'return=minimal'}),
-      body:JSON.stringify({client_id:active.id,storage_path:sp,display_name:'.keep',original_name:'.keep',file_size:0,mime_type:'text/plain',folder:fp,uploaded_by:sb.getCurrentUser()?.id||null})});
-    document.getElementById('modal-folder').style.display='none';
-    ui.showToast(`Cartella "${n}" creata ✓`,'success'); loadDir();
-  }catch(e){ui.showToast('Errore: '+e.message,'error');}
-}
-
-async function delFolder(n){
-  if(!confirm(`Eliminare la cartella "${n}" e tutto il contenuto?`)) return;
-  try{
-    const prefix=path+n+'/';
-    const r=await fetch(`${SB}/rest/v1/client_files?client_id=eq.${active.id}`,{headers:hdr()});
-    const all=await r.json();
-    for(const f of all){
-      if(!f.folder.startsWith(prefix)) continue;
-      await fetch(`${SB}/storage/v1/object/${BKT}/${f.storage_path}`,{method:'DELETE',headers:hdr()});
-      await fetch(`${SB}/rest/v1/client_files?id=eq.${f.id}`,{method:'DELETE',headers:hdr({Prefer:'return=minimal'})});
-    }
-    ui.showToast('Cartella eliminata','success'); loadDir();
-  }catch(e){ui.showToast('Errore: '+e.message,'error');}
-}
+// Boot AFTER all scripts have run and DOM is ready
+document.addEventListener('DOMContentLoaded', () => DRV.boot());
 </script>
 </body>
 </html>
