@@ -79,11 +79,23 @@
     body.list-view .file-grid { display: none; }
     body.list-view .file-list { display: block; }
 
+    /* Mobile client selector bar */
+    .mobile-client-bar { display: none; padding: 10px 16px; background: white; border-bottom: 1.5px solid var(--border); }
+    .mobile-client-select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; outline: none; background: white; }
+    .mobile-client-select:focus { border-color: var(--primary); }
+
     @media (max-width: 768px) {
-      .drive-wrap { grid-template-columns: 1fr; height: auto; }
-      .drive-sidebar { display: none; }
-      .drive-sidebar.mobile-open { display: block; position: fixed; inset: 0; z-index: 300; overflow-y: auto; padding-bottom: 80px; }
-      .file-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+      .drive-wrap { grid-template-columns: 1fr; height: auto; overflow: visible; }
+      .drive-sidebar { display: none !important; }
+      .mobile-client-bar { display: block; }
+      .drive-main { height: auto; }
+      .drive-content { overflow: visible; max-height: none; }
+      .file-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+      .drive-toolbar { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+      .breadcrumb { font-size: 12px; }
+      .file-item { padding: 12px 8px 10px; }
+      .file-icon { font-size: 28px; }
+      .file-name { font-size: 11px; }
     }
   </style>
 </head>
@@ -96,6 +108,13 @@
         <button class="view-btn active" id="btn-grid" onclick="setView('grid')" title="Griglia">⊞</button>
         <button class="view-btn" id="btn-list" onclick="setView('list')" title="Lista">☰</button>
       </div>
+    </div>
+
+    <!-- Mobile: client picker -->
+    <div class="mobile-client-bar">
+      <select class="mobile-client-select" id="mobile-client-select" onchange="selectClientById(this.value)">
+        <option value="">— Seleziona cliente —</option>
+      </select>
     </div>
 
     <div class="drive-wrap">
@@ -215,7 +234,29 @@ async function init() {
   const clients = await sb.db.select('clients', { columns: 'id,company_name,is_active', filter: 'is_active=eq.true', order: 'company_name.asc' }) || [];
   allClients = clients;
   renderClientList(clients);
+
+  // Populate mobile select
+  const msel = document.getElementById('mobile-client-select');
+  clients.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.company_name;
+    msel.appendChild(opt);
+  });
+
   setupDrop();
+
+  // Handle ?client=ID from URL (e.g. from client-detail page)
+  const params = new URLSearchParams(window.location.search);
+  const clientId = params.get('client');
+  if (clientId) {
+    msel.value = clientId;
+    await selectClient(clientId);
+  }
+}
+
+function selectClientById(id) {
+  if (id) selectClient(id);
 }
 
 function filterClients() {
