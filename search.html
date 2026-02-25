@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ricerca — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <style>
+    .search-wrap { max-width: 700px; }
+    .search-big { display: flex; align-items: center; gap: 12px; background: white; border: 2px solid var(--border); border-radius: 14px; padding: 14px 20px; margin-bottom: 24px; transition: border-color .18s; }
+    .search-big:focus-within { border-color: var(--primary); }
+    .search-big input { flex: 1; border: none; outline: none; font-size: 16px; font-family: inherit; background: none; }
+    .search-big .search-icon { font-size: 18px; color: var(--text-muted); }
+    .result-section { margin-bottom: 20px; }
+    .result-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+    .result-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: white; border: 1.5px solid var(--border); border-radius: 10px; margin-bottom: 6px; cursor: pointer; text-decoration: none; color: inherit; transition: all .15s; }
+    .result-item:hover { border-color: var(--primary); background: #f8faff; }
+    .result-av { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: white; flex-shrink: 0; background: var(--primary); }
+    .result-main { flex: 1; min-width: 0; }
+    .result-name { font-size: 14px; font-weight: 600; }
+    .result-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .result-type { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--bg); color: var(--text-muted); font-weight: 600; }
+    .empty-search { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">🔍 Ricerca</div>
+    </div>
+    <div class="page-content">
+      <div class="search-wrap">
+        <div class="search-big">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="Cerca cliente, contatto, email, task..." autofocus>
+          <span id="search-spinner" style="display:none"><div class="spinner" style="width:18px;height:18px;border-width:2px"></div></span>
+        </div>
+        <div id="search-results">
+          <div class="empty-search">
+            <div style="font-size:32px;margin-bottom:12px">🔍</div>
+            <div style="font-weight:600">Inizia a digitare per cercare</div>
+            <div style="font-size:12px;margin-top:6px">Clienti, contatti, task, note...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+let searchTimeout;
+const input = document.getElementById('search-input');
+const results = document.getElementById('search-results');
+const spinner = document.getElementById('search-spinner');
+
+input.addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  const q = input.value.trim();
+  if (!q || q.length < 2) {
+    results.innerHTML = '<div class="empty-search"><div style="font-size:32px;margin-bottom:12px">🔍</div><div style="font-weight:600">Inizia a digitare per cercare</div></div>';
+    return;
+  }
+  spinner.style.display = '';
+  searchTimeout = setTimeout(() => doSearch(q), 300);
+});
+
+async function doSearch(q) {
+  try {
+    const ql = q.toLowerCase();
+    // Search clients
+    const clients = await sb.db.select('clients', {
+      columns: 'id,company_name,contact_name,email,phone_uae,is_active',
+      filter: `company_name=ilike.*${encodeURIComponent(q)}*`,
+      limit: 8
+    }) || [];
+
+    // Search by contact name too
+    const clients2 = await sb.db.select('clients', {
+      columns: 'id,company_name,contact_name,email,phone_uae,is_active',
+      filter: `contact_name=ilike.*${encodeURIComponent(q)}*`,
+      limit: 5
+    }) || [];
+
+    // Search tasks
+    const tasks = await sb.db.select('tasks', {
+      columns: 'id,title,status,priority,clients(company_name)',
+      filter: `title=ilike.*${encodeURIComponent(q)}*`,
+      limit: 6
+    }) || [];
+
+    // Merge clients dedup
+    const allClients = [...clients];
+    clients2.forEach(c => { if (!allClients.find(x => x.id === c.id)) allClients.push(c); });
+
+    spinner.style.display = 'none';
+
+    if (!allClients.length && !tasks.length) {
+      results.innerHTML = '<div class="empty-search"><div style="font-size:32px;margin-bottom:12px">😕</div><div style="font-weight:600">Nessun risultato per "' + ui.escapeHtml(q) + '"</div></div>';
+      return;
+    }
+
+    let html = '';
+    if (allClients.length) {
+      html += `<div class="result-section"><div class="result-label">👥 Clienti (${allClients.length})</div>`;
+      allClients.forEach(c => {
+        html += `<a class="result-item" href="/client-detail.html?id=${c.id}">
+          <div class="result-av" style="background:${c.is_active?'var(--primary)':'#9ca3af'}">${(c.company_name||'?').substring(0,2).toUpperCase()}</div>
+          <div class="result-main">
+            <div class="result-name">${ui.escapeHtml(c.company_name)}</div>
+            <div class="result-sub">${c.contact_name ? ui.escapeHtml(c.contact_name) : ''}${c.email ? ' · ' + ui.escapeHtml(c.email) : ''}</div>
+          </div>
+          <span class="result-type">${c.is_active ? 'Attivo' : 'Inattivo'}</span>
+        </a>`;
+      });
+      html += '</div>';
+    }
+
+    if (tasks.length) {
+      const statusColor = { open: '#f59e0b', in_progress: '#3b82f6', completed: '#16a34a', cancelled: '#9ca3af' };
+      const statusLabel = { open: 'Aperta', in_progress: 'In corso', completed: 'Completata', cancelled: 'Annullata' };
+      html += `<div class="result-section"><div class="result-label">✓ Task (${tasks.length})</div>`;
+      tasks.forEach(t => {
+        html += `<a class="result-item" href="/tasks.html">
+          <div class="result-av" style="background:${statusColor[t.status]||'#6b7280'}">✓</div>
+          <div class="result-main">
+            <div class="result-name">${ui.escapeHtml(t.title)}</div>
+            <div class="result-sub">${t.clients?.company_name ? ui.escapeHtml(t.clients.company_name) : 'Nessun cliente'}</div>
+          </div>
+          <span class="result-type" style="color:${statusColor[t.status]}">${statusLabel[t.status]||t.status}</span>
+        </a>`;
+      });
+      html += '</div>';
+    }
+
+    results.innerHTML = html;
+  } catch(e) {
+    spinner.style.display = 'none';
+    results.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+sb.requireAuth().then(() => {
+  // Auto-focus
+  setTimeout(() => input.focus(), 100);
+});
+</script>
+</body>
+</html>

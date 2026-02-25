@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <style>
+    .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+    .report-card { background: white; border: 1.5px solid var(--border); border-radius: 14px; padding: 24px; cursor: pointer; transition: all .18s; }
+    .report-card:hover { border-color: var(--primary); box-shadow: var(--shadow); transform: translateY(-1px); }
+    .report-icon { font-size: 28px; margin-bottom: 12px; }
+    .report-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .report-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .report-output { background: white; border: 1.5px solid var(--border); border-radius: 14px; padding: 24px; margin-top: 24px; display: none; }
+    .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-val { font-weight: 700; color: var(--primary); }
+    .export-btn { background: #f0f4f8; border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .export-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">📊 Report & Statistiche</div>
+    </div>
+    <div class="page-content">
+
+      <div class="report-grid">
+        <div class="report-card" onclick="runReport('revenue')">
+          <div class="report-icon">💰</div>
+          <div class="report-title">Fatturato per Mese</div>
+          <div class="report-desc">Totale incassato mese per mese nell'anno corrente, distinto per partner contabilità.</div>
+        </div>
+        <div class="report-card" onclick="runReport('clients_status')">
+          <div class="report-icon">👥</div>
+          <div class="report-title">Stato Clienti</div>
+          <div class="report-desc">Clienti attivi vs inattivi, in bilancio vs fuori bilancio, distribuzione per partner.</div>
+        </div>
+        <div class="report-card" onclick="runReport('payments_health')">
+          <div class="report-icon">💳</div>
+          <div class="report-title">Salute Pagamenti</div>
+          <div class="report-desc">Pagamenti ok, falliti, mancanti per il mese corrente. Chi non ha pagato.</div>
+        </div>
+        <div class="report-card" onclick="runReport('vat_deadlines')">
+          <div class="report-icon">📅</div>
+          <div class="report-title">Scadenze VAT</div>
+          <div class="report-desc">Tutte le scadenze VAT dei prossimi 60 giorni ordinate per data.</div>
+        </div>
+        <div class="report-card" onclick="runReport('statements_missing')">
+          <div class="report-icon">📂</div>
+          <div class="report-title">Estratti Mancanti</div>
+          <div class="report-desc">Clienti con estratti conto non ricevuti o non registrati per il mese corrente.</div>
+        </div>
+        <div class="report-card" onclick="runReport('onboarding_status')">
+          <div class="report-icon">✦</div>
+          <div class="report-title">Stato Onboarding</div>
+          <div class="report-desc">Clienti con onboarding incompleto. Quanti step mancano per completarlo.</div>
+        </div>
+      </div>
+
+      <div class="report-output" id="report-output">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div id="report-output-title" style="font-size:16px;font-weight:700"></div>
+          <button class="export-btn" onclick="exportCSV()">⬇ Esporta CSV</button>
+        </div>
+        <div id="report-output-body"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+let currentReportData = [];
+let currentReportName = '';
+
+async function runReport(type) {
+  const out = document.getElementById('report-output');
+  const body = document.getElementById('report-output-body');
+  const title = document.getElementById('report-output-title');
+  out.style.display = 'block';
+  body.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
+  out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    if (type === 'revenue') {
+      currentReportName = 'Fatturato per Mese';
+      title.textContent = '💰 ' + currentReportName;
+      const year = new Date().getFullYear();
+      const months = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+      const rows = [];
+      for (let m = 1; m <= 12; m++) {
+        const payments = await sb.db.select('subscription_payments', {
+          columns: 'amount,status,client_id,clients(service_cost)',
+          filter: `year=eq.${year}&month=eq.${m}&status=eq.ok`
+        }) || [];
+        const total = payments.reduce((s,p) => s + (parseFloat(p.amount)||parseFloat(p.clients?.service_cost)||1200), 0);
+        rows.push({ mese: months[m-1], pagamenti: payments.length, totale: total });
+      }
+      currentReportData = rows;
+      const totalYear = rows.reduce((s,r) => s + r.totale, 0);
+      body.innerHTML = `
+        ${rows.map(r => `<div class="stat-row"><span>${r.mese} ${year}</span><span style="color:var(--text-muted);font-size:12px">${r.pagamenti} pagamenti ok</span><span class="stat-val">AED ${r.totale.toLocaleString('it-IT')}</span></div>`).join('')}
+        <div class="stat-row" style="background:#f0f4f8;margin:8px -0px;border-radius:8px;padding:12px"><span style="font-weight:800">TOTALE ANNO</span><span></span><span class="stat-val" style="font-size:16px">AED ${totalYear.toLocaleString('it-IT')}</span></div>`;
+
+    } else if (type === 'clients_status') {
+      currentReportName = 'Stato Clienti';
+      title.textContent = '👥 ' + currentReportName;
+      const clients = await sb.db.select('clients', { columns: 'is_active,in_bilancio,accounting_partner,vat_registered,corporate_tax_registered' }) || [];
+      const active = clients.filter(c => c.is_active).length;
+      const bilancio = clients.filter(c => c.in_bilancio).length;
+      const vat = clients.filter(c => c.vat_registered).length;
+      const ct = clients.filter(c => c.corporate_tax_registered).length;
+      const byPartner = {};
+      clients.filter(c => c.is_active).forEach(c => {
+        const p = c.accounting_partner || 'Non assegnato';
+        byPartner[p] = (byPartner[p]||0) + 1;
+      });
+      currentReportData = [{active, inattivi: clients.length-active, bilancio, vat, ct, ...byPartner}];
+      const partnerLabels = {noi:'Noi',vat_consultant:'VAT Consultant',affinitas:'Affinitas',in_sospeso:'In Sospeso',altro:'Altro'};
+      body.innerHTML = `
+        <div class="stat-row"><span>Clienti Attivi</span><span class="stat-val">${active}</span></div>
+        <div class="stat-row"><span>Clienti Inattivi</span><span class="stat-val">${clients.length - active}</span></div>
+        <div class="stat-row"><span>In Bilancio</span><span class="stat-val">${bilancio}</span></div>
+        <div class="stat-row"><span>VAT Registrati</span><span class="stat-val">${vat}</span></div>
+        <div class="stat-row"><span>Corporate Tax Registrati</span><span class="stat-val">${ct}</span></div>
+        <div style="margin-top:16px;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Per Partner Contabilità</div>
+        ${Object.entries(byPartner).sort((a,b) => b[1]-a[1]).map(([p,n]) => `<div class="stat-row"><span>${partnerLabels[p]||p}</span><span class="stat-val">${n} clienti</span></div>`).join('')}`;
+
+    } else if (type === 'payments_health') {
+      currentReportName = 'Salute Pagamenti';
+      title.textContent = '💳 ' + currentReportName;
+      const { year, month } = ui.currentYearMonth();
+      const payments = await sb.db.select('subscription_payments', {
+        columns: 'status,clients(company_name,is_active)',
+        filter: `year=eq.${year}&month=eq.${month}`
+      }) || [];
+      const ok = payments.filter(p => p.status === 'ok');
+      const failed = payments.filter(p => p.status === 'failed');
+      const pending = payments.filter(p => p.status === 'pending' || p.status === 'no_tentativo');
+      currentReportData = payments.map(p => ({ cliente: p.clients?.company_name, status: p.status }));
+      body.innerHTML = `
+        <div class="stat-row"><span>✅ Pagati</span><span class="stat-val" style="color:var(--success)">${ok.length}</span></div>
+        <div class="stat-row"><span>❌ Falliti</span><span class="stat-val" style="color:var(--danger)">${failed.length}</span></div>
+        <div class="stat-row"><span>⏳ In Sospeso / Da fare</span><span class="stat-val" style="color:var(--warning)">${pending.length}</span></div>
+        ${failed.length ? `<div style="margin-top:16px;font-size:11px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Falliti</div>${failed.map(p=>`<div class="stat-row"><span>${ui.escapeHtml(p.clients?.company_name||'—')}</span><span class="stat-val" style="color:var(--danger)">Fallito</span></div>`).join('')}` : ''}
+        ${pending.length ? `<div style="margin-top:16px;font-size:11px;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Da Fare / In Sospeso</div>${pending.map(p=>`<div class="stat-row"><span>${ui.escapeHtml(p.clients?.company_name||'—')}</span><span class="stat-val" style="color:var(--warning)">${p.status}</span></div>`).join('')}` : ''}`;
+
+    } else if (type === 'vat_deadlines') {
+      currentReportName = 'Scadenze VAT';
+      title.textContent = '📅 ' + currentReportName;
+      const today = new Date();
+      const in60 = new Date(today.getTime() + 60*24*60*60*1000);
+      const vat = await sb.db.select('vat_register', { columns: 'return_deadline_1,return_deadline_2,return_deadline_3,return_deadline_4,clients(company_name)' }) || [];
+      const deadlines = [];
+      vat.forEach(v => {
+        [v.return_deadline_1, v.return_deadline_2, v.return_deadline_3, v.return_deadline_4].forEach(d => {
+          if (!d) return;
+          const date = new Date(d);
+          if (date >= today && date <= in60) deadlines.push({ date, company: v.clients?.company_name, dateStr: d });
+        });
+      });
+      deadlines.sort((a,b) => a.date - b.date);
+      currentReportData = deadlines.map(d => ({ data: d.dateStr, cliente: d.company }));
+      body.innerHTML = deadlines.length
+        ? deadlines.map(d => `<div class="stat-row"><span>${ui.escapeHtml(d.company||'—')}</span><span class="stat-val ${ui.deadlineClass(d.dateStr)}">${ui.formatDate(d.dateStr)}</span></div>`).join('')
+        : '<div style="text-align:center;padding:30px;color:var(--text-muted)">✅ Nessuna scadenza nei prossimi 60 giorni</div>';
+
+    } else if (type === 'statements_missing') {
+      currentReportName = 'Estratti Mancanti';
+      title.textContent = '📂 ' + currentReportName;
+      const { year, month } = ui.currentYearMonth();
+      const missing = await sb.db.select('bank_statements', {
+        columns: 'received,registered,clients(company_name,is_active)',
+        filter: `year=eq.${year}&month=eq.${month}`
+      }) || [];
+      const notReceived = missing.filter(s => !s.received && s.clients?.is_active);
+      const notRegistered = missing.filter(s => s.received && !s.registered && s.clients?.is_active);
+      currentReportData = missing.map(s => ({ cliente: s.clients?.company_name, ricevuto: s.received, registrato: s.registered }));
+      body.innerHTML = `
+        <div class="stat-row"><span>📭 Non Ricevuti</span><span class="stat-val" style="color:var(--danger)">${notReceived.length}</span></div>
+        <div class="stat-row"><span>📝 Ricevuti ma non Registrati</span><span class="stat-val" style="color:var(--warning)">${notRegistered.length}</span></div>
+        ${notReceived.length ? `<div style="margin-top:16px;font-size:11px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Non Ricevuti</div>${notReceived.map(s=>`<div class="stat-row"><span>${ui.escapeHtml(s.clients?.company_name||'—')}</span><span class="stat-val" style="color:var(--danger)">Mancante</span></div>`).join('')}` : ''}`;
+
+    } else if (type === 'onboarding_status') {
+      currentReportName = 'Stato Onboarding';
+      title.textContent = '✦ ' + currentReportName;
+      const checks = await sb.db.select('onboarding_checklist', {
+        columns: 'whatsapp_group,call_scheduled,docs_in_drive,eid_verified,uae_phone_verified,corporate_tax_check,fta_profile_created,ct_registration_done,payment_link_sent,bank_accounts_noted,clients(company_name,is_active)',
+      }) || [];
+      const fields = ['whatsapp_group','call_scheduled','docs_in_drive','eid_verified','uae_phone_verified','corporate_tax_check','fta_profile_created','ct_registration_done','payment_link_sent','bank_accounts_noted'];
+      const active = checks.filter(c => c.clients?.is_active);
+      const incomplete = active.map(c => {
+        const missing = fields.filter(f => !c[f]).length;
+        return { company: c.clients?.company_name, missing, total: fields.length };
+      }).filter(c => c.missing > 0).sort((a,b) => b.missing - a.missing);
+      currentReportData = incomplete;
+      const complete = active.length - incomplete.length;
+      body.innerHTML = `
+        <div class="stat-row"><span>✅ Completati</span><span class="stat-val" style="color:var(--success)">${complete}</span></div>
+        <div class="stat-row"><span>⏳ Incompleti</span><span class="stat-val" style="color:var(--warning)">${incomplete.length}</span></div>
+        ${incomplete.length ? `<div style="margin-top:16px;font-size:11px;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Incompleti</div>${incomplete.map(c=>`<div class="stat-row"><span>${ui.escapeHtml(c.company||'—')}</span><span class="stat-val" style="color:var(--warning)">${c.missing}/${c.total} mancanti</span></div>`).join('')}` : ''}`;
+    }
+
+  } catch(e) {
+    body.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+function exportCSV() {
+  if (!currentReportData.length) return;
+  const keys = Object.keys(currentReportData[0]);
+  const csv = [keys.join(','), ...currentReportData.map(r => keys.map(k => `"${String(r[k]||'').replace(/"/g,'""')}"`).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentReportName.replace(/ /g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+sb.requireAuth().then(() => {});
+</script>
+</body>
+</html>

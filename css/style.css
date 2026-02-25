@@ -772,6 +772,25 @@ html, body {
   /* Hide non-essential columns on mobile */
   .hide-mobile { display: none !important; }
 
+  /* Dashboard grids: single column */
+  .dash-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tables: proper horizontal scroll container */
+  .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: calc(100vw - 32px) !important;
+  }
+  .table-wrap table {
+    min-width: 480px;
+    width: max-content;
+    max-width: none;
+  }
+
   /* Fix overflow on any inline grid styles */
   [style*="grid-template-columns: 260px"] {
     grid-template-columns: 1fr !important;
