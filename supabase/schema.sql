@@ -9,16 +9,16 @@ create extension if not exists "uuid-ossp";
 -- ENUM TYPES
 -- ============================================================
 
-create type user_role as enum ('admin', 'staff');
-create type subscription_status as enum ('ok', 'failed', 'no_tentativo', 'pending', 'manual', 'annual');
-create type partner_type as enum ('noi', 'vat_consultant', 'affinitas', 'in_sospeso', 'altro');
-create type onboarding_source as enum ('pellegrino', 'giuseppe');
+do $$ begin create type user_role as enum ('admin', 'staff'); exception when duplicate_object then null; end $$;
+do $$ begin create type subscription_status as enum ('ok', 'failed', 'no_tentativo', 'pending', 'manual', 'annual'); exception when duplicate_object then null; end $$;
+do $$ begin create type partner_type as enum ('noi', 'vat_consultant', 'affinitas', 'in_sospeso', 'altro'); exception when duplicate_object then null; end $$;
+do $$ begin create type onboarding_source as enum ('pellegrino', 'giuseppe'); exception when duplicate_object then null; end $$;
 
 -- ============================================================
 -- PROFILES (extends Supabase auth.users)
 -- ============================================================
 
-create table profiles (
+create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
   role user_role not null default 'staff',
@@ -44,7 +44,7 @@ create policy "Admins can manage all profiles" on profiles
 -- CLIENTS (master anagrafica)
 -- ============================================================
 
-create table clients (
+create table if not exists clients (
   id uuid primary key default uuid_generate_v4(),
 
   -- Identità
@@ -107,7 +107,7 @@ create policy "Only admins can delete clients" on clients
 -- ONBOARDING CHECKLIST
 -- ============================================================
 
-create table onboarding_checklist (
+create table if not exists onboarding_checklist (
   id uuid primary key default uuid_generate_v4(),
   client_id uuid not null references clients(id) on delete cascade,
 
@@ -140,7 +140,7 @@ create policy "Authenticated users full access onboarding" on onboarding_checkli
 -- BANK STATEMENTS (Estratti conto)
 -- ============================================================
 
-create table bank_statements (
+create table if not exists bank_statements (
   id uuid primary key default uuid_generate_v4(),
   client_id uuid not null references clients(id) on delete cascade,
   year integer not null,
@@ -164,7 +164,7 @@ create policy "Authenticated users full access bank_statements" on bank_statemen
 -- SUBSCRIPTION PAYMENTS (Pagamenti mensili abbonamento)
 -- ============================================================
 
-create table subscription_payments (
+create table if not exists subscription_payments (
   id uuid primary key default uuid_generate_v4(),
   client_id uuid not null references clients(id) on delete cascade,
   year integer not null,
@@ -188,7 +188,7 @@ create policy "Authenticated users full access subscription_payments" on subscri
 -- VAT REGISTER
 -- ============================================================
 
-create table vat_register (
+create table if not exists vat_register (
   id uuid primary key default uuid_generate_v4(),
   client_id uuid not null references clients(id) on delete cascade,
 
@@ -221,7 +221,7 @@ create policy "Authenticated users full access vat_register" on vat_register
 -- CORPORATE TAX
 -- ============================================================
 
-create table corporate_tax (
+create table if not exists corporate_tax (
   id uuid primary key default uuid_generate_v4(),
   client_id uuid not null references clients(id) on delete cascade,
 
@@ -243,7 +243,7 @@ create policy "Authenticated users full access corporate_tax" on corporate_tax
 -- BILANCIO MENSILE (tab Bilancio)
 -- ============================================================
 
-create table monthly_balance (
+create table if not exists monthly_balance (
   id uuid primary key default uuid_generate_v4(),
   client_id uuid not null references clients(id) on delete cascade,
   year integer not null,
@@ -268,7 +268,7 @@ create policy "Authenticated users full access monthly_balance" on monthly_balan
 -- AFFINITAS SUBSCRIPTIONS (tab Abbonati affinitas)
 -- ============================================================
 
-create table affinitas_subscriptions (
+create table if not exists affinitas_subscriptions (
   id uuid primary key default uuid_generate_v4(),
   client_id uuid references clients(id),
   subscription_ref text,               -- es. "#6635"
@@ -295,7 +295,7 @@ create policy "Authenticated users full access affinitas" on affinitas_subscript
 -- ACTIVITY LOG (audit trail)
 -- ============================================================
 
-create table activity_log (
+create table if not exists activity_log (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references profiles(id),
   client_id uuid references clients(id),
@@ -454,11 +454,11 @@ where c.is_active = true
 -- INDEXES per performance
 -- ============================================================
 
-create index idx_clients_company_name on clients(company_name);
-create index idx_clients_is_active on clients(is_active);
-create index idx_bank_stmt_client_year_month on bank_statements(client_id, year, month);
-create index idx_sub_pay_client_year_month on subscription_payments(client_id, year, month);
-create index idx_sub_pay_status on subscription_payments(status);
-create index idx_vat_deadlines on vat_register(return_deadline_1, return_deadline_2, return_deadline_3, return_deadline_4);
-create index idx_activity_log_client on activity_log(client_id);
-create index idx_activity_log_user on activity_log(user_id);
+create index if not exists idx_clients_company_name on clients(company_name);
+create index if not exists idx_clients_is_active on clients(is_active);
+create index if not exists idx_bank_stmt_client_year_month on bank_statements(client_id, year, month);
+create index if not exists idx_sub_pay_client_year_month on subscription_payments(client_id, year, month);
+create index if not exists idx_sub_pay_status on subscription_payments(status);
+create index if not exists idx_vat_deadlines on vat_register(return_deadline_1, return_deadline_2, return_deadline_3, return_deadline_4);
+create index if not exists idx_activity_log_client on activity_log(client_id);
+create index if not exists idx_activity_log_user on activity_log(user_id);

@@ -8,196 +8,181 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:Inter,sans-serif;background:#1a3a5c;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-    .card{background:white;border-radius:16px;padding:40px;max-width:680px;width:100%}
+    .card{background:white;border-radius:16px;padding:36px;max-width:680px;width:100%}
     h1{font-size:24px;font-weight:800;color:#1a3a5c;margin-bottom:4px}
     .sub{color:#c9a84c;font-weight:700;font-size:13px;margin-bottom:24px}
-    .box{border:1px solid #dde3ed;border-radius:10px;margin-bottom:16px;overflow:hidden}
-    .box-head{background:#f0f4f8;padding:14px 18px;display:flex;align-items:center;gap:12px}
-    .num{width:28px;height:28px;border-radius:50%;background:#1a3a5c;color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
-    .num.ok{background:#16a34a}
-    .box-title{font-size:14px;font-weight:700;flex:1;color:#1e2d42}
-    .box-body{padding:16px 18px}
+    .box{border:1px solid #dde3ed;border-radius:10px;margin-bottom:12px;overflow:hidden}
+    .bh{background:#f0f4f8;padding:13px 18px;display:flex;align-items:center;gap:12px;cursor:pointer}
+    .num{width:26px;height:26px;border-radius:50%;background:#1a3a5c;color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+    .num.ok{background:#16a34a}.num.auto{background:#c9a84c;color:#1a3a5c}
+    .bt{font-size:14px;font-weight:700;flex:1;color:#1e2d42}
+    .tag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;margin-left:6px;vertical-align:middle}
+    .tag.gold{background:#fef3c7;color:#92400e}
+    .bb{padding:16px 18px;border-top:1px solid #dde3ed}
     .desc{font-size:13px;color:#6b7a95;margin-bottom:12px;line-height:1.6}
-    a.lbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;margin-right:8px;margin-bottom:8px}
-    a.blue{background:#1a3a5c;color:white} a.blue:hover{background:#2563a8}
-    a.gray{background:#f0f4f8;color:#1a3a5c;border:1px solid #dde3ed} a.gray:hover{background:#e5e9f0}
-    button.confirm{padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #16a34a;background:#dcfce7;color:#16a34a;margin-top:8px}
-    button.confirm:hover{background:#16a34a;color:white}
-    button.go{padding:10px 22px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:#c9a84c;color:#1a3a5c;margin-top:4px}
+    a.lb{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:7px;font-size:13px;font-weight:600;text-decoration:none;margin-right:6px;margin-bottom:6px}
+    a.blue{background:#1a3a5c;color:white} a.gray{background:#f0f4f8;color:#1a3a5c;border:1px solid #dde3ed}
+    button.ok-btn{padding:7px 13px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #16a34a;background:#dcfce7;color:#16a34a;margin-top:8px}
+    button.ok-btn:hover{background:#16a34a;color:white}
+    button.go{padding:9px 20px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:#c9a84c;color:#1a3a5c}
     button.go:hover{background:#f0d080} button.go:disabled{opacity:0.5;cursor:not-allowed}
-    .result{margin-top:10px;padding:10px 14px;border-radius:8px;font-size:13px;display:none}
-    .ok{background:#dcfce7;color:#16a34a} .err{background:#fee2e2;color:#dc2626}
-    .creds{background:#f0f4f8;border-radius:10px;padding:20px;margin-top:20px;display:none}
-    .creds h3{font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:12px}
-    .cred{display:flex;gap:10px;margin-bottom:8px;font-size:13px}
-    .ck{color:#6b7a95;font-size:12px;width:90px}.cv{font-weight:700;font-family:monospace;font-size:12px}
-    a.final{display:inline-flex;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;background:#16a34a;color:white;margin-top:16px}
-    code{background:#f0f4f8;padding:2px 6px;border-radius:4px;font-size:11px;font-family:monospace}
-    .divider{border:none;border-top:1px solid #dde3ed;margin:16px 0}
-    .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;margin-left:8px}
+    .res{margin-top:10px;padding:10px 14px;border-radius:8px;font-size:13px;display:none;line-height:1.7}
+    .res.ok{background:#dcfce7;color:#166534} .res.err{background:#fee2e2;color:#991b1b}
+    .creds{background:#f0f4f8;border-radius:10px;padding:20px;margin-top:16px;display:none}
+    .creds h3{font-size:14px;font-weight:700;color:#1a3a5c;margin-bottom:10px}
+    .cred{display:flex;gap:10px;margin-bottom:7px;font-size:13px}
+    .ck{color:#6b7a95;font-size:12px;width:90px} .cv{font-weight:700;font-family:monospace;font-size:12px}
+    a.final{display:inline-flex;padding:11px 26px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;background:#16a34a;color:white;margin-top:14px}
+    code{background:#f0f4f8;padding:1px 5px;border-radius:3px;font-size:11px;font-family:monospace}
+    input.ti{padding:8px 12px;border:1px solid #dde3ed;border-radius:7px;font-size:13px;outline:none}
+    input.ti:focus{border-color:#2563a8}
   </style>
 </head>
 <body>
 <div class="card">
   <h1>InDubai Portal</h1>
-  <div class="sub">⚙ Setup Database</div>
+  <div class="sub">⚙ Setup Database — segui i passi in ordine</div>
 
-  <!-- STEP 1 -->
+  <!-- STEP 1: profiles only (tiny SQL) -->
   <div class="box">
-    <div class="box-head">
-      <div class="num" id="n1">1</div>
-      <div class="box-title">Schema SQL — crea tabelle, RLS, trigger, views</div>
-    </div>
-    <div class="box-body">
-      <div class="desc">Apri SQL Editor → incolla il contenuto di <code>schema.sql</code> → Run.</div>
-      <a href="https://supabase.com/dashboard/project/gvdoqcgkzbziqufahhxh/sql/new" target="_blank" class="lbtn blue">→ SQL Editor</a>
-      <a href="https://raw.githubusercontent.com/bozzellapellegrinoweb/indubai-portal/main/supabase/schema.sql" target="_blank" class="lbtn gray">↓ schema.sql</a>
-      <br><button class="confirm" onclick="markDone(1)">✓ Schema eseguito</button>
+    <div class="bh"><div class="num" id="n1">1</div><div class="bt">Crea tabella profiles + trigger <span class="tag gold">inizia qui</span></div></div>
+    <div class="bb">
+      <div class="desc">Piccolo SQL (52 righe) che crea la tabella <code>profiles</code> e il trigger necessario per creare utenti. <strong>Esegui questo per primo.</strong></div>
+      <a href="https://supabase.com/dashboard/project/gvdoqcgkzbziqufahhxh/sql/new" target="_blank" class="lb blue">→ SQL Editor</a>
+      <a href="https://raw.githubusercontent.com/bozzellapellegrinoweb/indubai-portal/main/supabase/schema_step1_profiles.sql" target="_blank" class="lb gray">↓ schema_step1_profiles.sql</a>
+      <br><button class="ok-btn" onclick="markDone(1)">✓ Eseguito</button>
     </div>
   </div>
 
-  <!-- STEP 2 -->
+  <!-- STEP 2: Create users (auto) -->
   <div class="box">
-    <div class="box-head">
-      <div class="num" id="n2">2</div>
-      <div class="box-title">Seed SQL — carica 97 clienti + dati 2026</div>
-    </div>
-    <div class="box-body">
-      <div class="desc">Nuova query nel SQL Editor → incolla <code>seed_data.sql</code> → Run (10-20 sec).</div>
-      <a href="https://supabase.com/dashboard/project/gvdoqcgkzbziqufahhxh/sql/new" target="_blank" class="lbtn blue">→ SQL Editor</a>
-      <a href="https://raw.githubusercontent.com/bozzellapellegrinoweb/indubai-portal/main/supabase/seed_data.sql" target="_blank" class="lbtn gray">↓ seed_data.sql</a>
-      <br><button class="confirm" onclick="markDone(2)">✓ Seed eseguito</button>
-    </div>
-  </div>
-
-  <!-- STEP 3: Auto user creation -->
-  <div class="box">
-    <div class="box-head">
-      <div class="num" id="n3">3</div>
-      <div class="box-title">Crea utenti admin <span class="tag">automatico</span></div>
-    </div>
-    <div class="box-body">
-      <div class="desc">Crea <strong>pellegrino@indubai.it</strong> e <strong>giuseppe@indubai.it</strong> con password <code>InDubai2026!</code></div>
+    <div class="bh"><div class="num auto" id="n2">2</div><div class="bt">Crea utenti admin <span class="tag">automatico</span></div></div>
+    <div class="bb">
+      <div class="desc">Crea <strong>pellegrino@indubai.it</strong> e <strong>giuseppe@indubai.it</strong> — funziona solo dopo il passo 1.</div>
       <button class="go" id="btn-users" onclick="createUsers()">⚡ Crea Utenti</button>
-      <div class="result" id="res3"></div>
-
-      <hr class="divider">
-      
-      <div class="desc" style="margin-bottom:8px">Oppure creali manualmente su Supabase → Authentication → Users → Add User:</div>
-      <a href="https://supabase.com/dashboard/project/gvdoqcgkzbziqufahhxh/auth/users" target="_blank" class="lbtn gray">→ Auth Dashboard</a>
+      <div class="res" id="res2"></div>
     </div>
   </div>
 
-  <!-- STEP 4: Test login -->
+  <!-- STEP 3: Full schema -->
   <div class="box">
-    <div class="box-head">
-      <div class="num" id="n4">4</div>
-      <div class="box-title">Verifica accesso <span class="tag">test</span></div>
+    <div class="bh"><div class="num" id="n3">3</div><div class="bt">Schema completo — tutte le tabelle</div></div>
+    <div class="bb">
+      <div class="desc">Esegui <code>schema.sql</code> completo nel SQL Editor (stessa procedura del passo 1).</div>
+      <a href="https://supabase.com/dashboard/project/gvdoqcgkzbziqufahhxh/sql/new" target="_blank" class="lb blue">→ SQL Editor</a>
+      <a href="https://raw.githubusercontent.com/bozzellapellegrinoweb/indubai-portal/main/supabase/schema.sql" target="_blank" class="lb gray">↓ schema.sql</a>
+      <br><button class="ok-btn" onclick="markDone(3)">✓ Eseguito</button>
     </div>
-    <div class="box-body">
-      <div class="desc">Testa le credenziali direttamente qui:</div>
-      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-        <input type="email" id="test-email" placeholder="pellegrino@indubai.it" value="pellegrino@indubai.it"
-          style="padding:8px 12px;border:1px solid #dde3ed;border-radius:8px;font-size:13px;flex:1;min-width:200px;outline:none">
-        <input type="password" id="test-pass" placeholder="InDubai2026!" value="InDubai2026!"
-          style="padding:8px 12px;border:1px solid #dde3ed;border-radius:8px;font-size:13px;width:140px;outline:none">
-        <button class="go" onclick="testLogin()">Test Login</button>
+  </div>
+
+  <!-- STEP 4: Seed -->
+  <div class="box">
+    <div class="bh"><div class="num" id="n4">4</div><div class="bt">Seed — 97 clienti + dati 2026</div></div>
+    <div class="bb">
+      <div class="desc">Esegui <code>seed_data.sql</code> nel SQL Editor. File da 113KB — impiega 10-20 secondi.</div>
+      <a href="https://supabase.com/dashboard/project/gvdoqcgkzbziqufahhxh/sql/new" target="_blank" class="lb blue">→ SQL Editor</a>
+      <a href="https://raw.githubusercontent.com/bozzellapellegrinoweb/indubai-portal/main/supabase/seed_data.sql" target="_blank" class="lb gray">↓ seed_data.sql</a>
+      <br><button class="ok-btn" onclick="markDone(4)">✓ Eseguito</button>
+    </div>
+  </div>
+
+  <!-- STEP 5: Test login -->
+  <div class="box">
+    <div class="bh"><div class="num auto" id="n5">5</div><div class="bt">Verifica accesso <span class="tag">test</span></div></div>
+    <div class="bb">
+      <div class="desc">Testa il login — se funziona sei pronto!</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input class="ti" type="email" id="te" value="pellegrino@indubai.it" style="width:220px">
+        <input class="ti" type="password" id="tp" value="InDubai2026!" style="width:130px">
+        <button class="go" onclick="testLogin()">→ Test</button>
       </div>
-      <div class="result" id="res4"></div>
+      <div class="res" id="res5"></div>
     </div>
   </div>
 
   <div class="creds" id="creds">
-    <h3>✅ Setup completato!</h3>
+    <h3>✅ Tutto pronto!</h3>
     <div class="cred"><span class="ck">URL:</span><span class="cv">indubai-portal.vercel.app</span></div>
     <div class="cred"><span class="ck">Pellegrino:</span><span class="cv">pellegrino@indubai.it / InDubai2026!</span></div>
     <div class="cred"><span class="ck">Giuseppe:</span><span class="cv">giuseppe@indubai.it / InDubai2026!</span></div>
-    <a href="/login.html" class="final">→ Vai al Portale</a>
+    <a href="/login.html" class="final">→ Entra nel Portale</a>
   </div>
 </div>
 
 <script src="/js/config.js"></script>
-<script src="/js/supabase.js"></script>
 <script>
 const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAzMjA1MSwiZXhwIjoyMDg3NjA4MDUxfQ.oEzS7iIAiRW3pYjL-TwXtY4ZOwKwh4L8JZZ6Ztq6RgQ';
 const SUPA = window.ENV_SUPABASE_URL;
+const ANON = window.ENV_SUPABASE_ANON_KEY;
 
 function markDone(n) {
-  document.getElementById('n'+n).textContent = '✓';
-  document.getElementById('n'+n).classList.add('ok');
+  const el = document.getElementById('n'+n);
+  el.textContent = '✓'; el.classList.add('ok');
 }
 
 async function createUsers() {
   const btn = document.getElementById('btn-users');
-  const res = document.getElementById('res3');
-  btn.disabled = true; btn.textContent = '⟳ Creazione...';
-
+  const res = document.getElementById('res2');
+  btn.disabled = true; btn.textContent = '⟳ ...';
+  const msgs = [];
   const users = [
     {email:'pellegrino@indubai.it', name:'Pellegrino Bozzella'},
     {email:'giuseppe@indubai.it',   name:'Giuseppe'},
   ];
-  const msgs = [];
-
   for (const u of users) {
     try {
       const r = await fetch(SUPA+'/auth/v1/admin/users', {
         method:'POST',
         headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
-        body: JSON.stringify({email:u.email, password:'InDubai2026!', email_confirm:true,
-          user_metadata:{full_name:u.name, role:'admin'}})
+        body:JSON.stringify({email:u.email,password:'InDubai2026!',email_confirm:true,
+          user_metadata:{full_name:u.name,role:'admin'}})
       });
       const d = await r.json();
       if (d.id) {
-        // Set role in profiles
         await fetch(SUPA+'/rest/v1/profiles?id=eq.'+d.id, {
           method:'PATCH',
           headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},
           body:JSON.stringify({role:'admin',full_name:u.name})
         });
-        msgs.push('✓ '+u.email+' creato');
-      } else if (r.status===422 || d.msg?.includes('already') || d.code==='email_exists') {
+        msgs.push('✓ '+u.email);
+      } else if (r.status===422||d.msg?.includes('already')||d.code==='email_exists') {
         msgs.push('ℹ '+u.email+' già esistente');
       } else {
-        msgs.push('⚠ '+u.email+': '+JSON.stringify(d).substring(0,100));
+        msgs.push('⚠ '+u.email+': '+(d.msg||d.error||JSON.stringify(d)).substring(0,100));
       }
     } catch(e) { msgs.push('✕ '+u.email+': '+e.message); }
   }
-
-  res.className = 'result ok';
+  const allOk = msgs.every(m => m.startsWith('✓')||m.startsWith('ℹ'));
+  res.className = 'res '+(allOk?'ok':'err');
   res.innerHTML = msgs.join('<br>');
   res.style.display = 'block';
-  btn.textContent = '✓ Fatto';
-  markDone(3);
-  document.getElementById('creds').style.display = 'block';
+  btn.textContent = allOk ? '✓ Utenti creati' : '↺ Riprova';
+  if (allOk) markDone(2);
 }
 
 async function testLogin() {
-  const email = document.getElementById('test-email').value.trim();
-  const pass  = document.getElementById('test-pass').value;
-  const res   = document.getElementById('res4');
+  const res = document.getElementById('res5');
   res.style.display = 'none';
-
   try {
     const r = await fetch(SUPA+'/auth/v1/token?grant_type=password', {
       method:'POST',
-      headers:{'apikey':window.ENV_SUPABASE_ANON_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({email, password:pass})
+      headers:{'apikey':ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({email:document.getElementById('te').value,password:document.getElementById('tp').value})
     });
     const d = await r.json();
     if (d.access_token) {
-      res.className = 'result ok';
-      res.innerHTML = '✅ Login OK! <a href="/index.html" style="font-weight:700;color:#16a34a;margin-left:8px">→ Vai al portale</a>';
-      markDone(4);
-      document.getElementById('creds').style.display = 'block';
+      res.className='res ok';
+      res.innerHTML='✅ Login OK! <a href="/index.html" style="font-weight:700;color:#166534;margin-left:8px">→ Entra nel portale</a>';
+      markDone(5);
+      document.getElementById('creds').style.display='block';
     } else {
-      res.className = 'result err';
-      res.textContent = '❌ '+JSON.stringify(d).substring(0,200);
+      res.className='res err';
+      res.textContent='❌ '+(d.msg||d.error||JSON.stringify(d)).substring(0,200);
     }
-  } catch(e) {
-    res.className = 'result err';
-    res.textContent = '❌ '+e.message;
+  } catch(e) { 
+    res.className='res err'; res.textContent='❌ '+e.message;
   }
-  res.style.display = 'block';
+  res.style.display='block';
 }
 </script>
 </body>
