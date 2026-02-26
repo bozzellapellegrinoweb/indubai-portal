@@ -392,7 +392,16 @@ const DRV = (() => {
   let view    = localStorage.getItem('drv_view') || 'grid';
 
   // ── utils ────────────────────────────────────────────────────
-  const tok  = () => sb.getSession()?.access_token || AK;
+  const tok = () => {
+    // Try sb.getSession first, then read localStorage directly as fallback
+    const fromSb = sb.getSession()?.access_token;
+    if (fromSb) return fromSb;
+    try {
+      const raw = localStorage.getItem('indubai_session');
+      if (raw) return JSON.parse(raw)?.access_token || AK;
+    } catch(e) {}
+    return AK;
+  };
   const H    = (x={}) => ({ apikey:AK, Authorization:`Bearer ${tok()}`, ...x });
   const esc  = s => String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const sz   = b => !b ? '' : b<1024 ? b+'B' : b<1048576 ? (b/1024).toFixed(0)+'KB' : (b/1048576).toFixed(1)+'MB';
@@ -431,6 +440,11 @@ const DRV = (() => {
   async function boot() {
     // Auth already checked by app.js — if we're here, we're logged in
     const listEl = document.getElementById('dc-list');
+
+    // Debug: log token status
+    const dbgTok = tok();
+    console.log('[Drive] token type:', dbgTok === AK ? 'ANON (not logged in!)' : 'USER token ✓');
+    console.log('[Drive] session:', sb.getSession() ? 'present' : 'MISSING');
 
     try {
       clients = await GET('/rest/v1/clients?is_active=eq.true&select=id,company_name&order=company_name.asc');
