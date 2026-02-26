@@ -9,21 +9,41 @@
   const profile = sb.getCurrentProfile();
   const currentPage = window.location.pathname.split('/').pop().replace('.html', '') || 'index';
 
-  const navItems = [
+  const role = profile?.role || 'junior';
+
+  // Pages allowed per role
+  const ROLE_PAGES = {
+    admin:      null, // null = all pages
+    senior:     ['index','tasks','clients','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search'],
+    junior:     ['index','tasks','clients','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search'],
+    mini_admin: ['tasks','clients','documents','search'],
+  };
+  const allowed = ROLE_PAGES[role]; // null = no restriction
+
+  const allNavItems = [
     { id: 'index',      icon: '◈', label: 'Dashboard',     href: '/index.html',      section: 'OVERVIEW' },
     { id: 'tasks',      icon: '✓', label: 'Task',           href: '/tasks.html' },
     { id: 'clients',    icon: '◉', label: 'Clienti',        href: '/clients.html',    section: 'GESTIONE' },
+    { id: 'documents',  icon: '📁', label: 'Documenti',     href: '/documents.html' },
     { id: 'onboarding', icon: '✦', label: 'Onboarding',     href: '/onboarding.html' },
     { id: 'statements', icon: '◎', label: 'Estratti Conto', href: '/statements.html' },
     { id: 'payments',   icon: '◆', label: 'Abbonamenti',    href: '/payments.html' },
     { id: 'vat',        icon: '◇', label: 'VAT Register',   href: '/vat.html',        section: 'COMPLIANCE' },
     { id: 'corp-tax',   icon: '◈', label: 'Corporate Tax',  href: '/corp-tax.html' },
     { id: 'affinitas',  icon: '◉', label: 'Affinitas',      href: '/affinitas.html' },
-    { id: 'documents', icon: '📁', label: 'Documenti', href: '/documents.html', section: 'GESTIONE' },
-    { id: 'reports', icon: '📊', label: 'Report', href: '/reports.html', section: 'ANALYTICS' },
-    { id: 'search', icon: '🔍', label: 'Ricerca', href: '/search.html' },
-    ...(profile?.role === 'admin' ? [{ id: 'users', icon: '👥', label: 'Utenti', href: '/users.html', section: 'ADMIN' }] : []),
+    { id: 'reports',    icon: '📊', label: 'Report',         href: '/reports.html',    section: 'ANALYTICS' },
+    { id: 'search',     icon: '🔍', label: 'Ricerca',        href: '/search.html' },
+    ...(role === 'admin' ? [{ id: 'users', icon: '👥', label: 'Utenti', href: '/users.html', section: 'ADMIN' }] : []),
   ];
+
+  const navItems = allowed ? allNavItems.filter(i => allowed.includes(i.id)) : allNavItems;
+
+  // Redirect if current page not allowed
+  if (allowed && !allowed.includes(currentPage) && currentPage !== 'login' && currentPage !== 'client-detail') {
+    // Redirect mini_admin to tasks, others to index
+    window.location.href = role === 'mini_admin' ? '/tasks.html' : '/index.html';
+    return;
+  }
 
   const navHTML = navItems.map(item => {
     const sectionHeader = item.section ? `<div class="nav-section">${item.section}</div>` : '';

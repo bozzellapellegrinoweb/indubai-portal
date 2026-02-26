@@ -129,12 +129,13 @@ async function loadKPIs() {
         <div class="kpi-sub">Prossimi 30 giorni</div>
         <div class="kpi-icon">📋</div>
       </div>
+      ${(sb.getCurrentProfile()?.role === 'admin') ? `
       <div class="kpi-card" style="background:linear-gradient(135deg,#1a3a5c,#2563a8)">
         <div class="kpi-label" style="color:rgba(255,255,255,.7)">Incassato Mese</div>
         <div class="kpi-value" id="kpi-revenue" style="color:white">—</div>
         <div class="kpi-sub" id="kpi-revenue-sub" style="color:rgba(255,255,255,.6)">Caricamento...</div>
         <div class="kpi-icon" style="color:rgba(255,255,255,.2)">💰</div>
-      </div>
+      </div>` : ''}
     `;
   } catch(e) {
     document.getElementById('kpi-grid').innerHTML = `<div class="alert alert-danger">Errore caricamento KPIs: ${e.message}</div>`;
