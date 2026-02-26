@@ -169,6 +169,31 @@
           <input type="date" class="form-control" id="t-due">
         </div>
       </div>
+      <!-- Recurring -->
+      <div style="margin-top:8px;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1.5px solid var(--border)">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600">
+          <input type="checkbox" id="t-recurring" onchange="toggleRecurring(this.checked)">
+          🔁 Task ricorrente
+        </label>
+        <div id="recurring-opts" style="display:none;margin-top:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Frequenza</label>
+              <select class="form-control" id="t-recur-freq">
+                <option value="monthly">Ogni mese</option>
+                <option value="weekly">Ogni settimana</option>
+                <option value="quarterly">Ogni 3 mesi</option>
+                <option value="yearly">Ogni anno</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Giorno del mese</label>
+              <input type="number" class="form-control" id="t-recur-day" min="1" max="31" placeholder="es. 15">
+            </div>
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:var(--text-muted)">La task verrà ricreata automaticamente alla chiusura</div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
@@ -390,6 +415,10 @@ function closeDetail() {
 function openNewTask() { document.getElementById('modal-task').style.display = 'flex'; }
 function closeModal() { document.getElementById('modal-task').style.display = 'none'; }
 
+function toggleRecurring(on) {
+  document.getElementById('recurring-opts').style.display = on ? 'block' : 'none';
+}
+
 async function saveTask() {
   const title = document.getElementById('t-title').value.trim();
   if (!title) { ui.showToast('Inserisci un titolo','error'); return; }
@@ -404,7 +433,10 @@ async function saveTask() {
       priority: document.getElementById('t-priority').value,
       category: document.getElementById('t-category').value,
       due_date: document.getElementById('t-due').value||null,
-      created_by: myId, status: 'open'
+      created_by: myId, status: 'open',
+      is_recurring: document.getElementById('t-recurring').checked || false,
+      recur_frequency: document.getElementById('t-recurring').checked ? document.getElementById('t-recur-freq').value : null,
+      recur_day: document.getElementById('t-recurring').checked ? (parseInt(document.getElementById('t-recur-day').value)||null) : null,
     };
     const result = await sb.db.insert('tasks', data);
     if (data.assigned_to && data.assigned_to !== myId) {
@@ -419,6 +451,8 @@ async function saveTask() {
     ui.showToast('Task creata!','success');
     document.getElementById('t-title').value='';
     document.getElementById('t-desc').value='';
+    document.getElementById('t-recurring').checked=false;
+    document.getElementById('recurring-opts').style.display='none';
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
   finally { btn.disabled=false; btn.textContent='Crea Task'; }
 }

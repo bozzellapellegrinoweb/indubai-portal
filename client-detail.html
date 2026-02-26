@@ -203,6 +203,7 @@ function renderClient() {
     ['Costo Abbonamento', c.service_cost ? 'AED '+c.service_cost : '—'],
     ['Giorno Addebito', c.subscription_day ? c.subscription_day+'° del mese' : '—'],
     ['Data Avvio', ui.formatDate(c.start_date)],
+    ['General Manager', c.general_manager||'—'],
     ['Trade License', ui.formatDate(c.trade_license_date)],
     ['Scad. Corporate Tax', ui.formatDate(c.corporate_tax_expiry)],
     ['Conti Bancari', c.bank_accounts?.join(', ')||'—'],
@@ -210,6 +211,27 @@ function renderClient() {
   document.getElementById('info-grid').innerHTML = fields.map(([l,v]) =>
     `<div class="info-card"><div class="info-label">${l}</div><div class="info-value ${v==='—'?'muted':''}">${ui.escapeHtml(String(v))}</div></div>`
   ).join('');
+  // FTA credentials (visible only to admin/senior)
+  const role = sb.getCurrentProfile()?.role;
+  if ((c.fta_username || c.fta_password) && ['admin','senior'].includes(role)) {
+    document.getElementById('info-grid').insertAdjacentHTML('beforeend', `
+      <div class="info-card" style="grid-column:1/-1;background:#f0f9ff;border-color:#bae6fd">
+        <div class="info-label" style="color:#0369a1">🔐 Credenziali FTA</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+          <div>
+            <div style="font-size:11px;color:#0369a1;font-weight:600;margin-bottom:3px">Username</div>
+            <div style="font-size:14px;font-weight:700;font-family:monospace">${ui.escapeHtml(c.fta_username||'—')}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#0369a1;font-weight:600;margin-bottom:3px">Password</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div id="fta-pwd-display" style="font-size:14px;font-weight:700;font-family:monospace;letter-spacing:2px">••••••••</div>
+              <button onclick="toggleFtaPwd('${ui.escapeHtml(c.fta_password||'')}','${ui.escapeHtml(c.fta_username||'')}')" style="font-size:11px;padding:2px 8px;border:1px solid #bae6fd;border-radius:5px;background:white;cursor:pointer;color:#0369a1">Mostra</button>
+            </div>
+          </div>
+        </div>
+      </div>`);
+  }
   if (c.notes) {
     document.getElementById('info-grid').insertAdjacentHTML('beforeend',
       `<div class="info-card" style="grid-column:1/-1"><div class="info-label">Note</div><div class="info-value muted">${ui.escapeHtml(c.notes)}</div></div>`);
@@ -341,6 +363,9 @@ function openEdit() {
   document.getElementById('e-ct-expiry').value = c.corporate_tax_expiry||'';
   document.getElementById('e-bank-notes').value = c.bank_notes||'';
   document.getElementById('e-notes').value = c.notes||'';
+  document.getElementById('e-gm').value = c.general_manager||'';
+  document.getElementById('e-fta-user').value = c.fta_username||'';
+  document.getElementById('e-fta-pass').value = c.fta_password||'';
   document.getElementById('e-active').checked = c.is_active!==false;
   document.getElementById('e-bilancio').checked = c.in_bilancio!==false;
   document.getElementById('e-vat-reg').checked = c.vat_registered||false;
@@ -371,6 +396,10 @@ init();
         <div class="form-group">
           <label class="form-label">Referente</label>
           <input type="text" class="form-control" id="e-contact">
+        </div>
+        <div class="form-group">
+          <label class="form-label">General Manager</label>
+          <input type="text" class="form-control" id="e-gm" placeholder="Nome GM...">
         </div>
         <div class="form-group">
           <label class="form-label">Email</label>
@@ -440,6 +469,19 @@ init();
           <label class="form-label">Note Bancarie</label>
           <input type="text" class="form-control" id="e-bank-notes">
         </div>
+        <div class="form-group" style="grid-column:1/-1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px">
+          <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🔐 Credenziali FTA (solo admin/senior)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">FTA Username</label>
+              <input type="text" class="form-control" id="e-fta-user" placeholder="Username FTA...">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">FTA Password</label>
+              <input type="text" class="form-control" id="e-fta-pass" placeholder="Password FTA...">
+            </div>
+          </div>
+        </div>
         <div class="form-group">
           <label class="form-label">Note</label>
           <textarea class="form-control" id="e-notes" rows="2"></textarea>
@@ -471,6 +513,20 @@ init();
 </div>
 
 <script>
+function toggleFtaPwd(pwd, user) {
+  const el = document.getElementById('fta-pwd-display');
+  const btn = el.nextElementSibling;
+  if (btn.textContent === 'Mostra') {
+    el.textContent = pwd || '—';
+    el.style.letterSpacing = '0';
+    btn.textContent = 'Nascondi';
+  } else {
+    el.textContent = '••••••••';
+    el.style.letterSpacing = '2px';
+    btn.textContent = 'Mostra';
+  }
+}
+
 async function saveEdit() {
   const company = document.getElementById('e-company').value.trim();
   if (!company) { ui.showToast('Nome azienda obbligatorio','error'); return; }
@@ -497,6 +553,9 @@ async function saveEdit() {
       in_bilancio: document.getElementById('e-bilancio').checked,
       vat_registered: document.getElementById('e-vat-reg').checked,
       corporate_tax_registered: document.getElementById('e-ct-reg').checked,
+      general_manager: document.getElementById('e-gm').value.trim()||null,
+      fta_username: document.getElementById('e-fta-user').value.trim()||null,
+      fta_password: document.getElementById('e-fta-pass').value.trim()||null,
     });
     document.getElementById('modal-edit').style.display = 'none';
     ui.showToast('Cliente aggiornato ✓','success');

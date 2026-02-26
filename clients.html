@@ -38,7 +38,8 @@
           <table id="clients-table">
             <thead>
               <tr>
-                <th>Azienda / Contatto</th>
+                <th>Azienda</th>
+                <th>General Manager</th>
                 <th>Partner</th>
                 <th>Conti Bancari</th>
                 <th>Abbonamento</th>
@@ -49,7 +50,7 @@
               </tr>
             </thead>
             <tbody id="clients-tbody">
-              <tr><td colspan="8"><div class="loading-overlay"><div class="spinner"></div></div></td></tr>
+              <tr><td colspan="9"><div class="loading-overlay"><div class="spinner"></div></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -173,7 +174,7 @@ async function loadClients() {
     renderClients(allClients);
   } catch(e) {
     document.getElementById('clients-tbody').innerHTML =
-      `<tr><td colspan="8"><div class="alert alert-danger" style="margin:16px">${e.message}</div></td></tr>`;
+      `<tr><td colspan="9"><div class="alert alert-danger" style="margin:16px">${e.message}</div></td></tr>`;
   }
 }
 
@@ -181,7 +182,7 @@ function renderClients(clients) {
   document.getElementById('clients-count').textContent = `${clients.length} clienti`;
   if (!clients.length) {
     document.getElementById('clients-tbody').innerHTML =
-      `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">👥</div><h3>Nessun cliente trovato</h3></div></td></tr>`;
+      `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">👥</div><h3>Nessun cliente trovato</h3></div></td></tr>`;
     return;
   }
 
@@ -189,8 +190,8 @@ function renderClients(clients) {
     <tr>
       <td>
         <div class="td-company">${ui.escapeHtml(c.company_name)}</div>
-        <div class="td-contact">${ui.escapeHtml(c.contact_name) || ''}</div>
       </td>
+      <td style="font-size:13px">${c.general_manager ? ui.escapeHtml(c.general_manager) : (c.contact_name ? '<span style="color:var(--text-muted);font-size:12px">'+ui.escapeHtml(c.contact_name)+'</span>' : '—')}</td>
       <td>${ui.partnerLabel(c.accounting_partner)}</td>
       <td style="font-size:12px">${(c.bank_accounts || []).join(', ') || '—'}</td>
       <td>

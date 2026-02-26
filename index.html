@@ -401,21 +401,56 @@ async function loadPayStatChart() {
 }
 
 // ── DEADLINES ─────────────────────────────────────────────────
+// Store checked alerts in memory (resets on page reload — use localStorage for persistence)
+const checkedAlerts = new Set(JSON.parse(localStorage.getItem('dash_alerts_done')||'[]'));
+
+function saveChecked() {
+  localStorage.setItem('dash_alerts_done', JSON.stringify([...checkedAlerts]));
+}
+
 async function loadAlerts14() {
   const el=document.getElementById('alerts14');
   try {
     const t0=new Date().toISOString().split('T')[0], t14=new Date(Date.now()+14*86400000).toISOString().split('T')[0];
-    const vat=await sb.db.select('vat_register',{columns:'return_deadline_1,return_deadline_2,return_deadline_3,return_deadline_4,clients(company_name)'});
-    const tl =await sb.db.select('clients',{columns:'company_name,trade_license_date',filter:`is_active=eq.true&trade_license_date=gte.${t0}&trade_license_date=lte.${t14}`});
-    const ct =await sb.db.select('clients',{columns:'company_name,corporate_tax_expiry',filter:`is_active=eq.true&corporate_tax_expiry=gte.${t0}&corporate_tax_expiry=lte.${t14}`});
+    const vat=await sb.db.select('vat_register',{columns:'client_id,return_deadline_1,return_deadline_2,return_deadline_3,return_deadline_4,clients(company_name)'});
+    const tl =await sb.db.select('clients',{columns:'id,company_name,trade_license_date',filter:`is_active=eq.true&trade_license_date=gte.${t0}&trade_license_date=lte.${t14}`});
+    const ct =await sb.db.select('clients',{columns:'id,company_name,corporate_tax_expiry',filter:`is_active=eq.true&corporate_tax_expiry=gte.${t0}&corporate_tax_expiry=lte.${t14}`});
     const alerts=[];
-    (vat||[]).forEach(r=>[1,2,3,4].forEach(i=>{const d=r[`return_deadline_${i}`];if(d&&d>=t0&&d<=t14)alerts.push({date:d,label:'◇ VAT Return',client:r.clients?.company_name,color:'#0369a1'});}));
-    (tl||[]).forEach(c=>alerts.push({date:c.trade_license_date,label:'📄 Trade License',client:c.company_name,color:'#d97706'}));
-    (ct||[]).forEach(c=>alerts.push({date:c.corporate_tax_expiry,label:'◈ Corp. Tax',client:c.company_name,color:'#7c3aed'}));
+    (vat||[]).forEach(r=>[1,2,3,4].forEach(i=>{const d=r[`return_deadline_${i}`];if(d&&d>=t0&&d<=t14)alerts.push({id:`vat_${r.client_id}_${i}`,date:d,label:'◇ VAT Return',client:r.clients?.company_name,color:'#0369a1'});}));
+    (tl||[]).forEach(r=>alerts.push({id:`tl_${r.id}`,date:r.trade_license_date,label:'📄 Trade License',client:r.company_name,color:'#d97706'}));
+    (ct||[]).forEach(r=>alerts.push({id:`ct_${r.id}`,date:r.corporate_tax_expiry,label:'◈ Corp. Tax',client:r.company_name,color:'#7c3aed'}));
     alerts.sort((a,b)=>a.date.localeCompare(b.date));
     if(!alerts.length){el.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna scadenza nei prossimi 14 giorni ✓</div>';return;}
-    el.innerHTML=alerts.map(a=>`<div class="drow"><div class="drow-dot" style="background:${a.color}"></div><div class="drow-main"><div class="drow-title" style="color:${a.color}">${a.label}</div><div class="drow-sub">${ui.escapeHtml(a.client||'')}</div></div><span class="drow-right ${ui.deadlineClass(a.date)}">${ui.formatDate(a.date)}</span></div>`).join('');
+    renderAlerts(alerts, el);
   } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:12px">${e.message}</div>`;}
+}
+
+function renderAlerts(alerts, el) {
+  el.innerHTML = alerts.map(a => {
+    const done = checkedAlerts.has(a.id);
+    return `<div class="drow" id="alert-${a.id}" style="${done?'opacity:.5;text-decoration:line-through':''}">
+      <div onclick="toggleAlert('${a.id}',this)" style="width:20px;height:20px;border-radius:6px;border:2px solid ${done?'#059669':'var(--border)'};background:${done?'#059669':'white'};cursor:pointer;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;flex-shrink:0;transition:all .15s">${done?'✓':''}</div>
+      <div class="drow-dot" style="background:${a.color}"></div>
+      <div class="drow-main">
+        <div class="drow-title" style="color:${a.color}">${a.label}</div>
+        <div class="drow-sub">${ui.escapeHtml(a.client||'')}</div>
+      </div>
+      <span class="drow-right ${ui.deadlineClass(a.date)}">${ui.formatDate(a.date)}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleAlert(id, btn) {
+  if(checkedAlerts.has(id)){
+    checkedAlerts.delete(id);
+    btn.style.background='white'; btn.style.borderColor='var(--border)'; btn.textContent='';
+    btn.closest('.drow').style.opacity='1'; btn.closest('.drow').style.textDecoration='';
+  } else {
+    checkedAlerts.add(id);
+    btn.style.background='#059669'; btn.style.borderColor='#059669'; btn.textContent='✓';
+    btn.closest('.drow').style.opacity='.5'; btn.closest('.drow').style.textDecoration='line-through';
+  }
+  saveChecked();
 }
 async function loadVat30() {
   const el=document.getElementById('vat30');
