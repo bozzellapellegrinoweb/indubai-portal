@@ -175,7 +175,7 @@
             <div id="missing-st"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
           <div class="card">
-            <div class="chl"><div><div class="chl-t">👥 Per Zona Aziendale</div></div><a href="/clients.html" class="go-btn">Clienti →</a></div>
+            <div class="chl"><div><div class="chl-t">👥 Clienti per Status</div></div><a href="/clients.html" class="go-btn">Clienti →</a></div>
             <div class="chart-wrap"><canvas id="ch-czone"></canvas><div class="clegend" id="lg-czone"></div></div>
           </div>
         </div>
@@ -479,10 +479,18 @@ async function loadMissingSt() {
 }
 async function loadCzoneChart() {
   try {
-    const rows=await sb.db.select('clients',{columns:'business_location',filter:'is_active=eq.true'});
-    const cnt={}; (rows||[]).forEach(r=>{const z=r.business_location||'N/D';cnt[z]=(cnt[z]||0)+1;});
-    const l=Object.keys(cnt),v=Object.values(cnt);
-    donut('ch-czone',l,v); legend('lg-czone',l,v);
+    const rows=await sb.db.select('clients',{columns:'is_active,vat_registered,in_bilancio,accounting_partner',filter:'is_active=eq.true'});
+    const cnt={'VAT Registrato':0,'Solo CT':0,'In Bilancio':0,'Solo Segreteria':0};
+    (rows||[]).forEach(r=>{
+      if(r.vat_registered) cnt['VAT Registrato']++;
+      else if(r.in_bilancio) cnt['In Bilancio']++;
+      else cnt['Solo Segreteria']++;
+    });
+    const l=Object.keys(cnt).filter(k=>cnt[k]>0);
+    const v=l.map(k=>cnt[k]);
+    const colors={'VAT Registrato':'#059669','In Bilancio':'#0369a1','Solo Segreteria':'#6b7280','Solo CT':'#7c3aed'};
+    const col=l.map(k=>colors[k]);
+    donut('ch-czone',l,v,col); legend('lg-czone',l,v,col);
   } catch(e){ document.getElementById('ch-czone')?.closest('.chart-wrap')?.insertAdjacentHTML('beforeend',`<div class="alert alert-danger" style="margin:8px;font-size:12px">${e.message}</div>`); }
 }
 
