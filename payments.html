@@ -10,6 +10,44 @@
     .status-cell { text-align:center; padding:6px 3px !important; cursor:pointer; white-space:nowrap; }
     .status-cell:hover { background:var(--surface2); }
     .month-h { text-align:center; padding:8px 4px !important; font-size:11px; }
+
+    .filter-bar {
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      padding:12px 20px; background:white; border-bottom:1.5px solid var(--border);
+    }
+    .filter-bar select, .filter-bar input {
+      padding:7px 12px; border:1.5px solid var(--border); border-radius:8px;
+      font-size:13px; font-family:inherit; outline:none; background:white; transition:border-color .15s;
+    }
+    .filter-bar select:focus, .filter-bar input:focus { border-color:var(--primary); }
+    .filter-chip {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600;
+      cursor:pointer; border:1.5px solid var(--border); background:white;
+      color:var(--text-muted); transition:all .12s;
+    }
+    .filter-chip:hover { border-color:var(--primary); color:var(--primary); }
+    .filter-chip.on { background:var(--primary); border-color:var(--primary); color:white; }
+    .filter-chip.chip-ok.on     { background:#059669; border-color:#059669; }
+    .filter-chip.chip-failed.on { background:#dc2626; border-color:#dc2626; }
+    .filter-chip.chip-warn.on   { background:#d97706; border-color:#d97706; }
+    .filter-chip.chip-pend.on   { background:#6b7280; border-color:#6b7280; }
+    .filter-count { font-size:12px; color:var(--text-muted); white-space:nowrap; }
+
+    .pagination {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 20px; border-top:1.5px solid var(--border); background:white; flex-wrap:wrap; gap:10px;
+    }
+    .page-info { font-size:13px; color:var(--text-muted); }
+    .page-btns { display:flex; gap:6px; }
+    .page-btn {
+      width:34px; height:34px; border-radius:8px; border:1.5px solid var(--border);
+      background:white; cursor:pointer; font-size:13px; font-weight:600;
+      display:flex; align-items:center; justify-content:center; transition:all .12s; color:var(--text);
+    }
+    .page-btn:hover { border-color:var(--primary); color:var(--primary); }
+    .page-btn.on { background:var(--primary); border-color:var(--primary); color:white; }
+    .page-btn:disabled { opacity:.35; cursor:not-allowed; }
   </style>
   <script src="/js/config.js"></script>
 </head>
@@ -21,193 +59,288 @@
         <div class="topbar-title">Abbonamenti</div>
         <div class="topbar-subtitle">Pagamenti mensili segreteria</div>
       </div>
-      <div class="toolbar">
-        <select class="form-control" id="filter-year" style="width:auto">
-          <option value="2026">2026</option>
-          <option value="2025">2025</option>
-        </select>
-        <div class="search-box">
-          <span class="search-icon">🔍</span>
-          <input type="text" class="form-control" id="search" placeholder="Cerca..." style="min-width:200px">
-        </div>
-      </div>
     </div>
 
     <div class="page-content">
-
-      <!-- Summary cards -->
+      <!-- KPI summary -->
       <div class="kpi-grid" id="summary-cards" style="margin-bottom:20px"></div>
 
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Stato Pagamenti</div>
-          <div style="font-size:12px;color:var(--text-muted)">Click su una cella per cambiare stato</div>
+      <div class="card" style="padding:0;overflow:hidden">
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+          <select id="filter-year">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+          </select>
+          <select id="filter-partner">
+            <option value="">Tutti i partner</option>
+            <option value="full_digital">Full Digital</option>
+            <option value="pb_tax">PB Tax</option>
+            <option value="affinitas">Affinitas</option>
+          </select>
+          <div style="position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;pointer-events:none">🔍</span>
+            <input type="text" id="search" placeholder="Cerca cliente..." style="padding-left:30px;min-width:180px">
+          </div>
+          <!-- Status chips per mese corrente -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:11px;color:var(--text-muted);font-weight:600">Mese corrente:</span>
+            <div class="filter-chip on" data-status="all">Tutti</div>
+            <div class="filter-chip chip-ok" data-status="ok">✓ OK</div>
+            <div class="filter-chip chip-failed" data-status="failed">✕ Failed</div>
+            <div class="filter-chip chip-warn" data-status="no_tentativo">⚠ No tent.</div>
+            <div class="filter-chip chip-pend" data-status="pending">○ Pending</div>
+          </div>
+          <span class="filter-count" id="filter-count"></span>
+          <button class="btn btn-ghost btn-sm" id="btn-reset" style="margin-left:auto">↺ Reset</button>
         </div>
-        <div class="table-wrap" id="table-wrap">
-          <div class="loading-overlay"><div class="spinner"></div></div>
+
+        <!-- Table -->
+        <div class="table-wrap" id="table-wrap" style="border-radius:0">
+          <div style="padding:40px;text-align:center"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" id="pagination" style="display:none">
+          <div class="page-info" id="page-info"></div>
+          <div class="page-btns" id="page-btns"></div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Status picker popup -->
+<!-- Status picker -->
 <div id="status-picker" style="display:none;position:fixed;z-index:300;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:8px;min-width:160px">
-  <div style="font-size:11px;font-weight:600;color:var(--text-muted);padding:4px 8px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Cambia status</div>
-  <button class="status-opt" data-status="ok" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--success-bg)'" onmouseout="this.style.background='none'">✓ OK</button>
-  <button class="status-opt" data-status="no_tentativo" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--warning-bg)'" onmouseout="this.style.background='none'">⚠ No Tentativo</button>
-  <button class="status-opt" data-status="failed" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--danger-bg)'" onmouseout="this.style.background='none'">✕ Failed</button>
-  <button class="status-opt" data-status="manual" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--info-bg)'" onmouseout="this.style.background='none'">✎ Manuale</button>
-  <button class="status-opt" data-status="annual" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--info-bg)'" onmouseout="this.style.background='none'">★ Annuale</button>
-  <button class="status-opt" data-status="pending" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--pending-bg)'" onmouseout="this.style.background='none'">○ Pending</button>
+  <div style="font-size:11px;font-weight:600;color:var(--text-muted);padding:4px 8px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Cambia status</div>
+  <button class="status-opt" data-status="ok"           style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px">✓ OK</button>
+  <button class="status-opt" data-status="no_tentativo" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px">⚠ No Tentativo</button>
+  <button class="status-opt" data-status="failed"       style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px">✕ Failed</button>
+  <button class="status-opt" data-status="manual"       style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px">✎ Manuale</button>
+  <button class="status-opt" data-status="annual"       style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px">★ Annuale</button>
+  <button class="status-opt" data-status="pending"      style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px">○ Pending</button>
 </div>
 
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
 <script>
-let clients = [], payments = {};
-let currentYear = 2026;
-let activePicker = null; // { clientId, month, tdEl }
+const PAGE_SIZE = 50;
+let allClients = [], payments = {};
+let currentYear   = 2026;
+let statusFilter  = 'all';
+let partnerFilter = '';
+let currentPage   = 1;
+let activePicker  = null;
 
+// ── load ─────────────────────────────────────────────────────
 async function loadData() {
+  document.getElementById('table-wrap').innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner"></div></div>';
   try {
-    clients = await sb.db.select('clients', {
-      filter: 'is_active=eq.true',
-      order: 'company_name.asc',
-      columns: 'id,company_name,contact_name,service_cost,subscription_day,accounting_partner'
+    allClients = await sb.db.select('clients', {
+      filter: 'is_active=eq.true', order:'company_name.asc',
+      columns:'id,company_name,contact_name,service_cost,subscription_day,accounting_partner'
     });
-
     const pRows = await sb.db.select('subscription_payments', {
-      filter: `year=eq.${currentYear}`,
-      columns: 'client_id,month,status,notes'
+      filter:`year=eq.${currentYear}`, columns:'client_id,month,status,notes'
     });
-
     payments = {};
-    (pRows || []).forEach(p => { payments[`${p.client_id}_${p.month}`] = p; });
-
+    (pRows||[]).forEach(p => { payments[`${p.client_id}_${p.month}`] = p; });
     renderSummary();
+    currentPage = 1;
     renderGrid();
   } catch(e) {
-    document.getElementById('table-wrap').innerHTML =
-      `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+    document.getElementById('table-wrap').innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
   }
 }
 
+// ── summary KPIs ──────────────────────────────────────────────
 function renderSummary() {
-  const thisMonth = ui.currentYearMonth().month;
-  let ok = 0, issues = 0, total = 0;
-
-  clients.forEach(c => {
-    const key = `${c.id}_${thisMonth}`;
-    const p = payments[key];
-    total++;
-    if (p?.status === 'ok') ok++;
-    else if (p?.status === 'failed' || p?.status === 'no_tentativo') issues++;
+  const m = ui.currentYearMonth().month;
+  let ok=0, issues=0, pend=0, tot=allClients.length;
+  allClients.forEach(c => {
+    const s = payments[`${c.id}_${m}`]?.status;
+    if (s==='ok'||s==='manual'||s==='annual') ok++;
+    else if (s==='failed'||s==='no_tentativo') issues++;
+    else pend++;
   });
-
   document.getElementById('summary-cards').innerHTML = `
     <div class="kpi-card success">
-      <div class="kpi-label">Pagamenti OK (${ui.MONTHS[thisMonth-1]})</div>
+      <div class="kpi-label">OK (${ui.MONTHS[m-1]})</div>
       <div class="kpi-value">${ok}</div>
-      <div class="kpi-sub">su ${total} clienti</div>
+      <div class="kpi-sub">su ${tot} clienti</div>
+      <div class="kpi-icon">✓</div>
     </div>
     <div class="kpi-card danger">
       <div class="kpi-label">Da Verificare</div>
       <div class="kpi-value">${issues}</div>
-      <div class="kpi-sub">Failed / No tentativo</div>
+      <div class="kpi-sub">Failed / No tent.</div>
+      <div class="kpi-icon">⚡</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Pendenti</div>
-      <div class="kpi-value">${total - ok - issues}</div>
+      <div class="kpi-value">${pend}</div>
       <div class="kpi-sub">Non ancora registrati</div>
-    </div>
-  `;
+      <div class="kpi-icon">○</div>
+    </div>`;
 }
 
-function renderGrid() {
-  const search = document.getElementById('search').value.toLowerCase();
-  const filtered = search ? clients.filter(c => (c.company_name || '').toLowerCase().includes(search)) : clients;
-  const thisMonth = ui.currentYearMonth().month;
+// ── filter ────────────────────────────────────────────────────
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const m = ui.currentYearMonth().month;
+  return allClients.filter(c => {
+    if (q && !(c.company_name||'').toLowerCase().includes(q)) return false;
+    if (partnerFilter && c.accounting_partner !== partnerFilter) return false;
+    if (statusFilter !== 'all') {
+      const s = payments[`${c.id}_${m}`]?.status || 'pending';
+      if (statusFilter === 'ok'           && !['ok','manual','annual'].includes(s)) return false;
+      if (statusFilter === 'failed'       && s !== 'failed') return false;
+      if (statusFilter === 'no_tentativo' && s !== 'no_tentativo') return false;
+      if (statusFilter === 'pending'      && s !== 'pending') return false;
+    }
+    return true;
+  });
+}
 
-  const monthHeaders = ui.MONTHS.map((m, i) => {
-    const isFuture = (i + 1) > thisMonth;
-    return `<th class="month-h" style="${isFuture ? 'opacity:0.3' : ''}">${m}</th>`;
+// ── render ────────────────────────────────────────────────────
+function renderGrid() {
+  const filtered   = getFiltered();
+  const thisMonth  = ui.currentYearMonth().month;
+  const totalPages = Math.max(1, Math.ceil(filtered.length/PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const page = filtered.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+
+  document.getElementById('filter-count').textContent =
+    `${filtered.length} / ${allClients.length} clienti`;
+
+  const monthHeaders = ui.MONTHS.map((m,i) => {
+    const fut = (i+1) > thisMonth;
+    return `<th class="month-h" style="${fut?'opacity:.3':''}">${m}</th>`;
   }).join('');
 
-  const rows = filtered.map(c => {
-    const cells = ui.MONTHS.map((_, i) => {
-      const m = i + 1;
-      const isFuture = m > thisMonth;
-      if (isFuture) return `<td class="status-cell" style="opacity:0.15">·</td>`;
+  const rows = page.map(c => {
+    const cells = ui.MONTHS.map((_,i) => {
+      const m = i+1;
+      if (m > thisMonth) return `<td class="status-cell" style="opacity:.15">·</td>`;
       const p = payments[`${c.id}_${m}`];
-      const status = p?.status || 'pending';
-      return `<td class="status-cell" onclick="openPicker('${c.id}', ${m}, this)" title="${p?.notes || ''}">${ui.monthBadge(status)}</td>`;
+      return `<td class="status-cell" onclick="openPicker('${c.id}',${m},this)" title="${p?.notes||''}">${ui.monthBadge(p?.status||'pending')}</td>`;
     }).join('');
 
     return `<tr>
       <td>
         <div class="td-company">${ui.escapeHtml(c.company_name)}</div>
-        <div class="td-contact">${ui.escapeHtml(c.contact_name) || ''}</div>
+        <div class="td-contact">${ui.escapeHtml(c.contact_name)||''}</div>
       </td>
       <td style="font-size:12px">${ui.formatAED(c.service_cost)}</td>
-      <td style="font-size:12px;color:var(--text-muted)">${c.subscription_day ? 'Gg. ' + c.subscription_day : '—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${c.subscription_day?'Gg. '+c.subscription_day:'—'}</td>
+      <td>${ui.partnerLabel(c.accounting_partner)}</td>
       ${cells}
     </tr>`;
   }).join('');
 
-  document.getElementById('table-wrap').innerHTML = `
+  document.getElementById('table-wrap').innerHTML = rows.length ? `
     <table>
       <thead>
         <tr>
           <th style="min-width:200px">Cliente</th>
           <th>Costo</th>
           <th>Giorno</th>
+          <th>Partner</th>
           ${monthHeaders}
         </tr>
       </thead>
       <tbody>${rows}</tbody>
-    </table>`;
+    </table>` :
+    `<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><h3>Nessun risultato</h3><p>Prova a cambiare i filtri</p></div>`;
+
+  renderPagination(filtered.length, totalPages);
 }
 
-// Status picker
+// ── pagination ────────────────────────────────────────────────
+function renderPagination(total, totalPages) {
+  const pg = document.getElementById('pagination');
+  if (totalPages <= 1) { pg.style.display='none'; return; }
+  pg.style.display='flex';
+  document.getElementById('page-info').textContent = `Pagina ${currentPage} di ${totalPages} · ${total} clienti`;
+  let btns = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  getPageRange(currentPage,totalPages).forEach(p => {
+    if (p==='…') btns+=`<span style="padding:0 4px;line-height:34px;color:var(--text-muted)">…</span>`;
+    else btns+=`<button class="page-btn${p===currentPage?' on':''}" onclick="goPage(${p})">${p}</button>`;
+  });
+  btns+=`<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  document.getElementById('page-btns').innerHTML = btns;
+}
+function getPageRange(cur,tot) {
+  if(tot<=7) return Array.from({length:tot},(_,i)=>i+1);
+  if(cur<=4) return [1,2,3,4,5,'…',tot];
+  if(cur>=tot-3) return [1,'…',tot-4,tot-3,tot-2,tot-1,tot];
+  return [1,'…',cur-1,cur,cur+1,'…',tot];
+}
+function goPage(p) {
+  const tot=Math.ceil(getFiltered().length/PAGE_SIZE);
+  if(p<1||p>tot) return;
+  currentPage=p; renderGrid();
+  document.querySelector('.card').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── picker ────────────────────────────────────────────────────
 function openPicker(clientId, month, tdEl) {
-  activePicker = { clientId, month, tdEl };
+  activePicker = {clientId, month, tdEl};
   const picker = document.getElementById('status-picker');
-  const rect = tdEl.getBoundingClientRect();
-  picker.style.top = (rect.bottom + window.scrollY + 4) + 'px';
-  picker.style.left = (rect.left + window.scrollX) + 'px';
+  const rect   = tdEl.getBoundingClientRect();
+  picker.style.top  = (rect.bottom + window.scrollY + 4)+'px';
+  picker.style.left = (rect.left   + window.scrollX)+'px';
   picker.style.display = 'block';
 }
 
 document.getElementById('status-picker').querySelectorAll('.status-opt').forEach(btn => {
   btn.addEventListener('click', async () => {
-    const { clientId, month, tdEl } = activePicker;
+    const {clientId, month, tdEl} = activePicker;
     const status = btn.dataset.status;
     document.getElementById('status-picker').style.display = 'none';
-
     try {
-      await sb.db.upsertSubscriptionPayment(clientId, currentYear, month, { status });
-      payments[`${clientId}_${month}`] = { client_id: clientId, month, year: currentYear, status };
+      await sb.db.upsertSubscriptionPayment(clientId, currentYear, month, {status});
+      payments[`${clientId}_${month}`] = {client_id:clientId, month, year:currentYear, status};
       tdEl.innerHTML = ui.monthBadge(status);
       renderSummary();
-      await sb.db.log('subscription_updated', clientId, { month, year: currentYear, status });
-      ui.showToast('Status aggiornato', 'success');
-    } catch(e) {
-      ui.showToast('Errore: ' + e.message, 'error');
-    }
+      await sb.db.log('subscription_updated', clientId, {month, year:currentYear, status});
+      ui.showToast('Status aggiornato','success');
+    } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
   });
 });
 
+// ── events ────────────────────────────────────────────────────
 document.addEventListener('click', e => {
-  if (!e.target.closest('#status-picker') && !e.target.closest('.status-cell')) {
-    document.getElementById('status-picker').style.display = 'none';
-  }
+  if(!e.target.closest('#status-picker')&&!e.target.closest('.status-cell'))
+    document.getElementById('status-picker').style.display='none';
 });
 
-document.getElementById('search').addEventListener('input', renderGrid);
-document.getElementById('filter-year').addEventListener('change', e => {
-  currentYear = parseInt(e.target.value);
-  loadData();
+document.getElementById('search').addEventListener('input', ()=>{ currentPage=1; renderGrid(); });
+
+document.getElementById('filter-year').addEventListener('change', e=>{
+  currentYear=parseInt(e.target.value); loadData();
+});
+
+document.getElementById('filter-partner').addEventListener('change', e=>{
+  partnerFilter=e.target.value; currentPage=1; renderGrid();
+});
+
+document.querySelectorAll('.filter-chip').forEach(chip=>{
+  chip.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('on'));
+    chip.classList.add('on');
+    statusFilter=chip.dataset.status; currentPage=1; renderGrid();
+  });
+});
+
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  document.getElementById('search').value='';
+  document.getElementById('filter-partner').value='';
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('on'));
+  document.querySelector('.filter-chip[data-status="all"]').classList.add('on');
+  statusFilter='all'; partnerFilter=''; currentPage=1; renderGrid();
 });
 
 loadData();

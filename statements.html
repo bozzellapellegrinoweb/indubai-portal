@@ -7,11 +7,50 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <style>
-    .month-header { text-align:center; font-size:11px; padding:8px 4px !important; }
+    .month-header  { text-align:center; font-size:11px; padding:8px 4px !important; }
     .month-cell-td { text-align:center; padding:6px 4px !important; cursor:pointer; }
-    .month-cell-td:hover { background: var(--surface2); }
-    .client-col { min-width: 200px; }
-    .bank-col { min-width: 120px; font-size:11px; color:var(--text-muted); }
+    .month-cell-td:hover { background:var(--surface2); }
+    .client-col { min-width:200px; }
+    .bank-col   { min-width:110px; font-size:11px; color:var(--text-muted); }
+
+    /* Filter bar */
+    .filter-bar {
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      padding:12px 20px; background:white; border-bottom:1.5px solid var(--border);
+    }
+    .filter-bar select, .filter-bar input {
+      padding:7px 12px; border:1.5px solid var(--border); border-radius:8px;
+      font-size:13px; font-family:inherit; outline:none; background:white;
+      transition:border-color .15s;
+    }
+    .filter-bar select:focus, .filter-bar input:focus { border-color:var(--primary); }
+    .filter-chip {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600;
+      cursor:pointer; border:1.5px solid var(--border); background:white;
+      color:var(--text-muted); transition:all .12s;
+    }
+    .filter-chip:hover { border-color:var(--primary); color:var(--primary); }
+    .filter-chip.on { background:var(--primary); border-color:var(--primary); color:white; }
+    .filter-count { margin-left:auto; font-size:12px; color:var(--text-muted); white-space:nowrap; }
+
+    /* Pagination */
+    .pagination {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 20px; border-top:1.5px solid var(--border); background:white;
+      flex-wrap:wrap; gap:10px;
+    }
+    .page-info { font-size:13px; color:var(--text-muted); }
+    .page-btns { display:flex; gap:6px; }
+    .page-btn {
+      width:34px; height:34px; border-radius:8px; border:1.5px solid var(--border);
+      background:white; cursor:pointer; font-size:13px; font-weight:600;
+      display:flex; align-items:center; justify-content:center;
+      transition:all .12s; color:var(--text);
+    }
+    .page-btn:hover { border-color:var(--primary); color:var(--primary); }
+    .page-btn.on { background:var(--primary); border-color:var(--primary); color:white; }
+    .page-btn:disabled { opacity:.35; cursor:not-allowed; }
   </style>
   <script src="/js/config.js"></script>
 </head>
@@ -23,26 +62,40 @@
         <div class="topbar-title">Estratti Conto</div>
         <div class="topbar-subtitle">Griglia ricezione estratti mensili</div>
       </div>
-      <div class="toolbar">
-        <select class="form-control" id="filter-year" style="width:auto">
-          <option value="2026">2026</option>
-          <option value="2025">2025</option>
-        </select>
-        <div class="search-box">
-          <span class="search-icon">🔍</span>
-          <input type="text" class="form-control" id="search" placeholder="Cerca cliente..." style="min-width:200px">
-        </div>
-      </div>
     </div>
 
     <div class="page-content">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Ricezione Estratti Conto</div>
-          <div class="card-subtitle" id="grid-summary">Caricamento...</div>
+      <div class="card" style="padding:0;overflow:hidden">
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+          <select id="filter-year">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+          </select>
+          <div style="position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;pointer-events:none">🔍</span>
+            <input type="text" id="search" placeholder="Cerca cliente..." style="padding-left:30px;min-width:200px">
+          </div>
+          <!-- Status chips -->
+          <div class="filter-chip on" data-status="all">Tutti</div>
+          <div class="filter-chip" data-status="ok">✓ Completi</div>
+          <div class="filter-chip" data-status="received">○ Ricevuti</div>
+          <div class="filter-chip" data-status="missing">✕ Mancanti</div>
+          <span class="filter-count" id="filter-count"></span>
+          <button class="btn btn-ghost btn-sm" id="btn-reset" style="margin-left:auto">↺ Reset</button>
         </div>
-        <div class="table-wrap" id="table-wrap">
-          <div class="loading-overlay"><div class="spinner"></div></div>
+
+        <!-- Table -->
+        <div class="table-wrap" id="table-wrap" style="border-radius:0">
+          <div style="padding:40px;text-align:center"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" id="pagination" style="display:none">
+          <div class="page-info" id="page-info"></div>
+          <div class="page-btns" id="page-btns"></div>
         </div>
       </div>
     </div>
@@ -52,96 +105,100 @@
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
 <script>
-let clients = [];
-let statements = {}; // { clientId_month: { received, registered } }
+const PAGE_SIZE = 50;
+let allClients = [];
+let statements  = {};
 let currentYear = 2026;
+let statusFilter = 'all';
+let currentPage  = 1;
 
+// ── load ─────────────────────────────────────────────────────
 async function loadData() {
+  document.getElementById('table-wrap').innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner"></div></div>';
   try {
-    // Load active clients in bilancio
-    clients = await sb.db.select('clients', {
+    allClients = await sb.db.select('clients', {
       filter: 'is_active=eq.true&in_bilancio=eq.true',
-      order: 'company_name.asc',
-      columns: 'id,company_name,contact_name,bank_accounts'
+      order:  'company_name.asc',
+      columns:'id,company_name,contact_name,bank_accounts'
     });
-
-    // Load all statements for the year
     const stmts = await sb.db.select('bank_statements', {
       filter: `year=eq.${currentYear}`,
-      columns: 'client_id,month,received,registered'
+      columns:'client_id,month,received,registered'
     });
-
     statements = {};
-    (stmts || []).forEach(s => {
-      statements[`${s.client_id}_${s.month}`] = s;
-    });
-
+    (stmts||[]).forEach(s => { statements[`${s.client_id}_${s.month}`] = s; });
+    currentPage = 1;
     renderGrid();
   } catch(e) {
-    document.getElementById('table-wrap').innerHTML =
-      `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+    document.getElementById('table-wrap').innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
   }
 }
 
-function renderGrid() {
-  const search = document.getElementById('search').value.toLowerCase();
-  const filtered = search
-    ? clients.filter(c => (c.company_name || '').toLowerCase().includes(search))
-    : clients;
-
+// ── filter ────────────────────────────────────────────────────
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase();
   const thisMonth = ui.currentYearMonth().month;
 
-  // Count received for summary
-  let received = 0, total = 0;
-  filtered.forEach(c => {
-    for (let m = 1; m <= thisMonth; m++) {
-      total++;
-      if (statements[`${c.id}_${m}`]?.received) received++;
+  return allClients.filter(c => {
+    // Text search
+    if (q && !(c.company_name||'').toLowerCase().includes(q)) return false;
+
+    // Status filter — based on current month
+    if (statusFilter !== 'all') {
+      const key = `${c.id}_${thisMonth}`;
+      const s = statements[key];
+      if (statusFilter === 'ok'      && !(s?.received && s?.registered)) return false;
+      if (statusFilter === 'received'&& !(s?.received && !s?.registered)) return false;
+      if (statusFilter === 'missing' && s?.received) return false;
     }
+    return true;
   });
+}
 
-  document.getElementById('grid-summary').textContent =
-    `${filtered.length} clienti · ${received}/${total} estratti ricevuti (mesi 1-${thisMonth})`;
+// ── render ────────────────────────────────────────────────────
+function renderGrid() {
+  const filtered  = getFiltered();
+  const thisMonth = ui.currentYearMonth().month;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
 
-  const monthHeaders = ui.MONTHS.map((m, i) => {
-    const isFuture = (i + 1) > thisMonth;
-    return `<th class="month-header" style="${isFuture ? 'opacity:0.35' : ''}">${m}</th>`;
+  const page = filtered.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+
+  // Summary count
+  document.getElementById('filter-count').textContent =
+    `${filtered.length} / ${allClients.length} clienti`;
+
+  // Month headers
+  const monthHeaders = ui.MONTHS.map((m,i) => {
+    const fut = (i+1) > thisMonth;
+    return `<th class="month-header" style="${fut?'opacity:.35':''}">${m}</th>`;
   }).join('');
 
-  const rows = filtered.map(c => {
-    const monthCells = ui.MONTHS.map((_, i) => {
-      const m = i + 1;
-      const key = `${c.id}_${m}`;
-      const s = statements[key];
-      const isFuture = m > thisMonth;
-
-      if (isFuture) return `<td class="month-cell-td" style="opacity:0.2">·</td>`;
-
-      let cls = 'month-empty', symbol = '·';
-      if (s?.received && s?.registered) { cls = 'month-ok'; symbol = '✓'; }
-      else if (s?.received) { cls = 'month-warn'; symbol = '○'; }
-      else { cls = 'month-fail'; symbol = '✕'; }
-
-      const title = s?.received
-        ? (s?.registered ? 'Ricevuto e registrato' : 'Ricevuto, non registrato')
-        : 'Non ricevuto';
-
-      return `<td class="month-cell-td" onclick="toggleStatement('${c.id}', ${m}, this)" title="${title}">
-        <span class="month-cell ${cls}">${symbol}</span>
-      </td>`;
+  // Rows
+  const rows = page.map(c => {
+    const cells = ui.MONTHS.map((_,i) => {
+      const m = i+1;
+      if (m > thisMonth) return `<td class="month-cell-td" style="opacity:.2">·</td>`;
+      const s = statements[`${c.id}_${m}`];
+      let cls='month-fail', sym='✕';
+      if (s?.received && s?.registered) { cls='month-ok';   sym='✓'; }
+      else if (s?.received)             { cls='month-warn'; sym='○'; }
+      const title = s?.received ? (s?.registered?'Ricevuto e registrato':'Ricevuto, non registrato') : 'Non ricevuto';
+      return `<td class="month-cell-td" onclick="toggleStatement('${c.id}',${m},this)" title="${title}">
+        <span class="month-cell ${cls}">${sym}</span></td>`;
     }).join('');
 
     return `<tr>
       <td class="client-col">
         <div class="td-company">${ui.escapeHtml(c.company_name)}</div>
-        <div class="td-contact">${ui.escapeHtml(c.contact_name) || ''}</div>
+        <div class="td-contact">${ui.escapeHtml(c.contact_name)||''}</div>
       </td>
-      <td class="bank-col">${(c.bank_accounts || []).join(', ') || '—'}</td>
-      ${monthCells}
+      <td class="bank-col">${(c.bank_accounts||[]).join(', ')||'—'}</td>
+      ${cells}
     </tr>`;
   }).join('');
 
-  document.getElementById('table-wrap').innerHTML = `
+  document.getElementById('table-wrap').innerHTML = rows.length ? `
     <table class="month-grid-table">
       <thead>
         <tr>
@@ -151,48 +208,94 @@ function renderGrid() {
         </tr>
         <tr>
           <td colspan="2" style="padding:6px 14px;font-size:11px;color:var(--text-muted)">
-            Legenda: <span class="month-cell month-ok">✓</span> Ricevuto+Reg. 
-            <span class="month-cell month-warn">○</span> Ricevuto 
+            Legenda: <span class="month-cell month-ok">✓</span> Ric.+Reg.
+            <span class="month-cell month-warn">○</span> Ricevuto
             <span class="month-cell month-fail">✕</span> Mancante
           </td>
-          ${ui.MONTHS.map(() => '<td></td>').join('')}
+          ${ui.MONTHS.map(()=>'<td></td>').join('')}
         </tr>
       </thead>
       <tbody>${rows}</tbody>
-    </table>`;
+    </table>` :
+    `<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><h3>Nessun risultato</h3><p>Prova a cambiare i filtri</p></div>`;
+
+  renderPagination(filtered.length, totalPages);
 }
 
+// ── pagination ────────────────────────────────────────────────
+function renderPagination(total, totalPages) {
+  const pg = document.getElementById('pagination');
+  if (totalPages <= 1) { pg.style.display='none'; return; }
+  pg.style.display = 'flex';
+  document.getElementById('page-info').textContent =
+    `Pagina ${currentPage} di ${totalPages} · ${total} clienti`;
+
+  let btns = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  const range = getPageRange(currentPage, totalPages);
+  range.forEach(p => {
+    if (p === '…') btns += `<span style="padding:0 4px;line-height:34px;color:var(--text-muted)">…</span>`;
+    else btns += `<button class="page-btn${p===currentPage?' on':''}" onclick="goPage(${p})">${p}</button>`;
+  });
+  btns += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  document.getElementById('page-btns').innerHTML = btns;
+}
+
+function getPageRange(cur, tot) {
+  if (tot <= 7) return Array.from({length:tot},(_,i)=>i+1);
+  if (cur <= 4) return [1,2,3,4,5,'…',tot];
+  if (cur >= tot-3) return [1,'…',tot-4,tot-3,tot-2,tot-1,tot];
+  return [1,'…',cur-1,cur,cur+1,'…',tot];
+}
+
+function goPage(p) {
+  const tot = Math.ceil(getFiltered().length/PAGE_SIZE);
+  if (p<1||p>tot) return;
+  currentPage = p;
+  renderGrid();
+  document.querySelector('.card').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── toggle ────────────────────────────────────────────────────
 async function toggleStatement(clientId, month, tdEl) {
   const key = `${clientId}_${month}`;
-  const current = statements[key];
-
-  // Cycle: missing → received → received+registered → missing
+  const cur = statements[key];
   let newState;
-  if (!current?.received) newState = { received: true, registered: false };
-  else if (!current?.registered) newState = { received: true, registered: true };
-  else newState = { received: false, registered: false };
+  if (!cur?.received)       newState = {received:true,  registered:false};
+  else if (!cur?.registered) newState = {received:true,  registered:true};
+  else                       newState = {received:false, registered:false};
 
   try {
     await sb.db.upsertBankStatement(clientId, currentYear, month, newState);
-    statements[key] = { ...current, ...newState, client_id: clientId, month };
-
-    // Update cell visually
-    let cls = 'month-empty', symbol = '·';
-    if (newState.received && newState.registered) { cls = 'month-ok'; symbol = '✓'; }
-    else if (newState.received) { cls = 'month-warn'; symbol = '○'; }
-    else { cls = 'month-fail'; symbol = '✕'; }
-    tdEl.innerHTML = `<span class="month-cell ${cls}">${symbol}</span>`;
-
-    await sb.db.log('bank_statement_updated', clientId, { month, year: currentYear, ...newState });
-  } catch(e) {
-    ui.showToast('Errore aggiornamento: ' + e.message, 'error');
-  }
+    statements[key] = {...cur, ...newState, client_id:clientId, month};
+    let cls='month-fail',sym='✕';
+    if (newState.received && newState.registered) {cls='month-ok';  sym='✓';}
+    else if (newState.received)                   {cls='month-warn';sym='○';}
+    tdEl.innerHTML = `<span class="month-cell ${cls}">${sym}</span>`;
+    await sb.db.log('bank_statement_updated', clientId, {month,year:currentYear,...newState});
+  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
 }
 
-document.getElementById('search').addEventListener('input', renderGrid);
-document.getElementById('filter-year').addEventListener('change', e => {
-  currentYear = parseInt(e.target.value);
-  loadData();
+// ── events ────────────────────────────────────────────────────
+document.getElementById('search').addEventListener('input', () => { currentPage=1; renderGrid(); });
+document.getElementById('filter-year').addEventListener('change', e => { currentYear=parseInt(e.target.value); loadData(); });
+
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('on'));
+    chip.classList.add('on');
+    statusFilter = chip.dataset.status;
+    currentPage = 1;
+    renderGrid();
+  });
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  document.getElementById('search').value = '';
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('on'));
+  document.querySelector('.filter-chip[data-status="all"]').classList.add('on');
+  statusFilter = 'all';
+  currentPage = 1;
+  renderGrid();
 });
 
 loadData();
