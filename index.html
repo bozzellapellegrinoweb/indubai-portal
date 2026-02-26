@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/config.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     .kpi-strip { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:14px; margin-bottom:24px; }
     .kpi-card { background:white; border:1.5px solid var(--border); border-radius:14px; padding:18px 20px; position:relative; overflow:hidden; transition:box-shadow .15s,transform .15s; cursor:default; }
@@ -191,7 +191,7 @@
 const { year, month } = ui.currentYearMonth();
 document.getElementById('date-label').textContent = `${ui.MONTHS_FULL[month-1]} ${year}`;
 document.getElementById('pay-month-lbl').textContent = `${ui.MONTHS[month-1]} ${year}`;
-const isAdmin = sb.getCurrentProfile()?.role === 'admin';
+const adminUser = sb.getCurrentProfile()?.role === 'admin';
 
 // ── tabs ──────────────────────────────────────────────────────
 const loaded = { overview: false };
@@ -223,9 +223,9 @@ async function loadKPIs() {
       <div class="kpi-card c-danger"><div class="kpi-label">Estratti Mancanti</div><div class="kpi-value">${kpis.bank_statements_missing??'—'}</div><div class="kpi-sub">Mese corrente</div><div class="kpi-icon">📄</div></div>
       <div class="kpi-card c-warn"><div class="kpi-label">Abbonamenti ⚠</div><div class="kpi-value">${kpis.subscriptions_issue??'—'}</div><div class="kpi-sub">Da verificare</div><div class="kpi-icon">💳</div></div>
       <div class="kpi-card c-teal"><div class="kpi-label">VAT in Scadenza</div><div class="kpi-value">${kpis.vat_deadlines_next_30_days??'—'}</div><div class="kpi-sub">Prossimi 30 giorni</div><div class="kpi-icon">📋</div></div>`;
-    if (isAdmin) h += `<div class="kpi-card c-accent"><div class="kpi-label">Incassato Mese</div><div class="kpi-value" id="kpi-rev">—</div><div class="kpi-sub" id="kpi-rev-sub">Caricamento...</div><div class="kpi-icon">💰</div></div>`;
+    if (adminUser) h += `<div class="kpi-card c-accent"><div class="kpi-label">Incassato Mese</div><div class="kpi-value" id="kpi-rev">—</div><div class="kpi-sub" id="kpi-rev-sub">Caricamento...</div><div class="kpi-icon">💰</div></div>`;
     el.innerHTML = h;
-    if (isAdmin) loadRevenue();
+    if (adminUser) loadRevenue();
   } catch(e) {
     el.innerHTML = `<div class="alert alert-danger">Errore KPIs: ${e.message}</div>`;
   }
