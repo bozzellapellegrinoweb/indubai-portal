@@ -441,10 +441,15 @@ const DRV = (() => {
     // Auth already checked by app.js — if we're here, we're logged in
     const listEl = document.getElementById('dc-list');
 
-    // Debug: log token status
+    // Debug: show token info visibly on page
     const dbgTok = tok();
-    console.log('[Drive] token type:', dbgTok === AK ? 'ANON (not logged in!)' : 'USER token ✓');
-    console.log('[Drive] session:', sb.getSession() ? 'present' : 'MISSING');
+    const isAnon = dbgTok === AK;
+    const listEl2 = document.getElementById('dc-list');
+    listEl2.innerHTML = '<div style="padding:10px;font-size:11px;background:#f0f4f8;margin:8px;border-radius:6px;word-break:break-all">' +
+      '<b>Token:</b> ' + (isAnon ? '❌ ANON' : '✅ USER') + '<br>' +
+      '<b>Session:</b> ' + (sb.getSession() ? '✅ presente' : '❌ MANCANTE') + '<br>' +
+      '<b>LocalStorage key:</b> ' + (localStorage.getItem('indubai_session') ? '✅' : '❌ vuoto') +
+      '</div>';
 
     try {
       clients = await GET('/rest/v1/clients?is_active=eq.true&select=id,company_name&order=company_name.asc');
