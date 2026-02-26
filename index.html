@@ -249,21 +249,24 @@ function barChart(id, labels, vals, colors) {
 
 // ── OVERVIEW charts ───────────────────────────────────────────
 async function loadCtypeChart() {
+  const wrap = document.querySelector('#panel-overview .d2:first-child .card:first-child .chart-wrap');
   try {
     const rows = await sb.db.select('clients',{columns:'company_type',filter:'is_active=eq.true'});
     const cnt={}; (rows||[]).forEach(r=>{const t=r.company_type||'N/D';cnt[t]=(cnt[t]||0)+1;});
     const l=Object.keys(cnt),v=Object.values(cnt);
+    if(!l.length){if(wrap)wrap.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">Nessun dato</div>';return;}
     donut('ch-ctype',l,v); legend('lg-ctype',l,v);
-  } catch(e){console.error('ctype',e);}
+  } catch(e){if(wrap)wrap.innerHTML=`<div class="alert alert-danger" style="margin:8px;font-size:12px">${e.message}</div>`;}
 }
 async function loadPayChart() {
+  const wrap = document.querySelector('#panel-overview .d2:first-child .card:last-child .chart-wrap');
   try {
     const rows = await sb.db.select('subscription_payments',{columns:'status',filter:`year=eq.${year}&month=eq.${month}`});
     const m={ok:0,failed:0,pending:0,no_tentativo:0};
     (rows||[]).forEach(r=>{if(m[r.status]!==undefined)m[r.status]++;else m.pending++;});
-    const l=['OK','Fallito','Pending','Non tentato'],v=[m.ok,m.failed,m.pending,m.no_tentativo],c=['#059669','#dc2626','#d97706','#6b7280'];
-    donut('ch-pay',l,v,c); legend('lg-pay',l,v,c);
-  } catch(e){console.error('pay',e);}
+    const l=['OK','Fallito','Pending','Non tentato'],v=[m.ok,m.failed,m.pending,m.no_tentativo],colors=['#059669','#dc2626','#d97706','#6b7280'];
+    donut('ch-pay',l,v,colors); legend('lg-pay',l,v,colors);
+  } catch(e){if(wrap)wrap.innerHTML=`<div class="alert alert-danger" style="margin:8px;font-size:12px">${e.message}</div>`;}
 }
 async function loadStatementsOv() {
   const el=document.getElementById('ov-statements');
@@ -278,7 +281,7 @@ async function loadStatementsOv() {
 async function loadOnboardingOv() {
   const el=document.getElementById('ov-onboarding');
   try {
-    const rows = await sb.db.select('onboarding_checklist',{columns:'completed_steps,total_steps,client_id,clients(is_active)',filter:'clients.is_active=eq.true'});
+    const rows = await sb.db.select('onboarding_checklist',{columns:'completed_steps,total_steps,client_id,clients(is_active,company_name)'});
     const active=(rows||[]).filter(r=>r.clients?.is_active);
     const done=active.filter(r=>r.completed_steps>=r.total_steps&&r.total_steps>0).length;
     const inp=active.filter(r=>r.completed_steps>0&&r.completed_steps<r.total_steps).length;
@@ -315,7 +318,7 @@ async function loadTaskCharts() {
     (tasks||[]).forEach(t=>{if(bp[t.priority]!==undefined)bp[t.priority]++;if(bs[t.status]!==undefined)bs[t.status]++;});
     barChart('ch-tpri',['Urgente','Alta','Normale','Bassa'],Object.values(bp),['#dc2626','#d97706','#0369a1','#6b7280']);
     barChart('ch-tstat',['Aperta','In corso','Completata'],Object.values(bs),['#0369a1','#d97706','#059669']);
-  } catch(e){console.error('taskcharts',e);}
+  } catch(e){ document.getElementById('ch-tpri')?.closest('.chart-wrap')?.insertAdjacentHTML('beforeend',`<div style="font-size:12px;color:var(--danger)">${e.message}</div>`); }
 }
 
 // ── PAYMENTS ──────────────────────────────────────────────────
@@ -334,7 +337,7 @@ async function loadPayStatChart() {
     (rows||[]).forEach(r=>{if(m[r.status]!==undefined)m[r.status]++;});
     const l=['OK','Fallito','Pending','Non tentato'],v=[m.ok,m.failed,m.pending,m.no_tentativo],c=['#059669','#dc2626','#d97706','#6b7280'];
     donut('ch-pstat',l,v,c); legend('lg-pstat',l,v,c);
-  } catch(e){console.error('paystat',e);}
+  } catch(e){ document.getElementById('ch-pstat')?.closest('.chart-wrap')?.insertAdjacentHTML('beforeend',`<div class="alert alert-danger" style="margin:8px;font-size:12px">${e.message}</div>`); }
 }
 
 // ── DEADLINES ─────────────────────────────────────────────────
@@ -385,7 +388,7 @@ async function loadCzoneChart() {
     const cnt={}; (rows||[]).forEach(r=>{const z=r.business_location||'N/D';cnt[z]=(cnt[z]||0)+1;});
     const l=Object.keys(cnt),v=Object.values(cnt);
     donut('ch-czone',l,v); legend('lg-czone',l,v);
-  } catch(e){console.error('czone',e);}
+  } catch(e){ document.getElementById('ch-czone')?.closest('.chart-wrap')?.insertAdjacentHTML('beforeend',`<div class="alert alert-danger" style="margin:8px;font-size:12px">${e.message}</div>`); }
 }
 
 // ── REVENUE ───────────────────────────────────────────────────
