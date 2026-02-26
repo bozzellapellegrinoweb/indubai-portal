@@ -9,179 +9,64 @@
   <script src="/js/config.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
-    /* ── KPI strip ── */
-    .kpi-strip {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-      gap: 14px;
-      margin-bottom: 24px;
-    }
-    .kpi-card {
-      background: white;
-      border: 1.5px solid var(--border);
-      border-radius: 14px;
-      padding: 18px 20px;
-      position: relative;
-      overflow: hidden;
-      transition: box-shadow .15s, transform .15s;
-    }
-    .kpi-card:hover { box-shadow: 0 6px 24px rgba(26,58,92,.1); transform: translateY(-2px); }
-    .kpi-card.accent { background: linear-gradient(135deg,#1a3a5c,#2563a8); border-color: transparent; }
-    .kpi-card.warn   { background: linear-gradient(135deg,#92400e,#d97706); border-color: transparent; }
-    .kpi-card.danger { background: linear-gradient(135deg,#7f1d1d,#dc2626); border-color: transparent; }
-    .kpi-card.info   { background: linear-gradient(135deg,#164e63,#0891b2); border-color: transparent; }
-    .kpi-label  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-bottom: 6px; }
-    .kpi-value  { font-size: 30px; font-weight: 900; color: var(--text); line-height: 1; margin-bottom: 4px; }
-    .kpi-sub    { font-size: 11px; color: var(--text-muted); }
-    .kpi-icon   { position: absolute; right: 14px; top: 14px; font-size: 22px; opacity: .18; }
-    .kpi-card.accent .kpi-label,
-    .kpi-card.warn .kpi-label,
-    .kpi-card.danger .kpi-label,
-    .kpi-card.info .kpi-label  { color: rgba(255,255,255,.65); }
-    .kpi-card.accent .kpi-value,
-    .kpi-card.warn .kpi-value,
-    .kpi-card.danger .kpi-value,
-    .kpi-card.info .kpi-value  { color: white; }
-    .kpi-card.accent .kpi-sub,
-    .kpi-card.warn .kpi-sub,
-    .kpi-card.danger .kpi-sub,
-    .kpi-card.info .kpi-sub    { color: rgba(255,255,255,.55); }
-    .kpi-card.accent .kpi-icon,
-    .kpi-card.warn .kpi-icon,
-    .kpi-card.danger .kpi-icon,
-    .kpi-card.info .kpi-icon   { color: rgba(255,255,255,.2); opacity: 1; }
+    .kpi-strip { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:14px; margin-bottom:24px; }
+    .kpi-card { background:white; border:1.5px solid var(--border); border-radius:14px; padding:18px 20px; position:relative; overflow:hidden; transition:box-shadow .15s,transform .15s; cursor:default; }
+    .kpi-card:hover { box-shadow:0 6px 24px rgba(26,58,92,.1); transform:translateY(-2px); }
+    .kpi-card.c-accent { background:linear-gradient(135deg,#1a3a5c,#2563a8); border-color:transparent; }
+    .kpi-card.c-warn   { background:linear-gradient(135deg,#92400e,#d97706); border-color:transparent; }
+    .kpi-card.c-danger { background:linear-gradient(135deg,#7f1d1d,#dc2626); border-color:transparent; }
+    .kpi-card.c-teal   { background:linear-gradient(135deg,#164e63,#0891b2); border-color:transparent; }
+    .kpi-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); margin-bottom:6px; }
+    .kpi-value { font-size:30px; font-weight:900; color:var(--text); line-height:1; margin-bottom:4px; }
+    .kpi-sub   { font-size:11px; color:var(--text-muted); }
+    .kpi-icon  { position:absolute; right:14px; top:14px; font-size:22px; opacity:.18; }
+    .kpi-card[class*="c-"] .kpi-label { color:rgba(255,255,255,.65); }
+    .kpi-card[class*="c-"] .kpi-value { color:white; }
+    .kpi-card[class*="c-"] .kpi-sub   { color:rgba(255,255,255,.55); }
+    .kpi-card[class*="c-"] .kpi-icon  { opacity:.25; }
 
-    /* ── Section tabs ── */
-    .dash-tabs {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-    .dtab {
-      padding: 7px 16px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1.5px solid var(--border);
-      background: white;
-      color: var(--text-muted);
-      transition: all .15s;
-    }
-    .dtab:hover { border-color: var(--primary); color: var(--primary); }
-    .dtab.on { background: var(--primary); border-color: var(--primary); color: white; }
+    .dash-tabs { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+    .dtab { padding:7px 16px; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; border:1.5px solid var(--border); background:white; color:var(--text-muted); transition:all .15s; }
+    .dtab:hover { border-color:var(--primary); color:var(--primary); }
+    .dtab.on { background:var(--primary); border-color:var(--primary); color:white; }
+    .dpanel { display:none; }
+    .dpanel.on { display:block; }
 
-    /* ── Dashboard panels ── */
-    .dpanel { display: none; }
-    .dpanel.on { display: block; }
+    .chl { display:flex; align-items:center; justify-content:space-between; padding:14px 20px 12px; border-bottom:1px solid var(--border); }
+    .chl-t { font-size:14px; font-weight:700; color:var(--text); }
+    .chl-s { font-size:11px; color:var(--text-muted); margin-top:2px; }
+    .go-btn { display:inline-flex; align-items:center; gap:5px; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; background:#e8f0fe; color:var(--primary); text-decoration:none; border:none; cursor:pointer; transition:all .15s; white-space:nowrap; flex-shrink:0; }
+    .go-btn:hover { background:var(--primary); color:white; }
 
-    /* ── Card header with link ── */
-    .card-header-link {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px 12px;
-      border-bottom: 1px solid var(--border);
-    }
-    .card-title-group { display: flex; flex-direction: column; gap: 2px; }
-    .card-title-main  { font-size: 14px; font-weight: 700; color: var(--text); }
-    .card-title-sub   { font-size: 11px; color: var(--text-muted); }
-    .go-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 6px 14px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      background: #e8f0fe;
-      color: var(--primary);
-      text-decoration: none;
-      border: none;
-      cursor: pointer;
-      transition: all .15s;
-      white-space: nowrap;
-    }
-    .go-btn:hover { background: var(--primary); color: white; }
+    .d2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
 
-    /* ── Grid layouts ── */
-    .d2col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    .d3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    .d12col { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 20px; }
-    .d21col { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .drow { display:flex; align-items:center; gap:12px; padding:10px 20px; border-bottom:1px solid var(--border); transition:background .1s; cursor:pointer; text-decoration:none; }
+    .drow:last-child { border-bottom:none; }
+    .drow:hover { background:#f5f9ff; }
+    .drow-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .drow-main { flex:1; min-width:0; }
+    .drow-title { font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .drow-sub   { font-size:11px; color:var(--text-muted); }
+    .drow-right { font-size:11px; font-weight:700; flex-shrink:0; }
 
-    /* ── Charts ── */
-    .chart-wrap {
-      padding: 16px 20px 20px;
-      position: relative;
-    }
-    .chart-wrap canvas { max-height: 220px; }
-    .chart-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 12px;
-    }
-    .leg-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--text);
-    }
-    .leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    .stat-bar { margin:10px 0; }
+    .stat-bar-hd { display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; font-weight:600; }
+    .stat-track { height:7px; background:var(--border); border-radius:4px; overflow:hidden; }
+    .stat-fill  { height:100%; border-radius:4px; transition:width .7s ease; }
 
-    /* ── List rows ── */
-    .dlist-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 20px;
-      border-bottom: 1px solid var(--border);
-      transition: background .1s;
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .dlist-row:last-child { border-bottom: none; }
-    .dlist-row:hover { background: #f5f9ff; }
-    .dlist-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .dlist-main { flex: 1; min-width: 0; }
-    .dlist-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .dlist-sub   { font-size: 11px; color: var(--text-muted); }
-    .dlist-right { font-size: 11px; font-weight: 700; flex-shrink: 0; }
+    .num3 { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px; }
+    .num3-cell { background:white; padding:14px; text-align:center; }
+    .num3-val { font-size:22px; font-weight:900; color:var(--text); }
+    .num3-lbl { font-size:11px; color:var(--text-muted); margin-top:2px; }
 
-    /* ── Stat bars ── */
-    .stat-bar { margin: 6px 0; }
-    .stat-bar-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
-    .stat-bar-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-    .stat-bar-fill  { height: 100%; border-radius: 3px; transition: width .6s ease; }
+    .chart-wrap { padding:16px 20px 20px; }
+    .chart-wrap canvas { max-height:210px; }
+    .clegend { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+    .cleg { display:flex; align-items:center; gap:6px; font-size:12px; }
+    .cleg-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
 
-    /* ── Overview numbers ── */
-    .overview-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1px;
-      background: var(--border);
-      border-radius: 10px;
-      overflow: hidden;
-      margin: 0 20px 20px;
-    }
-    .ov-cell {
-      background: white;
-      padding: 16px;
-      text-align: center;
-    }
-    .ov-val { font-size: 24px; font-weight: 900; color: var(--text); }
-    .ov-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-
-    @media (max-width: 900px) {
-      .d2col, .d3col, .d12col, .d21col { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 600px) {
-      .kpi-strip { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .overview-grid { grid-template-columns: repeat(2, 1fr); }
-    }
+    @media(max-width:900px) { .d2 { grid-template-columns:1fr; } }
+    @media(max-width:600px) { .kpi-strip { grid-template-columns:repeat(2,1fr); gap:10px; } }
   </style>
 </head>
 <body>
@@ -196,607 +81,328 @@
     </div>
 
     <div class="page-content">
+      <div class="kpi-strip" id="kpi-grid"><div class="kpi-card"><div class="spinner"></div></div></div>
 
-      <!-- KPI strip -->
-      <div class="kpi-strip" id="kpi-grid">
-        <div class="kpi-card"><div class="spinner"></div></div>
-      </div>
-
-      <!-- Section tabs -->
       <div class="dash-tabs">
-        <div class="dtab on" onclick="switchTab('overview')">◈ Panoramica</div>
-        <div class="dtab" onclick="switchTab('tasks')">✓ Task</div>
-        <div class="dtab" onclick="switchTab('payments')">💳 Pagamenti</div>
-        <div class="dtab" onclick="switchTab('deadlines')">⏰ Scadenze</div>
-        <div class="dtab" onclick="switchTab('clients')">👥 Clienti</div>
+        <div class="dtab on"  data-tab="overview">◈ Panoramica</div>
+        <div class="dtab" data-tab="tasks">✓ Task</div>
+        <div class="dtab" data-tab="payments">💳 Pagamenti</div>
+        <div class="dtab" data-tab="deadlines">⏰ Scadenze</div>
+        <div class="dtab" data-tab="clients">👥 Clienti</div>
       </div>
 
-      <!-- ═══ PANORAMICA ═══ -->
+      <!-- PANORAMICA -->
       <div class="dpanel on" id="panel-overview">
-        <div class="d2col">
-          <!-- Donut clienti per tipo -->
+        <div class="d2">
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">👥 Clienti per Tipo</div>
-                <div class="card-title-sub">Distribuzione attivi</div>
-              </div>
-              <a href="/clients.html" class="go-btn">Vai ai Clienti →</a>
-            </div>
-            <div class="chart-wrap">
-              <canvas id="chart-clients-type"></canvas>
-              <div class="chart-legend" id="legend-clients-type"></div>
-            </div>
+            <div class="chl"><div><div class="chl-t">👥 Clienti per Tipo</div><div class="chl-s">Distribuzione attivi</div></div><a href="/clients.html" class="go-btn">Clienti →</a></div>
+            <div class="chart-wrap"><canvas id="ch-ctype"></canvas><div class="clegend" id="lg-ctype"></div></div>
           </div>
-
-          <!-- Donut pagamenti mese -->
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">💳 Abbonamenti Mese</div>
-                <div class="card-title-sub" id="pay-month-label">Mese corrente</div>
-              </div>
-              <a href="/payments.html" class="go-btn">Vai ai Pagamenti →</a>
-            </div>
-            <div class="chart-wrap">
-              <canvas id="chart-payments"></canvas>
-              <div class="chart-legend" id="legend-payments"></div>
-            </div>
+            <div class="chl"><div><div class="chl-t">💳 Abbonamenti Mese</div><div class="chl-s" id="pay-month-lbl"></div></div><a href="/payments.html" class="go-btn">Pagamenti →</a></div>
+            <div class="chart-wrap"><canvas id="ch-pay"></canvas><div class="clegend" id="lg-pay"></div></div>
           </div>
         </div>
-
-        <!-- Scadenze + stati onboarding -->
-        <div class="d2col">
+        <div class="d2">
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">📋 Estratti Conto</div>
-                <div class="card-title-sub">Copertura mese corrente</div>
-              </div>
-              <a href="/statements.html" class="go-btn">Vai agli Estratti →</a>
-            </div>
-            <div id="overview-statements" style="padding:16px 20px">
-              <div class="spinner"></div>
-            </div>
+            <div class="chl"><div><div class="chl-t">📋 Estratti Conto</div><div class="chl-s">Copertura mese corrente</div></div><a href="/statements.html" class="go-btn">Estratti →</a></div>
+            <div id="ov-statements" style="padding:16px 20px"><div class="spinner"></div></div>
           </div>
-
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">✦ Onboarding</div>
-                <div class="card-title-sub">Stato completamento</div>
-              </div>
-              <a href="/onboarding.html" class="go-btn">Vai all'Onboarding →</a>
-            </div>
-            <div id="overview-onboarding" style="padding:16px 20px">
-              <div class="spinner"></div>
-            </div>
+            <div class="chl"><div><div class="chl-t">✦ Onboarding</div><div class="chl-s">Stato completamento</div></div><a href="/onboarding.html" class="go-btn">Onboarding →</a></div>
+            <div id="ov-onboarding" style="padding:16px 20px"><div class="spinner"></div></div>
           </div>
         </div>
       </div>
 
-      <!-- ═══ TASK ═══ -->
+      <!-- TASK -->
       <div class="dpanel" id="panel-tasks">
-        <div class="d2col">
+        <div class="d2">
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">✓ Le mie Task</div>
-                <div class="card-title-sub">Aperte e in corso</div>
-              </div>
-              <a href="/tasks.html?filter=mine" class="go-btn">Vedi tutte →</a>
-            </div>
+            <div class="chl"><div><div class="chl-t">✓ Le mie Task</div><div class="chl-s">Aperte e in corso</div></div><a href="/tasks.html" class="go-btn">Vedi tutte →</a></div>
             <div id="my-tasks"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
-
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">🔥 Task Urgenti</div>
-                <div class="card-title-sub">Tutte le priorità urgenti aperte</div>
-              </div>
-              <a href="/tasks.html?filter=urgent" class="go-btn">Vedi tutte →</a>
-            </div>
+            <div class="chl"><div><div class="chl-t">🔥 Task Urgenti</div><div class="chl-s">Priorità urgente aperte</div></div><a href="/tasks.html" class="go-btn">Gestisci →</a></div>
             <div id="urgent-tasks"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
         </div>
-
-        <!-- Task chart -->
-        <div class="card" style="margin-bottom:20px">
-          <div class="card-header-link">
-            <div class="card-title-group">
-              <div class="card-title-main">📊 Distribuzione Task</div>
-              <div class="card-title-sub">Per priorità e stato</div>
-            </div>
-            <a href="/tasks.html" class="go-btn">Gestisci Task →</a>
+        <div class="d2">
+          <div class="card">
+            <div class="chl"><div><div class="chl-t">📊 Per Priorità</div></div></div>
+            <div class="chart-wrap"><canvas id="ch-tpri"></canvas></div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
-            <div class="chart-wrap" style="border-right:1px solid var(--border)">
-              <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Per priorità</div>
-              <canvas id="chart-tasks-priority"></canvas>
-            </div>
-            <div class="chart-wrap">
-              <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Per stato</div>
-              <canvas id="chart-tasks-status"></canvas>
-            </div>
+          <div class="card">
+            <div class="chl"><div><div class="chl-t">📊 Per Stato</div></div></div>
+            <div class="chart-wrap"><canvas id="ch-tstat"></canvas></div>
           </div>
         </div>
       </div>
 
-      <!-- ═══ PAGAMENTI ═══ -->
+      <!-- PAGAMENTI -->
       <div class="dpanel" id="panel-payments">
-        <div class="d2col">
+        <div class="d2">
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">⚡ Da Verificare</div>
-                <div class="card-title-sub">Problemi mese corrente</div>
-              </div>
-              <a href="/payments.html" class="go-btn">Vai ai Pagamenti →</a>
-            </div>
-            <div id="payment-issues"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
+            <div class="chl"><div><div class="chl-t">⚡ Da Verificare</div><div class="chl-s">Problemi mese corrente</div></div><a href="/payments.html" class="go-btn">Pagamenti →</a></div>
+            <div id="pay-issues"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
-
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">📊 Status Pagamenti</div>
-                <div class="card-title-sub">Distribuzione mese corrente</div>
-              </div>
-              <a href="/payments.html" class="go-btn">Gestisci →</a>
-            </div>
-            <div class="chart-wrap">
-              <canvas id="chart-pay-status"></canvas>
-              <div class="chart-legend" id="legend-pay-status"></div>
-            </div>
+            <div class="chl"><div><div class="chl-t">📊 Status Mese</div></div><a href="/payments.html" class="go-btn">Gestisci →</a></div>
+            <div class="chart-wrap"><canvas id="ch-pstat"></canvas><div class="clegend" id="lg-pstat"></div></div>
           </div>
         </div>
       </div>
 
-      <!-- ═══ SCADENZE ═══ -->
+      <!-- SCADENZE -->
       <div class="dpanel" id="panel-deadlines">
-        <div class="d2col">
+        <div class="d2">
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">⏰ Alert Prossimi 14gg</div>
-                <div class="card-title-sub">VAT, Trade License, Corp Tax</div>
-              </div>
-            </div>
-            <div id="upcoming-alerts"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
+            <div class="chl"><div><div class="chl-t">⏰ Alert Prossimi 14gg</div><div class="chl-s">VAT, Trade License, Corp Tax</div></div></div>
+            <div id="alerts14"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
-
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">📅 VAT Return — 30 giorni</div>
-                <div class="card-title-sub">Scadenze prossime</div>
-              </div>
-              <a href="/vat.html" class="go-btn">Vai al VAT →</a>
-            </div>
-            <div id="vat-deadlines"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
+            <div class="chl"><div><div class="chl-t">📅 VAT Return — 30gg</div></div><a href="/vat.html" class="go-btn">VAT Register →</a></div>
+            <div id="vat30"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
         </div>
       </div>
 
-      <!-- ═══ CLIENTI ═══ -->
+      <!-- CLIENTI -->
       <div class="dpanel" id="panel-clients">
-        <div class="d2col">
+        <div class="d2">
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">⚠ Estratti Mancanti</div>
-                <div class="card-title-sub">Mese corrente</div>
-              </div>
-              <a href="/statements.html" class="go-btn">Vai agli Estratti →</a>
-            </div>
-            <div id="missing-statements"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
+            <div class="chl"><div><div class="chl-t">⚠ Estratti Mancanti</div><div class="chl-s">Mese corrente</div></div><a href="/statements.html" class="go-btn">Estratti →</a></div>
+            <div id="missing-st"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
-
           <div class="card">
-            <div class="card-header-link">
-              <div class="card-title-group">
-                <div class="card-title-main">👥 Clienti per Zona</div>
-                <div class="card-title-sub">Free zone vs Mainland</div>
-              </div>
-              <a href="/clients.html" class="go-btn">Vai ai Clienti →</a>
-            </div>
-            <div class="chart-wrap">
-              <canvas id="chart-clients-zone"></canvas>
-              <div class="chart-legend" id="legend-clients-zone"></div>
-            </div>
+            <div class="chl"><div><div class="chl-t">👥 Per Zona Aziendale</div></div><a href="/clients.html" class="go-btn">Clienti →</a></div>
+            <div class="chart-wrap"><canvas id="ch-czone"></canvas><div class="clegend" id="lg-czone"></div></div>
           </div>
         </div>
       </div>
 
-    </div><!-- /page-content -->
+    </div>
   </div>
 </div>
-
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
 <script>
+// ── setup ─────────────────────────────────────────────────────
 const { year, month } = ui.currentYearMonth();
-document.getElementById('date-label').textContent = `${ui.MONTHS_FULL[month - 1]} ${year}`;
-document.getElementById('pay-month-label').textContent = `${ui.MONTHS[month-1]} ${year}`;
+document.getElementById('date-label').textContent = `${ui.MONTHS_FULL[month-1]} ${year}`;
+document.getElementById('pay-month-lbl').textContent = `${ui.MONTHS[month-1]} ${year}`;
+const isAdmin = sb.getCurrentProfile()?.role === 'admin';
 
-const role = sb.getCurrentProfile()?.role || 'junior';
-const isAdmin = role === 'admin';
+// ── tabs ──────────────────────────────────────────────────────
+const loaded = { overview: false };
+document.querySelectorAll('.dtab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const name = tab.dataset.tab;
+    document.querySelectorAll('.dtab').forEach(t => t.classList.toggle('on', t===tab));
+    document.querySelectorAll('.dpanel').forEach(p => p.classList.remove('on'));
+    document.getElementById('panel-'+name).classList.add('on');
+    if (!loaded[name]) { loaded[name]=true; loadTab(name); }
+  });
+});
 
-// ── Tab switching ─────────────────────────────────────────────
-const tabLoaded = {};
-function switchTab(name) {
-  document.querySelectorAll('.dtab').forEach((t,i) => t.classList.toggle('on', t.textContent.toLowerCase().includes(name) || (name==='overview' && i===0)));
-  document.querySelectorAll('.dpanel').forEach(p => p.classList.remove('on'));
-  document.getElementById('panel-'+name).classList.add('on');
-  if (!tabLoaded[name]) { tabLoaded[name] = true; loadTab(name); }
+function loadTab(t) {
+  if (t==='overview')  { loadCtypeChart(); loadPayChart(); loadStatementsOv(); loadOnboardingOv(); }
+  if (t==='tasks')     { loadMyTasks(); loadUrgentTasks(); loadTaskCharts(); }
+  if (t==='payments')  { loadPayIssues(); loadPayStatChart(); }
+  if (t==='deadlines') { loadAlerts14(); loadVat30(); }
+  if (t==='clients')   { loadMissingSt(); loadCzoneChart(); }
 }
 
-function loadTab(name) {
-  if (name === 'overview')   { loadClientTypeChart(); loadPaymentsChart(); loadStatementsOverview(); loadOnboardingOverview(); }
-  if (name === 'tasks')      { loadMyTasks(); loadUrgentTasks(); loadTaskCharts(); }
-  if (name === 'payments')   { loadPaymentIssues(); loadPayStatusChart(); }
-  if (name === 'deadlines')  { loadUpcomingAlerts(); loadVatDeadlines(); }
-  if (name === 'clients')    { loadMissingStatements(); loadClientsZoneChart(); }
-}
-
-// ── KPIs ─────────────────────────────────────────────────────
+// ── KPIs ──────────────────────────────────────────────────────
 async function loadKPIs() {
+  const el = document.getElementById('kpi-grid');
   try {
     const kpis = await sb.db.getDashboardKPIs();
-    let html = `
-      <div class="kpi-card">
-        <div class="kpi-label">Clienti Attivi</div>
-        <div class="kpi-value">${kpis.total_active_clients ?? '—'}</div>
-        <div class="kpi-sub">${kpis.clients_in_bilancio ?? 0} in bilancio</div>
-        <div class="kpi-icon">👥</div>
-      </div>
-      <div class="kpi-card danger">
-        <div class="kpi-label">Estratti Mancanti</div>
-        <div class="kpi-value">${kpis.bank_statements_missing ?? '—'}</div>
-        <div class="kpi-sub">Mese corrente</div>
-        <div class="kpi-icon">📄</div>
-      </div>
-      <div class="kpi-card warn">
-        <div class="kpi-label">Abbonamenti ⚠</div>
-        <div class="kpi-value">${kpis.subscriptions_issue ?? '—'}</div>
-        <div class="kpi-sub">Da verificare</div>
-        <div class="kpi-icon">💳</div>
-      </div>
-      <div class="kpi-card info">
-        <div class="kpi-label">VAT in Scadenza</div>
-        <div class="kpi-value">${kpis.vat_deadlines_next_30_days ?? '—'}</div>
-        <div class="kpi-sub">Prossimi 30 giorni</div>
-        <div class="kpi-icon">📋</div>
-      </div>`;
-    if (isAdmin) {
-      html += `
-      <div class="kpi-card accent">
-        <div class="kpi-label">Incassato Mese</div>
-        <div class="kpi-value" id="kpi-revenue">—</div>
-        <div class="kpi-sub" id="kpi-revenue-sub">Caricamento...</div>
-        <div class="kpi-icon">💰</div>
-      </div>`;
-    }
-    document.getElementById('kpi-grid').innerHTML = html;
+    let h = `
+      <div class="kpi-card"><div class="kpi-label">Clienti Attivi</div><div class="kpi-value">${kpis.total_active_clients??'—'}</div><div class="kpi-sub">${kpis.clients_in_bilancio??0} in bilancio</div><div class="kpi-icon">👥</div></div>
+      <div class="kpi-card c-danger"><div class="kpi-label">Estratti Mancanti</div><div class="kpi-value">${kpis.bank_statements_missing??'—'}</div><div class="kpi-sub">Mese corrente</div><div class="kpi-icon">📄</div></div>
+      <div class="kpi-card c-warn"><div class="kpi-label">Abbonamenti ⚠</div><div class="kpi-value">${kpis.subscriptions_issue??'—'}</div><div class="kpi-sub">Da verificare</div><div class="kpi-icon">💳</div></div>
+      <div class="kpi-card c-teal"><div class="kpi-label">VAT in Scadenza</div><div class="kpi-value">${kpis.vat_deadlines_next_30_days??'—'}</div><div class="kpi-sub">Prossimi 30 giorni</div><div class="kpi-icon">📋</div></div>`;
+    if (isAdmin) h += `<div class="kpi-card c-accent"><div class="kpi-label">Incassato Mese</div><div class="kpi-value" id="kpi-rev">—</div><div class="kpi-sub" id="kpi-rev-sub">Caricamento...</div><div class="kpi-icon">💰</div></div>`;
+    el.innerHTML = h;
     if (isAdmin) loadRevenue();
   } catch(e) {
-    document.getElementById('kpi-grid').innerHTML = `<div class="alert alert-danger">Errore KPIs: ${e.message}</div>`;
+    el.innerHTML = `<div class="alert alert-danger">Errore KPIs: ${e.message}</div>`;
   }
 }
 
-// ── CHARTS helpers ────────────────────────────────────────────
-const PALETTE = ['#1a3a5c','#2563a8','#c9a84c','#0891b2','#7c3aed','#059669','#dc2626','#d97706','#6b7280'];
-
-function donut(id, labels, data, colors) {
-  const ctx = document.getElementById(id);
-  if (!ctx) return null;
-  return new Chart(ctx, {
-    type: 'doughnut',
-    data: { labels, datasets: [{ data, backgroundColor: colors || PALETTE, borderWidth: 2, borderColor: 'white', hoverOffset: 6 }] },
-    options: {
-      cutout: '62%',
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${c.parsed}` } } },
-      animation: { animateRotate: true, duration: 600 }
-    }
-  });
+// ── chart helpers ─────────────────────────────────────────────
+const P = ['#1a3a5c','#2563a8','#c9a84c','#0891b2','#7c3aed','#059669','#dc2626','#d97706','#6b7280'];
+function donut(id, labels, vals, colors) {
+  const c = document.getElementById(id); if(!c) return;
+  new Chart(c, { type:'doughnut', data:{ labels, datasets:[{ data:vals, backgroundColor:colors||P, borderWidth:2, borderColor:'white', hoverOffset:6 }] }, options:{ cutout:'62%', plugins:{ legend:{display:false} }, animation:{duration:600} } });
+}
+function legend(id, labels, vals, colors) {
+  const el=document.getElementById(id); if(!el) return;
+  const tot=vals.reduce((a,b)=>a+b,0);
+  el.innerHTML=labels.map((l,i)=>`<div class="cleg"><div class="cleg-dot" style="background:${(colors||P)[i]}"></div><b>${vals[i]}</b><span style="color:var(--text-muted)">${l}</span><span style="color:var(--text-muted);font-size:10px">${tot?Math.round(vals[i]/tot*100)+'%':''}</span></div>`).join('');
+}
+function barChart(id, labels, vals, colors) {
+  const c=document.getElementById(id); if(!c) return;
+  new Chart(c, { type:'bar', data:{ labels, datasets:[{ data:vals, backgroundColor:colors||P, borderRadius:6, borderSkipped:false }] }, options:{ plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false},ticks:{font:{size:11}}}, y:{grid:{color:'#f0f0f0'},ticks:{font:{size:11},stepSize:1},beginAtZero:true} }, animation:{duration:500} } });
 }
 
-function makeLegend(id, labels, values, colors) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const total = values.reduce((a,b)=>a+b,0);
-  el.innerHTML = labels.map((l,i) => `
-    <div class="leg-item">
-      <div class="leg-dot" style="background:${(colors||PALETTE)[i]}"></div>
-      <span style="font-weight:600">${values[i]}</span>
-      <span style="color:var(--text-muted)">${l}</span>
-      <span style="color:var(--text-muted);font-size:10px">${total?Math.round(values[i]/total*100)+'%':''}</span>
-    </div>`).join('');
-}
-
-function bar(id, labels, data, colors) {
-  const ctx = document.getElementById(id);
-  if (!ctx) return;
-  new Chart(ctx, {
-    type: 'bar',
-    data: { labels, datasets: [{ data, backgroundColor: colors || PALETTE, borderRadius: 6, borderSkipped: false }] },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-        y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 }, stepSize: 1 }, beginAtZero: true }
-      },
-      animation: { duration: 500 }
-    }
-  });
-}
-
-// ── CLIENT TYPE chart ─────────────────────────────────────────
-async function loadClientTypeChart() {
+// ── OVERVIEW charts ───────────────────────────────────────────
+async function loadCtypeChart() {
   try {
-    const clients = await sb.db.select('clients', { columns: 'company_type', filter: 'is_active=eq.true' });
-    const counts = {};
-    (clients||[]).forEach(c => { const t = c.company_type||'N/D'; counts[t] = (counts[t]||0)+1; });
-    const labels = Object.keys(counts), vals = Object.values(counts);
-    donut('chart-clients-type', labels, vals);
-    makeLegend('legend-clients-type', labels, vals);
-  } catch(e) { console.error(e); }
+    const rows = await sb.db.select('clients',{columns:'company_type',filter:'is_active=eq.true'});
+    const cnt={}; (rows||[]).forEach(r=>{const t=r.company_type||'N/D';cnt[t]=(cnt[t]||0)+1;});
+    const l=Object.keys(cnt),v=Object.values(cnt);
+    donut('ch-ctype',l,v); legend('lg-ctype',l,v);
+  } catch(e){console.error('ctype',e);}
 }
-
-// ── PAYMENTS chart ────────────────────────────────────────────
-async function loadPaymentsChart() {
+async function loadPayChart() {
   try {
-    const rows = await sb.db.select('subscription_payments', {
-      columns: 'status', filter: `year=eq.${year}&month=eq.${month}`
-    });
-    const map = { ok: 0, failed: 0, pending: 0, no_tentativo: 0 };
-    (rows||[]).forEach(r => { if (map[r.status] !== undefined) map[r.status]++; else map['pending']++; });
-    const labels = ['OK', 'Fallito', 'Pending', 'Non tentato'];
-    const vals   = [map.ok, map.failed, map.pending, map.no_tentativo];
-    const colors = ['#059669','#dc2626','#d97706','#6b7280'];
-    donut('chart-payments', labels, vals, colors);
-    makeLegend('legend-payments', labels, vals, colors);
-  } catch(e) { console.error(e); }
+    const rows = await sb.db.select('subscription_payments',{columns:'status',filter:`year=eq.${year}&month=eq.${month}`});
+    const m={ok:0,failed:0,pending:0,no_tentativo:0};
+    (rows||[]).forEach(r=>{if(m[r.status]!==undefined)m[r.status]++;else m.pending++;});
+    const l=['OK','Fallito','Pending','Non tentato'],v=[m.ok,m.failed,m.pending,m.no_tentativo],c=['#059669','#dc2626','#d97706','#6b7280'];
+    donut('ch-pay',l,v,c); legend('lg-pay',l,v,c);
+  } catch(e){console.error('pay',e);}
 }
-
-// ── PAY STATUS chart ──────────────────────────────────────────
-async function loadPayStatusChart() {
+async function loadStatementsOv() {
+  const el=document.getElementById('ov-statements');
   try {
-    const rows = await sb.db.select('subscription_payments', {
-      columns: 'status', filter: `year=eq.${year}&month=eq.${month}`
-    });
-    const map = { ok:0, failed:0, pending:0, no_tentativo:0 };
-    (rows||[]).forEach(r => { if(map[r.status]!==undefined) map[r.status]++; });
-    const labels = ['OK','Fallito','Pending','Non tentato'];
-    const vals   = [map.ok, map.failed, map.pending, map.no_tentativo];
-    const colors = ['#059669','#dc2626','#d97706','#6b7280'];
-    donut('chart-pay-status', labels, vals, colors);
-    makeLegend('legend-pay-status', labels, vals, colors);
-  } catch(e) {}
+    const all   = await sb.db.select('clients',{columns:'id',filter:'is_active=eq.true'});
+    const stmts = await sb.db.select('bank_statements',{columns:'client_id',filter:`year=eq.${year}&month=eq.${month}`});
+    const tot=all?.length||0, done=stmts?.length||0, miss=tot-done, pct=tot?Math.round(done/tot*100):0;
+    const col=pct>80?'#059669':pct>50?'#d97706':'#dc2626';
+    el.innerHTML=`<div class="num3"><div class="num3-cell"><div class="num3-val" style="color:#059669">${done}</div><div class="num3-lbl">Presenti</div></div><div class="num3-cell"><div class="num3-val" style="color:#dc2626">${miss}</div><div class="num3-lbl">Mancanti</div></div><div class="num3-cell"><div class="num3-val">${pct}%</div><div class="num3-lbl">Copertura</div></div></div><div class="stat-bar"><div class="stat-bar-hd"><span>Copertura mese</span><span>${pct}%</span></div><div class="stat-track"><div class="stat-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
+  } catch(e){ el.innerHTML=`<div class="alert alert-danger" style="margin:8px">${e.message}</div>`; }
 }
-
-// ── CLIENTS ZONE chart ────────────────────────────────────────
-async function loadClientsZoneChart() {
+async function loadOnboardingOv() {
+  const el=document.getElementById('ov-onboarding');
   try {
-    const clients = await sb.db.select('clients', { columns: 'business_location', filter: 'is_active=eq.true' });
-    const counts = {};
-    (clients||[]).forEach(c => { const z = c.business_location||'N/D'; counts[z] = (counts[z]||0)+1; });
-    const labels = Object.keys(counts), vals = Object.values(counts);
-    donut('chart-clients-zone', labels, vals);
-    makeLegend('legend-clients-zone', labels, vals);
-  } catch(e) {}
+    const rows = await sb.db.select('onboarding_checklist',{columns:'completed_steps,total_steps,client_id,clients(is_active)',filter:'clients.is_active=eq.true'});
+    const active=(rows||[]).filter(r=>r.clients?.is_active);
+    const done=active.filter(r=>r.completed_steps>=r.total_steps&&r.total_steps>0).length;
+    const inp=active.filter(r=>r.completed_steps>0&&r.completed_steps<r.total_steps).length;
+    const nst=active.filter(r=>!r.completed_steps).length;
+    const tot=active.length, pct=tot?Math.round(done/tot*100):0;
+    const col=pct>80?'#059669':pct>40?'#d97706':'#0891b2';
+    el.innerHTML=`<div class="num3"><div class="num3-cell"><div class="num3-val" style="color:#059669">${done}</div><div class="num3-lbl">Completati</div></div><div class="num3-cell"><div class="num3-val" style="color:#d97706">${inp}</div><div class="num3-lbl">In corso</div></div><div class="num3-cell"><div class="num3-val" style="color:#6b7280">${nst}</div><div class="num3-lbl">Non avviati</div></div></div><div class="stat-bar"><div class="stat-bar-hd"><span>Completamento</span><span>${pct}%</span></div><div class="stat-track"><div class="stat-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
+  } catch(e){ el.innerHTML=`<div class="alert alert-danger" style="margin:8px">${e.message}</div>`; }
 }
 
-// ── STATEMENTS overview ───────────────────────────────────────
-async function loadStatementsOverview() {
-  const el = document.getElementById('overview-statements');
-  try {
-    const missing = await sb.db.select('clients_missing_bank_statements');
-    const total   = await sb.db.select('clients', { columns: 'id', filter: 'is_active=eq.true' });
-    const tot = total?.length || 0;
-    const mis = missing?.length || 0;
-    const ok  = tot - mis;
-    const pct = tot ? Math.round(ok/tot*100) : 0;
-    el.innerHTML = `
-      <div class="overview-grid" style="margin:0 0 16px">
-        <div class="ov-cell"><div class="ov-val" style="color:#059669">${ok}</div><div class="ov-lbl">Completi</div></div>
-        <div class="ov-cell"><div class="ov-val" style="color:#dc2626">${mis}</div><div class="ov-lbl">Mancanti</div></div>
-        <div class="ov-cell"><div class="ov-val">${pct}%</div><div class="ov-lbl">Copertura</div></div>
-      </div>
-      <div class="stat-bar">
-        <div class="stat-bar-label"><span>Copertura mese</span><span>${pct}%</span></div>
-        <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%;background:${pct>80?'#059669':pct>50?'#d97706':'#dc2626'}"></div></div>
-      </div>
-      ${mis > 0 ? `<div style="margin-top:14px;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px">Ultimi mancanti:</div>
-      ${(missing||[]).slice(0,3).map(r=>`<div style="font-size:13px;padding:5px 0;color:var(--text);border-bottom:1px solid var(--border)">${ui.escapeHtml(r.company_name)}</div>`).join('')}` : ''}`;
-  } catch(e) { el.innerHTML = `<div class="alert alert-danger" style="margin:8px">${e.message}</div>`; }
-}
-
-// ── ONBOARDING overview ───────────────────────────────────────
-async function loadOnboardingOverview() {
-  const el = document.getElementById('overview-onboarding');
-  try {
-    const rows = await sb.db.select('onboarding_checklist', { columns: 'completed_steps,total_steps,clients(company_name,is_active)' });
-    const active = (rows||[]).filter(r => r.clients?.is_active);
-    const done  = active.filter(r => r.completed_steps >= r.total_steps).length;
-    const inprog = active.filter(r => r.completed_steps > 0 && r.completed_steps < r.total_steps).length;
-    const notst = active.filter(r => !r.completed_steps).length;
-    const pct = active.length ? Math.round(done/active.length*100) : 0;
-    el.innerHTML = `
-      <div class="overview-grid" style="margin:0 0 16px">
-        <div class="ov-cell"><div class="ov-val" style="color:#059669">${done}</div><div class="ov-lbl">Completati</div></div>
-        <div class="ov-cell"><div class="ov-val" style="color:#d97706">${inprog}</div><div class="ov-lbl">In corso</div></div>
-        <div class="ov-cell"><div class="ov-val" style="color:#6b7280">${notst}</div><div class="ov-lbl">Non avviati</div></div>
-      </div>
-      <div class="stat-bar">
-        <div class="stat-bar-label"><span>Completamento</span><span>${pct}%</span></div>
-        <div class="stat-bar-track">
-          <div class="stat-bar-fill" style="width:${pct}%;background:${pct>80?'#059669':pct>40?'#d97706':'#0891b2'}"></div>
-        </div>
-      </div>`;
-  } catch(e) { el.innerHTML = `<div class="alert alert-danger" style="margin:8px">${e.message}</div>`; }
-}
-
-// ── MY TASKS ──────────────────────────────────────────────────
+// ── TASKS ─────────────────────────────────────────────────────
 async function loadMyTasks() {
-  const el = document.getElementById('my-tasks');
+  const el=document.getElementById('my-tasks');
   try {
-    const profile = sb.getCurrentProfile();
-    if (!profile?.id) { el.innerHTML = ''; return; }
-    const tasks = await sb.db.select('tasks', {
-      columns: 'id,title,priority,due_date,status,clients(company_name)',
-      filter: `assigned_to=eq.${profile.id}&status=in.(open,in_progress)`,
-      order: 'due_date.asc.nullslast', limit: 6
-    });
-    if (!tasks?.length) { el.innerHTML = '<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna task assegnata 🎉</div>'; return; }
-    const pc = { urgent:'#dc2626', high:'#d97706', normal:'#0369a1', low:'#6b7280' };
-    el.innerHTML = tasks.map(t => `
-      <a href="/tasks.html" class="dlist-row">
-        <div class="dlist-dot" style="background:${pc[t.priority]||'#6b7280'}"></div>
-        <div class="dlist-main">
-          <div class="dlist-title">${ui.escapeHtml(t.title)}</div>
-          ${t.clients ? `<div class="dlist-sub">${ui.escapeHtml(t.clients.company_name)}</div>` : ''}
-        </div>
-        ${t.due_date ? `<span class="dlist-right ${ui.deadlineClass(t.due_date)}">${ui.formatDate(t.due_date)}</span>` : ''}
-      </a>`).join('');
-  } catch(e) { el.innerHTML = `<div class="alert alert-danger" style="margin:12px">${e.message}</div>`; }
+    const p=sb.getCurrentProfile(); if(!p?.id){el.innerHTML='';return;}
+    const tasks=await sb.db.select('tasks',{columns:'id,title,priority,due_date,clients(company_name)',filter:`assigned_to=eq.${p.id}&status=in.(open,in_progress)`,order:'due_date.asc.nullslast',limit:6});
+    if(!tasks?.length){el.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna task assegnata 🎉</div>';return;}
+    const pc={urgent:'#dc2626',high:'#d97706',normal:'#0369a1',low:'#6b7280'};
+    el.innerHTML=tasks.map(t=>`<a href="/tasks.html" class="drow"><div class="drow-dot" style="background:${pc[t.priority]||'#6b7280'}"></div><div class="drow-main"><div class="drow-title">${ui.escapeHtml(t.title)}</div>${t.clients?`<div class="drow-sub">${ui.escapeHtml(t.clients.company_name)}</div>`:''}</div>${t.due_date?`<span class="drow-right ${ui.deadlineClass(t.due_date)}">${ui.formatDate(t.due_date)}</span>`:''}</a>`).join('');
+  } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:12px">${e.message}</div>`;}
 }
-
-// ── URGENT TASKS ──────────────────────────────────────────────
 async function loadUrgentTasks() {
-  const el = document.getElementById('urgent-tasks');
+  const el=document.getElementById('urgent-tasks');
   try {
-    const tasks = await sb.db.select('tasks', {
-      columns: 'id,title,priority,due_date,assigned_to,clients(company_name),profiles(full_name)',
-      filter: `priority=eq.urgent&status=in.(open,in_progress)`,
-      order: 'due_date.asc.nullslast', limit: 6
-    });
-    if (!tasks?.length) { el.innerHTML = '<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna task urgente 🎉</div>'; return; }
-    el.innerHTML = tasks.map(t => `
-      <a href="/tasks.html" class="dlist-row">
-        <div class="dlist-dot" style="background:#dc2626"></div>
-        <div class="dlist-main">
-          <div class="dlist-title">${ui.escapeHtml(t.title)}</div>
-          <div class="dlist-sub">${t.clients ? ui.escapeHtml(t.clients.company_name) : ''}</div>
-        </div>
-        ${t.due_date ? `<span class="dlist-right ${ui.deadlineClass(t.due_date)}">${ui.formatDate(t.due_date)}</span>` : ''}
-      </a>`).join('');
-  } catch(e) { el.innerHTML = `<div class="alert alert-danger" style="margin:12px">${e.message}</div>`; }
+    const tasks=await sb.db.select('tasks',{columns:'id,title,due_date,clients(company_name)',filter:`priority=eq.urgent&status=in.(open,in_progress)`,order:'due_date.asc.nullslast',limit:6});
+    if(!tasks?.length){el.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna task urgente 🎉</div>';return;}
+    el.innerHTML=tasks.map(t=>`<a href="/tasks.html" class="drow"><div class="drow-dot" style="background:#dc2626"></div><div class="drow-main"><div class="drow-title">${ui.escapeHtml(t.title)}</div>${t.clients?`<div class="drow-sub">${ui.escapeHtml(t.clients.company_name)}</div>`:''}</div>${t.due_date?`<span class="drow-right ${ui.deadlineClass(t.due_date)}">${ui.formatDate(t.due_date)}</span>`:''}</a>`).join('');
+  } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:12px">${e.message}</div>`;}
 }
-
-// ── TASK CHARTS ───────────────────────────────────────────────
 async function loadTaskCharts() {
   try {
-    const tasks = await sb.db.select('tasks', { columns: 'priority,status', filter: 'status=in.(open,in_progress,done)' });
-    const byPri = {urgent:0,high:0,normal:0,low:0};
-    const bySt  = {open:0,in_progress:0,done:0};
-    (tasks||[]).forEach(t => { if(byPri[t.priority]!==undefined) byPri[t.priority]++; if(bySt[t.status]!==undefined) bySt[t.status]++; });
-    bar('chart-tasks-priority', ['Urgente','Alta','Normale','Bassa'], Object.values(byPri), ['#dc2626','#d97706','#0369a1','#6b7280']);
-    bar('chart-tasks-status', ['Aperta','In corso','Completata'], Object.values(bySt), ['#0369a1','#d97706','#059669']);
-  } catch(e) {}
+    const tasks=await sb.db.select('tasks',{columns:'priority,status',filter:'status=in.(open,in_progress,done)'});
+    const bp={urgent:0,high:0,normal:0,low:0},bs={open:0,in_progress:0,done:0};
+    (tasks||[]).forEach(t=>{if(bp[t.priority]!==undefined)bp[t.priority]++;if(bs[t.status]!==undefined)bs[t.status]++;});
+    barChart('ch-tpri',['Urgente','Alta','Normale','Bassa'],Object.values(bp),['#dc2626','#d97706','#0369a1','#6b7280']);
+    barChart('ch-tstat',['Aperta','In corso','Completata'],Object.values(bs),['#0369a1','#d97706','#059669']);
+  } catch(e){console.error('taskcharts',e);}
 }
 
-// ── PAYMENT ISSUES ────────────────────────────────────────────
-async function loadPaymentIssues() {
-  const el = document.getElementById('payment-issues');
+// ── PAYMENTS ──────────────────────────────────────────────────
+async function loadPayIssues() {
+  const el=document.getElementById('pay-issues');
   try {
-    const rows = await sb.db.select('clients_subscription_status', {
-      filter: `current_month_status=in.(failed,no_tentativo,pending)&is_active=eq.true`
-    });
-    if (!rows?.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">✓</div><h3>Tutto OK!</h3><p>Nessun problema di pagamento.</p></div>`; return; }
-    el.innerHTML = rows.slice(0,8).map(r => `
-      <a href="/payments.html" class="dlist-row">
-        <div class="dlist-main">
-          <div class="dlist-title">${ui.escapeHtml(r.company_name)}</div>
-          <div class="dlist-sub">${r.payment_notes || '—'}</div>
-        </div>
-        <div>${ui.statusBadge(r.current_month_status)}</div>
-      </a>`).join('') + (rows.length>8?`<div style="padding:10px 20px;font-size:12px;color:var(--text-muted)">+ altri ${rows.length-8}</div>`:'');
-  } catch(e) { el.innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`; }
+    const rows=await sb.db.select('subscription_payments',{columns:'client_id,status,payment_notes,clients(company_name)',filter:`year=eq.${year}&month=eq.${month}&status=in.(failed,no_tentativo,pending)`});
+    if(!rows?.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">✓</div><h3>Tutto OK!</h3><p>Nessun problema.</p></div>`;return;}
+    el.innerHTML=rows.slice(0,8).map(r=>`<a href="/payments.html" class="drow"><div class="drow-main"><div class="drow-title">${ui.escapeHtml(r.clients?.company_name||r.client_id)}</div><div class="drow-sub">${r.payment_notes||'—'}</div></div><div>${ui.statusBadge(r.status)}</div></a>`).join('') + (rows.length>8?`<div style="padding:10px 20px;font-size:12px;color:var(--text-muted)">+ altri ${rows.length-8}</div>`:'');
+  } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;}
+}
+async function loadPayStatChart() {
+  try {
+    const rows=await sb.db.select('subscription_payments',{columns:'status',filter:`year=eq.${year}&month=eq.${month}`});
+    const m={ok:0,failed:0,pending:0,no_tentativo:0};
+    (rows||[]).forEach(r=>{if(m[r.status]!==undefined)m[r.status]++;});
+    const l=['OK','Fallito','Pending','Non tentato'],v=[m.ok,m.failed,m.pending,m.no_tentativo],c=['#059669','#dc2626','#d97706','#6b7280'];
+    donut('ch-pstat',l,v,c); legend('lg-pstat',l,v,c);
+  } catch(e){console.error('paystat',e);}
 }
 
-// ── MISSING STATEMENTS ────────────────────────────────────────
-async function loadMissingStatements() {
-  const el = document.getElementById('missing-statements');
+// ── DEADLINES ─────────────────────────────────────────────────
+async function loadAlerts14() {
+  const el=document.getElementById('alerts14');
   try {
-    const rows = await sb.db.select('clients_missing_bank_statements');
-    if (!rows?.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">✓</div><h3>Tutti a posto!</h3></div>`; return; }
-    el.innerHTML = rows.slice(0,8).map(r => `
-      <a href="/statements.html" class="dlist-row">
-        <div class="dlist-dot" style="background:#dc2626"></div>
-        <div class="dlist-main"><div class="dlist-title">${ui.escapeHtml(r.company_name)}</div></div>
-        <div style="font-size:11px;color:var(--text-muted)">${(r.bank_accounts||[]).join(', ')||'—'}</div>
-      </a>`).join('') + (rows.length>8?`<div style="padding:10px 20px;font-size:12px;color:var(--text-muted)">+ altri ${rows.length-8}</div>`:'');
-  } catch(e) { el.innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`; }
-}
-
-// ── VAT DEADLINES ─────────────────────────────────────────────
-async function loadVatDeadlines() {
-  const el = document.getElementById('vat-deadlines');
-  try {
-    const rows = await sb.db.select('vat_register', { columns: 'return_deadline_1,return_deadline_2,return_deadline_3,return_deadline_4,clients(company_name)' });
-    const today = new Date(), in30 = new Date(today.getTime()+30*86400000);
-    const list = [];
-    (rows||[]).forEach(r => {
-      [1,2,3,4].forEach(i => {
-        const d = r[`return_deadline_${i}`];
-        if (d && new Date(d) >= today && new Date(d) <= in30) list.push({ company: r.clients?.company_name, date: d });
-      });
-    });
-    if (!list.length) { el.innerHTML = '<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna scadenza VAT nei prossimi 30 giorni ✓</div>'; return; }
-    list.sort((a,b)=>a.date.localeCompare(b.date));
-    el.innerHTML = list.map(r => `
-      <a href="/vat.html" class="dlist-row">
-        <div class="dlist-main"><div class="dlist-title">${ui.escapeHtml(r.company)}</div></div>
-        <span class="dlist-right ${ui.deadlineClass(r.date)}">${ui.formatDate(r.date)}</span>
-      </a>`).join('');
-  } catch(e) { el.innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`; }
-}
-
-// ── UPCOMING ALERTS ───────────────────────────────────────────
-async function loadUpcomingAlerts() {
-  const el = document.getElementById('upcoming-alerts');
-  try {
-    const today = new Date(), in14 = new Date(today); in14.setDate(today.getDate()+14);
-    const t0 = today.toISOString().split('T')[0], t14 = in14.toISOString().split('T')[0];
-    const vatData = await sb.db.select('vat_register', { columns: 'return_deadline_1,return_deadline_2,return_deadline_3,return_deadline_4,clients(company_name)' });
-    const tlData  = await sb.db.select('clients', { columns: 'company_name,trade_license_date', filter: `is_active=eq.true&trade_license_date=gte.${t0}&trade_license_date=lte.${t14}` });
-    const ctData  = await sb.db.select('clients', { columns: 'company_name,corporate_tax_expiry', filter: `is_active=eq.true&corporate_tax_expiry=gte.${t0}&corporate_tax_expiry=lte.${t14}` });
-    const alerts = [];
-    (vatData||[]).forEach(vr => [1,2,3,4].forEach(i => { const d=vr[`return_deadline_${i}`]; if(d&&d>=t0&&d<=t14) alerts.push({date:d,label:'◇ VAT Return',client:vr.clients?.company_name,color:'#0369a1'}); }));
-    (tlData||[]).forEach(c => alerts.push({date:c.trade_license_date,label:'📄 Trade License',client:c.company_name,color:'#d97706'}));
-    (ctData||[]).forEach(c => alerts.push({date:c.corporate_tax_expiry,label:'◈ Corp. Tax',client:c.company_name,color:'#7c3aed'}));
+    const t0=new Date().toISOString().split('T')[0], t14=new Date(Date.now()+14*86400000).toISOString().split('T')[0];
+    const vat=await sb.db.select('vat_register',{columns:'return_deadline_1,return_deadline_2,return_deadline_3,return_deadline_4,clients(company_name)'});
+    const tl =await sb.db.select('clients',{columns:'company_name,trade_license_date',filter:`is_active=eq.true&trade_license_date=gte.${t0}&trade_license_date=lte.${t14}`});
+    const ct =await sb.db.select('clients',{columns:'company_name,corporate_tax_expiry',filter:`is_active=eq.true&corporate_tax_expiry=gte.${t0}&corporate_tax_expiry=lte.${t14}`});
+    const alerts=[];
+    (vat||[]).forEach(r=>[1,2,3,4].forEach(i=>{const d=r[`return_deadline_${i}`];if(d&&d>=t0&&d<=t14)alerts.push({date:d,label:'◇ VAT Return',client:r.clients?.company_name,color:'#0369a1'});}));
+    (tl||[]).forEach(c=>alerts.push({date:c.trade_license_date,label:'📄 Trade License',client:c.company_name,color:'#d97706'}));
+    (ct||[]).forEach(c=>alerts.push({date:c.corporate_tax_expiry,label:'◈ Corp. Tax',client:c.company_name,color:'#7c3aed'}));
     alerts.sort((a,b)=>a.date.localeCompare(b.date));
-    if (!alerts.length) { el.innerHTML = '<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna scadenza nei prossimi 14 giorni ✓</div>'; return; }
-    el.innerHTML = alerts.map(a => `
-      <div class="dlist-row">
-        <div class="dlist-dot" style="background:${a.color}"></div>
-        <div class="dlist-main">
-          <div class="dlist-title" style="color:${a.color}">${a.label}</div>
-          <div class="dlist-sub">${ui.escapeHtml(a.client||'')}</div>
-        </div>
-        <span class="dlist-right ${ui.deadlineClass(a.date)}">${ui.formatDate(a.date)}</span>
-      </div>`).join('');
-  } catch(e) { el.innerHTML = `<div class="alert alert-danger" style="margin:12px">${e.message}</div>`; }
+    if(!alerts.length){el.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna scadenza nei prossimi 14 giorni ✓</div>';return;}
+    el.innerHTML=alerts.map(a=>`<div class="drow"><div class="drow-dot" style="background:${a.color}"></div><div class="drow-main"><div class="drow-title" style="color:${a.color}">${a.label}</div><div class="drow-sub">${ui.escapeHtml(a.client||'')}</div></div><span class="drow-right ${ui.deadlineClass(a.date)}">${ui.formatDate(a.date)}</span></div>`).join('');
+  } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:12px">${e.message}</div>`;}
+}
+async function loadVat30() {
+  const el=document.getElementById('vat30');
+  try {
+    const t0=new Date().toISOString().split('T')[0], t30=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+    const rows=await sb.db.select('vat_register',{columns:'return_deadline_1,return_deadline_2,return_deadline_3,return_deadline_4,clients(company_name)'});
+    const list=[];
+    (rows||[]).forEach(r=>[1,2,3,4].forEach(i=>{const d=r[`return_deadline_${i}`];if(d&&d>=t0&&d<=t30)list.push({date:d,company:r.clients?.company_name});}));
+    list.sort((a,b)=>a.date.localeCompare(b.date));
+    if(!list.length){el.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna scadenza VAT nei prossimi 30 giorni ✓</div>';return;}
+    el.innerHTML=list.map(r=>`<a href="/vat.html" class="drow"><div class="drow-main"><div class="drow-title">${ui.escapeHtml(r.company)}</div></div><span class="drow-right ${ui.deadlineClass(r.date)}">${ui.formatDate(r.date)}</span></a>`).join('');
+  } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;}
 }
 
-// ── REVENUE (admin only) ──────────────────────────────────────
+// ── CLIENTS tab ───────────────────────────────────────────────
+async function loadMissingSt() {
+  const el=document.getElementById('missing-st');
+  try {
+    const all=await sb.db.select('clients',{columns:'id,company_name',filter:'is_active=eq.true'});
+    const done=await sb.db.select('bank_statements',{columns:'client_id',filter:`year=eq.${year}&month=eq.${month}`});
+    const doneIds=new Set((done||[]).map(s=>s.client_id));
+    const missing=(all||[]).filter(c=>!doneIds.has(c.id));
+    if(!missing.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">✓</div><h3>Tutti a posto!</h3></div>`;return;}
+    el.innerHTML=missing.slice(0,8).map(c=>`<a href="/statements.html" class="drow"><div class="drow-dot" style="background:#dc2626"></div><div class="drow-main"><div class="drow-title">${ui.escapeHtml(c.company_name)}</div></div></a>`).join('') + (missing.length>8?`<div style="padding:10px 20px;font-size:12px;color:var(--text-muted)">+ altri ${missing.length-8}</div>`:'');
+  } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;}
+}
+async function loadCzoneChart() {
+  try {
+    const rows=await sb.db.select('clients',{columns:'business_location',filter:'is_active=eq.true'});
+    const cnt={}; (rows||[]).forEach(r=>{const z=r.business_location||'N/D';cnt[z]=(cnt[z]||0)+1;});
+    const l=Object.keys(cnt),v=Object.values(cnt);
+    donut('ch-czone',l,v); legend('lg-czone',l,v);
+  } catch(e){console.error('czone',e);}
+}
+
+// ── REVENUE ───────────────────────────────────────────────────
 async function loadRevenue() {
   try {
-    const payments = await sb.db.select('subscription_payments', { columns: 'amount,status,client_id', filter: `year=eq.${year}&month=eq.${month}&status=eq.ok` });
-    const missing = (payments||[]).filter(p=>!p.amount).map(p=>p.client_id);
-    let costs = {};
-    if (missing.length) { const cl = await sb.db.select('clients',{columns:'id,service_cost',filter:`id=in.(${missing.join(',')})`}); (cl||[]).forEach(c=>costs[c.id]=c.service_cost); }
-    const total = (payments||[]).reduce((s,p)=>s+(parseFloat(p.amount)||parseFloat(costs[p.client_id])||0),0);
-    const el=document.getElementById('kpi-revenue'), sub=document.getElementById('kpi-revenue-sub');
-    if(el){ el.textContent=total>0?ui.formatAED(total):'—'; if(sub) sub.textContent=(payments||[]).length+' pagamenti ok'; }
-  } catch(e) {}
+    const payments=await sb.db.select('subscription_payments',{columns:'amount,client_id',filter:`year=eq.${year}&month=eq.${month}&status=eq.ok`});
+    const missing=(payments||[]).filter(p=>!p.amount).map(p=>p.client_id);
+    let costs={};
+    if(missing.length){const cl=await sb.db.select('clients',{columns:'id,service_cost',filter:`id=in.(${missing.join(',')})`});(cl||[]).forEach(c=>costs[c.id]=c.service_cost);}
+    const total=(payments||[]).reduce((s,p)=>s+(parseFloat(p.amount)||parseFloat(costs[p.client_id])||0),0);
+    const el=document.getElementById('kpi-rev'),sub=document.getElementById('kpi-rev-sub');
+    if(el){el.textContent=total>0?ui.formatAED(total):'—';if(sub)sub.textContent=(payments||[]).length+' pagamenti ok';}
+  } catch(e){}
 }
 
 // ── INIT ──────────────────────────────────────────────────────
 loadKPIs();
-tabLoaded['overview'] = true;
 loadTab('overview');
 </script>
 </body>
