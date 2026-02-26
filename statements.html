@@ -79,10 +79,20 @@
             <input type="text" id="search" placeholder="Cerca cliente..." style="padding-left:30px;min-width:200px">
           </div>
           <!-- Status chips -->
-          <div class="filter-chip on" data-status="all">Tutti</div>
-          <div class="filter-chip" data-status="ok">✓ Completi</div>
-          <div class="filter-chip" data-status="received">○ Ricevuti</div>
-          <div class="filter-chip" data-status="missing">✕ Mancanti</div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text-muted);font-weight:600">Stato mese:</span>
+            <select id="filter-month" style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:white">
+              <option value="0">Mese corrente</option>
+              <option value="1">Gen</option><option value="2">Feb</option><option value="3">Mar</option>
+              <option value="4">Apr</option><option value="5">Mag</option><option value="6">Giu</option>
+              <option value="7">Lug</option><option value="8">Ago</option><option value="9">Set</option>
+              <option value="10">Ott</option><option value="11">Nov</option><option value="12">Dic</option>
+            </select>
+            <div class="filter-chip on" data-status="all">Tutti</div>
+            <div class="filter-chip" data-status="ok">✓ Completi</div>
+            <div class="filter-chip" data-status="received">○ Ricevuti</div>
+            <div class="filter-chip" data-status="missing">✕ Mancanti</div>
+          </div>
           <span class="filter-count" id="filter-count"></span>
           <button class="btn btn-ghost btn-sm" id="btn-reset" style="margin-left:auto">↺ Reset</button>
         </div>
@@ -135,18 +145,19 @@ async function loadData() {
 }
 
 // ── filter ────────────────────────────────────────────────────
+function getSelectedMonth() {
+  const v = parseInt(document.getElementById('filter-month')?.value || '0');
+  return v === 0 ? ui.currentYearMonth().month : v;
+}
+
 function getFiltered() {
   const q = document.getElementById('search').value.toLowerCase();
-  const thisMonth = ui.currentYearMonth().month;
+  const m = getSelectedMonth();
 
   return allClients.filter(c => {
-    // Text search
     if (q && !(c.company_name||'').toLowerCase().includes(q)) return false;
-
-    // Status filter — based on current month
     if (statusFilter !== 'all') {
-      const key = `${c.id}_${thisMonth}`;
-      const s = statements[key];
+      const s = statements[`${c.id}_${m}`];
       if (statusFilter === 'ok'      && !(s?.received && s?.registered)) return false;
       if (statusFilter === 'received'&& !(s?.received && !s?.registered)) return false;
       if (statusFilter === 'missing' && s?.received) return false;
@@ -278,6 +289,7 @@ async function toggleStatement(clientId, month, tdEl) {
 // ── events ────────────────────────────────────────────────────
 document.getElementById('search').addEventListener('input', () => { currentPage=1; renderGrid(); });
 document.getElementById('filter-year').addEventListener('change', e => { currentYear=parseInt(e.target.value); loadData(); });
+document.getElementById('filter-month').addEventListener('change', () => { currentPage=1; renderGrid(); });
 
 document.querySelectorAll('.filter-chip').forEach(chip => {
   chip.addEventListener('click', () => {
@@ -291,6 +303,7 @@ document.querySelectorAll('.filter-chip').forEach(chip => {
 
 document.getElementById('btn-reset').addEventListener('click', () => {
   document.getElementById('search').value = '';
+  document.getElementById('filter-month').value = '0';
   document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('on'));
   document.querySelector('.filter-chip[data-status="all"]').classList.add('on');
   statusFilter = 'all';
