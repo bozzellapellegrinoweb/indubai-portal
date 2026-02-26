@@ -305,8 +305,8 @@ function barChart(id, labels, vals, colors) {
 async function loadCtypeChart() {
   const wrap = document.querySelector('#panel-overview .d2:first-child .card:first-child .chart-wrap');
   try {
-    const rows = await sb.db.select('clients',{columns:'company_type',filter:'is_active=eq.true'});
-    const cnt={}; (rows||[]).forEach(r=>{const t=r.company_type||'N/D';cnt[t]=(cnt[t]||0)+1;});
+    const rows = await sb.db.select('clients',{columns:'accounting_partner',filter:'is_active=eq.true'});
+    const cnt={}; (rows||[]).forEach(r=>{const t=ui.partnerLabel(r.accounting_partner).replace(/<[^>]+>/g,'')||'N/D';cnt[t]=(cnt[t]||0)+1;});
     const l=Object.keys(cnt),v=Object.values(cnt);
     if(!l.length){if(wrap)wrap.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">Nessun dato</div>';return;}
     donut('ch-ctype',l,v); legend('lg-ctype',l,v);
@@ -334,13 +334,19 @@ async function loadStatementsOv() {
 }
 async function loadOnboardingOv() {
   const el=document.getElementById('ov-onboarding');
+  // Boolean checklist fields
+  const CHECKS=['whatsapp_group','call_scheduled','docs_in_drive','eid_verified','uae_phone_verified','corporate_tax_check','fta_profile_created','ct_registration_done','payment_link_sent','bank_accounts_noted'];
   try {
-    const rows = await sb.db.select('onboarding_checklist',{columns:'completed_steps,total_steps,client_id,clients(is_active,company_name)'});
-    const active=(rows||[]).filter(r=>r.clients?.is_active);
-    const done=active.filter(r=>r.completed_steps>=r.total_steps&&r.total_steps>0).length;
-    const inp=active.filter(r=>r.completed_steps>0&&r.completed_steps<r.total_steps).length;
-    const nst=active.filter(r=>!r.completed_steps).length;
-    const tot=active.length, pct=tot?Math.round(done/tot*100):0;
+    const rows = await sb.db.select('onboarding_checklist',{columns:CHECKS.join(',')});
+    if(!rows?.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">Nessun dato</div>';return;}
+    let done=0,inp=0,nst=0;
+    rows.forEach(r=>{
+      const checked=CHECKS.filter(k=>r[k]===true).length;
+      if(checked===CHECKS.length) done++;
+      else if(checked>0) inp++;
+      else nst++;
+    });
+    const tot=rows.length, pct=tot?Math.round(done/tot*100):0;
     const col=pct>80?'#059669':pct>40?'#d97706':'#0891b2';
     el.innerHTML=`<div class="num3"><div class="num3-cell"><div class="num3-val" style="color:#059669">${done}</div><div class="num3-lbl">Completati</div></div><div class="num3-cell"><div class="num3-val" style="color:#d97706">${inp}</div><div class="num3-lbl">In corso</div></div><div class="num3-cell"><div class="num3-val" style="color:#6b7280">${nst}</div><div class="num3-lbl">Non avviati</div></div></div><div class="stat-bar"><div class="stat-bar-hd"><span>Completamento</span><span>${pct}%</span></div><div class="stat-track"><div class="stat-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
   } catch(e){ el.innerHTML=`<div class="alert alert-danger" style="margin:8px">${e.message}</div>`; }
