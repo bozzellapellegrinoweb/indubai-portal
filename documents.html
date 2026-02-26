@@ -441,16 +441,6 @@ const DRV = (() => {
     // Auth already checked by app.js — if we're here, we're logged in
     const listEl = document.getElementById('dc-list');
 
-    // Debug: show token info visibly on page
-    const dbgTok = tok();
-    const isAnon = dbgTok === AK;
-    const listEl2 = document.getElementById('dc-list');
-    listEl2.innerHTML = '<div style="padding:10px;font-size:11px;background:#f0f4f8;margin:8px;border-radius:6px;word-break:break-all">' +
-      '<b>Token:</b> ' + (isAnon ? '❌ ANON' : '✅ USER') + '<br>' +
-      '<b>Session:</b> ' + (sb.getSession() ? '✅ presente' : '❌ MANCANTE') + '<br>' +
-      '<b>LocalStorage key:</b> ' + (localStorage.getItem('indubai_session') ? '✅' : '❌ vuoto') +
-      '</div>';
-
     try {
       clients = await GET('/rest/v1/clients?is_active=eq.true&select=id,company_name&order=company_name.asc');
     } catch(e) {
@@ -564,7 +554,7 @@ const DRV = (() => {
       </div>`;
     });
     files.forEach(f => {
-      g += `<div class="f-card" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}">
+      g += `<div class="f-card" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}" data-mime="${esc(f.mime_type||'')}">
         <div class="f-acts">
           <div class="a-btn" data-act="dl" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}" title="Scarica">⬇</div>
           <div class="a-btn" data-act="renfile" data-id="${esc(f.id)}" data-nm="${esc(f.display_name)}" title="Rinomina">✎</div>
@@ -592,7 +582,7 @@ const DRV = (() => {
       </div>`;
     });
     files.forEach(f => {
-      l += `<div class="l-row" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}">
+      l += `<div class="l-row" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}" data-mime="${esc(f.mime_type||'')}">
         <span class="l-ico">${icon(f.mime_type, f.display_name)}</span>
         <span class="l-nm">${esc(f.display_name)}</span>
         <span class="l-sz">${sz(f.file_size)}</span>
@@ -623,10 +613,21 @@ const DRV = (() => {
       });
     });
 
-    // Double-click on file = download
-    dc.querySelectorAll('.f-card:not(.isdir), .l-row[data-nm]:not([data-dir])').forEach(el => {
-      el.addEventListener('dblclick', () => {
-        if(el.dataset.id && el.dataset.sp && el.dataset.nm) dlFile(el.dataset.sp, el.dataset.nm);
+    // Click on file = preview, double-click = download
+    dc.querySelectorAll('.f-card:not(.isdir)').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('[data-act]')) return;
+        if(el.dataset.sp && el.dataset.nm) DRV.previewFile(el.dataset.sp, el.dataset.nm, el.dataset.mime||'');
+      });
+      el.addEventListener('dblclick', e => {
+        if (e.target.closest('[data-act]')) return;
+        if(el.dataset.sp && el.dataset.nm) dlFile(el.dataset.sp, el.dataset.nm);
+      });
+    });
+    dc.querySelectorAll('.l-row[data-nm]:not([data-dir])').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('[data-act], button')) return;
+        if(el.dataset.sp && el.dataset.nm) DRV.previewFile(el.dataset.sp, el.dataset.nm, el.dataset.mime||'');
       });
     });
 
@@ -829,11 +830,78 @@ const DRV = (() => {
     } catch(e) { toast('Errore: '+e.message,'error'); }
   }
 
-  return { boot, setView, newFolderModal };
+
+  // ── PREVIEW ──────────────────────────────────────────────────
+  async function previewFile(sp, name, mime) {
+    const modal = document.getElementById('m-preview');
+    const body  = document.getElementById('prev-body');
+    const title = document.getElementById('prev-title');
+    const dlBtn = document.getElementById('prev-dl-btn');
+
+    title.textContent = name;
+    body.innerHTML    = '<div class="spin-wrap"><div class="spinner"></div></div>';
+    modal.style.display = 'flex';
+
+    dlBtn.onclick = () => dlFile(sp, name);
+
+    const ext = name.split('.').pop().toLowerCase();
+    const isImg = mime?.startsWith('image') || ['jpg','jpeg','png','webp','gif'].includes(ext);
+    const isPdf = mime?.includes('pdf') || ext === 'pdf';
+
+    if (!isImg && !isPdf) {
+      body.innerHTML = `
+        <div style="text-align:center;padding:40px;color:var(--text-muted)">
+          <div style="font-size:48px;margin-bottom:16px">${icon(mime, name)}</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:8px">${esc(name)}</div>
+          <div style="font-size:13px;margin-bottom:20px">Anteprima non disponibile per questo tipo di file</div>
+          <button class="btn btn-accent" onclick="dlFile('${esc(sp)}','${esc(name)}')">⬇ Scarica</button>
+        </div>`;
+      return;
+    }
+
+    try {
+      const r = await fetch(`${SB}/storage/v1/object/authenticated/${BKT}/${sp}`, {headers:H()});
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const blob = await r.blob();
+      const url  = URL.createObjectURL(blob);
+
+      if (isImg) {
+        body.innerHTML = `<img src="${url}" style="max-width:100%;max-height:80vh;object-fit:contain;display:block;padding:12px" onload="URL.revokeObjectURL(this.src)">`;
+      } else {
+        body.innerHTML = `<iframe src="${url}" style="width:100%;height:75vh;border:none" onload=""></iframe>`;
+        // Don't revoke for PDF iframe
+      }
+    } catch(e) {
+      body.innerHTML = `<div style="padding:30px;color:var(--danger);text-align:center">Errore anteprima: ${e.message}</div>`;
+    }
+  }
+
+  function closePreview() {
+    document.getElementById('m-preview').style.display = 'none';
+    document.getElementById('prev-body').innerHTML = '';
+  }
+
+  return { boot, setView, newFolderModal, previewFile, closePreview };
 })();
 
 // Boot AFTER all scripts have run and DOM is ready
 document.addEventListener('DOMContentLoaded', () => DRV.boot());
 </script>
+<!-- Preview modal -->
+<div id="m-preview" class="m-ov" style="display:none" onclick="if(event.target===this)closePreview()">
+  <div style="background:white;border-radius:16px;width:95vw;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1.5px solid var(--border);flex-shrink:0">
+      <div id="prev-title" style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:12px"></div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" id="prev-dl-btn">⬇ Scarica</button>
+        <button class="btn btn-ghost btn-sm" onclick="closePreview()">✕</button>
+      </div>
+    </div>
+    <div id="prev-body" style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;min-height:300px;background:#f8f8f8">
+      <div class="spinner"></div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
