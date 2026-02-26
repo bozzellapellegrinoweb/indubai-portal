@@ -529,6 +529,7 @@ async function loadDocumentsPanel() {
       { headers: { apikey: AK, Authorization: `Bearer ${tok}` } }
     );
     const files = await r.json();
+    if (!r.ok) throw new Error(files?.message || 'HTTP ' + r.status);
     const visible = Array.isArray(files) ? files.filter(f => f.display_name !== '.keep') : [];
 
     const folders = new Set();
