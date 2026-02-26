@@ -513,6 +513,80 @@ async function deleteClient() {
     setTimeout(() => window.location.href='/clients.html', 800);
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
 }
+
+async function loadDocumentsPanel() {
+  const panel = document.getElementById('doc-panel-content');
+  if (!panel) return;
+  panel.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
+
+  const SB = window.ENV_SUPABASE_URL;
+  const AK = window.ENV_SUPABASE_ANON_KEY;
+  const tok = sb.getSession()?.access_token || AK;
+
+  try {
+    const r = await fetch(
+      `${SB}/rest/v1/client_files?client_id=eq.${clientId}&select=id,display_name,file_size,mime_type,folder,created_at&order=created_at.desc&limit=50`,
+      { headers: { apikey: AK, Authorization: `Bearer ${tok}` } }
+    );
+    const files = await r.json();
+    const visible = Array.isArray(files) ? files.filter(f => f.display_name !== '.keep') : [];
+
+    const folders = new Set();
+    visible.forEach(f => {
+      const p = f.folder.replace(/^\//, '').split('/').filter(Boolean);
+      if (p.length) folders.add(p[0]);
+    });
+    const rootFiles = visible.filter(f => f.folder === '/');
+
+    const eico = (m, n) => {
+      const e = (n||'').split('.').pop().toLowerCase();
+      const mp = {pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',jpg:'🖼',jpeg:'🖼',png:'🖼',zip:'🗜',txt:'📃'};
+      return m?.includes('pdf') ? '📄' : m?.startsWith('image') ? '🖼' : mp[e] || '📎';
+    };
+    const esz = b => !b ? '' : b < 1048576 ? (b/1024).toFixed(0)+' KB' : (b/1048576).toFixed(1)+' MB';
+
+    let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+    html += `<div style="font-size:13px;color:var(--text-muted)">${visible.length} file${folders.size ? ' · ' + folders.size + ' cartelle' : ''}</div>`;
+    html += `<a href="/documents.html?client=${clientId}" class="btn btn-accent btn-sm" style="text-decoration:none">📁 Apri Drive →</a></div>`;
+
+    if (!visible.length) {
+      html += `<div style="text-align:center;padding:40px;color:var(--text-muted)">
+        <div style="font-size:36px;margin-bottom:12px">📂</div>
+        <div style="font-weight:600;margin-bottom:12px">Nessun documento</div>
+        <a href="/documents.html?client=${clientId}" class="btn btn-accent" style="text-decoration:none;display:inline-block">⬆ Carica documenti</a>
+      </div>`;
+    } else {
+      if (folders.size) {
+        html += '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">';
+        folders.forEach(name => {
+          const cnt = visible.filter(f => f.folder.startsWith('/'+name+'/')).length;
+          html += `<div style="background:white;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="window.location.href='/documents.html?client=${clientId}'">
+            <span style="font-size:20px">📁</span>
+            <div><div style="font-size:13px;font-weight:600">${ui.escapeHtml(name)}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${cnt} file</div></div>
+          </div>`;
+        });
+        html += '</div>';
+      }
+      rootFiles.slice(0, 6).forEach(f => {
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:white;border:1.5px solid var(--border);border-radius:9px;margin-bottom:6px">
+          <span style="font-size:18px">${eico(f.mime_type, f.display_name)}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ui.escapeHtml(f.display_name)}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${esz(f.file_size)}</div>
+          </div>
+        </div>`;
+      });
+      if (rootFiles.length > 6) html += `<div style="font-size:12px;color:var(--text-muted);padding:6px 0">+ altri ${rootFiles.length-6} file...</div>`;
+    }
+    panel.innerHTML = html;
+  } catch(e) {
+    panel.innerHTML = `<div style="text-align:center;padding:30px">
+      <div style="color:var(--danger);margin-bottom:12px;font-size:13px">Errore: ${e.message}</div>
+      <a href="/documents.html?client=${clientId}" class="btn btn-accent" style="text-decoration:none">📁 Apri Drive</a>
+    </div>`;
+  }
+}
 </script>
 </body>
 </html>
