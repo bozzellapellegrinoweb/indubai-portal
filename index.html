@@ -385,9 +385,9 @@ async function loadTaskCharts() {
 async function loadPayIssues() {
   const el=document.getElementById('pay-issues');
   try {
-    const rows=await sb.db.select('subscription_payments',{columns:'client_id,status,payment_notes,clients(company_name)',filter:`year=eq.${year}&month=eq.${month}&status=in.(failed,no_tentativo,pending)`});
+    const rows=await sb.db.select('subscription_payments',{columns:'client_id,status,notes,clients(company_name)',filter:`year=eq.${year}&month=eq.${month}&status=in.(failed,no_tentativo,pending)`});
     if(!rows?.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">✓</div><h3>Tutto OK!</h3><p>Nessun problema.</p></div>`;return;}
-    el.innerHTML=rows.slice(0,8).map(r=>`<a href="/payments.html" class="drow"><div class="drow-main"><div class="drow-title">${ui.escapeHtml(r.clients?.company_name||r.client_id)}</div><div class="drow-sub">${r.payment_notes||'—'}</div></div><div>${ui.statusBadge(r.status)}</div></a>`).join('') + (rows.length>8?`<div style="padding:10px 20px;font-size:12px;color:var(--text-muted)">+ altri ${rows.length-8}</div>`:'');
+    el.innerHTML=rows.slice(0,8).map(r=>`<a href="/payments.html" class="drow"><div class="drow-main"><div class="drow-title">${ui.escapeHtml(r.clients?.company_name||r.client_id)}</div><div class="drow-sub">${r.notes||'—'}</div></div><div>${ui.statusBadge(r.status)}</div></a>`).join('') + (rows.length>8?`<div style="padding:10px 20px;font-size:12px;color:var(--text-muted)">+ altri ${rows.length-8}</div>`:'');
   } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;}
 }
 async function loadPayStatChart() {
