@@ -60,7 +60,7 @@
     .num3-lbl { font-size:11px; color:var(--text-muted); margin-top:2px; }
 
     .chart-wrap { padding:16px 20px 20px; }
-    .chart-wrap canvas { max-height:210px; }
+    .chart-wrap canvas { display:none; }
     .clegend { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
     .cleg { display:flex; align-items:center; gap:6px; font-size:12px; }
     .cleg-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
@@ -231,20 +231,74 @@ async function loadKPIs() {
   }
 }
 
-// ── chart helpers ─────────────────────────────────────────────
+// ── SVG chart helpers (no external deps) ──────────────────────
 const P = ['#1a3a5c','#2563a8','#c9a84c','#0891b2','#7c3aed','#059669','#dc2626','#d97706','#6b7280'];
+
 function donut(id, labels, vals, colors) {
-  const c = document.getElementById(id); if(!c) return;
-  new Chart(c, { type:'doughnut', data:{ labels, datasets:[{ data:vals, backgroundColor:colors||P, borderWidth:2, borderColor:'white', hoverOffset:6 }] }, options:{ cutout:'62%', plugins:{ legend:{display:false} }, animation:{duration:600} } });
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const pal = colors || P;
+  const total = vals.reduce((a,b)=>a+b,0);
+  if (!total) return;
+  const size = 180, cx = size/2, cy = size/2, r = 72, ir = 44;
+  let startAngle = -Math.PI/2, paths = '';
+  vals.forEach((v, i) => {
+    const angle = (v/total)*Math.PI*2;
+    const endAngle = startAngle + angle;
+    const x1=cx+r*Math.cos(startAngle), y1=cy+r*Math.sin(startAngle);
+    const x2=cx+r*Math.cos(endAngle),   y2=cy+r*Math.sin(endAngle);
+    const ix1=cx+ir*Math.cos(startAngle),iy1=cy+ir*Math.sin(startAngle);
+    const ix2=cx+ir*Math.cos(endAngle),  iy2=cy+ir*Math.sin(endAngle);
+    const large = angle > Math.PI ? 1 : 0;
+    paths += `<path d="M${ix1},${iy1} L${x1},${y1} A${r},${r},0,${large},1,${x2},${y2} L${ix2},${iy2} A${ir},${ir},0,${large},0,${ix1},${iy1} Z" fill="${pal[i%pal.length]}" stroke="white" stroke-width="2"><title>${labels[i]}: ${v}</title></path>`;
+    startAngle = endAngle;
+  });
+  const svg = `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${paths}<text x="${cx}" y="${cy}" text-anchor="middle" dy=".35em" font-size="22" font-weight="900" fill="#1a3a5c">${total}</text></svg>`;
+  // Replace canvas with svg container
+  const wrap = canvas.parentElement;
+  canvas.style.display = 'none';
+  const existing = wrap.querySelector('.donut-svg');
+  if (existing) existing.remove();
+  const div = document.createElement('div');
+  div.className = 'donut-svg';
+  div.style.cssText = 'display:flex;justify-content:center;margin-bottom:8px';
+  div.innerHTML = svg;
+  wrap.insertBefore(div, canvas);
 }
+
 function legend(id, labels, vals, colors) {
-  const el=document.getElementById(id); if(!el) return;
-  const tot=vals.reduce((a,b)=>a+b,0);
-  el.innerHTML=labels.map((l,i)=>`<div class="cleg"><div class="cleg-dot" style="background:${(colors||P)[i]}"></div><b>${vals[i]}</b><span style="color:var(--text-muted)">${l}</span><span style="color:var(--text-muted);font-size:10px">${tot?Math.round(vals[i]/tot*100)+'%':''}</span></div>`).join('');
+  const el = document.getElementById(id); if(!el) return;
+  const pal = colors || P;
+  const tot = vals.reduce((a,b)=>a+b,0);
+  el.innerHTML = labels.map((l,i) => `<div class="cleg"><div class="cleg-dot" style="background:${pal[i%pal.length]}"></div><b>${vals[i]}</b><span style="color:var(--text-muted)">${l}</span><span style="color:var(--text-muted);font-size:10px">${tot?Math.round(vals[i]/tot*100)+'%':''}</span></div>`).join('');
 }
+
 function barChart(id, labels, vals, colors) {
-  const c=document.getElementById(id); if(!c) return;
-  new Chart(c, { type:'bar', data:{ labels, datasets:[{ data:vals, backgroundColor:colors||P, borderRadius:6, borderSkipped:false }] }, options:{ plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false},ticks:{font:{size:11}}}, y:{grid:{color:'#f0f0f0'},ticks:{font:{size:11},stepSize:1},beginAtZero:true} }, animation:{duration:500} } });
+  const canvas = document.getElementById(id); if(!canvas) return;
+  const pal = colors || P;
+  const max = Math.max(...vals, 1);
+  const W = 280, H = 160, pad = 28, bw = Math.floor((W - pad*2) / labels.length) - 6;
+  let bars = '', xLabels = '', yLines = '';
+  for (let i=0; i<=4; i++) {
+    const y = H - pad - (i/4)*(H-pad*1.5);
+    const val = Math.round(max*i/4);
+    yLines += `<line x1="${pad}" y1="${y}" x2="${W-10}" y2="${y}" stroke="#f0f0f0" stroke-width="1"/>`;
+    yLines += `<text x="${pad-4}" y="${y+4}" text-anchor="end" font-size="9" fill="#999">${val}</text>`;
+  }
+  labels.forEach((l,i) => {
+    const bh = ((vals[i]||0)/max)*(H-pad*1.5);
+    const x = pad + i*((W-pad*2)/labels.length) + 3;
+    const y = H - pad - bh;
+    bars += `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="3" fill="${pal[i%pal.length]}"><title>${l}: ${vals[i]}</title></rect>`;
+    bars += `<text x="${x+bw/2}" y="${H-pad+12}" text-anchor="middle" font-size="9" fill="#666">${l}</text>`;
+    if (vals[i]) bars += `<text x="${x+bw/2}" y="${y-3}" text-anchor="middle" font-size="9" font-weight="700" fill="${pal[i%pal.length]}">${vals[i]}</text>`;
+  });
+  const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:${H}px">${yLines}${bars}</svg>`;
+  canvas.style.display = 'none';
+  const existing = canvas.parentElement.querySelector('.bar-svg');
+  if (existing) existing.remove();
+  const div = document.createElement('div'); div.className='bar-svg'; div.innerHTML=svg;
+  canvas.parentElement.insertBefore(div, canvas);
 }
 
 // ── OVERVIEW charts ───────────────────────────────────────────
