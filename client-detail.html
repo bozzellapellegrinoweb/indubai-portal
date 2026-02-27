@@ -426,44 +426,66 @@ async function loadZohoTab() {
     const cur = d.currency || 'AED';
 
     el.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;padding:4px 0 20px">
-        <div class="kpi-card" style="background:linear-gradient(135deg,#1a3a5c,#2563a8);color:white;border:none">
-          <div class="kpi-label" style="color:rgba(255,255,255,.7)">Fatturato ${d.year}</div>
-          <div class="kpi-value" style="color:white;font-size:22px">${cur} ${fmt(d.totalBilled)}</div>
-          <div class="kpi-sub" style="color:rgba(255,255,255,.6)">${d.countInvoices} fatture emesse</div>
-        </div>
-        <div class="kpi-card" style="background:linear-gradient(135deg,#065f46,#059669);color:white;border:none">
-          <div class="kpi-label" style="color:rgba(255,255,255,.7)">Incassato</div>
-          <div class="kpi-value" style="color:white;font-size:22px">${cur} ${fmt(d.totalPaid)}</div>
-          <div class="kpi-sub" style="color:rgba(255,255,255,.6)">${Math.round(d.totalBilled ? d.totalPaid/d.totalBilled*100 : 0)}% del fatturato</div>
-        </div>
-        <div class="kpi-card" style="background:${d.totalUnpaid>0?'linear-gradient(135deg,#7f1d1d,#dc2626)':'linear-gradient(135deg,#374151,#6b7280)'};color:white;border:none">
-          <div class="kpi-label" style="color:rgba(255,255,255,.7)">Da Incassare</div>
-          <div class="kpi-value" style="color:white;font-size:22px">${cur} ${fmt(d.totalUnpaid)}</div>
-          <div class="kpi-sub" style="color:rgba(255,255,255,.6)">${d.countOverdue} scadute</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Anno precedente (${d.year-1})</div>
-          <div class="kpi-value" style="font-size:18px">${cur} ${fmt(d.prevYearTotal)}</div>
-          <div class="kpi-sub" style="color:${d.totalBilled>=d.prevYearTotal?'#059669':'#dc2626'}">
-            ${d.prevYearTotal ? (d.totalBilled >= d.prevYearTotal ? '▲' : '▼') + ' ' + Math.abs(Math.round((d.totalBilled-d.prevYearTotal)/d.prevYearTotal*100)) + '%' : '—'}
-            vs anno prec.
+      <div style="padding:20px 0">
+
+        <!-- KPI row -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+          <div style="background:linear-gradient(135deg,#1a3a5c,#2563a8);border-radius:14px;padding:20px 24px;color:white">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.65);margin-bottom:8px">Fatturato ${d.year}</div>
+            <div style="font-size:24px;font-weight:800;letter-spacing:-.5px">${cur} ${fmt(d.totalBilled)}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px">${d.countInvoices} fatture emesse</div>
+          </div>
+          <div style="background:linear-gradient(135deg,#065f46,#059669);border-radius:14px;padding:20px 24px;color:white">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.65);margin-bottom:8px">Incassato</div>
+            <div style="font-size:24px;font-weight:800;letter-spacing:-.5px">${cur} ${fmt(d.totalPaid)}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px">${Math.round(d.totalBilled ? d.totalPaid/d.totalBilled*100 : 0)}% del fatturato</div>
+          </div>
+          <div style="background:${d.totalUnpaid>0?'linear-gradient(135deg,#7f1d1d,#dc2626)':'linear-gradient(135deg,#374151,#6b7280)'};border-radius:14px;padding:20px 24px;color:white">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.65);margin-bottom:8px">Da Incassare</div>
+            <div style="font-size:24px;font-weight:800;letter-spacing:-.5px">${cur} ${fmt(d.totalUnpaid)}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px">${d.countOverdue} scadute</div>
+          </div>
+          <div style="background:white;border:1.5px solid var(--border);border-radius:14px;padding:20px 24px">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px">Anno prec. (${d.year-1})</div>
+            <div style="font-size:24px;font-weight:800;letter-spacing:-.5px;color:var(--text)">${cur} ${fmt(d.prevYearTotal)}</div>
+            <div style="font-size:12px;margin-top:4px;color:${d.totalBilled>=d.prevYearTotal?'#059669':'#dc2626'}">
+              ${d.prevYearTotal ? (d.totalBilled >= d.prevYearTotal ? '▲' : '▼') + ' ' + Math.abs(Math.round((d.totalBilled-d.prevYearTotal)/d.prevYearTotal*100)) + '% vs anno prec.' : '—'}
+            </div>
           </div>
         </div>
-      </div>
-      ${d.lastInvoice ? `
-        <div style="background:white;border:1.5px solid var(--border);border-radius:10px;padding:14px 18px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px">Ultima Fattura</div>
-          <div style="display:flex;align-items:center;gap:16px">
-            <div style="font-size:15px;font-weight:700">${d.lastInvoice.number}</div>
+
+        <!-- Barra progresso incasso -->
+        <div style="background:white;border:1.5px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:700">Stato Incassi ${d.year}</div>
+            <div style="font-size:13px;color:var(--text-muted)">${cur} ${fmt(d.totalPaid)} / ${cur} ${fmt(d.totalBilled)}</div>
+          </div>
+          <div style="background:#f1f5f9;border-radius:100px;height:10px;overflow:hidden">
+            <div style="height:100%;border-radius:100px;background:linear-gradient(90deg,#059669,#34d399);width:${Math.round(d.totalBilled ? d.totalPaid/d.totalBilled*100 : 0)}%;transition:width .6s ease"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:var(--text-muted)">
+            <span style="color:#059669;font-weight:600">✓ Incassato ${Math.round(d.totalBilled ? d.totalPaid/d.totalBilled*100 : 0)}%</span>
+            <span style="color:${d.totalUnpaid>0?'#dc2626':'var(--text-muted)'};font-weight:600">⏳ Da incassare ${Math.round(d.totalBilled ? d.totalUnpaid/d.totalBilled*100 : 0)}%</span>
+          </div>
+        </div>
+
+        <!-- Ultima fattura -->
+        ${d.lastInvoice ? `
+        <div style="background:white;border:1.5px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:20px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:12px">Ultima Fattura</div>
+          <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+            <div style="font-size:16px;font-weight:800;color:var(--text)">${d.lastInvoice.number}</div>
             <div style="font-size:13px;color:var(--text-muted)">${ui.formatDate(d.lastInvoice.date)}</div>
-            <div style="font-size:14px;font-weight:700">${cur} ${fmt(d.lastInvoice.total)}</div>
+            <div style="font-size:15px;font-weight:700;color:var(--text)">${cur} ${fmt(d.lastInvoice.total)}</div>
             <div>${ui.monthBadge(d.lastInvoice.status === 'paid' ? 'ok' : d.lastInvoice.status === 'overdue' ? 'failed' : 'pending')}</div>
           </div>
         </div>` : ''}
-      <div style="text-align:right;margin-top:12px">
-        <button class="btn btn-ghost btn-sm" onclick="loadZohoTab()">↺ Aggiorna</button>
-        <a href="https://books.zoho.com/app#/invoices" target="_blank" class="btn btn-ghost btn-sm" style="margin-left:6px">Apri Zoho Books ↗</a>
+
+        <!-- Azioni -->
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="loadZohoTab()">↺ Aggiorna</button>
+          <a href="https://books.zoho.com/app#/invoices" target="_blank" class="btn btn-accent btn-sm">Apri Zoho Books ↗</a>
+        </div>
       </div>`;
   } catch(e) {
     el.innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;

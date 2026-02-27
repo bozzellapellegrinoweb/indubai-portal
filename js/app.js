@@ -48,11 +48,12 @@
   const navHTML = navItems.map(item => {
     const sectionHeader = item.section ? `<div class="nav-section">${item.section}</div>` : '';
     const active = (currentPage === item.id || (currentPage === '' && item.id === 'index')) ? 'active' : '';
+    const subStyle = item.sub ? 'padding-left:32px;font-size:12px;opacity:.85;' : '';
     return `${sectionHeader}
-      <a href="${item.href}" class="nav-item ${active}">
-        <span class="nav-icon">${item.icon}</span>
+      <a href="${item.href}" class="nav-item ${active}" style="${subStyle}">
+        ${item.icon ? `<span class="nav-icon">${item.icon}</span>` : ''}
         ${item.label}
-        <span class="nav-badge ${item.id}" style="display:none">0</span>
+        <span class="nav-badge ${item.id||''}" style="display:none">0</span>
       </a>`;
   }).join('');
 
