@@ -393,14 +393,15 @@ function openEdit() {
 }
 
 async function markVATDone(clientId) {
-  if (!confirm('Confermi che la VAT è stata registrata? Verrà aggiornato il flag sul profilo cliente.')) return;
+  if (!confirm('Confermi che la VAT è stata registrata?')) return;
   try {
-    await sb.db.update('clients', `id=eq.${clientId}`, { vat_registered: true });
+    const result = await sb.db.update('clients', `id=eq.${clientId}`, { vat_registered: true });
     clientData.vat_registered = true;
+    // Reload zoho tab
+    switchTab('zoho', document.querySelector('.tab[onclick*="zoho"]'));
     ui.showToast('✅ VAT segnata come registrata', 'success');
-    loadZohoTab();
   } catch(e) {
-    ui.showToast('Errore: ' + e.message, 'error');
+    alert('Errore: ' + e.message);
   }
 }
 
