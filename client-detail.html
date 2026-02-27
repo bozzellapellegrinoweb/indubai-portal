@@ -410,12 +410,12 @@ async function loadZohoTab() {
 
   try {
     const SUPABASE_URL = window.SUPABASE_URL || document.querySelector('script[src*="supabase"]')?.src?.match(/https:\/\/[^/]+/)?.[0] || '';
-    const fnUrl = `${sb.url}/functions/v1/bright-service`;
+    const fnUrl = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/bright-service';
     const res = await fetch(fnUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${sb.anonKey}`,
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMzIwNTEsImV4cCI6MjA4NzYwODA1MX0.I0hB8POnRunvGyr7XXItp8E5H70i0slG-pqxqzCOBOg',
       },
       body: JSON.stringify({ action: 'client_summary', org_id: orgId })
     });
