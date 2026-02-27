@@ -97,8 +97,8 @@ let allRows = [], currentFilter = 'all', sortDir = 'desc';
 async function load() {
   try {
     const [snapsRes, clientsRes] = await Promise.all([
-      sb.db.select('zoho_snapshots', 'client_id,rolling12_aed,vat_status,updated_at,count_invoices'),
-      sb.db.select('clients', 'id,company_name,vat_registered', 'zoho_org_id=not.is.null&is_active=eq.true&order=company_name.asc')
+      sb.db.select('zoho_snapshots', { columns: 'client_id,rolling12_aed,vat_status,updated_at,count_invoices' }),
+      sb.db.select('clients', { columns: 'id,company_name,vat_registered', filter: 'zoho_org_id=not.is.null&is_active=eq.true', order: 'company_name.asc' })
     ]);
     const snapshots = snapsRes.data || [];
     const clients   = clientsRes.data || [];
