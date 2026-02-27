@@ -410,7 +410,7 @@ async function loadZohoTab() {
 
   try {
     const SUPABASE_URL = window.SUPABASE_URL || document.querySelector('script[src*="supabase"]')?.src?.match(/https:\/\/[^/]+/)?.[0] || '';
-    const fnUrl = `${sb.url}/functions/v1/zoho-proxy`;
+    const fnUrl = `${sb.url}/functions/v1/bright-service`;
     const res = await fetch(fnUrl, {
       method: 'POST',
       headers: {
