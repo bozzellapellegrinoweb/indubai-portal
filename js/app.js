@@ -24,6 +24,7 @@
     { id: 'index',      icon: '◈', label: 'Dashboard',     href: '/index.html',      section: 'OVERVIEW' },
     { id: 'tasks',      icon: '✓', label: 'Task',           href: '/tasks.html' },
     { id: 'clients',    icon: '◉', label: 'Clienti',        href: '/clients.html',    section: 'GESTIONE' },
+    { id: 'zoho-setup', icon: '',   label: '↳ Setup Zoho',   href: '/zoho-setup.html', roles: ['admin','senior','junior'] },
     { id: 'documents',  icon: '📁', label: 'Documenti',     href: '/documents.html' },
     { id: 'onboarding', icon: '✦', label: 'Onboarding',     href: '/onboarding.html' },
     { id: 'statements', icon: '◎', label: 'Estratti Conto', href: '/statements.html' },
@@ -33,10 +34,7 @@
     { id: 'affinitas',  icon: '◉', label: 'Affinitas',      href: '/affinitas.html' },
     { id: 'reports',    icon: '📊', label: 'Report',         href: '/reports.html',    section: 'ANALYTICS' },
     { id: 'search',     icon: '🔍', label: 'Ricerca',        href: '/search.html' },
-    ...(role === 'admin' ? [
-      { id: 'users',       icon: '👥', label: 'Utenti',      href: '/users.html',      section: 'ADMIN' },
-      { id: 'zoho-setup',  icon: '📊', label: 'Setup Zoho', href: '/zoho-setup.html' }
-    ] : []),
+    ...(role === 'admin' ? [{ id: 'users', icon: '👥', label: 'Utenti', href: '/users.html', section: 'ADMIN' }] : []),
   ];
 
   const navItems = allowed ? allNavItems.filter(i => allowed.includes(i.id)) : allNavItems;
@@ -48,7 +46,7 @@
     return;
   }
 
-  const navHTML = navItems.map(item => {
+  const navHTML = navItems.filter(item => !item.roles || item.roles.includes(role)).map(item => {
     const sectionHeader = item.section ? `<div class="nav-section">${item.section}</div>` : '';
     const active = (currentPage === item.id || (currentPage === '' && item.id === 'index')) ? 'active' : '';
     const subStyle = item.sub ? 'padding-left:32px;font-size:12px;opacity:.85;' : '';
