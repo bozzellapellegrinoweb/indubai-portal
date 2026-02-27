@@ -79,6 +79,7 @@
           <button class="tab" onclick="switchTab('statements',this)">◎ Estratti</button>
           <button class="tab" onclick="switchTab('tasks',this)">✓ Task</button>
           <button class="tab" onclick="switchTab('documents',this)">📁 Documenti</button>
+          <button class="tab" onclick="switchTab('zoho',this)">📊 Zoho Books</button>
         </div>
 
         <!-- Tab: Info -->
@@ -142,6 +143,15 @@
           </div>
         </div>
 
+      </div>
+    </div>
+  </div>
+  <!-- Zoho Books Tab -->
+  <div class="tab-panel" id="tab-zoho">
+    <div id="zoho-panel" style="padding:4px">
+      <div style="padding:40px;text-align:center;color:var(--text-muted)">
+        <div class="spinner"></div>
+        <div style="margin-top:12px;font-size:13px">Caricamento dati Zoho Books...</div>
       </div>
     </div>
   </div>
@@ -248,6 +258,7 @@ function switchTab(name, el) {
   if (name === 'statements') loadStatements();
   if (name === 'tasks') loadClientTasks();
   if (name === 'documents') loadDocumentsPanel();
+  if (name === 'zoho') loadZohoTab();
 }
 
 async function loadOnboarding() {
@@ -364,6 +375,7 @@ function openEdit() {
   document.getElementById('e-bank-notes').value = c.bank_notes||'';
   document.getElementById('e-notes').value = c.notes||'';
   document.getElementById('e-gm').value = c.general_manager||'';
+  document.getElementById('e-zoho-org').value = c.zoho_org_id||'';
   document.getElementById('e-fta-user').value = c.fta_username||'';
   document.getElementById('e-fta-pass').value = c.fta_password||'';
   document.getElementById('e-active').checked = c.is_active!==false;
@@ -375,6 +387,87 @@ function openEdit() {
     cb.checked = (c.bank_accounts||[]).includes(cb.value);
   });
   document.getElementById('modal-edit').style.display = 'flex';
+}
+
+async function loadZohoTab() {
+  const el = document.getElementById('zoho-panel');
+  const orgId = clientData?.zoho_org_id;
+
+  if (!orgId) {
+    el.innerHTML = `
+      <div style="padding:32px;text-align:center">
+        <div style="font-size:32px;margin-bottom:12px">📊</div>
+        <h3 style="margin:0 0 8px">Zoho Books non collegato</h3>
+        <p style="color:var(--text-muted);font-size:13px;margin:0 0 20px">Aggiungi il Zoho Org ID nel profilo cliente per vedere i dati contabili.</p>
+        <button class="btn btn-accent" onclick="document.getElementById('modal-edit').style.display='flex'; document.getElementById('e-zoho-org').focus()">
+          ✎ Aggiungi Org ID
+        </button>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner"></div><div style="margin-top:12px;font-size:13px;color:var(--text-muted)">Connessione a Zoho Books...</div></div>';
+
+  try {
+    const SUPABASE_URL = window.SUPABASE_URL || document.querySelector('script[src*="supabase"]')?.src?.match(/https:\/\/[^/]+/)?.[0] || '';
+    const fnUrl = `${sb.url}/functions/v1/zoho-proxy`;
+    const res = await fetch(fnUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sb.anonKey}`,
+      },
+      body: JSON.stringify({ action: 'client_summary', org_id: orgId })
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+
+    const fmt = (n) => new Intl.NumberFormat('it-IT', {minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
+    const cur = d.currency || 'AED';
+
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;padding:4px 0 20px">
+        <div class="kpi-card" style="background:linear-gradient(135deg,#1a3a5c,#2563a8);color:white;border:none">
+          <div class="kpi-label" style="color:rgba(255,255,255,.7)">Fatturato ${d.year}</div>
+          <div class="kpi-value" style="color:white;font-size:22px">${cur} ${fmt(d.totalBilled)}</div>
+          <div class="kpi-sub" style="color:rgba(255,255,255,.6)">${d.countInvoices} fatture emesse</div>
+        </div>
+        <div class="kpi-card" style="background:linear-gradient(135deg,#065f46,#059669);color:white;border:none">
+          <div class="kpi-label" style="color:rgba(255,255,255,.7)">Incassato</div>
+          <div class="kpi-value" style="color:white;font-size:22px">${cur} ${fmt(d.totalPaid)}</div>
+          <div class="kpi-sub" style="color:rgba(255,255,255,.6)">${Math.round(d.totalBilled ? d.totalPaid/d.totalBilled*100 : 0)}% del fatturato</div>
+        </div>
+        <div class="kpi-card" style="background:${d.totalUnpaid>0?'linear-gradient(135deg,#7f1d1d,#dc2626)':'linear-gradient(135deg,#374151,#6b7280)'};color:white;border:none">
+          <div class="kpi-label" style="color:rgba(255,255,255,.7)">Da Incassare</div>
+          <div class="kpi-value" style="color:white;font-size:22px">${cur} ${fmt(d.totalUnpaid)}</div>
+          <div class="kpi-sub" style="color:rgba(255,255,255,.6)">${d.countOverdue} scadute</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Anno precedente (${d.year-1})</div>
+          <div class="kpi-value" style="font-size:18px">${cur} ${fmt(d.prevYearTotal)}</div>
+          <div class="kpi-sub" style="color:${d.totalBilled>=d.prevYearTotal?'#059669':'#dc2626'}">
+            ${d.prevYearTotal ? (d.totalBilled >= d.prevYearTotal ? '▲' : '▼') + ' ' + Math.abs(Math.round((d.totalBilled-d.prevYearTotal)/d.prevYearTotal*100)) + '%' : '—'}
+            vs anno prec.
+          </div>
+        </div>
+      </div>
+      ${d.lastInvoice ? `
+        <div style="background:white;border:1.5px solid var(--border);border-radius:10px;padding:14px 18px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px">Ultima Fattura</div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <div style="font-size:15px;font-weight:700">${d.lastInvoice.number}</div>
+            <div style="font-size:13px;color:var(--text-muted)">${ui.formatDate(d.lastInvoice.date)}</div>
+            <div style="font-size:14px;font-weight:700">${cur} ${fmt(d.lastInvoice.total)}</div>
+            <div>${ui.monthBadge(d.lastInvoice.status === 'paid' ? 'ok' : d.lastInvoice.status === 'overdue' ? 'failed' : 'pending')}</div>
+          </div>
+        </div>` : ''}
+      <div style="text-align:right;margin-top:12px">
+        <button class="btn btn-ghost btn-sm" onclick="loadZohoTab()">↺ Aggiorna</button>
+        <a href="https://books.zoho.com/app#/invoices" target="_blank" class="btn btn-ghost btn-sm" style="margin-left:6px">Apri Zoho Books ↗</a>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+  }
 }
 
 init();
@@ -469,6 +562,10 @@ init();
           <label class="form-label">Note Bancarie</label>
           <input type="text" class="form-control" id="e-bank-notes">
         </div>
+        <div class="form-group">
+          <label class="form-label">🔗 Zoho Books Org ID</label>
+          <input type="text" class="form-control" id="e-zoho-org" placeholder="es. 123456789">
+        </div>
         <div class="form-group" style="grid-column:1/-1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px">
           <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🔐 Credenziali FTA (solo admin/senior)</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -554,6 +651,7 @@ async function saveEdit() {
       vat_registered: document.getElementById('e-vat-reg').checked,
       corporate_tax_registered: document.getElementById('e-ct-reg').checked,
       general_manager: document.getElementById('e-gm').value.trim()||null,
+      zoho_org_id: document.getElementById('e-zoho-org').value.trim()||null,
       fta_username: document.getElementById('e-fta-user').value.trim()||null,
       fta_password: document.getElementById('e-fta-pass').value.trim()||null,
     });

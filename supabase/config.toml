@@ -1,0 +1,5 @@
+[api]
+enabled = true
+
+[functions.zoho-proxy]
+verify_jwt = false
