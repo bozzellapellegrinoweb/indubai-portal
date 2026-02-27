@@ -441,9 +441,21 @@ async function loadZohoTab() {
     const d = await res.json();
     if (d.error) throw new Error(d.error);
 
-    const fmt    = (n) => new Intl.NumberFormat('it-IT', {minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
-    const cur    = d.orgCurrency || 'AED';
+    const fmt    = (n) => {
+      if (n === undefined || n === null || isNaN(n)) return '—';
+      return new Intl.NumberFormat('it-IT', {minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
+    };
+    const cur    = d.orgCurrency || d.currency || 'AED';
     const isMulti = cur !== 'AED';
+    // Fallback for old function version
+    if (d.rolling12AED === undefined) d.rolling12AED = 0;
+    if (d.prevYearAED === undefined) d.prevYearAED = d.prevYearTotal || 0;
+    if (d.totalBilledAED === undefined) d.totalBilledAED = d.totalBilled || 0;
+    if (d.totalPaidAED === undefined) d.totalPaidAED = d.totalPaid || 0;
+    if (d.totalUnpaidAED === undefined) d.totalUnpaidAED = d.totalUnpaid || 0;
+    if (d.vatStatus === undefined) d.vatStatus = 'ok';
+    if (d.vatThreshold === undefined) d.vatThreshold = 375000;
+    if (!d.rolling12Start) d.rolling12Start = new Date(Date.now() - 365*86400000).toISOString().split('T')[0];
 
     // VAT alert bar config
     const vatPct  = Math.min(100, Math.round(d.rolling12AED / d.vatThreshold * 100));
