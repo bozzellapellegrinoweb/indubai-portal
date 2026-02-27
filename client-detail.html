@@ -215,7 +215,8 @@ function renderClient() {
     ['Giorno Addebito', c.subscription_day ? c.subscription_day+'° del mese' : '—'],
     ['Data Avvio', ui.formatDate(c.start_date)],
     ['General Manager', c.general_manager||'—'],
-    ['Trade License', ui.formatDate(c.trade_license_date)],
+    ['Lic. Emissione', ui.formatDate(c.license_issue_date)],
+    ['Lic. Scadenza', ui.formatDate(c.trade_license_date)],
     ['Scad. Corporate Tax', ui.formatDate(c.corporate_tax_expiry)],
     ['Conti Bancari', c.bank_accounts?.join(', ')||'—'],
   ];
@@ -391,6 +392,22 @@ function openEdit() {
   document.getElementById('modal-edit').style.display = 'flex';
 }
 
+async function markCTDone(clientId) {
+  if (!confirm('Segnare la Corporate Tax come completata? Verrà rimossa la data di emissione licenza dal tracker.')) return;
+  try {
+    await sb.db.update('clients', `id=eq.${clientId}`, { 
+      license_issue_date: null,
+      ct_tracker_done: true
+    });
+    clientData.license_issue_date = null;
+    clientData.ct_tracker_done = true;
+    ui.showToast('✅ Corporate Tax segnata come completata', 'success');
+    loadZohoTab();
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  }
+}
+
 async function loadZohoTab() {
   const el = document.getElementById('zoho-panel');
   const orgId = clientData?.zoho_org_id;
@@ -465,7 +482,13 @@ async function loadZohoTab() {
           <div style="background:white;border-radius:100px;height:10px;overflow:hidden;margin-bottom:8px">
             <div style="height:100%;border-radius:100px;background:${ctColor};width:${ctPct}%;transition:width .6s ease"></div>
           </div>
-          <div style="font-size:12px;font-weight:600;color:${ctColor}">${ctLabel}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+            <div style="font-size:12px;font-weight:600;color:${ctColor}">${ctLabel}</div>
+            <button onclick="markCTDone('${clientData.id}')" 
+              style="font-size:12px;padding:6px 14px;border-radius:8px;border:1.5px solid ${ctColor};background:white;color:${ctColor};font-weight:600;cursor:pointer">
+              ✓ Segna Completata
+            </button>
+          </div>
         </div>`;
     }
 
