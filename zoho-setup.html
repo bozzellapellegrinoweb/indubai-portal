@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Zoho Books — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">⚙️ Setup Zoho Books</div>
+        <div class="topbar-subtitle">Abbina le organizzazioni Zoho ai clienti del portal</div>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-accent" onclick="loadAll()">↺ Ricarica</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- Status banner -->
+      <div id="banner" style="margin-bottom:20px"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+
+        <!-- Colonna sinistra: Organizzazioni Zoho -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 Organizzazioni in Zoho Books</div>
+            <div class="card-subtitle" id="zoho-count">Caricamento...</div>
+          </div>
+          <div id="zoho-list" style="padding:8px 0">
+            <div style="padding:20px;text-align:center"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- Colonna destra: Clienti del portal -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">👥 Clienti Portal</div>
+            <div class="card-subtitle" id="clients-count">Caricamento...</div>
+          </div>
+          <div style="padding:12px 20px 8px">
+            <div style="position:relative">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px">🔍</span>
+              <input type="text" id="search-clients" placeholder="Cerca cliente..." 
+                style="width:100%;padding:8px 10px 8px 30px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"
+                oninput="filterClients()">
+            </div>
+          </div>
+          <div id="clients-list" style="padding:8px 0;max-height:600px;overflow-y:auto">
+            <div style="padding:20px;text-align:center"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Istruzioni -->
+      <div class="card" style="margin-top:20px;background:#f0f9ff;border-color:#bae6fd">
+        <div style="padding:16px 20px;font-size:13px;color:#0369a1;line-height:1.8">
+          <strong>Come usare:</strong><br>
+          1. A sinistra vedi tutte le aziende presenti in Zoho Books<br>
+          2. A destra vedi i clienti del portal — quelli con ✅ hanno già il collegamento Zoho<br>
+          3. Clicca su un'azienda Zoho → poi clicca <strong>"Collega"</strong> accanto al cliente corrispondente<br>
+          4. Una volta collegato, nel profilo cliente apparirà il tab 📊 con fatturato, incassato e scaduto
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+const FN_URL = `${window.ENV_SUPABASE_URL}/functions/v1/bright-service`;
+const ANON   = window.ENV_SUPABASE_ANON_KEY;
+
+let zohoOrgs   = [];
+let allClients = [];
+let selectedOrg = null;
+
+async function loadAll() {
+  document.getElementById('banner').innerHTML = '';
+  await Promise.all([loadZohoOrgs(), loadClients()]);
+}
+
+// ── Zoho orgs ────────────────────────────────────────────────
+async function loadZohoOrgs() {
+  const el = document.getElementById('zoho-list');
+  el.innerHTML = '<div style="padding:20px;text-align:center"><div class="spinner"></div></div>';
+  try {
+    const res = await fetch(FN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON}` },
+      body: JSON.stringify({ action: 'list_orgs' })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    zohoOrgs = data.organizations || [];
+    document.getElementById('zoho-count').textContent = `${zohoOrgs.length} organizzazioni trovate`;
+    renderZohoOrgs();
+  } catch(e) {
+    el.innerHTML = `<div class="alert alert-danger" style="margin:12px">${e.message}</div>`;
+    document.getElementById('zoho-count').textContent = 'Errore';
+  }
+}
+
+function renderZohoOrgs() {
+  const el = document.getElementById('zoho-list');
+  if (!zohoOrgs.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">Nessuna organizzazione trovata</div>';
+    return;
+  }
+  el.innerHTML = zohoOrgs.map(org => {
+    const isSelected = selectedOrg?.organization_id === org.organization_id;
+    // Check if already linked to a client
+    const linked = allClients.find(c => c.zoho_org_id === org.organization_id);
+    return `<div onclick="selectOrg('${org.organization_id}')" style="
+      padding:12px 20px; cursor:pointer; border-bottom:1px solid var(--border);
+      background:${isSelected ? '#eff6ff' : 'white'};
+      border-left:3px solid ${isSelected ? 'var(--primary)' : 'transparent'};
+      transition:all .12s
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${ui.escapeHtml(org.name)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">ID: ${org.organization_id} · ${org.currency_code||'AED'}</div>
+        </div>
+        ${linked 
+          ? `<span style="font-size:11px;background:#f0fdf4;color:#059669;padding:3px 8px;border-radius:10px;font-weight:600;border:1px solid #86efac">✅ ${ui.escapeHtml(linked.company_name)}</span>`
+          : `<span style="font-size:11px;color:var(--text-muted)">Non collegato</span>`
+        }
+      </div>
+      ${isSelected ? '<div style="font-size:11px;color:var(--primary);margin-top:4px;font-weight:600">← Selezionato — ora clicca "Collega" sul cliente</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function selectOrg(orgId) {
+  selectedOrg = zohoOrgs.find(o => o.organization_id === orgId) || null;
+  renderZohoOrgs();
+  renderClients();
+  if (selectedOrg) {
+    document.getElementById('banner').innerHTML = `
+      <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px 20px;font-size:13px;color:#1d4ed8;font-weight:600">
+        Selezionato: <strong>${ui.escapeHtml(selectedOrg.name)}</strong> — clicca "Collega" accanto al cliente corrispondente
+      </div>`;
+  }
+}
+
+// ── Clients ──────────────────────────────────────────────────
+async function loadClients() {
+  const el = document.getElementById('clients-list');
+  el.innerHTML = '<div style="padding:20px;text-align:center"><div class="spinner"></div></div>';
+  try {
+    allClients = await sb.db.select('clients', {
+      filter: 'is_active=eq.true',
+      order: 'company_name.asc',
+      columns: 'id,company_name,zoho_org_id'
+    }) || [];
+    const linked = allClients.filter(c => c.zoho_org_id).length;
+    document.getElementById('clients-count').textContent = `${allClients.length} clienti · ${linked} collegati`;
+    renderClients();
+  } catch(e) {
+    el.innerHTML = `<div class="alert alert-danger" style="margin:12px">${e.message}</div>`;
+  }
+}
+
+function filterClients() { renderClients(); }
+
+function renderClients() {
+  const el = document.getElementById('clients-list');
+  const q  = document.getElementById('search-clients').value.toLowerCase();
+  const filtered = q ? allClients.filter(c => (c.company_name||'').toLowerCase().includes(q)) : allClients;
+
+  el.innerHTML = filtered.map(client => {
+    const hasZoho = !!client.zoho_org_id;
+    const linkedOrg = hasZoho ? zohoOrgs.find(o => o.organization_id === client.zoho_org_id) : null;
+    return `<div style="
+      padding:10px 20px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    ">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ui.escapeHtml(client.company_name)}</div>
+        ${hasZoho 
+          ? `<div style="font-size:11px;color:#059669;margin-top:2px">✅ ${ui.escapeHtml(linkedOrg?.name || client.zoho_org_id)}</div>`
+          : `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Non collegato</div>`
+        }
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        ${selectedOrg 
+          ? `<button onclick="linkClient('${client.id}','${client.company_name.replace(/'/g,"\\'")}',this)" 
+              class="btn btn-accent btn-sm" style="font-size:12px">
+              Collega →
+            </button>`
+          : ''
+        }
+        ${hasZoho 
+          ? `<button onclick="unlinkClient('${client.id}',this)" 
+              class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;font-size:12px">
+              ✕
+            </button>`
+          : ''
+        }
+      </div>
+    </div>`;
+  }).join('') || '<div style="padding:20px;text-align:center;color:var(--text-muted)">Nessun risultato</div>';
+}
+
+async function linkClient(clientId, clientName, btn) {
+  if (!selectedOrg) return;
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    await sb.db.update('clients', `id=eq.${clientId}`, { zoho_org_id: selectedOrg.organization_id });
+    // Update local data
+    const c = allClients.find(c => c.id === clientId);
+    if (c) c.zoho_org_id = selectedOrg.organization_id;
+    ui.showToast(`✅ ${clientName} collegato a ${selectedOrg.name}`, 'success');
+    const linked = allClients.filter(c => c.zoho_org_id).length;
+    document.getElementById('clients-count').textContent = `${allClients.length} clienti · ${linked} collegati`;
+    renderClients();
+    renderZohoOrgs();
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = 'Collega →';
+  }
+}
+
+async function unlinkClient(clientId, btn) {
+  if (!confirm('Rimuovere il collegamento Zoho da questo cliente?')) return;
+  btn.disabled = true;
+  try {
+    await sb.db.update('clients', `id=eq.${clientId}`, { zoho_org_id: null });
+    const c = allClients.find(c => c.id === clientId);
+    if (c) c.zoho_org_id = null;
+    ui.showToast('Collegamento rimosso', 'success');
+    renderClients();
+    renderZohoOrgs();
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+    btn.disabled = false;
+  }
+}
+
+loadAll();
+</script>
+</body>
+</html>
