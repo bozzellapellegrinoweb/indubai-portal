@@ -99,7 +99,9 @@ async function loadZohoOrgs() {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON}` },
       body: JSON.stringify({ action: 'list_orgs' })
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch(pe) { throw new Error('Function error: ' + text.substring(0,200)); }
     if (data.error) throw new Error(data.error);
     zohoOrgs = data.organizations || [];
     document.getElementById('zoho-count').textContent = `${zohoOrgs.length} organizzazioni trovate`;
