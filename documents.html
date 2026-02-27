@@ -708,7 +708,8 @@ const DRV = (() => {
     document.getElementById('up-name').textContent = file.name;
 
     const safe = file.name.replace(/[^\w.\- ()]/g,'_');
-    const sp   = `${client.id}${cwd}${Date.now()}_${safe}`;
+    const cwdClean = cwd.replace(/\/+$/,''); // remove trailing slashes
+    const sp   = `${client.id}${cwdClean}/${Date.now()}_${safe}`;
 
     await new Promise(res => {
       const xhr = new XMLHttpRequest();
@@ -724,14 +725,18 @@ const DRV = (() => {
             folder: cwd, uploaded_by: sb.getCurrentUser()?.id||null
           });
           toast(`${file.name} caricato ✓`, 'success');
-        } else { toast(`Errore upload: ${xhr.status}`, 'error'); }
+        } else {
+          let msg = `Errore upload: ${xhr.status}`;
+          try { const e=JSON.parse(xhr.responseText); msg=e.error||e.message||msg; } catch{}
+          toast(msg, 'error');
+        }
         bar.classList.remove('show'); fill.style.width='0%'; res();
       };
       xhr.onerror = () => { toast('Errore di rete','error'); bar.classList.remove('show'); res(); };
       xhr.open('POST', `${SB}/storage/v1/object/${BKT}/${sp}`);
       xhr.setRequestHeader('Authorization', `Bearer ${tok()}`);
       xhr.setRequestHeader('apikey', AK);
-      xhr.setRequestHeader('x-upsert', 'false');
+      xhr.setRequestHeader('x-upsert', 'true');
       xhr.send(file);
     });
   }
