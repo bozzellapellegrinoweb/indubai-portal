@@ -33,7 +33,10 @@
     { id: 'affinitas',  icon: '◉', label: 'Affinitas',      href: '/affinitas.html' },
     { id: 'reports',    icon: '📊', label: 'Report',         href: '/reports.html',    section: 'ANALYTICS' },
     { id: 'search',     icon: '🔍', label: 'Ricerca',        href: '/search.html' },
-    ...(role === 'admin' ? [{ id: 'users', icon: '👥', label: 'Utenti', href: '/users.html', section: 'ADMIN' }] : []),
+    ...(role === 'admin' ? [
+      { id: 'users',       icon: '👥', label: 'Utenti',      href: '/users.html',      section: 'ADMIN' },
+      { id: 'zoho-setup',  icon: '📊', label: 'Setup Zoho', href: '/zoho-setup.html' }
+    ] : []),
   ];
 
   const navItems = allowed ? allNavItems.filter(i => allowed.includes(i.id)) : allNavItems;
