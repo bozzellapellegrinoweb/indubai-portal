@@ -14,8 +14,8 @@
   // Pages allowed per role
   const ROLE_PAGES = {
     admin:      null, // null = all pages
-    senior:     ['index','tasks','clients','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search'],
-    junior:     ['index','tasks','clients','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search'],
+    senior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search'],
+    junior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search'],
     mini_admin: ['tasks','clients','documents','search'],
   };
   const allowed = ROLE_PAGES[role]; // null = no restriction
@@ -24,7 +24,8 @@
     { id: 'index',      icon: '◈', label: 'Dashboard',     href: '/index.html',      section: 'OVERVIEW' },
     { id: 'tasks',      icon: '✓', label: 'Task',           href: '/tasks.html' },
     { id: 'clients',    icon: '◉', label: 'Clienti',        href: '/clients.html',    section: 'GESTIONE' },
-    { id: 'zoho-setup', icon: '',   label: '↳ Setup Zoho',   href: '/zoho-setup.html', roles: ['admin','senior','junior'] },
+    { id: 'zoho-setup', icon: '',   label: '↳ Setup Zoho',     href: '/zoho-setup.html', roles: ['admin','senior','junior'] },
+    { id: 'zoho-vat',   icon: '',   label: '↳ Monitor VAT',    href: '/zoho-vat.html',   roles: ['admin','senior','junior'] },
     { id: 'documents',  icon: '📁', label: 'Documenti',     href: '/documents.html' },
     { id: 'onboarding', icon: '✦', label: 'Onboarding',     href: '/onboarding.html' },
     { id: 'statements', icon: '◎', label: 'Estratti Conto', href: '/statements.html' },
