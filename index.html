@@ -222,7 +222,26 @@ async function loadKPIs() {
       <div class="kpi-card"><div class="kpi-label">Clienti Attivi</div><div class="kpi-value">${kpis.total_active_clients??'—'}</div><div class="kpi-sub">${kpis.clients_in_bilancio??0} in bilancio</div><div class="kpi-icon">👥</div></div>
       <div class="kpi-card c-danger"><div class="kpi-label">Estratti Mancanti</div><div class="kpi-value">${kpis.bank_statements_missing??'—'}</div><div class="kpi-sub">Mese corrente</div><div class="kpi-icon">📄</div></div>
       <div class="kpi-card c-warn"><div class="kpi-label">Abbonamenti ⚠</div><div class="kpi-value">${kpis.subscriptions_issue??'—'}</div><div class="kpi-sub">Da verificare</div><div class="kpi-icon">💳</div></div>
-      <div class="kpi-card c-teal"><div class="kpi-label">VAT in Scadenza</div><div class="kpi-value">${kpis.vat_deadlines_next_30_days??'—'}</div><div class="kpi-sub">Prossimi 30 giorni</div><div class="kpi-icon">📋</div></div>`;
+      <div class="kpi-card c-teal"><div class="kpi-label">VAT in Scadenza</div><div class="kpi-value">${kpis.vat_deadlines_next_30_days??'—'}</div><div class="kpi-sub">Prossimi 30 giorni</div><div class="kpi-icon">📋</div></div>
+      <div class="kpi-card c-danger" onclick="window.location='/zoho-vat.html'" style="cursor:pointer">
+        <div class="kpi-label">Soglia VAT Zoho</div>
+        <div class="kpi-value" id="kpi-vat-exceeded">—</div>
+        <div class="kpi-sub" id="kpi-vat-sub">Caricamento...</div>
+        <div class="kpi-icon">📊</div>
+      </div>`;
+      // Load VAT soglia count from snapshots
+      try {
+        const { data: snaps } = await sb.db.select('zoho_snapshots', 'vat_status', 'vat_status=in.(exceeded,warning)');
+        const exceeded = (snaps||[]).filter(s=>s.vat_status==='exceeded').length;
+        const warning  = (snaps||[]).filter(s=>s.vat_status==='warning').length;
+        const el  = document.getElementById('kpi-vat-exceeded');
+        const sub = document.getElementById('kpi-vat-sub');
+        if (el)  el.textContent  = exceeded;
+        if (sub) sub.textContent = warning + ' in avvicinamento · clicca per dettagli';
+      } catch(e) {
+        const el = document.getElementById('kpi-vat-exceeded');
+        if (el) el.textContent = '—';
+      }
     if (adminUser) h += `<div class="kpi-card c-accent"><div class="kpi-label">Incassato Mese</div><div class="kpi-value" id="kpi-rev">—</div><div class="kpi-sub" id="kpi-rev-sub">Caricamento...</div><div class="kpi-icon">💰</div></div>`;
     el.innerHTML = h;
     if (adminUser) loadRevenue();
