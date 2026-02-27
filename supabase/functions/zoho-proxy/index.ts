@@ -10,21 +10,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Cache access token in memory (resets on cold start, max 1h)
 let cachedToken: { token: string; expires: number } | null = null;
 
 async function getAccessToken(): Promise<string> {
-  if (cachedToken && Date.now() < cachedToken.expires - 60000) {
-    return cachedToken.token;
-  }
+  if (cachedToken && Date.now() < cachedToken.expires - 60000) return cachedToken.token;
   const res = await fetch("https://accounts.zoho.com/oauth/v2/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       refresh_token: ZOHO_REFRESH_TOKEN,
-      client_id:     ZOHO_CLIENT_ID,
+      client_id: ZOHO_CLIENT_ID,
       client_secret: ZOHO_CLIENT_SECRET,
-      grant_type:    "refresh_token",
+      grant_type: "refresh_token",
     }),
   });
   const data = await res.json();
@@ -40,16 +37,49 @@ async function zohoGet(path: string, token: string) {
   return res.json();
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+// Fetch ALL invoices between two dates, handling pagination
+async function fetchAllInvoices(orgId: string, dateStart: string, dateEnd: string, token: string) {
+  let page = 1;
+  let all: any[] = [];
+  while (true) {
+    const res = await zohoGet(
+      `/invoices?organization_id=${orgId}&date_start=${dateStart}&date_end=${dateEnd}&filter_by=Status.All&per_page=200&page=${page}`,
+      token
+    );
+    const invoices = res.invoices || [];
+    all = all.concat(invoices);
+    if (!res.page_context?.has_more_page) break;
+    page++;
   }
+  return all;
+}
+
+// Convert invoice total to AED using exchange_rate field
+function toAED(inv: any): number {
+  const total = parseFloat(inv.total) || 0;
+  const rate  = parseFloat(inv.exchange_rate) || 1;
+  const cur   = inv.currency_code || "AED";
+  if (cur === "AED") return total;
+  // Zoho stores exchange_rate as base_currency_per_foreign, convert to AED
+  return total * rate;
+}
+
+function toAEDBalance(inv: any): number {
+  const balance = parseFloat(inv.balance) || 0;
+  const rate    = parseFloat(inv.exchange_rate) || 1;
+  const cur     = inv.currency_code || "AED";
+  if (cur === "AED") return balance;
+  return balance * rate;
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const { action, org_id } = await req.json();
     const token = await getAccessToken();
 
-    // ── list all organizations (used once to map clients) ──
+    // List all orgs
     if (action === "list_orgs") {
       const data = await zohoGet("/organizations", token);
       return new Response(JSON.stringify(data), {
@@ -57,29 +87,36 @@ serve(async (req) => {
       });
     }
 
-    // ── get summary for a specific org ──
     if (action === "client_summary" && org_id) {
-      const year = new Date().getFullYear();
+      const today     = new Date();
+      const todayStr  = today.toISOString().split("T")[0];
+
+      // Rolling 12 months
+      const rolling12Start = new Date(today);
+      rolling12Start.setMonth(rolling12Start.getMonth() - 12);
+      const rolling12Str = rolling12Start.toISOString().split("T")[0];
+
+      // Current year
+      const year      = today.getFullYear();
       const yearStart = `${year}-01-01`;
-      const today = new Date().toISOString().split("T")[0];
 
-      // Fetch invoices for current year (paginated, max 200 per call)
-      const invRes = await zohoGet(
-        `/invoices?organization_id=${org_id}&date_start=${yearStart}&date_end=${today}&filter_by=Status.All&per_page=200`,
-        token
-      );
+      // Previous year
+      const prevYear = year - 1;
 
-      const invoices = invRes.invoices || [];
+      // Fetch all invoices in parallel
+      const [rolling12Invoices, prevYearInvoices] = await Promise.all([
+        fetchAllInvoices(org_id, rolling12Str, todayStr, token),
+        fetchAllInvoices(org_id, `${prevYear}-01-01`, `${prevYear}-12-31`, token),
+      ]);
 
-      // Aggregate
-      let totalBilled   = 0;
-      let totalPaid     = 0;
-      let totalUnpaid   = 0;
-      let countInvoices = invoices.length;
-      let countOverdue  = 0;
-      let lastInvoice: { number: string; date: string; total: number; status: string } | null = null;
+      // Filter current year from rolling12
+      const yearInvoices = rolling12Invoices.filter(inv => inv.date >= yearStart);
 
-      for (const inv of invoices) {
+      // Aggregate current year (in original currency)
+      let totalBilled = 0, totalPaid = 0, totalUnpaid = 0;
+      let countInvoices = yearInvoices.length, countOverdue = 0;
+      let lastInvoice: any = null;
+      for (const inv of yearInvoices) {
         const total   = parseFloat(inv.total)   || 0;
         const balance = parseFloat(inv.balance) || 0;
         totalBilled += total;
@@ -87,39 +124,62 @@ serve(async (req) => {
         if (inv.status === "overdue") { totalUnpaid += balance; countOverdue++; }
         else if (inv.status !== "paid" && inv.status !== "void") totalUnpaid += balance;
         if (!lastInvoice || inv.date > lastInvoice.date) {
-          lastInvoice = { number: inv.invoice_number, date: inv.date, total, status: inv.status };
+          lastInvoice = { number: inv.invoice_number, date: inv.date, total, status: inv.status, currency: inv.currency_code };
         }
       }
 
-      // Also get previous year total (quick summary)
-      const prevYear      = year - 1;
-      const prevYearRes   = await zohoGet(
-        `/invoices?organization_id=${org_id}&date_start=${prevYear}-01-01&date_end=${prevYear}-12-31&filter_by=Status.All&per_page=200`,
-        token
-      );
-      let prevYearTotal = 0;
-      for (const inv of prevYearRes.invoices || []) {
-        prevYearTotal += parseFloat(inv.total) || 0;
+      // Aggregate rolling 12 months in AED (for VAT threshold check)
+      let rolling12AED = 0;
+      for (const inv of rolling12Invoices) {
+        if (inv.status !== "void") rolling12AED += toAED(inv);
       }
 
+      // Aggregate current year in AED
+      let totalBilledAED = 0, totalPaidAED = 0, totalUnpaidAED = 0;
+      for (const inv of yearInvoices) {
+        if (inv.status === "void") continue;
+        totalBilledAED += toAED(inv);
+        totalPaidAED   += toAED(inv) - toAEDBalance(inv);
+        if (inv.status === "overdue" || (inv.status !== "paid")) totalUnpaidAED += toAEDBalance(inv);
+      }
+
+      // Prev year AED
+      let prevYearAED = 0;
+      for (const inv of prevYearInvoices) {
+        if (inv.status !== "void") prevYearAED += toAED(inv);
+      }
+
+      // VAT threshold: 375k AED rolling 12 months
+      const VAT_THRESHOLD   = 375000;
+      const VAT_WARN_AT     = 300000;
+      const vatStatus = rolling12AED >= VAT_THRESHOLD ? "exceeded" : rolling12AED >= VAT_WARN_AT ? "warning" : "ok";
+
+      // Get org currency
+      const orgCurrency = yearInvoices[0]?.currency_code || "AED";
+
       return new Response(JSON.stringify({
-        year, totalBilled, totalPaid, totalUnpaid,
-        countInvoices, countOverdue, lastInvoice, prevYearTotal,
-        currency: invRes.invoices?.[0]?.currency_code || "AED",
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        year,
+        // Current year in original currency
+        totalBilled, totalPaid, totalUnpaid,
+        countInvoices, countOverdue, lastInvoice,
+        orgCurrency,
+        // AED values (for multi-currency clients)
+        totalBilledAED, totalPaidAED, totalUnpaidAED,
+        // Rolling 12 months AED
+        rolling12AED, rolling12Start: rolling12Str,
+        vatStatus, vatThreshold: VAT_THRESHOLD, vatWarnAt: VAT_WARN_AT,
+        // Prev year
+        prevYearAED,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
-  } catch (e) {
+  } catch (e: any) {
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

@@ -371,6 +371,7 @@ function openEdit() {
   document.getElementById('e-cost').value = c.service_cost||'';
   document.getElementById('e-sub-day').value = c.subscription_day||'';
   document.getElementById('e-start').value = c.start_date||'';
+  document.getElementById('e-tl-issue').value = c.license_issue_date||'';
   document.getElementById('e-tl-date').value = c.trade_license_date||'';
   document.getElementById('e-ct-expiry').value = c.corporate_tax_expiry||'';
   document.getElementById('e-bank-notes').value = c.bank_notes||'';
@@ -423,34 +424,100 @@ async function loadZohoTab() {
     const d = await res.json();
     if (d.error) throw new Error(d.error);
 
-    const fmt = (n) => new Intl.NumberFormat('it-IT', {minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
-    const cur = d.currency || 'AED';
+    const fmt    = (n) => new Intl.NumberFormat('it-IT', {minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
+    const cur    = d.orgCurrency || 'AED';
+    const isMulti = cur !== 'AED';
+
+    // VAT alert bar config
+    const vatPct  = Math.min(100, Math.round(d.rolling12AED / d.vatThreshold * 100));
+    const vatColor = d.vatStatus === 'exceeded' ? '#dc2626' : d.vatStatus === 'warning' ? '#d97706' : '#059669';
+    const vatBg    = d.vatStatus === 'exceeded' ? '#fef2f2' : d.vatStatus === 'warning' ? '#fffbeb' : '#f0fdf4';
+    const vatBorder= d.vatStatus === 'exceeded' ? '#fca5a5' : d.vatStatus === 'warning' ? '#fde68a' : '#86efac';
+    const vatLabel = d.vatStatus === 'exceeded' ? '🚨 Soglia VAT SUPERATA — registrazione obbligatoria' 
+                   : d.vatStatus === 'warning'  ? '⚠️ Attenzione: vicino alla soglia VAT (AED 375.000)' 
+                   : '✓ Sotto soglia VAT';
+
+    // CT tracker (from clientData)
+    const licIssue = clientData?.license_issue_date;
+    let ctTrackerHtml = '';
+    if (licIssue) {
+      const issueDate = new Date(licIssue);
+      const deadline  = new Date(issueDate);
+      deadline.setDate(deadline.getDate() + 80);
+      const today2    = new Date();
+      const daysLeft  = Math.ceil((deadline - today2) / 86400000);
+      const ctPct     = Math.max(0, Math.min(100, Math.round((80 - daysLeft) / 80 * 100)));
+      const ctColor   = daysLeft <= 0 ? '#dc2626' : daysLeft <= 15 ? '#d97706' : daysLeft <= 30 ? '#ca8a04' : '#059669';
+      const ctBg      = daysLeft <= 0 ? '#fef2f2' : daysLeft <= 15 ? '#fffbeb' : '#f0fdf4';
+      const ctLabel   = daysLeft <= 0 ? '🚨 SCADUTO — Corporate Tax non registrata!' 
+                      : daysLeft <= 15 ? `🔴 Urgente: ${daysLeft} giorni alla scadenza CT`
+                      : daysLeft <= 30 ? `🟡 ${daysLeft} giorni alla scadenza CT`
+                      : `✓ ${daysLeft} giorni alla scadenza CT`;
+      ctTrackerHtml = `
+        <div style="background:${ctBg};border:1.5px solid ${ctColor}40;border-radius:14px;padding:20px 24px;margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:${ctColor}">⏱ Corporate Tax Tracker</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Emissione licenza: ${ui.formatDate(licIssue)} → Scadenza CT: ${ui.formatDate(deadline.toISOString().split('T')[0])}</div>
+            </div>
+            <div style="font-size:20px;font-weight:800;color:${ctColor}">${daysLeft <= 0 ? 'SCADUTO' : daysLeft + 'gg'}</div>
+          </div>
+          <div style="background:white;border-radius:100px;height:10px;overflow:hidden;margin-bottom:8px">
+            <div style="height:100%;border-radius:100px;background:${ctColor};width:${ctPct}%;transition:width .6s ease"></div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:${ctColor}">${ctLabel}</div>
+        </div>`;
+    }
 
     el.innerHTML = `
       <div style="padding:20px 0">
 
+        <!-- Corporate Tax Tracker -->
+        ${ctTrackerHtml}
+
+        <!-- VAT Threshold bar -->
+        <div style="background:${vatBg};border:1.5px solid ${vatBorder};border-radius:14px;padding:20px 24px;margin-bottom:24px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:${vatColor}">📊 Soglia VAT — Ultimi 12 mesi</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Da ${ui.formatDate(d.rolling12Start)} a oggi · sempre in AED</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:20px;font-weight:800;color:${vatColor}">AED ${fmt(d.rolling12AED)}</div>
+              <div style="font-size:11px;color:var(--text-muted)">${vatPct}% di AED ${fmt(d.vatThreshold)}</div>
+            </div>
+          </div>
+          <div style="background:white;border-radius:100px;height:12px;overflow:hidden;margin-bottom:8px">
+            <div style="height:100%;border-radius:100px;background:${vatColor};width:${vatPct}%;transition:width .6s ease"></div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:${vatColor}">${vatLabel}</div>
+        </div>
+
         <!-- KPI row -->
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
           <div style="background:linear-gradient(135deg,#1a3a5c,#2563a8);border-radius:14px;padding:20px 24px;color:white">
-            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.65);margin-bottom:8px">Fatturato ${d.year}</div>
-            <div style="font-size:24px;font-weight:800;letter-spacing:-.5px">${cur} ${fmt(d.totalBilled)}</div>
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.65);margin-bottom:8px">Fatturato Totale ${d.year}</div>
+            <div style="font-size:22px;font-weight:800;letter-spacing:-.5px">${cur} ${fmt(d.totalBilled)}</div>
+            ${isMulti ? `<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">≈ AED ${fmt(d.totalBilledAED)}</div>` : ''}
             <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px">${d.countInvoices} fatture emesse</div>
           </div>
           <div style="background:linear-gradient(135deg,#065f46,#059669);border-radius:14px;padding:20px 24px;color:white">
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.65);margin-bottom:8px">Incassato</div>
-            <div style="font-size:24px;font-weight:800;letter-spacing:-.5px">${cur} ${fmt(d.totalPaid)}</div>
+            <div style="font-size:22px;font-weight:800;letter-spacing:-.5px">${cur} ${fmt(d.totalPaid)}</div>
+            ${isMulti ? `<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">≈ AED ${fmt(d.totalPaidAED)}</div>` : ''}
             <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px">${Math.round(d.totalBilled ? d.totalPaid/d.totalBilled*100 : 0)}% del fatturato</div>
           </div>
           <div style="background:${d.totalUnpaid>0?'linear-gradient(135deg,#7f1d1d,#dc2626)':'linear-gradient(135deg,#374151,#6b7280)'};border-radius:14px;padding:20px 24px;color:white">
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.65);margin-bottom:8px">Da Incassare</div>
-            <div style="font-size:24px;font-weight:800;letter-spacing:-.5px">${cur} ${fmt(d.totalUnpaid)}</div>
+            <div style="font-size:22px;font-weight:800;letter-spacing:-.5px">${cur} ${fmt(d.totalUnpaid)}</div>
+            ${isMulti ? `<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">≈ AED ${fmt(d.totalUnpaidAED)}</div>` : ''}
             <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px">${d.countOverdue} scadute</div>
           </div>
           <div style="background:white;border:1.5px solid var(--border);border-radius:14px;padding:20px 24px">
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px">Anno prec. (${d.year-1})</div>
-            <div style="font-size:24px;font-weight:800;letter-spacing:-.5px;color:var(--text)">${cur} ${fmt(d.prevYearTotal)}</div>
-            <div style="font-size:12px;margin-top:4px;color:${d.totalBilled>=d.prevYearTotal?'#059669':'#dc2626'}">
-              ${d.prevYearTotal ? (d.totalBilled >= d.prevYearTotal ? '▲' : '▼') + ' ' + Math.abs(Math.round((d.totalBilled-d.prevYearTotal)/d.prevYearTotal*100)) + '% vs anno prec.' : '—'}
+            <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--text)">AED ${fmt(d.prevYearAED)}</div>
+            <div style="font-size:12px;margin-top:4px;color:${d.totalBilledAED>=d.prevYearAED?'#059669':'#dc2626'}">
+              ${d.prevYearAED ? (d.totalBilledAED >= d.prevYearAED ? '▲' : '▼') + ' ' + Math.abs(Math.round((d.totalBilledAED-d.prevYearAED)/d.prevYearAED*100)) + '% vs anno prec.' : '—'}
             </div>
           </div>
         </div>
@@ -464,7 +531,7 @@ async function loadZohoTab() {
           <div style="background:#f1f5f9;border-radius:100px;height:10px;overflow:hidden">
             <div style="height:100%;border-radius:100px;background:linear-gradient(90deg,#059669,#34d399);width:${Math.round(d.totalBilled ? d.totalPaid/d.totalBilled*100 : 0)}%;transition:width .6s ease"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:var(--text-muted)">
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px">
             <span style="color:#059669;font-weight:600">✓ Incassato ${Math.round(d.totalBilled ? d.totalPaid/d.totalBilled*100 : 0)}%</span>
             <span style="color:${d.totalUnpaid>0?'#dc2626':'var(--text-muted)'};font-weight:600">⏳ Da incassare ${Math.round(d.totalBilled ? d.totalUnpaid/d.totalBilled*100 : 0)}%</span>
           </div>
@@ -477,7 +544,7 @@ async function loadZohoTab() {
           <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
             <div style="font-size:16px;font-weight:800;color:var(--text)">${d.lastInvoice.number}</div>
             <div style="font-size:13px;color:var(--text-muted)">${ui.formatDate(d.lastInvoice.date)}</div>
-            <div style="font-size:15px;font-weight:700;color:var(--text)">${cur} ${fmt(d.lastInvoice.total)}</div>
+            <div style="font-size:15px;font-weight:700;color:var(--text)">${d.lastInvoice.currency||cur} ${fmt(d.lastInvoice.total)}</div>
             <div>${ui.monthBadge(d.lastInvoice.status === 'paid' ? 'ok' : d.lastInvoice.status === 'overdue' ? 'failed' : 'pending')}</div>
           </div>
         </div>` : ''}
@@ -560,7 +627,11 @@ init();
           <input type="date" class="form-control" id="e-start">
         </div>
         <div class="form-group">
-          <label class="form-label">Trade License Date</label>
+          <label class="form-label">Trade License — Emissione</label>
+          <input type="date" class="form-control" id="e-tl-issue">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Trade License — Scadenza</label>
           <input type="date" class="form-control" id="e-tl-date">
         </div>
         <div class="form-group">
@@ -664,6 +735,7 @@ async function saveEdit() {
       service_cost: parseFloat(document.getElementById('e-cost').value)||null,
       subscription_day: parseInt(document.getElementById('e-sub-day').value)||null,
       start_date: document.getElementById('e-start').value||null,
+      license_issue_date: document.getElementById('e-tl-issue').value||null,
       trade_license_date: document.getElementById('e-tl-date').value||null,
       corporate_tax_expiry: document.getElementById('e-ct-expiry').value||null,
       bank_accounts: banks.length ? banks : null,
