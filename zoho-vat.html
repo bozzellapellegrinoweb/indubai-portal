@@ -35,7 +35,7 @@
     <div class="content-body">
 
       <!-- Stats row -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;max-width:100%">
         <div class="stat-card" style="background:linear-gradient(135deg,#7f1d1d,#dc2626);color:white">
           <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.65);margin-bottom:6px">🚨 Soglia Superata</div>
           <div style="font-size:32px;font-weight:800" id="cnt-exceeded">—</div>
@@ -175,6 +175,8 @@ function renderTable() {
       : '<span class="badge-ok">✓ OK</span>';
     const vatBadge = r.vat_registered
       ? '<span class="badge-ok">✓ Registrata</span>'
+      : r.vat_status === 'ok'
+      ? '<span style="color:#94a3b8;font-size:11px">—</span>'
       : `<button onclick="event.stopPropagation();markVATDone('${r.id}')" 
            style="font-size:11px;padding:4px 10px;border-radius:6px;border:1.5px solid #d97706;color:#d97706;background:white;cursor:pointer;font-weight:600">
            Registra
