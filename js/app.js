@@ -11,8 +11,9 @@
 
   const role = profile?.role || 'junior';
 
-  // Clients must use their own portal
-  if (role === 'client') {
+  // Clients must use their own portal — check both cached profile and user metadata
+  const isClient = role === 'client' || session?.user?.user_metadata?.role === 'client';
+  if (isClient) {
     window.location.href = '/client-portal/dashboard.html';
     return;
   }
