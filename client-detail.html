@@ -783,7 +783,7 @@ async function resetClientPasswordWithValue() {
     body: JSON.stringify({ userId, password: newPwd })
   });
   const data = await r.json();
-  if (!r.ok || data.error) { ui.showToast('Errore reset password', 'error'); return; }
+  if (!r.ok || data.error) { ui.showToast('Errore: ' + (data.error || r.status), 'error'); return; }
   // Show confirmation with the password visible
   ui.showToast('✅ Password aggiornata!', 'success');
   // Copy to clipboard automatically
