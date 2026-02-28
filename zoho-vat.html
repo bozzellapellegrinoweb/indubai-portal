@@ -115,9 +115,9 @@ async function load() {
 }
 
 function updateCounts() {
-  document.getElementById('cnt-exceeded').textContent = allRows.filter(r => r.vat_status === 'exceeded').length;
-  document.getElementById('cnt-warning').textContent  = allRows.filter(r => r.vat_status === 'warning').length;
-  document.getElementById('cnt-ok').textContent       = allRows.filter(r => r.vat_status === 'ok').length;
+  document.getElementById('cnt-exceeded').textContent = allRows.filter(r => r.vat_status === 'exceeded' && !r.vat_registered).length;
+  document.getElementById('cnt-warning').textContent  = allRows.filter(r => r.vat_status === 'warning'  && !r.vat_registered).length;
+  document.getElementById('cnt-ok').textContent       = allRows.filter(r => r.vat_status === 'ok' || r.vat_registered).length;
 }
 
 function setFilter(f) {
@@ -160,7 +160,9 @@ function renderTable() {
     const pct   = r.rolling12 !== null ? Math.min(100, Math.round(r.rolling12 / VAT * 100)) : 0;
     const color = r.vat_status==='exceeded' ? 'var(--danger)' : r.vat_status==='warning' ? '#d97706' : r.rolling12===null ? 'var(--text-muted)' : 'var(--success)';
     
-    const statusBadge = r.vat_status==='exceeded'
+    const statusBadge = r.vat_registered
+      ? '<span class="badge success">✓ Registrata</span>'
+      : r.vat_status==='exceeded'
       ? '<span class="badge danger">🚨 Superata</span>'
       : r.vat_status==='warning'
       ? '<span class="badge warning">⚠️ Vicino</span>'
