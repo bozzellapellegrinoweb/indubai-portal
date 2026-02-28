@@ -333,13 +333,17 @@ async function init() {
 
     // Render all panels
     renderAll();
-    document.getElementById('main').innerHTML = buildMainHTML(visas);
+    try {
+      document.getElementById('main').innerHTML = buildMainHTML(visas);
+    } catch(renderErr) {
+      document.getElementById('main').innerHTML = `<div style="padding:40px;text-align:center;color:#dc2626"><strong>Render error:</strong> \${renderErr.message}</div>`;
+    }
     setupNav();
     // Pre-render drive if documenti panel is pre-selected
     // (it will render when user clicks the tab via showPanel)
 
   } catch(e) {
-    document.getElementById('main').innerHTML = `<div style="padding:40px;text-align:center;color:#dc2626">${e.message}</div>`;
+    document.getElementById('main').innerHTML = `<div style="padding:40px;text-align:center;color:#dc2626"><strong>Errore:</strong> ${e.message}<br><small style="color:#666">${e.stack||''}</small></div>`;
   }
 }
 
