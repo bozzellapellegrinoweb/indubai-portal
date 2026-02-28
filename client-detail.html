@@ -472,10 +472,12 @@ async function loadZohoTab() {
 
     // VAT alert bar config
     const vatPct  = Math.min(100, Math.round(d.rolling12AED / d.vatThreshold * 100));
-    const vatColor = d.vatStatus === 'exceeded' ? '#dc2626' : d.vatStatus === 'warning' ? '#d97706' : '#059669';
-    const vatBg    = d.vatStatus === 'exceeded' ? '#fef2f2' : d.vatStatus === 'warning' ? '#fffbeb' : '#f0fdf4';
-    const vatBorder= d.vatStatus === 'exceeded' ? '#fca5a5' : d.vatStatus === 'warning' ? '#fde68a' : '#86efac';
-    const vatLabel = d.vatStatus === 'exceeded' ? '🚨 Soglia VAT SUPERATA — registrazione obbligatoria' 
+    const vatRegistered = clientData?.vat_registered;
+    const vatColor = vatRegistered ? '#059669' : d.vatStatus === 'exceeded' ? '#dc2626' : d.vatStatus === 'warning' ? '#d97706' : '#059669';
+    const vatBg    = vatRegistered ? '#f0fdf4' : d.vatStatus === 'exceeded' ? '#fef2f2' : d.vatStatus === 'warning' ? '#fffbeb' : '#f0fdf4';
+    const vatBorder= vatRegistered ? '#86efac' : d.vatStatus === 'exceeded' ? '#fca5a5' : d.vatStatus === 'warning' ? '#fde68a' : '#86efac';
+    const vatLabel = vatRegistered ? '✓ VAT Registrata'
+                   : d.vatStatus === 'exceeded' ? '🚨 Soglia VAT SUPERATA — registrazione obbligatoria' 
                    : d.vatStatus === 'warning'  ? '⚠️ Attenzione: vicino alla soglia VAT (AED 375.000)' 
                    : '✓ Sotto soglia VAT';
 
