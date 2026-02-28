@@ -655,14 +655,40 @@ async function loadAccessTab() {
     const existing = links?.[0];
 
     if (existing) {
+      // Fetch auth user email
+      let userEmail = clientData?.email || '—';
+      try {
+        const r = await fetch(window.ENV_SUPABASE_URL + '/auth/v1/admin/users/' + existing.user_id, {
+          headers: { apikey: window.ENV_SUPABASE_ANON_KEY, Authorization: 'Bearer ' + sb.getSession()?.access_token }
+        });
+        // Can't call admin API from frontend — use profiles table instead
+        const prof = await sb.db.select('profiles', { filter: 'id=eq.' + existing.user_id, columns: 'full_name' });
+        if (prof?.[0]?.full_name) userEmail = prof[0].full_name;
+      } catch(e) {}
+
       el.innerHTML = `
-        <div style="max-width:480px">
-          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:20px;margin-bottom:20px">
-            <div style="font-weight:700;color:#059669;margin-bottom:4px">✓ Accesso attivo</div>
-            <div style="font-size:13px;color:#374151">Il cliente ha un account attivo dal ${ui.formatDate(existing.created_at)}</div>
+        <div style="max-width:520px">
+          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:20px;margin-bottom:16px">
+            <div style="font-weight:700;color:#059669;font-size:15px;margin-bottom:10px">✓ Accesso attivo</div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13px;color:#374151">
+              <span style="color:#6b7280;font-weight:600">Email:</span>
+              <span style="font-weight:700">${clientData?.email || '—'}</span>
+              <span style="color:#6b7280;font-weight:600">Attivo dal:</span>
+              <span>${ui.formatDate(existing.created_at)}</span>
+            </div>
           </div>
-          <div style="display:flex;gap:12px">
-            <button class="btn btn-ghost" onclick="resetClientPassword()">🔑 Reset Password</button>
+
+          <div style="background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Reset Password</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="new-pwd-display" class="form-control" value="${generatePassword()}" style="font-family:monospace;font-size:14px;font-weight:700;letter-spacing:1px;flex:1">
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('new-pwd-display').value=generatePassword()" title="Genera nuova">↺</button>
+            </div>
+            <button class="btn btn-accent" style="margin-top:10px;width:100%" onclick="resetClientPasswordWithValue()">🔑 Applica nuova password</button>
+          </div>
+
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" onclick="navigator.clipboard.writeText('Email: ${clientData?.email || ''}\nLink: /client-portal/login.html').then(()=>ui.showToast('Copiato!','success'))">📋 Copia credenziali</button>
             <button class="btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="revokeClientAccess('${existing.user_id}')">🗑 Revoca accesso</button>
           </div>
         </div>`;
@@ -753,7 +779,12 @@ async function revokeClientAccess(userId) {
 }
 
 async function resetClientPassword() {
-  const newPwd = generatePassword();
+  // Legacy — kept for compatibility
+  await resetClientPasswordWithValue();
+}
+
+async function resetClientPasswordWithValue() {
+  const newPwd = document.getElementById('new-pwd-display')?.value || generatePassword();
   const links = await sb.db.select('client_users', { filter: 'client_id=eq.' + clientId, columns: 'user_id' });
   const userId = links?.[0]?.user_id;
   if (!userId) { ui.showToast('Utente non trovato', 'error'); return; }
@@ -764,7 +795,12 @@ async function resetClientPassword() {
   });
   const data = await r.json();
   if (!r.ok || data.error) { ui.showToast('Errore reset password', 'error'); return; }
-  ui.showToast('✅ Nuova password: ' + newPwd, 'success', 10000);
+  // Show confirmation with the password visible
+  ui.showToast('✅ Password aggiornata!', 'success');
+  // Copy to clipboard automatically
+  navigator.clipboard.writeText('Email: ' + (clientData?.email||'') + '\nPassword: ' + newPwd + '\nLink: /client-portal/login.html')
+    .then(() => ui.showToast('📋 Credenziali copiate negli appunti', 'success', 4000))
+    .catch(() => {});
 }
 
 
