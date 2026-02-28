@@ -183,6 +183,21 @@
     .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
     .empty-state p { font-size: 14px; }
 
+    /* ── DRIVE ── */
+    .drv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); gap: 12px; }
+    .drv-card { background:#f8fafc; border:1.5px solid var(--border); border-radius:12px; padding:16px 12px; text-align:center; cursor:pointer; transition:all .15s; }
+    .drv-card:hover { border-color:var(--navy2); background:#eff6ff; transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.08); }
+    .drv-dir .drv-ico { filter: none; }
+    .drv-ico { font-size:32px; margin-bottom:8px; }
+    .drv-nm { font-size:12px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .drv-sz { font-size:11px; color:var(--muted); margin-top:3px; }
+    .drv-list { display:none; }
+    .drv-row { display:flex; align-items:center; gap:12px; padding:10px 8px; border-bottom:1px solid #f1f5f9; cursor:pointer; border-radius:8px; transition:background .1s; }
+    .drv-row:hover { background:#f0f4f8; }
+    .drv-row:last-child { border-bottom:none; }
+    .drv-row-name { flex:1; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .drv-row-meta { font-size:11px; color:var(--muted); min-width:60px; text-align:right; }
+
     /* ── PANEL VISIBILITY ── */
     .panel { display: none; }
     .panel.active { display: block; }
@@ -286,6 +301,8 @@ async function init() {
     renderAll();
     document.getElementById('main').innerHTML = buildMainHTML(visas);
     setupNav();
+    // Pre-render drive if documenti panel is pre-selected
+    // (it will render when user clicks the tab via showPanel)
 
   } catch(e) {
     document.getElementById('main').innerHTML = `<div style="padding:40px;text-align:center;color:#dc2626">${e.message}</div>`;
@@ -378,39 +395,130 @@ function anagraficaHTML() {
 }
 
 function documentiHTML() {
-  if (!allFiles.length) return `
-    <div class="card"><div class="card-body">
-      <div class="empty-state"><div class="icon">📂</div><p>Nessun documento disponibile.<br>Il tuo consulente caricherà i documenti qui.</p></div>
-    </div></div>`;
-
-  const folders = [...new Set(allFiles.map(f => f.folder || 'Generale'))].sort();
-  const icons = { 'Generale':'📁','Contratti':'📝','Licenze':'🪪','Visas':'✈️','Contabilità':'📊','Bancario':'🏦','Legale':'⚖️','Societario':'🏢' };
-  const mimeIcon = m => m?.includes('pdf') ? '📄' : m?.includes('image') ? '🖼️' : m?.includes('word') ? '📝' : m?.includes('excel') || m?.includes('sheet') ? '📊' : m?.includes('zip') ? '🗜️' : '📎';
-  const fmtSize = b => !b ? '' : b > 1048576 ? (b/1048576).toFixed(1)+' MB' : (b/1024).toFixed(0)+' KB';
-  const fmtDate = d => new Date(d).toLocaleDateString('it-IT');
-
-  const tabsHTML = `<div class="folder-tabs">${folders.map((f,i) => 
-    `<button class="folder-tab${i===0?' active':''}" onclick="selectFolder('${f}', this)">${icons[f]||'📁'} ${f} <span style="opacity:.6;font-size:11px">${allFiles.filter(x=>(x.folder||'Generale')===f).length}</span></button>`
-  ).join('')}</div>`;
-
-  const firstFolder = folders[0];
-  const filesHTML = (folder) => allFiles.filter(f => (f.folder||'Generale') === folder).map(f => `
-    <div class="file-row">
-      <span class="file-icon">${mimeIcon(f.mime_type)}</span>
-      <div class="file-info">
-        <div class="file-name">${f.display_name}</div>
-        <div class="file-meta">${fmtDate(f.created_at)}${f.file_size ? ' · ' + fmtSize(f.file_size) : ''}</div>
+  return `
+    <div class="card" style="overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+        <div id="drive-bc" style="flex:1;font-size:13px;font-weight:600;color:var(--navy2)">📁 I tuoi documenti</div>
+        <button class="folder-tab active" id="vbtn-grid" onclick="setDriveView('grid')" title="Griglia" style="padding:5px 10px">⊞</button>
+        <button class="folder-tab" id="vbtn-list" onclick="setDriveView('list')" title="Lista" style="padding:5px 10px">☰</button>
       </div>
-      <button class="btn-dl" onclick="downloadFile('${f.storage_path}','${f.display_name.replace(/'/g,'')}')">⬇ Scarica</button>
-    </div>`).join('');
-
-  return `<div class="card">
-    <div class="card-body">
-      ${tabsHTML}
-      <div id="file-list">${filesHTML(firstFolder)}</div>
-    </div>
-  </div>`;
+      <div id="drive-content" style="padding:20px;min-height:160px">
+        <div class="empty-state"><div class="icon">📂</div><p>Caricamento...</p></div>
+      </div>
+    </div>`;
 }
+
+// ── DRIVE LOGIC ────────────────────────────────────────────────
+let cwd = '/';
+let driveView = 'grid';
+
+const esc  = s => String(s||'').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const sz   = b => !b?'': b<1024?b+'B': b<1048576?(b/1024).toFixed(0)+'KB':(b/1048576).toFixed(1)+'MB';
+const dt   = s => new Date(s).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'2-digit'});
+const mico = (m,n) => {
+  if(m?.includes('pdf')) return '📄';
+  if(m?.includes('word')) return '📝';
+  if(m?.includes('excel')||m?.includes('sheet')) return '📊';
+  if(m?.startsWith('image')) return '🖼️';
+  const e=(n||'').split('.').pop().toLowerCase();
+  return {zip:'🗜️',rar:'🗜️',txt:'📃',csv:'📊',ppt:'📑',pptx:'📑'}[e]||'📎';
+};
+
+function renderDrive() {
+  if (!allFiles.length) {
+    document.getElementById('drive-content').innerHTML = `<div class="empty-state"><div class="icon">📂</div><p>Nessun documento disponibile.<br>Il tuo consulente caricherà i documenti qui.</p></div>`;
+    return;
+  }
+  // Build virtual folder tree from flat file list
+  const files = allFiles.filter(f => (f.folder||'/') === cwd && f.display_name !== '.keep');
+  const subsSet = new Set();
+  allFiles.forEach(f => {
+    const folder = f.folder || '/';
+    if (!folder.startsWith(cwd) || folder === cwd) return;
+    const seg = folder.slice(cwd.length).split('/')[0];
+    if (seg) subsSet.add(seg);
+  });
+  const dirs = [...subsSet].sort();
+
+  renderBC();
+
+  // GRID
+  let g = '<div class="drv-grid">';
+  dirs.forEach(n => {
+    g += `<div class="drv-card drv-dir" onclick="cdDir('${esc(n)}')">
+      <div class="drv-ico">📁</div>
+      <div class="drv-nm">${esc(n)}</div>
+      <div class="drv-sz">Cartella</div>
+    </div>`;
+  });
+  files.forEach(f => {
+    g += `<div class="drv-card" onclick="downloadFile('${esc(f.storage_path)}','${f.display_name.replace(/'/g,"\'")}')">
+      <div class="drv-ico">${mico(f.mime_type, f.display_name)}</div>
+      <div class="drv-nm">${esc(f.display_name)}</div>
+      <div class="drv-sz">${sz(f.file_size)}</div>
+    </div>`;
+  });
+  g += '</div>';
+
+  // LIST
+  let l = '<div class="drv-list">';
+  dirs.forEach(n => {
+    l += `<div class="drv-row drv-dir" onclick="cdDir('${esc(n)}')">
+      <span style="font-size:20px">📁</span>
+      <span class="drv-row-name">${esc(n)}</span>
+      <span class="drv-row-meta">Cartella</span>
+      <span class="drv-row-meta">—</span>
+    </div>`;
+  });
+  files.forEach(f => {
+    l += `<div class="drv-row" onclick="downloadFile('${esc(f.storage_path)}','${f.display_name.replace(/'/g,"\'")}')">
+      <span style="font-size:20px">${mico(f.mime_type, f.display_name)}</span>
+      <span class="drv-row-name">${esc(f.display_name)}</span>
+      <span class="drv-row-meta">${dt(f.created_at)}</span>
+      <span class="drv-row-meta">${sz(f.file_size)}</span>
+    </div>`;
+  });
+  l += '</div>';
+
+  document.getElementById('drive-content').innerHTML = g + l;
+  applyDriveView();
+}
+
+function cdDir(name) {
+  cwd = cwd + name + '/';
+  renderDrive();
+}
+
+function renderBC() {
+  const bc = document.getElementById('drive-bc');
+  if (!bc) return;
+  const parts = cwd.split('/').filter(Boolean);
+  let html = `<span style="cursor:pointer;color:var(--gold)" onclick="cwd='/';renderDrive()">📁 Documenti</span>`;
+  let built = '/';
+  parts.forEach((p,i) => {
+    built += p+'/';
+    const target = built;
+    const isLast = i === parts.length-1;
+    html += ` <span style="color:var(--muted)">›</span> `;
+    html += isLast
+      ? `<span style="color:var(--navy2)">${esc(p)}</span>`
+      : `<span style="cursor:pointer;color:var(--gold)" onclick="cwd='${target}';renderDrive()">${esc(p)}</span>`;
+  });
+  bc.innerHTML = html;
+}
+
+function setDriveView(v) {
+  driveView = v;
+  document.getElementById('vbtn-grid')?.classList.toggle('active', v==='grid');
+  document.getElementById('vbtn-list')?.classList.toggle('active', v==='list');
+  applyDriveView();
+}
+
+function applyDriveView() {
+  document.querySelectorAll('.drv-grid').forEach(e => e.style.display = driveView==='grid' ? 'grid' : 'none');
+  document.querySelectorAll('.drv-list').forEach(e => e.style.display = driveView==='list' ? 'block' : 'none');
+}
+
 
 function scadenzeHTML(visas=[]) {
   const c = clientData;
@@ -449,20 +557,7 @@ function scadenzeHTML(visas=[]) {
   }).join('');
 }
 
-function setupNav() {
-  // folder tabs
-  window.selectFolder = (name, btn) => {
-    document.querySelectorAll('.folder-tab').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const mimeIcon = m => m?.includes('pdf') ? '📄' : m?.includes('image') ? '🖼️' : m?.includes('word') ? '📝' : m?.includes('excel') ? '📊' : '📎';
-    const fmtSize = b => !b ? '' : b > 1048576 ? (b/1048576).toFixed(1)+' MB' : (b/1024).toFixed(0)+' KB';
-    const fmtDate = d => new Date(d).toLocaleDateString('it-IT');
-    const files = allFiles.filter(f => (f.folder||'Generale') === name);
-    document.getElementById('file-list').innerHTML = files.length
-      ? files.map(f => `<div class="file-row"><span class="file-icon">${mimeIcon(f.mime_type)}</span><div class="file-info"><div class="file-name">${f.display_name}</div><div class="file-meta">${fmtDate(f.created_at)}${f.file_size?' · '+fmtSize(f.file_size):''}</div></div><button class="btn-dl" onclick="downloadFile('${f.storage_path}','${f.display_name.replace(/'/g,'')}')">⬇ Scarica</button></div>`).join('')
-      : '<div class="empty-state"><p>Nessun file in questa cartella</p></div>';
-  };
-}
+function setupNav() {}
 
 function renderAll() {} // placeholder
 
@@ -472,6 +567,7 @@ window.showPanel = function(name, btn) {
   const panel = document.getElementById('panel-' + name);
   if (panel) panel.classList.add('active');
   if (btn) btn.classList.add('active');
+  if (name === 'documenti') { cwd = '/'; renderDrive(); }
 };
 
 window.downloadFile = async function(storagePath, name) {
