@@ -27,7 +27,8 @@ export default async function handler(req, res) {
       headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
     });
     const profiles = await profileRes.json();
-    if (profiles?.[0]?.role !== 'admin') return res.status(403).json({ error: 'Not allowed' });
+    const role = profiles?.[0]?.role;
+    if (!['admin','mini_admin','senior','junior'].includes(role)) return res.status(403).json({ error: 'Not allowed' });
   }
 
   const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
