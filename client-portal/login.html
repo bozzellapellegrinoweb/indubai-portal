@@ -45,7 +45,7 @@
   <script>
     // If already logged in as client, redirect to dashboard
     const sess = sb.getSession();
-    if (sess?.access_token && sess?.profile?.role === 'client') {
+    if (sess?.access_token) {
       window.location.href = '/client-portal/dashboard.html';
     }
 
@@ -66,12 +66,19 @@
       alertEl.style.display = 'none';
 
       try {
-        await sb.signIn(email, pass);
-        const profile = sb.getCurrentProfile();
+        const session = await sb.signIn(email, pass);
+        
+        // Fetch profile directly from DB (not cache) to get fresh role
+        const profileRes = await fetch(window.ENV_SUPABASE_URL + '/rest/v1/profiles?id=eq.' + session.user.id + '&select=role', {
+          headers: { apikey: window.ENV_SUPABASE_ANON_KEY, Authorization: 'Bearer ' + session.access_token }
+        });
+        const profiles = await profileRes.json();
+        const role = profiles?.[0]?.role;
 
-        // Only allow client role
-        if (profile?.role !== 'client') {
-          sb.signOut();
+        // Allow client role OR no profile yet (new user)
+        if (role && role !== 'client') {
+          try { await fetch(window.ENV_SUPABASE_URL + '/auth/v1/logout', {method:'POST', headers:{apikey:window.ENV_SUPABASE_ANON_KEY, Authorization:'Bearer '+session.access_token}}); } catch{}
+          localStorage.removeItem('indubai_session');
           showAlert('Questo accesso è riservato ai clienti. Usa il portale gestionale.');
           btn.textContent = 'Accedi';
           btn.disabled = false;
