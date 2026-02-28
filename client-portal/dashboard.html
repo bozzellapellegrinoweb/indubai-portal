@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InDubai — Il tuo Portale</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="/js/config.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, sans-serif; background: #f0f4f8; min-height: 100vh; color: #1e293b; }
+
+    /* Header */
+    .header { background: #1a3a5c; padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+    .header-logo { font-size: 20px; font-weight: 900; color: white; }
+    .header-logo span { color: #c9a84c; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .header-name { font-size: 13px; color: rgba(255,255,255,.7); }
+    .btn-logout { background: rgba(255,255,255,.15); border: none; color: white; padding: 6px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .btn-logout:hover { background: rgba(255,255,255,.25); }
+
+    /* Layout */
+    .page { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+
+    /* Welcome */
+    .welcome { margin-bottom: 32px; }
+    .welcome h1 { font-size: 24px; font-weight: 800; color: #1a3a5c; }
+    .welcome p { font-size: 14px; color: #6b7a95; margin-top: 4px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; border-bottom: 2px solid #e2e8f0; margin-bottom: 28px; }
+    .tab { padding: 10px 20px; font-size: 14px; font-weight: 600; color: #6b7a95; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; }
+    .tab.active { color: #1a3a5c; border-bottom-color: #c9a84c; }
+
+    /* Cards */
+    .card { background: white; border-radius: 14px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); border: 1px solid #e2e8f0; margin-bottom: 20px; }
+    .card-title { font-size: 13px; font-weight: 700; color: #6b7a95; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 16px; }
+
+    /* Info grid */
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .info-item label { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 3px; }
+    .info-item span { font-size: 14px; font-weight: 600; color: #1e293b; }
+
+    /* Files */
+    .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .folder-btn { background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 16px; text-align: center; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: #1e293b; transition: all .15s; }
+    .folder-btn:hover { border-color: #1a3a5c; background: #eff6ff; }
+    .folder-btn.active { border-color: #1a3a5c; background: #eff6ff; color: #1a3a5c; }
+    .folder-icon { font-size: 28px; display: block; margin-bottom: 6px; }
+
+    .file-list { display: flex; flex-direction: column; gap: 8px; }
+    .file-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; }
+    .file-icon { font-size: 22px; flex-shrink: 0; }
+    .file-name { font-size: 14px; font-weight: 600; flex: 1; color: #1e293b; }
+    .file-size { font-size: 12px; color: #94a3b8; }
+    .file-date { font-size: 12px; color: #94a3b8; }
+    .btn-dl { padding: 6px 14px; background: #1a3a5c; color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    .btn-dl:hover { background: #15304f; }
+
+    .empty { padding: 40px; text-align: center; color: #94a3b8; font-size: 14px; }
+
+    /* Badge */
+    .badge { padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 700; }
+    .badge-ok { background: #f0fdf4; color: #059669; }
+    .badge-warn { background: #fffbeb; color: #d97706; }
+
+    .spinner { width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #1a3a5c; border-radius: 50%; animation: spin .7s linear infinite; margin: 40px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-logo">In<span>Dubai</span> <span style="font-size:13px;font-weight:500;color:rgba(255,255,255,.5)">— Area Clienti</span></div>
+    <div class="header-right">
+      <span class="header-name" id="header-name"></span>
+      <button class="btn-logout" onclick="doLogout()">⏻ Esci</button>
+    </div>
+  </div>
+
+  <div class="page">
+    <div id="loading"><div class="spinner"></div></div>
+    <div id="content" style="display:none">
+
+      <div class="welcome">
+        <h1 id="welcome-title">Benvenuto</h1>
+        <p>Qui trovi le informazioni della tua azienda e i documenti caricati dal tuo consulente.</p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('anagrafica', this)">🏢 Anagrafica</button>
+        <button class="tab" onclick="showTab('documenti', this)">📁 Documenti</button>
+      </div>
+
+      <!-- ANAGRAFICA -->
+      <div id="tab-anagrafica">
+        <div class="card">
+          <div class="card-title">Dati Aziendali</div>
+          <div class="info-grid" id="info-azienda"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Contatto Principale</div>
+          <div class="info-grid" id="info-contatto"></div>
+        </div>
+      </div>
+
+      <!-- DOCUMENTI -->
+      <div id="tab-documenti" style="display:none">
+        <div class="card">
+          <div class="card-title">Cartelle</div>
+          <div class="folder-grid" id="folder-grid"></div>
+          <div id="file-area"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/js/supabase.js"></script>
+  <script>
+    const SB_URL = window.ENV_SUPABASE_URL;
+    const SB_KEY = window.ENV_SUPABASE_ANON_KEY;
+
+    function H() {
+      const tok = sb.getSession()?.access_token || SB_KEY;
+      return { apikey: SB_KEY, Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' };
+    }
+
+    async function GET(path) {
+      const r = await fetch(SB_URL + path, { headers: H() });
+      return r.json();
+    }
+
+    async function doLogout() {
+      try { await fetch(SB_URL + '/auth/v1/logout', { method: 'POST', headers: H() }); } catch {}
+      localStorage.removeItem('indubai_session');
+      window.location.href = '/client-portal/login.html';
+    }
+
+    let clientId = null;
+    let allFiles = [];
+    let currentFolder = null;
+
+    async function init() {
+      // Auth check
+      const sess = sb.getSession();
+      if (!sess?.access_token) { window.location.href = '/client-portal/login.html'; return; }
+      if (sess?.profile?.role !== 'client') { doLogout(); return; }
+
+      const profile = sess.profile;
+      document.getElementById('header-name').textContent = profile.full_name || '';
+
+      // Get client_id from client_users
+      const links = await GET(`/rest/v1/client_users?user_id=eq.${sess.user.id}&select=client_id`);
+      if (!links?.length) { document.getElementById('loading').innerHTML = '<p style="text-align:center;padding:40px;color:#dc2626">Nessun cliente collegato al tuo account. Contatta il tuo consulente.</p>'; return; }
+      clientId = links[0].client_id;
+
+      // Load client data
+      const clients = await GET(`/rest/v1/clients?id=eq.${clientId}&select=*`);
+      const client = clients?.[0];
+      if (!client) { document.getElementById('loading').innerHTML = '<p style="text-align:center;padding:40px;color:#dc2626">Dati non trovati.</p>'; return; }
+
+      document.getElementById('welcome-title').textContent = 'Benvenuto, ' + client.company_name;
+
+      // Anagrafica
+      const infoField = (label, val) => `<div class="info-item"><label>${label}</label><span>${val || '—'}</span></div>`;
+      document.getElementById('info-azienda').innerHTML = [
+        infoField('Ragione Sociale', client.company_name),
+        infoField('Tipo Società', client.company_type),
+        infoField('Free Zone', client.free_zone),
+        infoField('N. Licenza', client.license_number),
+        infoField('Scadenza Licenza', client.trade_license_date ? new Date(client.trade_license_date).toLocaleDateString('it-IT') : null),
+        infoField('Stato VAT', client.vat_registered ? '<span class="badge badge-ok">✓ Registrata</span>' : '<span class="badge badge-warn">Non registrata</span>'),
+      ].join('');
+
+      document.getElementById('info-contatto').innerHTML = [
+        infoField('Referente', client.contact_name),
+        infoField('Email', client.email),
+        infoField('Telefono', client.phone),
+        infoField('Nazionalità', client.nationality),
+      ].join('');
+
+      // Load files
+      allFiles = await GET(`/rest/v1/client_files?client_id=eq.${clientId}&select=id,display_name,file_size,mime_type,folder,storage_path,created_at&order=display_name.asc`) || [];
+
+      // Build folders
+      const folders = [...new Set(allFiles.map(f => f.folder || 'Generale'))].sort();
+      const folderGrid = document.getElementById('folder-grid');
+      const icons = { 'Generale': '📁', 'Contratti': '📝', 'Licenze': '🪪', 'Visas': '✈️', 'Contabilità': '📊', 'Bancario': '🏦', 'Legale': '⚖️' };
+
+      if (!folders.length) {
+        folderGrid.innerHTML = '<p class="empty">Nessun documento disponibile</p>';
+      } else {
+        folderGrid.innerHTML = folders.map(f => `
+          <button class="folder-btn" onclick="selectFolder('${f}', this)">
+            <span class="folder-icon">${icons[f] || '📁'}</span>${f}
+            <span style="display:block;font-size:11px;color:#94a3b8;font-weight:500;margin-top:2px">${allFiles.filter(x => (x.folder||'Generale') === f).length} file</span>
+          </button>`).join('');
+        // Auto-select first folder
+        selectFolder(folders[0]);
+        folderGrid.querySelector('.folder-btn')?.classList.add('active');
+      }
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+    }
+
+    function selectFolder(name, btn) {
+      currentFolder = name;
+      document.querySelectorAll('.folder-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+
+      const files = allFiles.filter(f => (f.folder || 'Generale') === name);
+      const area = document.getElementById('file-area');
+
+      if (!files.length) { area.innerHTML = '<div class="empty">Nessun file in questa cartella</div>'; return; }
+
+      const fmtSize = b => b > 1048576 ? (b/1048576).toFixed(1)+' MB' : b > 1024 ? (b/1024).toFixed(0)+' KB' : b+' B';
+      const fmtDate = d => new Date(d).toLocaleDateString('it-IT');
+      const mimeIcon = m => m?.includes('pdf') ? '📄' : m?.includes('image') ? '🖼️' : m?.includes('word') || m?.includes('document') ? '📝' : m?.includes('excel') || m?.includes('sheet') ? '📊' : m?.includes('zip') ? '🗜️' : '📎';
+
+      area.innerHTML = `<div class="file-list">${files.map(f => `
+        <div class="file-row">
+          <span class="file-icon">${mimeIcon(f.mime_type)}</span>
+          <span class="file-name">${f.display_name}</span>
+          <span class="file-date">${fmtDate(f.created_at)}</span>
+          <span class="file-size">${f.file_size ? fmtSize(f.file_size) : ''}</span>
+          <button class="btn-dl" onclick="downloadFile('${f.storage_path}', '${f.display_name}')">⬇ Scarica</button>
+        </div>`).join('')}</div>`;
+    }
+
+    async function downloadFile(storagePath, name) {
+      const tok = sb.getSession()?.access_token || SB_KEY;
+      const r = await fetch(`${SB_URL}/storage/v1/object/authenticated/client-docs/${storagePath}`, {
+        headers: { apikey: SB_KEY, Authorization: `Bearer ${tok}` }
+      });
+      if (!r.ok) { alert('Errore download'); return; }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function showTab(name, btn) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      document.getElementById('tab-anagrafica').style.display = name === 'anagrafica' ? 'block' : 'none';
+      document.getElementById('tab-documenti').style.display  = name === 'documenti'  ? 'block' : 'none';
+    }
+
+    init();
+  </script>
+</body>
+</html>

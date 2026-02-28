@@ -80,6 +80,7 @@
           <button class="tab" onclick="switchTab('tasks',this)">✓ Task</button>
           <button class="tab" onclick="switchTab('documents',this)">📁 Documenti</button>
           <button class="tab" onclick="switchTab('zoho',this)">📊 Zoho Books</button>
+          <button class="tab" onclick="switchTab('accesso',this)">🔑 Accesso Cliente</button>
         </div>
 
         <!-- Tab: Info -->
@@ -261,6 +262,7 @@ function switchTab(name, el) {
   if (name === 'tasks') loadClientTasks();
   if (name === 'documents') loadDocumentsPanel();
   if (name === 'zoho') loadZohoTab();
+  if (name === 'accesso') loadAccessTab();
 }
 
 async function loadOnboarding() {
@@ -620,6 +622,106 @@ async function loadZohoTab() {
   }
 }
 
+async function loadAccessTab() {
+  const el = document.getElementById('accesso-content');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    // Check if client already has an account
+    const links = await sb.db.select('client_users', { filter: 'client_id=eq.' + clientId, columns: 'id,user_id,created_at' });
+    const existing = links?.[0];
+
+    if (existing) {
+      el.innerHTML = `
+        <div style="max-width:480px">
+          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:20px;margin-bottom:20px">
+            <div style="font-weight:700;color:#059669;margin-bottom:4px">✓ Accesso attivo</div>
+            <div style="font-size:13px;color:#374151">Il cliente ha un account attivo dal ${ui.formatDate(existing.created_at)}</div>
+          </div>
+          <div style="display:flex;gap:12px">
+            <button class="btn btn-ghost" onclick="resetClientPassword()">🔑 Reset Password</button>
+            <button class="btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="revokeClientAccess('${existing.id}')">🗑 Revoca accesso</button>
+          </div>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div style="max-width:480px">
+          <div style="margin-bottom:20px">
+            <p style="font-size:14px;color:#6b7a95;margin-bottom:16px">Crea un accesso per questo cliente al portale. Riceverà le credenziali che potrà usare su <strong>/client-portal/login.html</strong></p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email accesso</label>
+            <input type="email" id="acc-email" class="form-control" placeholder="email@cliente.com" value="${clientData?.email || ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password temporanea</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="acc-pwd" class="form-control" value="${generatePassword()}">
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('acc-pwd').value=generatePassword()">↺</button>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px">Il cliente potrà cambiarla dopo il primo accesso</div>
+          </div>
+          <button class="btn btn-accent" onclick="createClientAccess()" id="btn-create-access">🔑 Crea accesso</button>
+        </div>`;
+    }
+  } catch(e) {
+    el.innerHTML = '<div class="alert alert-danger">' + e.message + '</div>';
+  }
+}
+
+function generatePassword() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+  return Array.from({length: 10}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+async function createClientAccess() {
+  const email = document.getElementById('acc-email').value.trim();
+  const pwd   = document.getElementById('acc-pwd').value.trim();
+  if (!email || !pwd) { ui.showToast('Inserisci email e password', 'error'); return; }
+
+  const btn = document.getElementById('btn-create-access');
+  btn.disabled = true; btn.textContent = 'Creazione...';
+
+  try {
+    const r = await fetch('/api/create-client-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pwd, client_id: clientId, company_name: clientData?.company_name })
+    });
+    const data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || 'Errore creazione');
+    ui.showToast('✅ Accesso creato! Email: ' + email + ' / Password: ' + pwd, 'success', 8000);
+    await loadAccessTab();
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = '🔑 Crea accesso';
+  }
+}
+
+async function revokeClientAccess(linkId) {
+  if (!confirm('Revocare l accesso di questo cliente?')) return;
+  try {
+    await sb.db.delete('client_users', 'id=eq.' + linkId);
+    ui.showToast('Accesso revocato', 'success');
+    await loadAccessTab();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+async function resetClientPassword() {
+  const newPwd = generatePassword();
+  const links = await sb.db.select('client_users', { filter: 'client_id=eq.' + clientId, columns: 'user_id' });
+  const userId = links?.[0]?.user_id;
+  if (!userId) { ui.showToast('Utente non trovato', 'error'); return; }
+  const r = await fetch('/api/update-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, password: newPwd })
+  });
+  const data = await r.json();
+  if (!r.ok || data.error) { ui.showToast('Errore reset password', 'error'); return; }
+  ui.showToast('✅ Nuova password: ' + newPwd, 'success', 10000);
+}
+
+
 init();
 </script>
 
@@ -761,6 +863,11 @@ init();
       </div>
     </div>
   </div>
+
+        <div class="tab-panel" id="tab-accesso" style="display:none;padding:24px">
+          <div id="accesso-content"><div class="spinner"></div></div>
+        </div>
+
 </div>
 
 <script>

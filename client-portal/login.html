@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InDubai — Area Clienti</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="/js/config.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, sans-serif; background: #0f1c2e; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: white; border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 420px; box-shadow: 0 24px 64px rgba(0,0,0,.4); }
+    .logo { font-size: 28px; font-weight: 900; color: #1a3a5c; }
+    .logo span { color: #c9a84c; }
+    .sub { font-size: 13px; color: #6b7a95; margin-top: 4px; margin-bottom: 36px; }
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+    input { width: 100%; padding: 11px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 14px; font-family: inherit; outline: none; transition: border-color .2s; }
+    input:focus { border-color: #1a3a5c; }
+    .btn { width: 100%; padding: 13px; background: #1a3a5c; color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 8px; transition: background .2s; }
+    .btn:hover { background: #15304f; }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .alert { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">In<span>Dubai</span></div>
+    <div class="sub">Area Clienti — Accedi al tuo portale</div>
+
+    <div id="alert" class="alert"></div>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="tuaemail@esempio.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn" id="btn">Accedi</button>
+  </div>
+
+  <script src="/js/supabase.js"></script>
+  <script>
+    // If already logged in as client, redirect to dashboard
+    const sess = sb.getSession();
+    if (sess?.access_token && sess?.profile?.role === 'client') {
+      window.location.href = '/client-portal/dashboard.html';
+    }
+
+    const emailEl = document.getElementById('email');
+    const passEl  = document.getElementById('password');
+    const btn     = document.getElementById('btn');
+    const alertEl = document.getElementById('alert');
+
+    function showAlert(msg) { alertEl.textContent = msg; alertEl.style.display = 'block'; }
+
+    async function doLogin() {
+      const email = emailEl.value.trim();
+      const pass  = passEl.value;
+      if (!email || !pass) { showAlert('Inserisci email e password'); return; }
+
+      btn.textContent = 'Accesso in corso...';
+      btn.disabled = true;
+      alertEl.style.display = 'none';
+
+      try {
+        await sb.signIn(email, pass);
+        const profile = sb.getCurrentProfile();
+
+        // Only allow client role
+        if (profile?.role !== 'client') {
+          sb.signOut();
+          showAlert('Questo accesso è riservato ai clienti. Usa il portale gestionale.');
+          btn.textContent = 'Accedi';
+          btn.disabled = false;
+          return;
+        }
+
+        window.location.href = '/client-portal/dashboard.html';
+      } catch(e) {
+        const msg = e.message || '';
+        if (msg.includes('Invalid login') || msg.includes('invalid_credentials')) {
+          showAlert('Email o password non corretti.');
+        } else {
+          showAlert('Errore: ' + msg);
+        }
+        btn.textContent = 'Accedi';
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', doLogin);
+    passEl.addEventListener('keydown', e => e.key === 'Enter' && doLogin());
+    emailEl.addEventListener('keydown', e => e.key === 'Enter' && passEl.focus());
+  </script>
+</body>
+</html>
