@@ -850,7 +850,7 @@ const DRV = (() => {
     dlBtn.onclick = () => dlFile(sp, name);
 
     const ext = name.split('.').pop().toLowerCase();
-    const isImg = mime?.startsWith('image') || ['jpg','jpeg','png','webp','gif'].includes(ext);
+    const isImg = mime?.startsWith('image') || ['jpg','jpeg','png','webp','gif','bmp','svg','tiff','tif'].includes(ext);
     const isPdf = mime?.includes('pdf') || ext === 'pdf';
 
     if (!isImg && !isPdf) {
