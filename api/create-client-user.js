@@ -31,13 +31,13 @@ export default async function handler(req, res) {
   }
 
   // 2. Wait for trigger to fire (creates profile row)
-  await new Promise(r => setTimeout(r, 800));
+  await new Promise(r => setTimeout(r, 1500));
 
-  // 3. Upsert profile with role=client
-  await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
-    method: 'POST',
-    headers: { ...SB_HEADERS, Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify({ id: created.id, full_name: company_name || email, role: 'client' })
+  // 3. Force profile role=client with PATCH (overrides trigger default)
+  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${created.id}`, {
+    method: 'PATCH',
+    headers: { ...SB_HEADERS, Prefer: 'return=minimal' },
+    body: JSON.stringify({ full_name: company_name || email, role: 'client' })
   });
 
   // 4. Insert into client_users

@@ -11,6 +11,12 @@
 
   const role = profile?.role || 'junior';
 
+  // Clients must use their own portal
+  if (role === 'client') {
+    window.location.href = '/client-portal/dashboard.html';
+    return;
+  }
+
   // Pages allowed per role
   const ROLE_PAGES = {
     admin:      null, // null = all pages
