@@ -27,8 +27,7 @@ export default async function handler(req, res) {
 
   const created = await createRes.json();
   if (!created.id) {
-    const err = created.message || created.msg || created.error_description || JSON.stringify(created);
-    return res.status(400).json({ error: err });
+    return res.status(400).json({ error: created.message || created.msg || created.error_description, raw: created, status: createRes.status });
   }
 
   // 2. Wait for trigger to fire (creates profile row)
