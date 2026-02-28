@@ -202,6 +202,17 @@
     .prev-title { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; color: var(--navy2); }
     .prev-body { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f8f8f8; }
 
+    /* ── SERVIZI ── */
+    .srv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 16px; margin-bottom: 20px; }
+    .srv-card { background: white; border: 1.5px solid var(--border); border-radius: 16px; padding: 22px; position: relative; transition: all .2s; display: flex; flex-direction: column; }
+    .srv-card:hover { border-color: var(--navy2); box-shadow: 0 6px 20px rgba(15,30,53,.08); transform: translateY(-2px); }
+    .srv-tag { position: absolute; top: 14px; right: 14px; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 100px; background: var(--gold); color: white; text-transform: uppercase; letter-spacing: .5px; }
+    .srv-icon { font-size: 32px; margin-bottom: 12px; }
+    .srv-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: var(--navy2); margin-bottom: 8px; }
+    .srv-desc { font-size: 13px; color: var(--muted); line-height: 1.6; flex: 1; margin-bottom: 16px; }
+    .srv-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--navy2); color: white; border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none; transition: background .15s; align-self: flex-start; }
+    .srv-btn:hover { background: var(--navy); }
+
     /* ── DRIVE ── */
     .drv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); gap: 12px; }
     .drv-card { background:#f8fafc; border:1.5px solid var(--border); border-radius:12px; padding:16px 12px; text-align:center; cursor:pointer; transition:all .15s; }
@@ -256,6 +267,10 @@
     <button class="nav-item active" onclick="showPanel('anagrafica', this)"><span class="nav-icon">🏢</span> Anagrafica</button>
     <button class="nav-item" onclick="showPanel('documenti', this)"><span class="nav-icon">📁</span> Documenti</button>
     <button class="nav-item" onclick="showPanel('scadenze', this)"><span class="nav-icon">📅</span> Scadenze</button>
+    <button class="nav-item" onclick="showPanel('pratiche', this)"><span class="nav-icon">📋</span> Le mie Pratiche</button>
+    <div class="nav-section" style="margin-top:16px">InDubai</div>
+    <button class="nav-item" onclick="showPanel('servizi', this)"><span class="nav-icon">✦</span> Servizi</button>
+    <button class="nav-item" onclick="showPanel('numeri', this)"><span class="nav-icon">📞</span> Numeri Utili</button>
   </aside>
 
   <!-- Main content -->
@@ -345,9 +360,25 @@ function buildMainHTML(visas=[]) {
     <!-- SCADENZE -->
     <div class="panel" id="panel-scadenze">
       <div class="section-title" style="margin-bottom:20px">Scadenze Importanti</div>
-      ${scadenzeHTML(visas)}
+      \${scadenzeHTML(visas)}
     </div>
-  `;
+
+    <!-- PRATICHE -->
+    <div class="panel" id="panel-pratiche">
+      <div class="section-title" style="margin-bottom:20px">Le mie Pratiche</div>
+      <div id="pratiche-client-content"><div class="spinner"></div></div>
+    </div>
+
+    <!-- SERVIZI -->
+    <div class="panel" id="panel-servizi">
+      \${serviziHTML()}
+    </div>
+
+    <!-- NUMERI UTILI -->
+    <div class="panel" id="panel-numeri">
+      \${numeriHTML()}
+    </div>
+  \`;
 }
 
 function heroHTML() {
@@ -587,6 +618,196 @@ function setupNav() {}
 
 function renderAll() {} // placeholder
 
+// ── PRATICHE CLIENTE ────────────────────────────────────────
+async function loadPraticheClient() {
+  const el = document.getElementById('pratiche-client-content');
+  if (!el) return;
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const sess = sb.getSession();
+    const links = await GET('/rest/v1/client_users?user_id=eq.' + sess.user.id + '&select=client_id');
+    const clientId = links?.[0]?.client_id;
+    if (!clientId) return;
+
+    const pratiche = await GET('/rest/v1/client_practices?client_id=eq.' + clientId + '&select=id,title,category,status,description,due_date,completed_at,created_at&order=created_at.desc');
+    
+    const STATUSES = {
+      in_attesa:      { label: 'In Attesa',         color: '#64748b', bg: '#f1f5f9', border: '#cbd5e1' },
+      in_lavorazione: { label: 'In Lavorazione',    color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+      attesa_docs:    { label: 'Attesa Documenti',  color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+      completato:     { label: '✓ Completato',      color: '#059669', bg: '#f0fdf4', border: '#86efac' },
+      annullato:      { label: 'Annullato',         color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
+    };
+    const fmtDate = d => d ? new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'}) : null;
+    const badge = s => {
+      const st = STATUSES[s] || STATUSES.in_attesa;
+      return `<span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:100px;font-size:11px;font-weight:700;background:${st.bg};color:${st.color};border:1px solid ${st.border}">${st.label}</span>`;
+    };
+
+    if (!pratiche?.length) {
+      el.innerHTML = `<div class="card"><div class="card-body"><div class="empty-state"><div class="icon">📋</div><p>Nessuna pratica in corso.<br>Contatta il tuo consulente per avviare una nuova pratica.</p></div></div></div>`;
+      return;
+    }
+
+    el.innerHTML = pratiche.map(p => `
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-body" style="padding:18px 24px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+            <div style="font-weight:700;font-size:15px;color:var(--navy2)">${p.title}</div>
+            ${badge(p.status)}
+          </div>
+          ${p.category ? `<div style="display:inline-block;font-size:11px;font-weight:600;color:var(--muted);background:#f1f5f9;padding:2px 10px;border-radius:100px;margin-bottom:8px">${p.category}</div>` : ''}
+          ${p.description ? `<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:8px">${p.description}</div>` : ''}
+          <div style="font-size:12px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
+            <span>Aperta: ${fmtDate(p.created_at)}</span>
+            ${p.due_date ? `<span style="color:${new Date(p.due_date)<new Date()?'#dc2626':'var(--muted)'}">Scadenza: <strong>${fmtDate(p.due_date)}</strong></span>` : ''}
+            ${p.completed_at ? `<span style="color:#059669">Completata: ${fmtDate(p.completed_at)}</span>` : ''}
+          </div>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="card"><div class="card-body" style="color:#dc2626">Errore: ${e.message}</div></div>`;
+  }
+}
+
+// ── SERVIZI ─────────────────────────────────────────────────
+function serviziHTML() {
+  const services = [
+    { icon: '🏢', title: 'Company Formation', desc: 'Costituzione di società nelle principali Free Zone e Mainland UAE. FZCO, FZE, LLC e strutture holding.', tag: 'Più richiesto' },
+    { icon: '📊', title: 'VAT & Tax', desc: 'Registrazione VAT, dichiarazioni trimestrali, ottimizzazione fiscale e compliance con le normative UAE.', tag: null },
+    { icon: '🏛', title: 'Corporate Tax', desc: 'Registrazione e gestione della Corporate Tax UAE (9%). Pianificazione e dichiarazioni annuali.', tag: null },
+    { icon: '🌟', title: 'Golden Visa', desc: 'Ottenimento del Golden Visa UAE per imprenditori, investitori e professionisti qualificati. 5 e 10 anni.', tag: 'Premium' },
+    { icon: '🔢', title: 'Contabilità', desc: 'Gestione contabile completa, bilanci, libri contabili e reportistica finanziaria conforme agli standard UAE.', tag: null },
+    { icon: '🏦', title: 'Banking', desc: 'Apertura conti bancari aziendali e personali, supporto con Wio, Mashreq, ADCB e banche internazionali.', tag: null },
+    { icon: '🏗', title: 'Real Estate', desc: 'Supporto all'investimento immobiliare a Dubai, due diligence, strutturazione acquisti off-plan e completati.', tag: null },
+    { icon: '✈️', title: 'Visa & Permessi', desc: 'Visti di residenza, visti dipendenti, Emirates ID, rinnovi e gestione completa delle pratiche immigratorie.', tag: null },
+    { icon: '🔐', title: 'Crypto & VARA', desc: 'Supporto per applicazioni VARA, licenze crypto, strutturazione società per attività con asset digitali.', tag: 'Specialistico' },
+    { icon: '📝', title: 'Contratti & Legal', desc: 'Redazione e revisione contratti commerciali, accordi tra soci, NDA, termini di servizio e documentazione legale.', tag: null },
+  ];
+
+  const cards = services.map(s => `
+    <div class="srv-card">
+      ${s.tag ? `<div class="srv-tag">${s.tag}</div>` : ''}
+      <div class="srv-icon">${s.icon}</div>
+      <div class="srv-title">${s.title}</div>
+      <div class="srv-desc">${s.desc}</div>
+      <a href="mailto:info@indubai.it?subject=Richiesta informazioni: ${encodeURIComponent(s.title)}&body=Buongiorno,%0D%0A%0D%0ASono interessato al servizio: ${encodeURIComponent(s.title)}%0D%0A%0D%0APer favore contattatemi per maggiori informazioni.%0D%0A%0D%0AGrazie" class="srv-btn">✉ Richiedi info</a>
+    </div>`).join('');
+
+  return `
+    <div style="margin-bottom:24px">
+      <div class="section-title" style="margin-bottom:6px">I nostri Servizi</div>
+      <p style="font-size:13px;color:var(--muted)">Hai bisogno di uno di questi servizi? Contattaci direttamente — il tuo consulente ti risponderà entro 24 ore.</p>
+    </div>
+    <div class="srv-grid">${cards}</div>`;
+}
+
+// ── NUMERI UTILI ─────────────────────────────────────────────
+function numeriHTML() {
+  const sections = [
+    {
+      title: '🚨 Emergenze',
+      color: '#dc2626',
+      bg: '#fef2f2',
+      border: '#fca5a5',
+      items: [
+        { icon: '👮', label: 'Polizia', number: '999' },
+        { icon: '🚑', label: 'Ambulanza', number: '998' },
+        { icon: '🚒', label: 'Pompieri', number: '997' },
+        { icon: '🆘', label: 'Emergenza Generale', number: '112' },
+      ]
+    },
+    {
+      title: '🏛 Servizi Pubblici',
+      color: '#0369a1',
+      bg: '#f0f9ff',
+      border: '#bae6fd',
+      items: [
+        { icon: '⚡', label: 'DEWA (Elettricità/Acqua)', number: '04-601-9999' },
+        { icon: '📡', label: 'Etisalat (e&)', number: '101' },
+        { icon: '📱', label: 'Du Telecom', number: '155' },
+        { icon: '🚇', label: 'RTA (Trasporti)', number: '800-90090' },
+      ]
+    },
+    {
+      title: '🏥 Salute',
+      color: '#059669',
+      bg: '#f0fdf4',
+      border: '#86efac',
+      items: [
+        { icon: '🏥', label: 'DHA (Sanità Dubai)', number: '800-342' },
+        { icon: '🏨', label: 'American Hospital', number: '04-336-7777' },
+        { icon: '💊', label: 'Mediclinic City', number: '04-435-9999' },
+        { icon: '🦷', label: 'Velvet Medical', number: '04-388-9555' },
+      ]
+    },
+    {
+      title: '🚕 Mobilità',
+      color: '#7c3aed',
+      bg: '#f5f3ff',
+      border: '#ddd6fe',
+      items: [
+        { icon: '🚖', label: 'Dubai Taxi', number: '04-208-0808' },
+        { icon: '📱', label: 'Careem / Uber', number: 'App' },
+        { icon: '🛣', label: 'SALIK (Pedaggi)', number: '800-72545' },
+        { icon: '🚗', label: 'RTA Patente', number: '800-90090' },
+      ]
+    },
+    {
+      title: '🇮🇹 Consolato Italiano',
+      color: '#d97706',
+      bg: '#fffbeb',
+      border: '#fde68a',
+      items: [
+        { icon: '🏛', label: 'Consolato Dubai', number: '04-331-4167' },
+        { icon: '📧', label: 'Email Consolato', number: 'dubai.consolare@esteri.it' },
+        { icon: '🌐', label: 'Prenotazione Online', number: 'prenota.esteri.it' },
+        { icon: '🆘', label: 'Emergenze Italiani', number: '+39-06-3691-7779' },
+      ]
+    },
+    {
+      title: '💼 Business & Legal',
+      color: '#0f1e35',
+      bg: '#f8fafc',
+      border: '#e2e8f0',
+      items: [
+        { icon: '🏢', label: 'DED (Licenze Dubai)', number: '04-445-5555' },
+        { icon: '📋', label: 'MOHRE (Lavoro)', number: '800-60' },
+        { icon: '🛃', label: 'Dubai Customs', number: '04-239-9999' },
+        { icon: '🏦', label: 'UAE Central Bank', number: '800-CBUAE' },
+      ]
+    },
+  ];
+
+  const cards = sections.map(s => `
+    <div class="card" style="margin-bottom:16px;border-color:${s.border}">
+      <div class="card-header" style="background:${s.bg};border-bottom-color:${s.border}">
+        <div class="card-title" style="color:${s.color}">${s.title}</div>
+      </div>
+      <div class="card-body" style="padding:12px 16px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
+          ${s.items.map(item => `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fafafa;border-radius:8px;border:1px solid #f1f5f9">
+              <span style="font-size:18px">${item.icon}</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:11px;color:var(--muted);font-weight:600">${item.label}</div>
+                <a href="${item.number.startsWith('0')||item.number.startsWith('+')||/^\d+$/.test(item.number.replace('-',''))?'tel:'+item.number.replace(/[^+0-9]/g,''):item.number.includes('@')?'mailto:'+item.number:'https://'+item.number}" 
+                   style="font-size:13px;font-weight:700;color:${s.color};text-decoration:none"
+                   target="${item.number.includes('.')?'_blank':'_self'}">${item.number}</a>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`).join('');
+
+  return `
+    <div style="margin-bottom:24px">
+      <div class="section-title" style="margin-bottom:6px">Numeri Utili Dubai</div>
+      <p style="font-size:13px;color:var(--muted)">Contatti essenziali per vivere e lavorare a Dubai. Toccando un numero puoi chiamare direttamente dal telefono.</p>
+    </div>
+    ${cards}`;
+}
+
 window.showPanel = function(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -594,6 +815,7 @@ window.showPanel = function(name, btn) {
   if (panel) panel.classList.add('active');
   if (btn) btn.classList.add('active');
   if (name === 'documenti') { cwd = '/'; renderDrive(); }
+  if (name === 'pratiche') loadPraticheClient();
 };
 
 async function fetchBlob(storagePath) {

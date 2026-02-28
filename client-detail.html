@@ -82,6 +82,7 @@
           <button class="tab" onclick="switchTab('zoho',this)">📊 Zoho Books</button>
           <button class="tab" onclick="switchTab('accesso',this)">🔑 Accesso Cliente</button>
           <button class="tab" onclick="switchTab('visti',this)">✈️ Visti</button>
+          <button class="tab" onclick="switchTab('pratiche',this)">📋 Pratiche</button>
         </div>
 
         <!-- Tab: Info -->
@@ -163,6 +164,11 @@
         <!-- Visti Tab -->
         <div class="tab-panel" id="tab-visti" style="padding:20px">
           <div id="visti-content"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Pratiche Tab -->
+        <div class="tab-panel" id="tab-pratiche" style="padding:20px">
+          <div id="pratiche-content"><div class="spinner"></div></div>
         </div>
 
       </div>
@@ -275,6 +281,7 @@ function switchTab(name, el) {
   if (name === 'zoho') loadZohoTab();
   if (name === 'accesso') loadAccessTab();
   if (name === 'visti') loadVistiTab();
+  if (name === 'pratiche') loadPraticheTab();
 }
 
 async function loadOnboarding() {
@@ -892,6 +899,164 @@ async function deleteVisa(id) {
     await sb.db.delete('client_visas', 'id=eq.' + id);
     ui.showToast('Visto eliminato', 'success');
     await loadVistiTab();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+
+// ══════════════════════════════════════════════════
+// PRATICHE TAB
+// ══════════════════════════════════════════════════
+const PRACTICE_STATUSES = {
+  in_attesa:     { label: 'In Attesa',        color: '#64748b', bg: '#f1f5f9', border: '#cbd5e1' },
+  in_lavorazione:{ label: 'In Lavorazione',   color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+  attesa_docs:   { label: 'Attesa Documenti', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+  completato:    { label: '✓ Completato',     color: '#059669', bg: '#f0fdf4', border: '#86efac' },
+  annullato:     { label: 'Annullato',        color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
+};
+const PRACTICE_CATEGORIES = ['Company Formation','VAT','Corporate Tax','Golden Visa','Contabilità','Banking','Real Estate','Visa/Permesso','Licenza','Altro'];
+
+async function loadPraticheTab() {
+  const el = document.getElementById('pratiche-content');
+  el.innerHTML = '<div class="spinner"></div>';
+  const role = sb.getCurrentProfile()?.role;
+  const canEdit = ['admin','mini_admin'].includes(role);
+
+  try {
+    const pratiche = await sb.db.select('client_practices', {
+      filter: 'client_id=eq.' + clientId,
+      columns: 'id,title,category,status,description,notes,due_date,completed_at,created_at',
+      order: 'created_at.desc'
+    }) || [];
+
+    const fmtDate = d => d ? new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+    const badge = s => {
+      const st = PRACTICE_STATUSES[s] || PRACTICE_STATUSES.in_attesa;
+      return `<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;background:${st.bg};color:${st.color};border:1px solid ${st.border}">${st.label}</span>`;
+    };
+
+    const cards = pratiche.map(p => `
+      <div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:flex-start;gap:16px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+            <div style="font-weight:700;font-size:14px">${ui.escapeHtml(p.title)}</div>
+            ${badge(p.status)}
+            <span style="font-size:11px;color:var(--text-muted);background:#f1f5f9;padding:2px 8px;border-radius:100px">${p.category||'Altro'}</span>
+          </div>
+          ${p.description ? `<div style="font-size:13px;color:var(--text-muted);margin-bottom:6px">${ui.escapeHtml(p.description)}</div>` : ''}
+          ${p.notes ? `<div style="font-size:12px;color:#7c3aed;background:#f5f3ff;border-radius:6px;padding:5px 10px;margin-top:6px">📝 ${ui.escapeHtml(p.notes)}</div>` : ''}
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px">
+            Creata: ${fmtDate(p.created_at)}
+            ${p.due_date ? ` · Scadenza: <strong>${fmtDate(p.due_date)}</strong>` : ''}
+            ${p.completed_at ? ` · Completata: ${fmtDate(p.completed_at)}` : ''}
+          </div>
+        </div>
+        ${canEdit ? `<div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" onclick="editPratica('${p.id}')">✎</button>
+          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deletePratica('${p.id}')">🗑</button>
+        </div>` : ''}
+      </div>`).join('');
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:600">Pratiche del cliente</div>
+        ${canEdit ? '<button class="btn btn-accent btn-sm" onclick="showPraticaForm()">+ Nuova Pratica</button>' : ''}
+      </div>
+
+      <div id="pratica-form" style="display:none;background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group" style="margin:0;grid-column:1/-1">
+            <label class="form-label">Titolo Pratica *</label>
+            <input type="text" class="form-control" id="p-title" placeholder="es. Rinnovo Trade License 2026">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Categoria</label>
+            <select class="form-control" id="p-category">
+              ${PRACTICE_CATEGORIES.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Stato</label>
+            <select class="form-control" id="p-status">
+              ${Object.entries(PRACTICE_STATUSES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;grid-column:1/-1">
+            <label class="form-label">Descrizione (visibile al cliente)</label>
+            <textarea class="form-control" id="p-description" rows="2" placeholder="Breve descrizione della pratica..."></textarea>
+          </div>
+          <div class="form-group" style="margin:0;grid-column:1/-1">
+            <label class="form-label">Note interne (non visibili al cliente)</label>
+            <textarea class="form-control" id="p-notes" rows="2" placeholder="Note solo per lo staff..."></textarea>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Scadenza</label>
+            <input type="date" class="form-control" id="p-due-date">
+          </div>
+        </div>
+        <input type="hidden" id="p-id">
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-accent btn-sm" onclick="savePratica()">💾 Salva</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('pratica-form').style.display='none'">Annulla</button>
+        </div>
+      </div>
+
+      ${pratiche.length ? cards : '<div style="padding:30px;text-align:center;color:var(--text-muted)">Nessuna pratica registrata.</div>'}
+    `;
+  } catch(e) { el.innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
+}
+
+function showPraticaForm(p=null) {
+  document.getElementById('p-id').value = p?.id || '';
+  document.getElementById('p-title').value = p?.title || '';
+  document.getElementById('p-category').value = p?.category || 'Altro';
+  document.getElementById('p-status').value = p?.status || 'in_attesa';
+  document.getElementById('p-description').value = p?.description || '';
+  document.getElementById('p-notes').value = p?.notes || '';
+  document.getElementById('p-due-date').value = p?.due_date || '';
+  document.getElementById('pratica-form').style.display = 'block';
+  document.getElementById('p-title').focus();
+}
+
+let praticheCache = [];
+async function editPratica(id) {
+  const pratiche = await sb.db.select('client_practices', {
+    filter: 'id=eq.' + id,
+    columns: 'id,title,category,status,description,notes,due_date'
+  });
+  if (pratiche?.[0]) showPraticaForm(pratiche[0]);
+}
+
+async function savePratica() {
+  const title = document.getElementById('p-title').value.trim();
+  if (!title) { ui.showToast('Titolo obbligatorio', 'error'); return; }
+  const id = document.getElementById('p-id').value;
+  const status = document.getElementById('p-status').value;
+  const data = {
+    title,
+    category: document.getElementById('p-category').value,
+    status,
+    description: document.getElementById('p-description').value.trim() || null,
+    notes: document.getElementById('p-notes').value.trim() || null,
+    due_date: document.getElementById('p-due-date').value || null,
+    client_id: clientId,
+    updated_at: new Date().toISOString(),
+    completed_at: status === 'completato' ? new Date().toISOString() : null,
+  };
+  try {
+    if (id) await sb.db.update('client_practices', 'id=eq.' + id, data);
+    else await sb.db.insert('client_practices', data);
+    ui.showToast('Pratica salvata', 'success');
+    document.getElementById('pratica-form').style.display = 'none';
+    await loadPraticheTab();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+async function deletePratica(id) {
+  if (!confirm('Eliminare questa pratica?')) return;
+  try {
+    await sb.db.delete('client_practices', 'id=eq.' + id);
+    ui.showToast('Pratica eliminata', 'success');
+    await loadPraticheTab();
   } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
 }
 
