@@ -889,7 +889,20 @@ window.closePreview = function() {
   document.getElementById('preview-body').innerHTML = '';
 };
 
-init();
+// Safety check before init
+window.addEventListener('DOMContentLoaded', function() {
+  if (typeof sb === 'undefined') {
+    document.getElementById('main').innerHTML = '<div style="padding:40px;text-align:center;color:#dc2626">Errore: libreria sb non caricata</div>';
+    return;
+  }
+  if (!window.ENV_SUPABASE_URL) {
+    document.getElementById('main').innerHTML = '<div style="padding:40px;text-align:center;color:#dc2626">Errore: configurazione mancante</div>';
+    return;
+  }
+  init().catch(e => {
+    document.getElementById('main').innerHTML = `<div style="padding:40px;text-align:center;color:#dc2626">Init error: ${e.message}</div>`;
+  });
+});
 </script>
 <!-- Preview Modal -->
 <div id="preview-modal" class="prev-overlay" onclick="if(event.target===this)closePreview()">
