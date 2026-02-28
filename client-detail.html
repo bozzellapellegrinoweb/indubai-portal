@@ -655,17 +655,6 @@ async function loadAccessTab() {
     const existing = links?.[0];
 
     if (existing) {
-      // Fetch auth user email
-      let userEmail = clientData?.email || '—';
-      try {
-        const r = await fetch(window.ENV_SUPABASE_URL + '/auth/v1/admin/users/' + existing.user_id, {
-          headers: { apikey: window.ENV_SUPABASE_ANON_KEY, Authorization: 'Bearer ' + sb.getSession()?.access_token }
-        });
-        // Can't call admin API from frontend — use profiles table instead
-        const prof = await sb.db.select('profiles', { filter: 'id=eq.' + existing.user_id, columns: 'full_name' });
-        if (prof?.[0]?.full_name) userEmail = prof[0].full_name;
-      } catch(e) {}
-
       el.innerHTML = `
         <div style="max-width:520px">
           <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:20px;margin-bottom:16px">
