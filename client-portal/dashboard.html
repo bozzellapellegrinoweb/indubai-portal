@@ -145,10 +145,10 @@
       // Auth check
       const sess = sb.getSession();
       if (!sess?.access_token) { window.location.href = '/client-portal/login.html'; return; }
-      if (sess?.profile?.role !== 'client') { doLogout(); return; }
 
-      const profile = sess.profile;
-      document.getElementById('header-name').textContent = profile.full_name || '';
+      // Get name from user metadata (always available) — skip role check from cache
+      const userName = sess.user?.user_metadata?.full_name || sess.user?.email || '';
+      document.getElementById('header-name').textContent = userName;
 
       // Get client_id from client_users
       const links = await GET(`/rest/v1/client_users?user_id=eq.${sess.user.id}&select=client_id`);
