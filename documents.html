@@ -893,7 +893,7 @@ const DRV = (() => {
 document.addEventListener('DOMContentLoaded', () => DRV.boot());
 </script>
 <!-- Preview modal -->
-<div id="m-preview" class="m-ov" style="display:none" onclick="if(event.target===this)closePreview()">
+<div id="m-preview" class="m-ov" style="display:none" onclick="if(event.target===this)DRV.closePreview()">
   <div style="background:white;border-radius:16px;width:95vw;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1.5px solid var(--border);flex-shrink:0">
       <div id="prev-title" style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:12px"></div>

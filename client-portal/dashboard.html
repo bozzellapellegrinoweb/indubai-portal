@@ -183,6 +183,25 @@
     .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
     .empty-state p { font-size: 14px; }
 
+    /* ── PREVIEW MODAL ── */
+    .prev-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      display: none; align-items: center; justify-content: center;
+      z-index: 1000; padding: 20px;
+    }
+    .prev-modal {
+      background: white; border-radius: 16px;
+      width: 95vw; max-width: 900px; max-height: 92vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    }
+    .prev-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; border-bottom: 1.5px solid var(--border); flex-shrink: 0;
+    }
+    .prev-title { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; color: var(--navy2); }
+    .prev-body { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f8f8f8; }
+
     /* ── DRIVE ── */
     .drv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); gap: 12px; }
     .drv-card { background:#f8fafc; border:1.5px solid var(--border); border-radius:12px; padding:16px 12px; text-align:center; cursor:pointer; transition:all .15s; }
@@ -452,7 +471,7 @@ function renderDrive() {
     </div>`;
   });
   files.forEach(f => {
-    g += `<div class="drv-card" onclick="downloadFile('${esc(f.storage_path)}','${f.display_name.replace(/'/g,"\'")}')">
+    g += `<div class="drv-card" onclick="previewFile('${esc(f.storage_path)}','${f.display_name.replace(/'/g,"\'")}','${esc(f.mime_type||'')}')">
       <div class="drv-ico">${mico(f.mime_type, f.display_name)}</div>
       <div class="drv-nm">${esc(f.display_name)}</div>
       <div class="drv-sz">${sz(f.file_size)}</div>
@@ -471,7 +490,7 @@ function renderDrive() {
     </div>`;
   });
   files.forEach(f => {
-    l += `<div class="drv-row" onclick="downloadFile('${esc(f.storage_path)}','${f.display_name.replace(/'/g,"\'")}')">
+    l += `<div class="drv-row" onclick="previewFile('${esc(f.storage_path)}','${f.display_name.replace(/'/g,"\'")}','${esc(f.mime_type||'')}')">
       <span style="font-size:20px">${mico(f.mime_type, f.display_name)}</span>
       <span class="drv-row-name">${esc(f.display_name)}</span>
       <span class="drv-row-meta">${dt(f.created_at)}</span>
@@ -570,19 +589,87 @@ window.showPanel = function(name, btn) {
   if (name === 'documenti') { cwd = '/'; renderDrive(); }
 };
 
-window.downloadFile = async function(storagePath, name) {
+async function fetchBlob(storagePath) {
   const tok = sb.getSession()?.access_token || SB_KEY;
   const r = await fetch(`${SB_URL}/storage/v1/object/authenticated/client-documents/${storagePath}`, {
     headers: { apikey: SB_KEY, Authorization: `Bearer ${tok}` }
   });
-  if (!r.ok) { alert('Errore download'); return; }
-  const blob = await r.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = name; a.click();
-  URL.revokeObjectURL(url);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.blob();
+}
+
+window.downloadFile = async function(storagePath, name) {
+  try {
+    const blob = await fetchBlob(storagePath);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch(e) { alert('Errore download: ' + e.message); }
+};
+
+window.previewFile = async function(storagePath, name, mime) {
+  const modal = document.getElementById('preview-modal');
+  const body  = document.getElementById('preview-body');
+  const title = document.getElementById('preview-title');
+  const dlBtn = document.getElementById('preview-dl-btn');
+
+  title.textContent = name;
+  body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:300px"><div class="spinner"></div></div>';
+  modal.style.display = 'flex';
+
+  dlBtn.onclick = () => downloadFile(storagePath, name);
+
+  const ext = name.split('.').pop().toLowerCase();
+  const isImg = mime?.startsWith('image') || ['jpg','jpeg','png','webp','gif'].includes(ext);
+  const isPdf = mime?.includes('pdf') || ext === 'pdf';
+
+  if (!isImg && !isPdf) {
+    const icons = {doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',ppt:'📑',pptx:'📑',zip:'🗜️',rar:'🗜️',txt:'📃'};
+    const ico = icons[ext] || '📎';
+    body.innerHTML = `<div style="text-align:center;padding:50px 30px">
+      <div style="font-size:56px;margin-bottom:16px">${ico}</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:8px;color:var(--text)">${name}</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:24px">Anteprima non disponibile — clicca per scaricare</div>
+      <button class="btn-dl" onclick="downloadFile('${storagePath.replace(/'/g,"\'")}','${name.replace(/'/g,"\'")}')">⬇ Scarica file</button>
+    </div>`;
+    return;
+  }
+
+  try {
+    const blob = await fetchBlob(storagePath);
+    const url  = URL.createObjectURL(blob);
+    if (isImg) {
+      body.innerHTML = `<img src="${url}" style="max-width:100%;max-height:78vh;object-fit:contain;display:block;padding:16px" onload="URL.revokeObjectURL(this.src)">`;
+    } else {
+      body.innerHTML = `<iframe src="${url}" style="width:100%;height:78vh;border:none"></iframe>`;
+    }
+  } catch(e) {
+    body.innerHTML = `<div style="padding:40px;text-align:center;color:#dc2626">Errore: ${e.message}</div>`;
+  }
+};
+
+window.closePreview = function() {
+  document.getElementById('preview-modal').style.display = 'none';
+  document.getElementById('preview-body').innerHTML = '';
 };
 
 init();
 </script>
+<!-- Preview Modal -->
+<div id="preview-modal" class="prev-overlay" onclick="if(event.target===this)closePreview()">
+  <div class="prev-modal">
+    <div class="prev-header">
+      <div class="prev-title" id="preview-title"></div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button class="btn-dl" id="preview-dl-btn" style="padding:7px 14px;font-size:12px">⬇ Scarica</button>
+        <button onclick="closePreview()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:14px">✕</button>
+      </div>
+    </div>
+    <div class="prev-body" id="preview-body">
+      <div class="spinner"></div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
