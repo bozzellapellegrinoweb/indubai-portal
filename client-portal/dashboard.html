@@ -364,7 +364,7 @@ function buildMainHTML(visas=[]) {
     <!-- SCADENZE -->
     <div class="panel" id="panel-scadenze">
       <div class="section-title" style="margin-bottom:20px">Scadenze Importanti</div>
-      \${scadenzeHTML(visas)}
+      ${scadenzeHTML(visas)}
     </div>
 
     <!-- PRATICHE -->
@@ -375,14 +375,14 @@ function buildMainHTML(visas=[]) {
 
     <!-- SERVIZI -->
     <div class="panel" id="panel-servizi">
-      \${serviziHTML()}
+      ${serviziHTML()}
     </div>
 
     <!-- NUMERI UTILI -->
     <div class="panel" id="panel-numeri">
-      \${numeriHTML()}
+      ${numeriHTML()}
     </div>
-  \`;
+  `;
 }
 
 function heroHTML() {
@@ -397,7 +397,7 @@ function heroHTML() {
       <div class="hero-welcome">Bentornato</div>
       <div class="hero-title">${c.company_name}</div>
       <div class="hero-sub">Il tuo spazio personale InDubai — anagrafica, documenti e scadenze</div>
-      ${badges.length ? `<div class="hero-badges">${badges.map(b => `<span class="hero-badge${b.gold?' gold':''}">${b.text}</span>`).join('')}</div>` : ''}
+      ${badges.length ? '<div class="hero-badges">' + badges.map(b => '<span class="hero-badge' + (b.gold ? ' gold' : '') + '">' + b.text + '</span>').join('') + '</div>' : ''}
     </div>`;
 }
 
