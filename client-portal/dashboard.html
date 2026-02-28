@@ -464,14 +464,14 @@ function renderDrive() {
   // GRID
   let g = '<div class="drv-grid">';
   dirs.forEach(n => {
-    g += `<div class="drv-card drv-dir" onclick="cdDir('${esc(n)}')">
+    g += `<div class="drv-card drv-dir" data-dir="${esc(n)}">
       <div class="drv-ico">📁</div>
       <div class="drv-nm">${esc(n)}</div>
       <div class="drv-sz">Cartella</div>
     </div>`;
   });
   files.forEach(f => {
-    g += `<div class="drv-card" onclick="previewFile('${esc(f.storage_path)}','${f.display_name.replace(/'/g,"\'")}','${esc(f.mime_type||'')}')">
+    g += `<div class="drv-card drv-file" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}" data-mime="${esc(f.mime_type||'')}">
       <div class="drv-ico">${mico(f.mime_type, f.display_name)}</div>
       <div class="drv-nm">${esc(f.display_name)}</div>
       <div class="drv-sz">${sz(f.file_size)}</div>
@@ -482,7 +482,7 @@ function renderDrive() {
   // LIST
   let l = '<div class="drv-list">';
   dirs.forEach(n => {
-    l += `<div class="drv-row drv-dir" onclick="cdDir('${esc(n)}')">
+    l += `<div class="drv-row drv-dir" data-dir="${esc(n)}">
       <span style="font-size:20px">📁</span>
       <span class="drv-row-name">${esc(n)}</span>
       <span class="drv-row-meta">Cartella</span>
@@ -490,7 +490,7 @@ function renderDrive() {
     </div>`;
   });
   files.forEach(f => {
-    l += `<div class="drv-row" onclick="previewFile('${esc(f.storage_path)}','${f.display_name.replace(/'/g,"\'")}','${esc(f.mime_type||'')}')">
+    l += `<div class="drv-row drv-file" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}" data-mime="${esc(f.mime_type||'')}">
       <span style="font-size:20px">${mico(f.mime_type, f.display_name)}</span>
       <span class="drv-row-name">${esc(f.display_name)}</span>
       <span class="drv-row-meta">${dt(f.created_at)}</span>
@@ -501,6 +501,13 @@ function renderDrive() {
 
   document.getElementById('drive-content').innerHTML = g + l;
   applyDriveView();
+  // Event delegation for file clicks
+  document.getElementById('drive-content').querySelectorAll('.drv-file').forEach(el => {
+    el.addEventListener('click', () => previewFile(el.dataset.sp, el.dataset.nm, el.dataset.mime));
+  });
+  document.getElementById('drive-content').querySelectorAll('.drv-dir').forEach(el => {
+    el.addEventListener('click', () => cdDir(el.dataset.dir));
+  });
 }
 
 function cdDir(name) {
