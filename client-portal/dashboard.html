@@ -251,6 +251,13 @@ async function doLogout() {
 let clientData = null;
 let allFiles = [];
 
+async function loadVisas(clientId) {
+  try {
+    const visas = await GET(`/rest/v1/client_visas?client_id=eq.${clientId}&select=holder_name,visa_type,expiry_date&order=expiry_date.asc`);
+    return visas || [];
+  } catch { return []; }
+}
+
 async function init() {
   const sess = sb.getSession();
   if (!sess?.access_token) { window.location.href = '/client-portal/login.html'; return; }
@@ -272,9 +279,12 @@ async function init() {
     // Set header
     document.getElementById('header-company').textContent = clientData.company_name;
 
+    // Load visas
+    const visas = await loadVisas(clientId);
+
     // Render all panels
     renderAll();
-    document.getElementById('main').innerHTML = buildMainHTML();
+    document.getElementById('main').innerHTML = buildMainHTML(visas);
     setupNav();
 
   } catch(e) {
@@ -282,7 +292,7 @@ async function init() {
   }
 }
 
-function buildMainHTML() {
+function buildMainHTML(visas=[]) {
   return `
     <!-- ANAGRAFICA -->
     <div class="panel active" id="panel-anagrafica">
@@ -299,7 +309,7 @@ function buildMainHTML() {
     <!-- SCADENZE -->
     <div class="panel" id="panel-scadenze">
       <div class="section-title" style="margin-bottom:20px">Scadenze Importanti</div>
-      ${scadenzeHTML()}
+      ${scadenzeHTML(visas)}
     </div>
   `;
 }
@@ -402,7 +412,7 @@ function documentiHTML() {
   </div>`;
 }
 
-function scadenzeHTML() {
+function scadenzeHTML(visas=[]) {
   const c = clientData;
   const items = [];
   const today = new Date();
@@ -416,7 +426,8 @@ function scadenzeHTML() {
   addDeadline('Licenza Aziendale', c.trade_license_date, '🪪');
   addDeadline('Passaporto', c.passport_expiry, '📘');
   addDeadline('Emirates ID', c.eid_expiry, '🆔');
-  addDeadline('Visto di Residenza', c.visa_expiry, '✈️');
+  // Add individual visas
+  (visas||[]).forEach(v => addDeadline(`✈️ ${v.holder_name} (${v.visa_type||'Residenza'})`, v.expiry_date, '🛂'));
 
   if (!items.length) return `<div class="card"><div class="card-body"><div class="empty-state"><div class="icon">📅</div><p>Nessuna scadenza configurata.<br>Contatta il tuo consulente per aggiornarle.</p></div></div></div>`;
 
@@ -465,7 +476,7 @@ window.showPanel = function(name, btn) {
 
 window.downloadFile = async function(storagePath, name) {
   const tok = sb.getSession()?.access_token || SB_KEY;
-  const r = await fetch(`${SB_URL}/storage/v1/object/authenticated/client-docs/${storagePath}`, {
+  const r = await fetch(`${SB_URL}/storage/v1/object/authenticated/client-documents/${storagePath}`, {
     headers: { apikey: SB_KEY, Authorization: `Bearer ${tok}` }
   });
   if (!r.ok) { alert('Errore download'); return; }

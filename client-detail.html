@@ -81,6 +81,7 @@
           <button class="tab" onclick="switchTab('documents',this)">📁 Documenti</button>
           <button class="tab" onclick="switchTab('zoho',this)">📊 Zoho Books</button>
           <button class="tab" onclick="switchTab('accesso',this)">🔑 Accesso Cliente</button>
+          <button class="tab" onclick="switchTab('visti',this)">✈️ Visti</button>
         </div>
 
         <!-- Tab: Info -->
@@ -157,6 +158,11 @@
         <!-- Accesso Cliente Tab -->
         <div class="tab-panel" id="tab-accesso" style="padding:20px">
           <div id="accesso-content"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Visti Tab -->
+        <div class="tab-panel" id="tab-visti" style="padding:20px">
+          <div id="visti-content"><div class="spinner"></div></div>
         </div>
 
       </div>
@@ -268,6 +274,7 @@ function switchTab(name, el) {
   if (name === 'documents') loadDocumentsPanel();
   if (name === 'zoho') loadZohoTab();
   if (name === 'accesso') loadAccessTab();
+  if (name === 'visti') loadVistiTab();
 }
 
 async function loadOnboarding() {
@@ -382,6 +389,11 @@ function openEdit() {
   document.getElementById('e-tl-issue').value = c.license_issue_date||'';
   document.getElementById('e-tl-date').value = c.trade_license_date||'';
   document.getElementById('e-ct-expiry').value = c.corporate_tax_expiry||'';
+  document.getElementById('e-free-zone').value = c.free_zone||'';
+  document.getElementById('e-company-type').value = c.company_type||'';
+  document.getElementById('e-license-number').value = c.license_number||'';
+  document.getElementById('e-nationality').value = c.nationality||'';
+  document.getElementById('e-eid-expiry').value = c.eid_expiry||'';
   document.getElementById('e-bank-notes').value = c.bank_notes||'';
   document.getElementById('e-notes').value = c.notes||'';
   document.getElementById('e-gm').value = c.general_manager||'';
@@ -749,6 +761,141 @@ async function resetClientPassword() {
 }
 
 
+async function loadVistiTab() {
+  const el = document.getElementById('visti-content');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const visas = await sb.db.select('client_visas', {
+      filter: 'client_id=eq.' + clientId,
+      columns: 'id,holder_name,visa_type,expiry_date,notes',
+      order: 'expiry_date.asc'
+    }) || [];
+
+    const fmtDate = d => d ? new Date(d).toLocaleDateString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+    const daysLeft = d => d ? Math.round((new Date(d) - new Date()) / 86400000) : null;
+    const badgeVisa = d => {
+      const days = daysLeft(d);
+      if (days === null) return '';
+      if (days < 0) return '<span class="badge danger">Scaduto</span>';
+      if (days <= 60) return `<span class="badge warning">${days}gg</span>`;
+      return '<span class="badge success">OK</span>';
+    };
+
+    const rows = visas.map(v => `
+      <tr>
+        <td style="font-weight:600">${v.holder_name}</td>
+        <td>${v.visa_type||'Residenza'}</td>
+        <td>${fmtDate(v.expiry_date)} ${badgeVisa(v.expiry_date)}</td>
+        <td style="color:var(--text-muted);font-size:12px">${v.notes||'—'}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="editVisa('${v.id}','${v.holder_name.replace(/'/g,"\'")}','${v.visa_type||'Residenza'}','${v.expiry_date||''}','${(v.notes||'').replace(/'/g,"\'")}')">✎</button>
+          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteVisa('${v.id}')">🗑</button>
+        </td>
+      </tr>`).join('');
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:600;color:var(--text)">Visti attivi sulla licenza</div>
+        <button class="btn btn-accent btn-sm" onclick="showAddVisa()">+ Aggiungi Visto</button>
+      </div>
+
+      <div id="visa-form" style="display:none;background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Nome Titolare *</label>
+            <input type="text" class="form-control" id="v-name" placeholder="es. Mario Rossi">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Tipo Visto</label>
+            <select class="form-control" id="v-type">
+              <option value="Residenza">Residenza</option>
+              <option value="Investor">Investor</option>
+              <option value="Employment">Employment</option>
+              <option value="Dependant">Dependant</option>
+              <option value="Visit">Visit</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Scadenza</label>
+            <input type="date" class="form-control" id="v-expiry">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Note</label>
+            <input type="text" class="form-control" id="v-notes" placeholder="facoltativo">
+          </div>
+        </div>
+        <input type="hidden" id="v-id">
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-accent btn-sm" onclick="saveVisa()">💾 Salva</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('visa-form').style.display='none'">Annulla</button>
+        </div>
+      </div>
+
+      ${visas.length ? `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Titolare</th><th>Tipo</th><th>Scadenza</th><th>Note</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>` : '<div style="padding:30px;text-align:center;color:var(--text-muted)">Nessun visto registrato. Clicca "+ Aggiungi Visto" per iniziare.</div>'}
+    `;
+  } catch(e) {
+    el.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+function showAddVisa() {
+  document.getElementById('v-id').value = '';
+  document.getElementById('v-name').value = '';
+  document.getElementById('v-type').value = 'Residenza';
+  document.getElementById('v-expiry').value = '';
+  document.getElementById('v-notes').value = '';
+  document.getElementById('visa-form').style.display = 'block';
+  document.getElementById('v-name').focus();
+}
+
+function editVisa(id, name, type, expiry, notes) {
+  document.getElementById('v-id').value = id;
+  document.getElementById('v-name').value = name;
+  document.getElementById('v-type').value = type;
+  document.getElementById('v-expiry').value = expiry;
+  document.getElementById('v-notes').value = notes;
+  document.getElementById('visa-form').style.display = 'block';
+  document.getElementById('v-name').focus();
+}
+
+async function saveVisa() {
+  const name = document.getElementById('v-name').value.trim();
+  if (!name) { ui.showToast('Nome titolare obbligatorio', 'error'); return; }
+  const id = document.getElementById('v-id').value;
+  const data = {
+    holder_name: name,
+    visa_type: document.getElementById('v-type').value,
+    expiry_date: document.getElementById('v-expiry').value || null,
+    notes: document.getElementById('v-notes').value.trim() || null,
+    client_id: clientId
+  };
+  try {
+    if (id) {
+      await sb.db.update('client_visas', 'id=eq.' + id, data);
+    } else {
+      await sb.db.insert('client_visas', data);
+    }
+    ui.showToast('Visto salvato', 'success');
+    await loadVistiTab();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+async function deleteVisa(id) {
+  if (!confirm('Eliminare questo visto?')) return;
+  try {
+    await sb.db.delete('client_visas', 'id=eq.' + id);
+    ui.showToast('Visto eliminato', 'success');
+    await loadVistiTab();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+
 init();
 </script>
 
@@ -826,6 +973,26 @@ init();
         <div class="form-group">
           <label class="form-label">Scad. Corporate Tax</label>
           <input type="date" class="form-control" id="e-ct-expiry">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Free Zone</label>
+          <input type="text" class="form-control" id="e-free-zone" placeholder="es. IFZA, DMCC...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo Società</label>
+          <input type="text" class="form-control" id="e-company-type" placeholder="es. FZCO, FZE, LLC...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">N. Licenza</label>
+          <input type="text" class="form-control" id="e-license-number">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nazionalità Titolare</label>
+          <input type="text" class="form-control" id="e-nationality" placeholder="es. Italiano">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Emirates ID — Scadenza</label>
+          <input type="date" class="form-control" id="e-eid-expiry">
         </div>
         <div class="form-group" style="grid-column:1/-1">
           <label class="form-label">Conti Bancari</label>
@@ -928,6 +1095,11 @@ async function saveEdit() {
       license_issue_date: document.getElementById('e-tl-issue').value||null,
       trade_license_date: document.getElementById('e-tl-date').value||null,
       corporate_tax_expiry: document.getElementById('e-ct-expiry').value||null,
+      free_zone: document.getElementById('e-free-zone').value.trim()||null,
+      company_type: document.getElementById('e-company-type').value.trim()||null,
+      license_number: document.getElementById('e-license-number').value.trim()||null,
+      nationality: document.getElementById('e-nationality').value.trim()||null,
+      eid_expiry: document.getElementById('e-eid-expiry').value||null,
       bank_accounts: banks.length ? banks : null,
       bank_notes: document.getElementById('e-bank-notes').value.trim()||null,
       notes: document.getElementById('e-notes').value.trim()||null,
