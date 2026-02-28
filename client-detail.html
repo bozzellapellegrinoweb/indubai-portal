@@ -644,7 +644,7 @@ async function loadAccessTab() {
           </div>
           <div style="display:flex;gap:12px">
             <button class="btn btn-ghost" onclick="resetClientPassword()">🔑 Reset Password</button>
-            <button class="btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="revokeClientAccess('${existing.id}')">🗑 Revoca accesso</button>
+            <button class="btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="revokeClientAccess('${existing.user_id}')">🗑 Revoca accesso</button>
           </div>
         </div>`;
     } else {
@@ -718,10 +718,16 @@ async function createClientAccess() {
   }
 }
 
-async function revokeClientAccess(linkId) {
-  if (!confirm('Revocare l accesso di questo cliente?')) return;
+async function revokeClientAccess(userId) {
+  if (!confirm('Revocare l accesso di questo cliente? L utente verrà eliminato.')) return;
   try {
-    await sb.db.delete('client_users', 'id=eq.' + linkId);
+    const r = await fetch('/api/delete-client-user', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: userId })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Errore eliminazione');
     ui.showToast('Accesso revocato', 'success');
     await loadAccessTab();
   } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
