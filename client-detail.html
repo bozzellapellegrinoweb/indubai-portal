@@ -777,9 +777,10 @@ async function resetClientPasswordWithValue() {
   const links = await sb.db.select('client_users', { filter: 'client_id=eq.' + clientId, columns: 'user_id' });
   const userId = links?.[0]?.user_id;
   if (!userId) { ui.showToast('Utente non trovato', 'error'); return; }
+  const token = sb.getSession()?.access_token;
   const r = await fetch('/api/update-password', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ userId, password: newPwd })
   });
   const data = await r.json();
