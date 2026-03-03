@@ -283,4 +283,186 @@
     } catch(e) {}
   })();
 
+  // ── iOS MOBILE SHELL ──────────────────────────────────────
+  const PAGE_LABELS = {
+    'index': 'Dashboard', 'tasks': 'Task', 'clients': 'Clienti',
+    'documents': 'Documenti', 'vat': 'VAT Register', 'corp-tax': 'Corporate Tax',
+    'payments': 'Abbonamenti', 'statements': 'Estratti', 'onboarding': 'Onboarding',
+    'reports': 'Report', 'search': 'Ricerca', 'users': 'Utenti',
+    'affinitas': 'Affinitas', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
+    'client-detail': 'Cliente',
+  };
+  const pageLabel = PAGE_LABELS[currentPage] || 'InDubai';
+
+  // Bottom nav items (5 max for mobile)
+  const bottomNavItems = [
+    { id: 'index',   icon: '◈', label: 'Home',     href: '/index.html' },
+    { id: 'tasks',   icon: '✓', label: 'Task',     href: '/tasks.html' },
+    { id: 'clients', icon: '◉', label: 'Clienti',  href: '/clients.html' },
+    { id: 'vat',     icon: '◇', label: 'VAT',      href: '/vat.html' },
+    { id: 'menu',    icon: '☰', label: 'Menu',     href: '#' },
+  ].filter(i => !allowed || allowed.includes(i.id) || i.id === 'menu');
+
+  const bnavHTML = bottomNavItems.map(item => {
+    const isActive = item.id === currentPage;
+    return `<a class="ios-bnav-item${isActive ? ' active' : ''}" href="${item.href}" 
+      ${item.id === 'menu' ? 'onclick="openAdminSheet();return false;"' : ''}
+      data-page="${item.id}">
+      <span class="ios-bnav-icon">${item.icon}</span>
+      <span class="ios-bnav-label">${item.label}</span>
+      <span class="ios-bnav-dot" id="bnav-dot-${item.id}"></span>
+    </a>`;
+  }).join('');
+
+  // Sheet nav items (all pages)
+  const sheetNavHTML = navItems.filter(i => !i.roles || i.roles.includes(role)).map(item => {
+    const sectionHeader = item.section ? `<div class="ios-admin-sheet-section">${item.section}</div>` : '';
+    const isActive = currentPage === item.id ? ' active-page' : '';
+    return `${sectionHeader}
+      <a href="${item.href}" class="ios-admin-sheet-link${isActive}">
+        <span class="si-icon">${item.icon || '·'}</span>
+        ${item.label}
+        <span class="si-chevron">›</span>
+      </a>`;
+  }).join('');
+
+  const mobileShell = `
+    <!-- iOS Admin Topbar -->
+    <div class="ios-admin-bar" id="ios-admin-bar">
+      <div class="ios-admin-bar-logo">In<span>Dubai</span></div>
+      <div class="ios-admin-bar-page">${escapeHtml(pageLabel)}</div>
+      <div class="ios-admin-bar-actions">
+        <button class="ios-bar-btn" onclick="toggleNotifPanel()" title="Notifiche">
+          🔔<span class="ios-bar-badge" id="ios-bell-badge"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Pull to refresh indicator -->
+    <div class="admin-ptr-bar" id="admin-ptr-bar">
+      <div class="admin-ptr-pill"><div class="admin-ptr-spin"></div>Aggiornamento...</div>
+    </div>
+
+    <!-- Bottom nav -->
+    <nav class="ios-bottom-nav" id="ios-bottom-nav">
+      <div class="ios-bottom-nav-inner">${bnavHTML}</div>
+    </nav>
+
+    <!-- Sheet overlay -->
+    <div class="ios-admin-sheet-overlay" id="admin-sheet-overlay" onclick="closeAdminSheet()"></div>
+
+    <!-- Sheet drawer -->
+    <div class="ios-admin-sheet" id="ios-admin-sheet">
+      <div class="ios-admin-sheet-handle"></div>
+      <div class="ios-admin-sheet-user">
+        <div class="ios-admin-sheet-name">${escapeHtml(profile?.full_name || 'Utente')}</div>
+        <div class="ios-admin-sheet-role">${profile?.role || 'staff'}</div>
+      </div>
+      ${sheetNavHTML}
+      <button class="ios-admin-sheet-logout" onclick="closeAdminSheet();sb.signOut()">⏻ Esci dall'account</button>
+    </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', mobileShell);
+
+  // Sheet open/close
+  window.openAdminSheet = function() {
+    document.getElementById('ios-admin-sheet').classList.add('open');
+    document.getElementById('admin-sheet-overlay').style.display = 'block';
+    requestAnimationFrame(function() { document.getElementById('admin-sheet-overlay').classList.add('open'); });
+  };
+  window.closeAdminSheet = function() {
+    document.getElementById('ios-admin-sheet').classList.remove('open');
+    document.getElementById('admin-sheet-overlay').classList.remove('open');
+    setTimeout(function() { document.getElementById('admin-sheet-overlay').style.display = 'none'; }, 320);
+  };
+
+  // Swipe down sheet to close
+  (function() {
+    var sh = document.getElementById('ios-admin-sheet'), sy = 0;
+    if (!sh) return;
+    sh.addEventListener('touchstart', function(e){ sy = e.touches[0].clientY; }, { passive: true });
+    sh.addEventListener('touchend', function(e){ if (e.changedTouches[0].clientY - sy > 60) closeAdminSheet(); }, { passive: true });
+  })();
+
+  // Pull to refresh
+  (function() {
+    var startY = 0, pulling = false, triggered = false;
+    var THRESHOLD = 65;
+    var bar = document.getElementById('admin-ptr-bar');
+    function gst() { return document.documentElement.scrollTop || window.scrollY || 0; }
+    document.addEventListener('touchstart', function(e) {
+      if (gst() <= 2) { startY = e.touches[0].clientY; pulling = true; triggered = false; }
+      else { pulling = false; }
+    }, { passive: true });
+    document.addEventListener('touchmove', function(e) {
+      if (!pulling) return;
+      if (e.touches[0].clientY - startY > 10 && gst() <= 2) { if (bar) bar.classList.add('visible'); }
+    }, { passive: true });
+    document.addEventListener('touchend', function(e) {
+      if (!pulling) return; pulling = false;
+      var delta = e.changedTouches[0].clientY - startY;
+      if (delta > THRESHOLD && !triggered) {
+        triggered = true;
+        if (bar) bar.classList.add('visible');
+        setTimeout(function() { window.location.reload(); }, 400);
+      } else { if (bar) bar.classList.remove('visible'); }
+    }, { passive: true });
+  })();
+
+  // Sync bell badge with iOS bar badge
+  var _origLoad = window.loadNotifications;
+  window.loadNotifications = async function() {
+    if (_origLoad) await _origLoad();
+    var badge = document.getElementById('bell-badge');
+    var iosBadge = document.getElementById('ios-bell-badge');
+    if (badge && iosBadge) {
+      var count = badge.textContent;
+      iosBadge.textContent = count;
+      iosBadge.style.display = parseInt(count) > 0 ? 'flex' : 'none';
+    }
+  };
+
+  // ── ONESIGNAL PUSH (staff) ──────────────────────────────────
+  (function initStaffPush() {
+    if (!profile?.id) return;
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      try {
+        await OneSignal.init({
+          appId: '06f381cd-ed3d-4393-a5c2-3f6ef8322661',
+          serviceWorkerPath: '/OneSignalSDKWorker.js',
+          notifyButton: { enable: false },
+          welcomeNotification: { disable: true },
+        });
+        await OneSignal.login(profile.id);
+        await OneSignal.User.addTag('role', profile.role || 'staff');
+        await OneSignal.User.addTag('staff', 'true');
+        var perm = OneSignal.Notifications.permissionNative;
+        if (perm === 'default') {
+          setTimeout(showStaffPushPrompt, 4000);
+        }
+      } catch(e) { console.warn('OneSignal staff:', e); }
+    });
+  })();
+
+  function showStaffPushPrompt() {
+    if (document.getElementById('staff-push-prompt')) return;
+    var s = document.createElement('style');
+    s.textContent = '@keyframes sadminUp{from{transform:translateY(80px);opacity:0}to{transform:translateY(0);opacity:1}}';
+    document.head.appendChild(s);
+    var el = document.createElement('div');
+    el.id = 'staff-push-prompt';
+    el.style.cssText = 'position:fixed;bottom:calc(68px + env(safe-area-inset-bottom,0px));left:12px;right:12px;background:#0f1628;border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:14px 16px;z-index:500;box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;align-items:center;gap:12px;animation:sadminUp .35s ease';
+    el.innerHTML = '<span style="font-size:22px">🔔</span><div style="flex:1"><div style="font-size:13px;font-weight:700;color:white;margin-bottom:2px">Attiva notifiche push</div><div style="font-size:11px;color:rgba(255,255,255,.5)">Ricevi alert su task, scadenze e clienti</div></div><button onclick="acceptStaffPush()" style="background:#c9a84c;color:#0f1628;border:none;border-radius:9px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Attiva</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:rgba(255,255,255,.35);font-size:18px;cursor:pointer;padding:0 2px;flex-shrink:0">&times;</button>';
+    document.body.appendChild(el);
+  }
+  window.acceptStaffPush = function() {
+    var el = document.getElementById('staff-push-prompt');
+    if (el) el.remove();
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OS) {
+      try { await OS.Notifications.requestPermission(); } catch(e) {}
+    });
+  };
+
 })();
