@@ -21,9 +21,9 @@
   // Pages allowed per role
   const ROLE_PAGES = {
     admin:      null, // null = all pages
-    senior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search'],
-    junior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search'],
-    mini_admin: ['tasks','clients','documents','search'],
+    senior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search','news'],
+    junior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search','news'],
+    mini_admin: ['tasks','clients','documents','search','news'],
   };
   const allowed = ROLE_PAGES[role]; // null = no restriction
 
@@ -41,6 +41,7 @@
     { id: 'corp-tax',   icon: '◈', label: 'Corporate Tax',  href: '/corp-tax.html' },
     { id: 'affinitas',  icon: '◉', label: 'Affinitas',      href: '/affinitas.html' },
     { id: 'reports',    icon: '📊', label: 'Report',         href: '/reports.html',    section: 'ANALYTICS' },
+    { id: 'news',       icon: '📰', label: 'UAE News',       href: '/news.html' },
     { id: 'search',     icon: '🔍', label: 'Ricerca',        href: '/search.html' },
     ...(role === 'admin' ? [{ id: 'users', icon: '👥', label: 'Utenti', href: '/users.html', section: 'ADMIN' }] : []),
   ];
@@ -293,7 +294,7 @@
     'index': 'Dashboard', 'tasks': 'Task', 'clients': 'Clienti',
     'documents': 'Documenti', 'vat': 'VAT Register', 'corp-tax': 'Corporate Tax',
     'payments': 'Abbonamenti', 'statements': 'Estratti', 'onboarding': 'Onboarding',
-    'reports': 'Report', 'search': 'Ricerca', 'users': 'Utenti',
+    'reports': 'Report', 'news': 'UAE News', 'search': 'Ricerca', 'users': 'Utenti',
     'affinitas': 'Affinitas', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
     'client-detail': 'Cliente',
   };
@@ -304,9 +305,9 @@
     { id: 'index',   icon: '◈', label: 'Home',     href: '/index.html' },
     { id: 'tasks',   icon: '✓', label: 'Task',     href: '/tasks.html' },
     { id: 'clients', icon: '◉', label: 'Clienti',  href: '/clients.html' },
-    { id: 'vat',     icon: '◇', label: 'VAT',      href: '/vat.html' },
+    { id: 'news',    icon: '📰', label: 'News',     href: '/news.html' },
     { id: 'menu',    icon: '☰', label: 'Menu',     href: '#' },
-  ].filter(i => !allowed || allowed.includes(i.id) || i.id === 'menu');
+  ].filter(i => !allowed || allowed.includes(i.id) || i.id === 'menu' || i.id === 'news');
 
   const bnavHTML = bottomNavItems.map(item => {
     const isActive = item.id === currentPage;

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>UAE News — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <link rel="manifest" href="/manifest-admin.json">
+  <meta name="theme-color" content="#0f1628">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="InDubai">
+
+  <style>
+    /* ── News page styles ── */
+    .news-header {
+      padding: 24px 0 8px;
+      border-bottom: 1.5px solid var(--border);
+      margin-bottom: 0;
+    }
+    .news-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+      margin-bottom: 2px;
+    }
+    .news-title span { color: var(--primary); }
+    .news-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .news-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .news-meta-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text-muted); }
+
+    /* Category tabs */
+    .cat-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 16px 0 12px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 10;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .cat-tabs::-webkit-scrollbar { display: none; }
+    .cat-tab {
+      white-space: nowrap;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1.5px solid var(--border);
+      background: white;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+    .cat-tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+    .cat-tab:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+
+    /* News grid */
+    .news-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 900px) {
+      .news-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 1300px) {
+      .news-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    /* News card */
+    .news-card {
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+      transition: all .18s;
+      position: relative;
+      overflow: hidden;
+    }
+    .news-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px;
+      height: 100%;
+      border-radius: 14px 0 0 14px;
+    }
+    .news-card:hover {
+      border-color: #c0cfe0;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+      transform: translateY(-1px);
+    }
+    .news-card-cat {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .news-card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+    .news-card-summary {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-bottom: 12px;
+    }
+    .news-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .news-card-source {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .news-card-time { font-size: 11px; }
+    .news-card-arrow {
+      font-size: 16px;
+      color: var(--text-muted);
+      transition: transform .15s;
+    }
+    .news-card:hover .news-card-arrow { transform: translateX(3px); }
+
+    /* Category colors */
+    .cat-business   { color: #0369a1; } .cat-business   .news-card-cat { color: #0369a1; } .news-card.cat-business::before { background: #0369a1; }
+    .cat-realestate { color: #059669; } .cat-realestate .news-card-cat { color: #059669; } .news-card.cat-realestate::before { background: #059669; }
+    .cat-visa       { color: #7c3aed; } .cat-visa       .news-card-cat { color: #7c3aed; } .news-card.cat-visa::before { background: #7c3aed; }
+    .cat-governo    { color: #b45309; } .cat-governo    .news-card-cat { color: #b45309; } .news-card.cat-governo::before { background: #b45309; }
+    .cat-mercati    { color: #dc2626; } .cat-mercati    .news-card-cat { color: #dc2626; } .news-card.cat-mercati::before { background: #dc2626; }
+
+    /* Skeleton */
+    .skeleton-card {
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .sk { background: #e2e8f0; border-radius: 6px; margin-bottom: 10px; }
+    .sk-sm  { height: 10px; width: 60px; }
+    .sk-md  { height: 14px; width: 90%; }
+    .sk-md2 { height: 14px; width: 70%; }
+    .sk-lg  { height: 12px; width: 100%; margin-bottom: 6px; }
+    .sk-lg2 { height: 12px; width: 85%; }
+    .sk-xs  { height: 10px; width: 40%; }
+
+    /* Refresh btn */
+    .news-refresh-btn {
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s;
+    }
+    .news-refresh-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .news-refresh-btn.loading .refresh-icon { animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty state */
+    .news-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-muted);
+    }
+    .news-empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .news-empty-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .news-empty-sub { font-size: 13px; }
+
+    /* Powered by */
+    .news-powered {
+      text-align: center;
+      padding: 20px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 768px) {
+      .news-title { font-size: 20px; }
+      .cat-tabs { padding: 12px 0 10px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">UAE News</div>
+        <div class="topbar-subtitle">Aggiornamenti in italiano</div>
+      </div>
+      <button class="news-refresh-btn" id="refresh-btn" onclick="loadNews(true)">
+        <span class="refresh-icon">↻</span> Aggiorna
+      </button>
+    </div>
+
+    <div class="page-content">
+      <!-- Category tabs -->
+      <div class="cat-tabs" id="cat-tabs">
+        <button class="cat-tab active" data-cat="all" onclick="setCategory('all',this)">🌐 Tutte</button>
+        <button class="cat-tab" data-cat="governo"    onclick="setCategory('governo',this)">🏛️ Governo</button>
+        <button class="cat-tab" data-cat="business"   onclick="setCategory('business',this)">💼 Business</button>
+        <button class="cat-tab" data-cat="realestate" onclick="setCategory('realestate',this)">🏠 Real Estate</button>
+        <button class="cat-tab" data-cat="visa"       onclick="setCategory('visa',this)">📋 Visa</button>
+        <button class="cat-tab" data-cat="mercati"    onclick="setCategory('mercati',this)">💹 Mercati</button>
+      </div>
+
+      <!-- Status line -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="news-meta" id="news-meta">
+          <span id="news-count">Caricamento...</span>
+        </div>
+      </div>
+
+      <!-- Grid -->
+      <div class="news-grid" id="news-grid">
+        <!-- Skeleton placeholders -->
+        ${Array(6).fill(0).map(() => `
+        <div class="skeleton-card">
+          <div class="sk sk-sm"></div>
+          <div class="sk sk-md"></div>
+          <div class="sk sk-md2"></div>
+          <div class="sk sk-lg"></div>
+          <div class="sk sk-lg2"></div>
+          <div class="sk sk-xs"></div>
+        </div>`).join('')}
+      </div>
+
+      <div class="news-powered">
+        📡 Fonti: Gulf News · WAM · Arabian Post · tradotto con AI
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/notify.js"></script>
+<script>
+  const FN_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/news-aggregator';
+  let allNews = [];
+  let currentCat = 'all';
+  let lastFetch = 0;
+  const CACHE_MS = 30 * 60 * 1000; // 30 minuti
+
+  function timeAgo(dateStr) {
+    const d = new Date(dateStr);
+    if (isNaN(d)) return '';
+    const mins = Math.floor((Date.now() - d) / 60000);
+    if (mins < 2) return 'Ora';
+    if (mins < 60) return mins + 'min fa';
+    const h = Math.floor(mins / 60);
+    if (h < 24) return h + 'h fa';
+    return Math.floor(h / 24) + 'g fa';
+  }
+
+  function renderSkeletons() {
+    document.getElementById('news-grid').innerHTML = Array(6).fill(0).map(() => `
+      <div class="skeleton-card">
+        <div class="sk sk-sm"></div>
+        <div class="sk sk-md"></div>
+        <div class="sk sk-md2"></div>
+        <div class="sk sk-lg"></div>
+        <div class="sk sk-lg2"></div>
+        <div class="sk sk-xs"></div>
+      </div>`).join('');
+  }
+
+  function renderNews(items) {
+    const grid = document.getElementById('news-grid');
+    const filtered = currentCat === 'all' ? items : items.filter(n => n.category === currentCat);
+    document.getElementById('news-count').textContent = filtered.length + ' notizie';
+
+    if (!filtered.length) {
+      grid.innerHTML = `<div class="news-empty">
+        <div class="news-empty-icon">📰</div>
+        <div class="news-empty-title">Nessuna notizia disponibile</div>
+        <div class="news-empty-sub">Prova a cambiare categoria o aggiorna</div>
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(n => `
+      <a href="${n.link}" target="_blank" rel="noopener" class="news-card cat-${n.category}">
+        <div class="news-card-cat">${n.categoryLabel}</div>
+        <div class="news-card-title">${escHtml(n.title)}</div>
+        <div class="news-card-summary">${escHtml(n.summary)}</div>
+        <div class="news-card-footer">
+          <div class="news-card-source">
+            <span>📰</span>${escHtml(n.source)}
+            <span class="news-meta-dot"></span>
+            <span class="news-card-time">${timeAgo(n.pubDate)}</span>
+          </div>
+          <span class="news-card-arrow">→</span>
+        </div>
+      </a>`).join('');
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, c =>
+      ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+
+  async function loadNews(force = false) {
+    const now = Date.now();
+    const btn = document.getElementById('refresh-btn');
+
+    // Cache locale per evitare chiamate continue
+    if (!force && allNews.length && (now - lastFetch) < CACHE_MS) {
+      renderNews(allNews);
+      return;
+    }
+
+    btn.classList.add('loading');
+    renderSkeletons();
+    document.getElementById('news-count').textContent = 'Caricamento...';
+
+    try {
+      const tok = sb.getSession()?.access_token || window.ENV_SUPABASE_ANON_KEY;
+      const r = await fetch(FN_URL, {
+        headers: { Authorization: 'Bearer ' + tok }
+      });
+      const data = await r.json();
+
+      if (data.ok && data.items?.length) {
+        allNews = data.items;
+        lastFetch = now;
+        const ts = new Date(data.generated).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+        document.getElementById('news-count').textContent = data.count + ' notizie · agg. ' + ts;
+        renderNews(allNews);
+      } else {
+        throw new Error(data.error || 'Errore sconosciuto');
+      }
+    } catch(e) {
+      document.getElementById('news-grid').innerHTML = `<div class="news-empty">
+        <div class="news-empty-icon">⚠️</div>
+        <div class="news-empty-title">Errore nel caricamento</div>
+        <div class="news-empty-sub">${escHtml(e.message)}<br><br>
+          <button onclick="loadNews(true)" style="background:var(--primary);color:white;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Riprova</button>
+        </div>
+      </div>`;
+      document.getElementById('news-count').textContent = 'Errore';
+    } finally {
+      btn.classList.remove('loading');
+    }
+  }
+
+  function setCategory(cat, el) {
+    currentCat = cat;
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    renderNews(allNews);
+  }
+
+  loadNews();
+</script>
+</body>
+</html>

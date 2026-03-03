@@ -351,6 +351,7 @@
   <div class="ios-sheet-section">InDubai</div>
   <button class="ios-sheet-item" id="sitem-servizi"    onclick="sheetGo('servizi','SERVIZI')"><span class="item-icon">✦</span>Servizi<span class="item-chevron">›</span></button>
   <button class="ios-sheet-item" id="sitem-numeri"     onclick="sheetGo('numeri','NUMERI UTILI')"><span class="item-icon">📞</span>Numeri Utili<span class="item-chevron">›</span></button>
+  <button class="ios-sheet-item" id="sitem-news"       onclick="sheetGo('news','UAE NEWS')"><span class="item-icon">📰</span>UAE News<span class="item-chevron">›</span></button>
   <button class="ios-sheet-logout" onclick="closeSheet(); doLogout()">⏻ Esci dall'account</button>
 </div>
 
@@ -366,6 +367,7 @@
     <div class="nav-section" style="margin-top:16px">InDubai</div>
     <button class="nav-item" onclick="showPanel('servizi', this)"><span class="nav-icon">✦</span> Servizi</button>
     <button class="nav-item" onclick="showPanel('numeri', this)"><span class="nav-icon">📞</span> Numeri Utili</button>
+    <button class="nav-item" onclick="showPanel('news', this)"><span class="nav-icon">📰</span> UAE News</button>
   </aside>
 
   <!-- Main content -->
@@ -526,6 +528,11 @@ function buildMainHTML(visas=[], financials=null) {
     <!-- NUMERI UTILI -->
     <div class="panel" id="panel-numeri">
       ${numeriHTML()}
+    </div>
+    <div class="panel" id="panel-news">
+      <div id="client-news-container" style="padding:4px 0">
+        <div style="text-align:center;padding:32px;color:rgba(255,255,255,.4);font-size:13px">Caricamento notizie...</div>
+      </div>
     </div>
   `;
 }
@@ -1248,6 +1255,72 @@ window.sheetGo = function(name, label) {
     if (lbl) lbl.textContent = label;
   }, 250);
 };
+async function loadClientNews() {
+  const el = document.getElementById('client-news-container');
+  if (!el) return;
+  // Se già caricato non riscaricare
+  if (el.dataset.loaded) return;
+
+  const FN = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/news-aggregator';
+  const CATS = { business:'💼 Business', realestate:'🏠 Real Estate', visa:'📋 Visa', governo:'🏛️ Governo', mercati:'💹 Mercati' };
+  const CAT_COLORS = { business:'#38bdf8', realestate:'#34d399', visa:'#a78bfa', governo:'#fbbf24', mercati:'#f87171' };
+
+  el.innerHTML = '<div style="text-align:center;padding:32px;color:rgba(255,255,255,.4);font-size:13px">⏳ Caricamento notizie UAE...</div>';
+
+  try {
+    const r = await fetch(FN, { headers: { Authorization: 'Bearer ' + window.ENV_SUPABASE_ANON_KEY } });
+    const data = await r.json();
+    if (!data.ok || !data.items?.length) throw new Error('Nessuna notizia');
+
+    el.dataset.loaded = '1';
+
+    // Category filter pills
+    let currentCat = 'all';
+    const items = data.items;
+
+    function timeAgo(s) {
+      const m = Math.floor((Date.now() - new Date(s)) / 60000);
+      if (m < 2) return 'Ora'; if (m < 60) return m+'min'; 
+      const h = Math.floor(m/60); if (h < 24) return h+'h';
+      return Math.floor(h/24)+'g';
+    }
+    function escH(s) { return String(s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    function renderClientNews(cat) {
+      const filtered = cat === 'all' ? items : items.filter(n => n.category === cat);
+      const pills = ['all','governo','business','realestate','visa','mercati'].map(c => {
+        const label = c === 'all' ? '🌐 Tutte' : (CATS[c] || c);
+        const active = cat === c;
+        return `<button onclick="setClientNewsCat('${c}')" style="white-space:nowrap;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid ${active ? CAT_COLORS[c]||'rgba(255,255,255,.6)' : 'rgba(255,255,255,.1)'};background:${active ? (CAT_COLORS[c]||'rgba(255,255,255,.2)')+'22' : 'none'};color:${active ? CAT_COLORS[c]||'white' : 'rgba(255,255,255,.5)'};cursor:pointer;font-family:inherit">${label}</button>`;
+      }).join('');
+
+      const cards = filtered.map(n => {
+        const col = CAT_COLORS[n.category] || '#c9a84c';
+        return `<a href="${escH(n.link)}" target="_blank" rel="noopener" style="display:block;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-left:3px solid ${col};border-radius:12px;padding:14px 16px;margin-bottom:10px;text-decoration:none;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.07)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">
+          <div style="font-size:10px;font-weight:700;color:${col};text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">${escH(n.categoryLabel)} · ${escH(n.source)} · ${timeAgo(n.pubDate)}</div>
+          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.92);line-height:1.4;margin-bottom:6px">${escH(n.title)}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.5">${escH(n.summary)}</div>
+        </a>`;
+      }).join('');
+
+      el.innerHTML = `
+        <div style="padding:0 0 12px">
+          <div style="font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:800;color:white;margin-bottom:4px">📰 UAE News</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.35)">Aggiornate ${new Date(data.generated).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})} · tradotte in italiano</div>
+        </div>
+        <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none;-ms-overflow-style:none;margin-bottom:8px">${pills}</div>
+        ${cards || '<div style="padding:24px;text-align:center;color:rgba(255,255,255,.3);font-size:13px">Nessuna notizia in questa categoria</div>'}
+        <div style="text-align:center;font-size:10px;color:rgba(255,255,255,.2);padding-top:8px">📡 Gulf News · WAM · Arabian Post · tradotto con AI</div>`;
+    }
+
+    window.setClientNewsCat = function(cat) { currentCat = cat; renderClientNews(cat); };
+    renderClientNews('all');
+
+  } catch(e) {
+    el.innerHTML = `<div style="padding:24px;text-align:center;color:rgba(255,255,255,.3);font-size:13px">⚠️ ${escH ? escH(e.message) : e.message}<br><button onclick="loadClientNews()" style="margin-top:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:white;padding:7px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">Riprova</button></div>`;
+  }
+}
+
 window.showPanel = function(name, btn) {
   document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
   document.querySelectorAll('.nav-item').forEach(function(b){ b.classList.remove('active'); });
@@ -1260,6 +1333,7 @@ window.showPanel = function(name, btn) {
   if (name === 'documenti') { cwd = '/'; renderDrive(); }
   if (name === 'pratiche') loadPraticheClient();
   if (name === 'zoho') loadZohoClient();
+  if (name === 'news') loadClientNews();
   if (window.innerWidth <= 768) window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 (function() {
