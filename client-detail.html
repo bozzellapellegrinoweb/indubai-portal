@@ -290,10 +290,22 @@ function switchTab(name, el) {
   if (name === 'notifiche') loadNotificheTab();
 }
 
-function loadNotificheTab() {
+async function loadNotificheTab() {
   const el = document.getElementById('notifiche-content');
   const companyName = clientData?.company_name || '';
-  const userId = clientData?.portal_user_id || '';
+
+  // Fetch the portal user_id from client_users
+  el.innerHTML = '<div class="spinner"></div>';
+  let userId = '';
+  try {
+    const links = await sb.db.select('client_users', { filter: 'client_id=eq.' + clientId, columns: 'user_id' });
+    userId = links?.[0]?.user_id || '';
+  } catch(e) {}
+
+  if (!userId) {
+    el.innerHTML = '<div style="padding:20px;background:#fffbeb;border-radius:12px;color:#92400e;font-size:13px">⚠️ Nessun accesso portale attivo per questo cliente. Crea prima le credenziali nel tab <strong>Accesso Cliente</strong>.</div>';
+    return;
+  }
 
   el.innerHTML = `
     <div style="max-width:560px">
