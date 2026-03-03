@@ -641,6 +641,27 @@ async function loadZohoTab() {
           <a href="https://books.zoho.com/app#/invoices" target="_blank" class="btn btn-accent btn-sm">Apri Zoho Books ↗</a>
         </div>
       </div>`;
+
+    // Save fresh data to client_financials so client portal stays in sync
+    try {
+      const SB = 'https://gvdoqcgkzbziqufahhxh.supabase.co';
+      const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMzIwNTEsImV4cCI6MjA4NzYwODA1MX0.I0hB8POnRunvGyr7XXItp8E5H70i0slG-pqxqzCOBOg';
+      await fetch(SB + '/rest/v1/client_financials', {
+        method: 'POST',
+        headers: { apikey: KEY, Authorization: 'Bearer ' + (sb.getSession()?.access_token || ''), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({
+          client_id: clientId, zoho_org_id: orgId,
+          total_invoiced: Math.round(d.totalBilledAED || 0),
+          total_collected: Math.round(d.totalPaidAED || 0),
+          total_outstanding: Math.round(d.totalUnpaidAED || 0),
+          invoiced_12m: Math.round(d.rolling12AED || 0),
+          invoice_count: d.countInvoices || 0,
+          currency: 'AED',
+          last_synced_at: new Date().toISOString(),
+        }),
+      });
+    } catch(se) { console.warn('fin save:', se.message); }
+
   } catch(e) {
     el.innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
   }
