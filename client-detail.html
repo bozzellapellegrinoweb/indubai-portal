@@ -83,6 +83,7 @@
           <button class="tab" onclick="switchTab('accesso',this)">🔑 Accesso Cliente</button>
           <button class="tab" onclick="switchTab('visti',this)">✈️ Visti</button>
           <button class="tab" onclick="switchTab('pratiche',this)">📋 Pratiche</button>
+          <button class="tab" onclick="switchTab('notifiche',this)">🔔 Notifiche</button>
         </div>
 
         <!-- Tab: Info -->
@@ -169,6 +170,10 @@
         <!-- Pratiche Tab -->
         <div class="tab-panel" id="tab-pratiche" style="padding:20px">
           <div id="pratiche-content"><div class="spinner"></div></div>
+        </div>
+
+        <div class="tab-panel" id="tab-notifiche" style="padding:20px">
+          <div id="notifiche-content"></div>
         </div>
 
       </div>
@@ -282,6 +287,121 @@ function switchTab(name, el) {
   if (name === 'accesso') loadAccessTab();
   if (name === 'visti') loadVistiTab();
   if (name === 'pratiche') loadPraticheTab();
+  if (name === 'notifiche') loadNotificheTab();
+}
+
+function loadNotificheTab() {
+  const el = document.getElementById('notifiche-content');
+  const companyName = clientData?.company_name || '';
+  const userId = clientData?.portal_user_id || '';
+
+  el.innerHTML = `
+    <div style="max-width:560px">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:4px">🔔 Invia Notifica Push</h3>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px">La notifica arriva direttamente sul telefono del cliente se ha attivato i push.</p>
+
+      <div style="background:var(--surface2);border-radius:12px;padding:20px;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:12px">Destinatario</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1.5px solid var(--border);background:white">
+            <input type="radio" name="notif-target" value="user" checked style="accent-color:#1a3a5c"> 
+            <span style="font-size:13px;font-weight:600">Solo <strong>${companyName}</strong></span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1.5px solid var(--border);background:white">
+            <input type="radio" name="notif-target" value="all" style="accent-color:#1a3a5c">
+            <span style="font-size:13px;font-weight:600">Tutti i clienti</span>
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
+        <div>
+          <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);display:block;margin-bottom:6px">Titolo</label>
+          <input id="notif-title" type="text" placeholder="es. Pratica aggiornata" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none" 
+            onfocus="this.style.borderColor='#1a3a5c'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);display:block;margin-bottom:6px">Messaggio</label>
+          <textarea id="notif-message" rows="3" placeholder="es. Il tuo Golden Visa è stato approvato. Accedi al portale per i dettagli." style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;outline:none"
+            onfocus="this.style.borderColor='#1a3a5c'" onblur="this.style.borderColor='var(--border)'"></textarea>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);display:block;margin-bottom:6px">URL (opzionale)</label>
+          <input id="notif-url" type="text" placeholder="https://indubai-portal.vercel.app/client-portal/dashboard.html" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none"
+            onfocus="this.style.borderColor='#1a3a5c'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center">
+        <button onclick="sendNotification('${userId}','${companyName}')" 
+          style="background:#1a3a5c;color:white;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px">
+          🔔 Invia Push
+        </button>
+        <div id="notif-status" style="font-size:13px"></div>
+      </div>
+
+      <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:10px">Notifiche rapide</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <button onclick="quickNotif('${userId}','Pratica aggiornata','Il tuo consulente ha aggiornato una pratica. Accedi al portale per i dettagli.')" class="btn btn-ghost btn-sm">✏️ Pratica aggiornata</button>
+          <button onclick="quickNotif('${userId}','Documento caricato','Un nuovo documento è disponibile nella tua area personale.')" class="btn btn-ghost btn-sm">📄 Nuovo documento</button>
+          <button onclick="quickNotif('${userId}','Scadenza imminente','Hai una scadenza importante nei prossimi 30 giorni. Controlla le tue pratiche.')" class="btn btn-ghost btn-sm">⚠️ Scadenza</button>
+          <button onclick="quickNotif('${userId}','Nuova fattura','È disponibile una nuova fattura nel tuo portale Zoho Books.')" class="btn btn-ghost btn-sm">🧾 Nuova fattura</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function sendNotification(userId, companyName) {
+  const title = document.getElementById('notif-title').value.trim();
+  const message = document.getElementById('notif-message').value.trim();
+  const url = document.getElementById('notif-url').value.trim();
+  const target = document.querySelector('input[name="notif-target"]:checked')?.value;
+  const status = document.getElementById('notif-status');
+
+  if (!title || !message) { status.innerHTML = '<span style="color:#dc2626">Inserisci titolo e messaggio.</span>'; return; }
+
+  status.innerHTML = '<span style="color:#6b7280">Invio in corso...</span>';
+
+  try {
+    const FN = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/send-notification';
+    const body = { title, message };
+    if (url) body.url = url;
+    if (target === 'all') { body.action = 'send_to_all'; }
+    else { body.action = 'send_to_user'; body.user_id = userId; }
+
+    const res = await fetch(FN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + window.ENV_SUPABASE_ANON_KEY },
+      body: JSON.stringify(body)
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    status.innerHTML = '<span style="color:#059669">✓ Inviata! ' + (d.recipients ? d.recipients + ' destinatari' : '') + '</span>';
+    document.getElementById('notif-title').value = '';
+    document.getElementById('notif-message').value = '';
+  } catch(e) {
+    status.innerHTML = '<span style="color:#dc2626">Errore: ' + e.message + '</span>';
+  }
+}
+
+async function quickNotif(userId, title, message) {
+  const status = document.getElementById('notif-status');
+  if (!status) return;
+  status.innerHTML = '<span style="color:#6b7280">Invio in corso...</span>';
+  try {
+    const FN = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/send-notification';
+    const res = await fetch(FN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + window.ENV_SUPABASE_ANON_KEY },
+      body: JSON.stringify({ action: 'send_to_user', user_id: userId, title, message, url: 'https://indubai-portal.vercel.app/client-portal/dashboard.html' })
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    status.innerHTML = '<span style="color:#059669">✓ ' + title + ' inviata!</span>';
+  } catch(e) {
+    status.innerHTML = '<span style="color:#dc2626">Errore: ' + e.message + '</span>';
+  }
 }
 
 async function loadOnboarding() {
