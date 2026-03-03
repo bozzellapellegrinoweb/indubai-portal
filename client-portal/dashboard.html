@@ -11,6 +11,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="/client-portal/manifest.json">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <!-- OneSignal Push -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script src="/js/config.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -474,6 +476,8 @@ async function init() {
       document.getElementById('main').innerHTML = `<div style="padding:40px;text-align:center;color:#dc2626"><strong>Render error:</strong> \${renderErr.message}</div>`;
     }
     setupNav();
+    // Init push notifications after login
+    initOneSignal(sess.user.id, clientData.company_name);
     // Pre-render drive if documenti panel is pre-selected
     // (it will render when user clicks the tab via showPanel)
 
@@ -923,6 +927,50 @@ function scadenzeHTML(visas=[]) {
 function setupNav() {}
 
 function renderAll() {} // placeholder
+
+// ── ONESIGNAL PUSH ──
+function initOneSignal(userId, companyName) {
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    try {
+      await OneSignal.init({
+        appId: '06f381cd-ed3d-4393-a5c2-3f6ef8322661',
+        serviceWorkerPath: '/OneSignalSDKWorker.js',
+        notifyButton: { enable: false },
+        welcomeNotification: { disable: true },
+      });
+      await OneSignal.login(userId);
+      await OneSignal.User.addTag('company', companyName);
+      await OneSignal.User.addTag('client_id', userId);
+      var perm = OneSignal.Notifications.permissionNative;
+      if (perm === 'default') {
+        setTimeout(showPushPrompt, 3000);
+      }
+    } catch(e) { console.warn('OneSignal:', e); }
+  });
+}
+function showPushPrompt() {
+  if (document.getElementById('push-prompt')) return;
+  var s = document.createElement('style');
+  s.textContent = '@keyframes slideUp{from{transform:translateY(100px);opacity:0}to{transform:translateY(0);opacity:1}}';
+  document.head.appendChild(s);
+  var el = document.createElement('div');
+  el.id = 'push-prompt';
+  el.style.cssText = 'position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px));left:12px;right:12px;background:#1a3a5c;border-radius:16px;padding:16px 18px;z-index:500;box-shadow:0 8px 32px rgba(0,0,0,.4);display:flex;align-items:center;gap:14px;animation:slideUp .35s ease';
+  el.innerHTML = '<div style="font-size:24px">&#128276;</div><div style="flex:1"><div style="font-size:14px;font-weight:700;color:white;margin-bottom:3px">Attiva le notifiche</div><div style="font-size:12px;color:rgba(255,255,255,.6)">Ricevi aggiornamenti su pratiche e scadenze</div></div><button onclick="acceptPush()" style="background:#c9a84c;color:#0f1e35;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Attiva</button><button onclick="dismissPush()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0">&times;</button>';
+  document.body.appendChild(el);
+}
+window.acceptPush = function() {
+  dismissPush();
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OS) {
+    try { await OS.Notifications.requestPermission(); } catch(e) {}
+  });
+};
+window.dismissPush = function() {
+  var el = document.getElementById('push-prompt');
+  if (el) { el.style.animation = 'none'; el.style.opacity = '0'; el.style.transform = 'translateY(100px)'; el.style.transition = 'all .25s'; setTimeout(function(){ el.remove(); }, 260); }
+};
 
 // PRATICHE CLIENTE
 async function loadPraticheClient() {
