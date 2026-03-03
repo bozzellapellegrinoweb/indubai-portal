@@ -190,11 +190,16 @@
   // ── Notifications ──────────────────────────────────────────
 
   window.toggleNotifPanel = function() {
-    const panel = document.getElementById('notif-panel');
-    if (!panel) return;
-    const isOpen = panel.style.display !== 'none';
-    panel.style.display = isOpen ? 'none' : 'block';
-    if (!isOpen) loadNotifications();
+    if (window.innerWidth <= 768) {
+      // Mobile: open as full iOS sheet
+      openNotifSheet();
+    } else {
+      const panel = document.getElementById('notif-panel');
+      if (!panel) return;
+      const isOpen = panel.style.display !== 'none';
+      panel.style.display = isOpen ? 'none' : 'block';
+      if (!isOpen) loadNotifications();
+    }
   };
 
   window.loadNotifications = async function() {
@@ -348,18 +353,37 @@
       <div class="ios-bottom-nav-inner">${bnavHTML}</div>
     </nav>
 
-    <!-- Sheet overlay -->
-    <div class="ios-admin-sheet-overlay" id="admin-sheet-overlay" onclick="closeAdminSheet()"></div>
+    <!-- Sheet overlay (shared) -->
+    <div class="ios-admin-sheet-overlay" id="admin-sheet-overlay" onclick="closeAdminSheet();closeNotifSheet()"></div>
 
-    <!-- Sheet drawer -->
+    <!-- Sheet drawer (menu) -->
     <div class="ios-admin-sheet" id="ios-admin-sheet">
       <div class="ios-admin-sheet-handle"></div>
       <div class="ios-admin-sheet-user">
         <div class="ios-admin-sheet-name">${escapeHtml(profile?.full_name || 'Utente')}</div>
         <div class="ios-admin-sheet-role">${profile?.role || 'staff'}</div>
       </div>
+      <div class="ios-admin-sheet-section">Notifiche</div>
+      <button class="ios-admin-sheet-link" onclick="closeAdminSheet();setTimeout(openNotifSheet,300)">
+        <span class="si-icon">🔔</span>
+        Notifiche
+        <span id="sheet-notif-count" style="margin-left:auto;background:#dc2626;color:white;border-radius:20px;padding:1px 7px;font-size:11px;font-weight:700;display:none">0</span>
+        <span class="si-chevron">›</span>
+      </button>
       ${sheetNavHTML}
       <button class="ios-admin-sheet-logout" onclick="closeAdminSheet();sb.signOut()">⏻ Esci dall'account</button>
+    </div>
+
+    <!-- Notification sheet (mobile full-screen) -->
+    <div class="ios-admin-sheet" id="ios-notif-sheet" style="max-height:92vh">
+      <div class="ios-admin-sheet-handle" onclick="closeNotifSheet()"></div>
+      <div style="padding:4px 20px 14px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:16px;font-weight:700;color:white">🔔 Notifiche</div>
+        <button onclick="markAllRead()" style="font-size:12px;color:#c9a84c;background:none;border:none;cursor:pointer;font-weight:600;font-family:inherit">Tutte lette</button>
+      </div>
+      <div id="notif-list-mobile" style="overflow-y:auto;max-height:calc(92vh - 80px)">
+        <div style="padding:24px;text-align:center;color:rgba(255,255,255,.4);font-size:13px">Caricamento...</div>
+      </div>
     </div>`;
 
   document.body.insertAdjacentHTML('beforeend', mobileShell);
@@ -372,16 +396,35 @@
   };
   window.closeAdminSheet = function() {
     document.getElementById('ios-admin-sheet').classList.remove('open');
-    document.getElementById('admin-sheet-overlay').classList.remove('open');
-    setTimeout(function() { document.getElementById('admin-sheet-overlay').style.display = 'none'; }, 320);
+    var ov = document.getElementById('admin-sheet-overlay');
+    if (!document.getElementById('ios-notif-sheet')?.classList.contains('open')) {
+      ov.classList.remove('open');
+      setTimeout(function() { ov.style.display = 'none'; }, 320);
+    }
+  };
+
+  window.openNotifSheet = function() {
+    loadNotifications();
+    document.getElementById('ios-notif-sheet').classList.add('open');
+    var ov = document.getElementById('admin-sheet-overlay');
+    ov.style.display = 'block';
+    requestAnimationFrame(function() { ov.classList.add('open'); });
+  };
+  window.closeNotifSheet = function() {
+    document.getElementById('ios-notif-sheet').classList.remove('open');
+    var ov = document.getElementById('admin-sheet-overlay');
+    ov.classList.remove('open');
+    setTimeout(function() { ov.style.display = 'none'; }, 320);
   };
 
   // Swipe down sheet to close
   (function() {
-    var sh = document.getElementById('ios-admin-sheet'), sy = 0;
-    if (!sh) return;
-    sh.addEventListener('touchstart', function(e){ sy = e.touches[0].clientY; }, { passive: true });
-    sh.addEventListener('touchend', function(e){ if (e.changedTouches[0].clientY - sy > 60) closeAdminSheet(); }, { passive: true });
+    [['ios-admin-sheet', function(){ closeAdminSheet(); }], ['ios-notif-sheet', function(){ closeNotifSheet(); }]].forEach(function(pair) {
+      var sh = document.getElementById(pair[0]), sy = 0;
+      if (!sh) return;
+      sh.addEventListener('touchstart', function(e){ sy = e.touches[0].clientY; }, { passive: true });
+      sh.addEventListener('touchend', function(e){ if (e.changedTouches[0].clientY - sy > 60) pair[1](); }, { passive: true });
+    });
   })();
 
   // Pull to refresh
@@ -409,16 +452,40 @@
     }, { passive: true });
   })();
 
-  // Sync bell badge with iOS bar badge
+  // Sync bell badge with iOS bar badge + populate mobile notif list
   var _origLoad = window.loadNotifications;
   window.loadNotifications = async function() {
     if (_origLoad) await _origLoad();
+    // Sync iOS bell badge
     var badge = document.getElementById('bell-badge');
     var iosBadge = document.getElementById('ios-bell-badge');
-    if (badge && iosBadge) {
-      var count = badge.textContent;
-      iosBadge.textContent = count;
-      iosBadge.style.display = parseInt(count) > 0 ? 'flex' : 'none';
+    var sheetCount = document.getElementById('sheet-notif-count');
+    if (badge) {
+      var count = parseInt(badge.textContent) || 0;
+      if (iosBadge) { iosBadge.textContent = count; iosBadge.style.display = count > 0 ? 'flex' : 'none'; }
+      if (sheetCount) { sheetCount.textContent = count; sheetCount.style.display = count > 0 ? 'inline' : 'none'; }
+    }
+    // Mirror desktop notif-list to mobile notif-list-mobile (dark theme)
+    var desktopList = document.getElementById('notif-list');
+    var mobileList = document.getElementById('notif-list-mobile');
+    if (desktopList && mobileList) {
+      // Re-render for dark theme
+      var notifItems = desktopList.querySelectorAll('[onclick^="handleNotifClick"]');
+      if (notifItems.length === 0) {
+        mobileList.innerHTML = '<div style="padding:32px;text-align:center;color:rgba(255,255,255,.35);font-size:13px">Nessuna notifica</div>';
+      } else {
+        mobileList.innerHTML = Array.from(notifItems).map(function(el) {
+          var clone = el.cloneNode(true);
+          clone.style.background = 'transparent';
+          clone.style.borderBottom = '1px solid rgba(255,255,255,.06)';
+          clone.querySelectorAll('*').forEach(function(c) {
+            if (c.style.color && c.style.color.includes('1e293b')) c.style.color = 'rgba(255,255,255,.88)';
+            if (c.style.color && c.style.color.includes('64748b')) c.style.color = 'rgba(255,255,255,.4)';
+            if (c.style.background && c.style.background.includes('f0f6ff')) c.style.background = 'rgba(201,168,76,.08)';
+          });
+          return clone.outerHTML;
+        }).join('');
+      }
     }
   };
 
