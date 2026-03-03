@@ -301,6 +301,38 @@ let clientData = null;
 let allFiles = [];
 
 async function loadFinancials(clientId) {
+  // Live sync from Zoho if org_id available
+  const orgId = clientData?.zoho_org_id;
+  if (orgId) {
+    try {
+      const FN = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/zoho-proxy';
+      const res = await fetch(FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (sb.getSession()?.access_token || SB_KEY) },
+        body: JSON.stringify({ action: 'client_summary', org_id: orgId }),
+      });
+      const d = await res.json();
+      if (!d.error && d.rolling12AED !== undefined) {
+        const fin = {
+          client_id: clientId, zoho_org_id: orgId,
+          total_invoiced: Math.round(d.totalBilledAED || 0),
+          total_collected: Math.round(d.totalPaidAED || 0),
+          total_outstanding: Math.round(d.totalUnpaidAED || 0),
+          invoiced_12m: Math.round(d.rolling12AED || 0),
+          invoice_count: d.countInvoices || 0,
+          currency: 'AED',
+          last_synced_at: new Date().toISOString(),
+        };
+        fetch(SB_URL + '/rest/v1/client_financials', {
+          method: 'POST',
+          headers: { apikey: SB_KEY, Authorization: 'Bearer ' + (sb.getSession()?.access_token || SB_KEY), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+          body: JSON.stringify(fin),
+        }).catch(() => {});
+        return fin;
+      }
+    } catch(e) { console.warn('live sync failed, using cached:', e.message); }
+  }
+  // Fallback: cached data
   try {
     const rows = await GET('/rest/v1/client_financials?client_id=eq.' + clientId + '&select=*&limit=1');
     return rows?.[0] || null;
