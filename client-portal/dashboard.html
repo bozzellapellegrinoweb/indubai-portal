@@ -300,6 +300,13 @@ async function doLogout() {
 let clientData = null;
 let allFiles = [];
 
+async function loadFinancials(clientId) {
+  try {
+    const rows = await GET('/rest/v1/client_financials?client_id=eq.' + clientId + '&select=*&limit=1');
+    return rows?.[0] || null;
+  } catch { return null; }
+}
+
 async function loadVisas(clientId) {
   try {
     const visas = await GET(`/rest/v1/client_visas?client_id=eq.${clientId}&select=holder_name,visa_type,expiry_date&order=expiry_date.asc`);
@@ -328,13 +335,16 @@ async function init() {
     // Set header
     document.getElementById('header-company').textContent = clientData.company_name;
 
-    // Load visas
-    const visas = await loadVisas(clientId);
+    // Load visas and financials in parallel
+    const [visas, financials] = await Promise.all([
+      loadVisas(clientId),
+      loadFinancials(clientId),
+    ]);
 
     // Render all panels
     renderAll();
     try {
-      document.getElementById('main').innerHTML = buildMainHTML(visas);
+      document.getElementById('main').innerHTML = buildMainHTML(visas, financials);
     } catch(renderErr) {
       document.getElementById('main').innerHTML = `<div style="padding:40px;text-align:center;color:#dc2626"><strong>Render error:</strong> \${renderErr.message}</div>`;
     }
@@ -347,11 +357,12 @@ async function init() {
   }
 }
 
-function buildMainHTML(visas=[]) {
+function buildMainHTML(visas=[], financials=null) {
   return `
     <!-- ANAGRAFICA -->
     <div class="panel active" id="panel-anagrafica">
       ${heroHTML()}
+      ${financialsHTML(financials)}
       ${anagraficaHTML()}
     </div>
 
@@ -383,6 +394,75 @@ function buildMainHTML(visas=[]) {
       ${numeriHTML()}
     </div>
   `;
+}
+
+
+function financialsHTML(f) {
+  if (!f) return '';
+
+  const fmt = n => {
+    const num = Math.round(n || 0);
+    return num.toLocaleString('it-IT') + ' AED';
+  };
+
+  const pct = Math.min(100, Math.round(((f.invoiced_12m || 0) / 375000) * 100));
+  const vatColor = f.invoiced_12m >= 375000 ? '#dc2626' : f.invoiced_12m >= 300000 ? '#d97706' : '#059669';
+  const vatBg    = f.invoiced_12m >= 375000 ? '#fef2f2' : f.invoiced_12m >= 300000 ? '#fffbeb' : '#f0fdf4';
+  const vatBorder= f.invoiced_12m >= 375000 ? '#fca5a5' : f.invoiced_12m >= 300000 ? '#fde68a' : '#86efac';
+  const vatLabel = f.invoiced_12m >= 375000 ? '⚠️ Soglia VAT superata' : f.invoiced_12m >= 300000 ? '⚠️ Attenzione — vicino alla soglia' : '✓ Sotto la soglia VAT';
+  const remaining = Math.max(0, 375000 - (f.invoiced_12m || 0));
+  const lastSync = f.last_synced_at ? new Date(f.last_synced_at).toLocaleDateString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric', hour:'2-digit', minute:'2-digit'}) : '—';
+
+  return `
+    <div class="card" style="margin-bottom:20px;border-color:#e2e8f0">
+      <div class="card-header" style="background:linear-gradient(135deg,#0f1e35 0%,#1e3a5f 100%);border-radius:12px 12px 0 0">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="card-title" style="color:white;font-size:15px">📊 Riepilogo Finanziario</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5)">Aggiornato: ${lastSync}</div>
+        </div>
+      </div>
+      <div class="card-body" style="padding:20px">
+
+        <!-- KPI Grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">
+
+          <div style="background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:14px 16px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Fatturato Totale</div>
+            <div style="font-size:18px;font-weight:800;color:var(--navy2)">${fmt(f.total_invoiced)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">dall'inizio attività</div>
+          </div>
+
+          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px 16px">
+            <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Incassato</div>
+            <div style="font-size:18px;font-weight:800;color:#059669">${fmt(f.total_collected)}</div>
+            <div style="font-size:11px;color:#059669;margin-top:2px">pagamenti ricevuti</div>
+          </div>
+
+          <div style="background:${f.total_outstanding > 0 ? '#fffbeb' : '#f8fafc'};border:1.5px solid ${f.total_outstanding > 0 ? '#fde68a' : 'var(--border)'};border-radius:12px;padding:14px 16px">
+            <div style="font-size:11px;font-weight:700;color:${f.total_outstanding > 0 ? '#d97706' : 'var(--muted)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Da Incassare</div>
+            <div style="font-size:18px;font-weight:800;color:${f.total_outstanding > 0 ? '#d97706' : 'var(--navy2)'}">${fmt(f.total_outstanding)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${f.invoice_count || 0} fatture emesse</div>
+          </div>
+
+        </div>
+
+        <!-- VAT Bar -->
+        <div style="background:${vatBg};border:1.5px solid ${vatBorder};border-radius:12px;padding:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div style="font-size:13px;font-weight:700;color:${vatColor}">${vatLabel}</div>
+            <div style="font-size:12px;color:var(--muted)">Soglia registrazione IVA UAE</div>
+          </div>
+          <div style="background:rgba(0,0,0,.08);border-radius:100px;height:10px;overflow:hidden;margin-bottom:8px">
+            <div style="height:100%;border-radius:100px;background:${vatColor};width:${pct}%;transition:width .6s ease"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600">
+            <span style="color:${vatColor}">${fmt(f.invoiced_12m)} negli ultimi 12 mesi</span>
+            <span style="color:var(--muted)">${pct}% di 375.000 AED${remaining > 0 ? ' · mancano ' + fmt(remaining) : ''}</span>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
 }
 
 function heroHTML() {

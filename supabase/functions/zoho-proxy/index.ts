@@ -180,6 +180,29 @@ serve(async (req) => {
             count_overdue: s.countOverdue,
             org_currency: s.orgCurrency,
           });
+
+          // Also sync client_financials for client portal
+          const allTimeInvoices = await fetchAllInvoices(client.zoho_org_id, "2000-01-01", new Date().toISOString().split("T")[0], token);
+          let totalInvoicedAllTime = 0, totalCollectedAllTime = 0;
+          for (let j = 0; j < allTimeInvoices.length; j++) {
+            const inv = allTimeInvoices[j];
+            if (inv.status === "void") continue;
+            const total = toAED(inv);
+            const bal = toAEDBalance(inv);
+            totalInvoicedAllTime += total;
+            totalCollectedAllTime += total - bal;
+          }
+          await sbUpsert("client_financials", {
+            client_id: client.id,
+            zoho_org_id: client.zoho_org_id,
+            total_invoiced: Math.round(totalInvoicedAllTime),
+            total_collected: Math.round(totalCollectedAllTime),
+            total_outstanding: Math.round(s.totalUnpaidAED),
+            invoiced_12m: Math.round(s.rolling12AED),
+            invoice_count: s.countInvoices,
+            currency: "AED",
+            last_synced_at: new Date().toISOString(),
+          });
           synced++;
         } catch (e) {
           errors++;
