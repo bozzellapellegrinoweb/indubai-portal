@@ -1,0 +1,14 @@
+{
+  "name": "InDubai Portale Cliente",
+  "short_name": "InDubai",
+  "description": "Il tuo spazio personale InDubai",
+  "start_url": "/client-portal/dashboard.html",
+  "display": "standalone",
+  "background_color": "#0f1e35",
+  "theme_color": "#0f1e35",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/img/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
