@@ -1215,35 +1215,36 @@ window.showPanel = function(name, btn) {
   if (window.innerWidth <= 768) window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 (function() {
-  var startY = 0, pulling = false, triggered = false, THRESHOLD = 72;
-  function gst() { return window.scrollY || document.documentElement.scrollTop || 0; }
-  document.addEventListener('touchstart', function(e) {
-    if (gst() === 0) { startY = e.touches[0].clientY; pulling = true; triggered = false; }
+  var startY = 0, pulling = false, triggered = false, THRESHOLD = 60;
+  function getScroller() { return document.getElementById("main") || document.documentElement; }
+  function gst() { var m = getScroller(); return m.scrollTop || window.scrollY || 0; }
+  document.addEventListener("touchstart", function(e) {
+    if (gst() <= 2) { startY = e.touches[0].clientY; pulling = true; triggered = false; }
+    else { pulling = false; }
   }, { passive: true });
-  document.addEventListener('touchmove', function(e) {
+  document.addEventListener("touchmove", function(e) {
     if (!pulling) return;
-    if (e.touches[0].clientY - startY > 10 && gst() === 0) {
-      var b = document.getElementById('ptr-bar'); if (b) b.classList.add('visible');
-    }
+    var delta = e.touches[0].clientY - startY;
+    if (delta > 8 && gst() <= 2) { var b = document.getElementById("ptr-bar"); if (b) b.classList.add("visible"); }
   }, { passive: true });
-  document.addEventListener('touchend', function(e) {
+  document.addEventListener("touchend", function(e) {
     if (!pulling) return; pulling = false;
     var delta = e.changedTouches[0].clientY - startY;
-    var bar = document.getElementById('ptr-bar');
+    var bar = document.getElementById("ptr-bar");
     if (delta > THRESHOLD && !triggered) {
-      triggered = true; if (bar) bar.classList.add('visible');
-      var ap = document.querySelector('.panel.active');
-      if (ap) { var pn = ap.id.replace('panel-','');
-        if (pn==='zoho') loadZohoClient();
-        else if (pn==='pratiche') loadPraticheClient();
-        else if (pn==='documenti') renderDrive(); }
-      setTimeout(function(){ if (bar) bar.classList.remove('visible'); triggered=false; }, 1400);
-    } else { if (bar) bar.classList.remove('visible'); }
+      triggered = true; if (bar) bar.classList.add("visible");
+      var ap = document.querySelector(".panel.active");
+      if (ap) { var pn = ap.id.replace("panel-","");
+        if (pn==="zoho") loadZohoClient();
+        else if (pn==="pratiche") loadPraticheClient();
+        else if (pn==="documenti") renderDrive(); }
+      setTimeout(function(){ if (bar) bar.classList.remove("visible"); triggered=false; }, 1400);
+    } else { if (bar) bar.classList.remove("visible"); }
   }, { passive: true });
-  var sh = document.getElementById('ios-sheet'), shy = 0;
+  var sh = document.getElementById("ios-sheet"), shy = 0;
   if (sh) {
-    sh.addEventListener('touchstart', function(e){ shy = e.touches[0].clientY; }, { passive: true });
-    sh.addEventListener('touchend', function(e){ if (e.changedTouches[0].clientY - shy > 60) closeSheet(); }, { passive: true });
+    sh.addEventListener("touchstart", function(e){ shy = e.touches[0].clientY; }, { passive: true });
+    sh.addEventListener("touchend", function(e){ if (e.changedTouches[0].clientY - shy > 60) closeSheet(); }, { passive: true });
   }
 })();
 
