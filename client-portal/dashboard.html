@@ -267,6 +267,7 @@
     <button class="nav-item active" onclick="showPanel('anagrafica', this)"><span class="nav-icon">🏢</span> Anagrafica</button>
     <button class="nav-item" onclick="showPanel('documenti', this)"><span class="nav-icon">📁</span> Documenti</button>
     <button class="nav-item" onclick="showPanel('scadenze', this)"><span class="nav-icon">📅</span> Scadenze</button>
+    <button class="nav-item" onclick="showPanel('zoho', this)"><span class="nav-icon">📊</span> Contabilità</button>
     <button class="nav-item" onclick="showPanel('pratiche', this)"><span class="nav-icon">📋</span> Le mie Pratiche</button>
     <div class="nav-section" style="margin-top:16px">InDubai</div>
     <button class="nav-item" onclick="showPanel('servizi', this)"><span class="nav-icon">✦</span> Servizi</button>
@@ -416,6 +417,11 @@ function buildMainHTML(visas=[], financials=null) {
       <div id="pratiche-client-content"><div class="spinner"></div></div>
     </div>
 
+    <!-- ZOHO -->
+    <div class="panel" id="panel-zoho">
+      <div id="zoho-client-content"><div class="spinner"></div></div>
+    </div>
+
     <!-- SERVIZI -->
     <div class="panel" id="panel-servizi">
       ${serviziHTML()}
@@ -495,6 +501,98 @@ function financialsHTML(f) {
 
       </div>
     </div>`;
+}
+
+async function loadZohoClient() {
+  const el = document.getElementById('zoho-client-content');
+  const orgId = clientData && clientData.zoho_org_id;
+  if (!orgId) { el.innerHTML = '<div style="padding:32px;text-align:center;color:#6b7280">Nessun account Zoho Books collegato. Contatta il tuo consulente.</div>'; return; }
+  el.innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner"></div><div style="margin-top:12px;font-size:13px;color:#6b7280">Connessione a Zoho Books...</div></div>';
+  try {
+    const res = await fetch('https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/bright-service', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_KEY },
+      body: JSON.stringify({ action: 'client_summary', org_id: orgId })
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    const fmt = function(n) { if (n===undefined||n===null||isNaN(n)) return '--'; return new Intl.NumberFormat('it-IT',{minimumFractionDigits:0,maximumFractionDigits:0}).format(n); };
+    const cur = d.orgCurrency || 'AED';
+    const isMulti = cur !== 'AED';
+    if (!d.rolling12AED) d.rolling12AED = 0;
+    if (!d.prevYearAED) d.prevYearAED = 0;
+    if (!d.totalBilledAED) d.totalBilledAED = d.totalBilled || 0;
+    if (!d.totalPaidAED) d.totalPaidAED = d.totalPaid || 0;
+    if (!d.totalUnpaidAED) d.totalUnpaidAED = d.totalUnpaid || 0;
+    if (!d.vatStatus) d.vatStatus = 'ok';
+    if (!d.vatThreshold) d.vatThreshold = 375000;
+    if (!d.rolling12Start) d.rolling12Start = new Date(Date.now()-365*86400000).toISOString().split('T')[0];
+    const vatPct = Math.min(100, Math.round(d.rolling12AED/d.vatThreshold*100));
+    const vatReg = clientData && clientData.vat_registered;
+    const exceeded = d.vatStatus==='exceeded' || d.vatStatus==='warning';
+    const vc = vatReg ? '#059669' : exceeded ? '#d97706' : '#059669';
+    const vb = vatReg ? '#f0fdf4' : exceeded ? '#fffbeb' : '#f0fdf4';
+    const vbr = vatReg ? '#86efac' : exceeded ? '#fde68a' : '#86efac';
+    const vl = vatReg ? 'VAT Registrata' : d.vatStatus==='exceeded' ? 'Soglia VAT raggiunta — contatta il tuo consulente' : d.vatStatus==='warning' ? 'In avvicinamento alla soglia VAT' : 'Tutto in ordine — sotto la soglia VAT';
+    const pp = Math.round(d.totalBilled ? d.totalPaid/d.totalBilled*100 : 0);
+    const up = Math.round(d.totalBilled ? d.totalUnpaid/d.totalBilled*100 : 0);
+    const now = new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const yoyColor = d.totalBilledAED >= d.prevYearAED ? '#059669' : '#dc2626';
+    const yoyArrow = d.totalBilledAED >= d.prevYearAED ? '\u25b2' : '\u25bc';
+    const yoyText = d.prevYearAED ? yoyArrow + ' ' + Math.abs(Math.round((d.totalBilledAED-d.prevYearAED)/d.prevYearAED*100)) + '% vs anno prec.' : '--';
+    const unpaidBg = d.totalUnpaid > 0 ? 'linear-gradient(135deg,#7f1d1d,#dc2626)' : 'linear-gradient(135deg,#374151,#6b7280)';
+    el.innerHTML =
+      '<div style="padding:4px 0">' +
+      '<div style="background:'+vb+';border:1.5px solid '+vbr+';border-radius:14px;padding:20px 24px;margin-bottom:24px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">' +
+          '<div><div style="font-size:13px;font-weight:700;color:'+vc+'">Soglia VAT — Ultimi 12 mesi</div>' +
+          '<div style="font-size:12px;color:#6b7280;margin-top:2px">Da '+d.rolling12Start+' a oggi · in AED</div></div>' +
+          '<div style="text-align:right"><div style="font-size:20px;font-weight:800;color:'+vc+'">AED '+fmt(d.rolling12AED)+'</div>' +
+          '<div style="font-size:11px;color:#6b7280">'+vatPct+'% di AED '+fmt(d.vatThreshold)+'</div></div>' +
+        '</div>' +
+        '<div style="background:white;border-radius:100px;height:12px;overflow:hidden;margin-bottom:8px">' +
+          '<div style="height:100%;border-radius:100px;background:'+vc+';width:'+vatPct+'%;transition:width .6s ease"></div></div>' +
+        '<div style="font-size:12px;font-weight:600;color:'+vc+'">'+vl+'</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px">' +
+        '<div style="background:linear-gradient(135deg,#1a3a5c,#2563a8);border-radius:14px;padding:20px 24px;color:white">' +
+          '<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px">Fatturato '+d.year+'</div>' +
+          '<div style="font-size:22px;font-weight:800">'+cur+' '+fmt(d.totalBilled)+'</div>' +
+          (isMulti ? '<div style="font-size:11px;color:rgba(255,255,255,.5)">AED '+fmt(d.totalBilledAED)+'</div>' : '') +
+          '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px">'+d.countInvoices+' fatture emesse</div></div>' +
+        '<div style="background:linear-gradient(135deg,#065f46,#059669);border-radius:14px;padding:20px 24px;color:white">' +
+          '<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px">Incassato</div>' +
+          '<div style="font-size:22px;font-weight:800">'+cur+' '+fmt(d.totalPaid)+'</div>' +
+          (isMulti ? '<div style="font-size:11px;color:rgba(255,255,255,.5)">AED '+fmt(d.totalPaidAED)+'</div>' : '') +
+          '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px">'+pp+'% del fatturato</div></div>' +
+        '<div style="background:'+unpaidBg+';border-radius:14px;padding:20px 24px;color:white">' +
+          '<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px">Da Incassare</div>' +
+          '<div style="font-size:22px;font-weight:800">'+cur+' '+fmt(d.totalUnpaid)+'</div>' +
+          (isMulti ? '<div style="font-size:11px;color:rgba(255,255,255,.5)">AED '+fmt(d.totalUnpaidAED)+'</div>' : '') +
+          '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px">'+d.countOverdue+' scadute</div></div>' +
+        '<div style="background:white;border:1.5px solid #e2e8f0;border-radius:14px;padding:20px 24px">' +
+          '<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:8px">Anno prec. ('+(d.year-1)+')</div>' +
+          '<div style="font-size:22px;font-weight:800">AED '+fmt(d.prevYearAED)+'</div>' +
+          '<div style="font-size:12px;margin-top:4px;color:'+yoyColor+'">'+yoyText+'</div></div>' +
+      '</div>' +
+      '<div style="background:white;border:1.5px solid #e2e8f0;border-radius:14px;padding:20px 24px;margin-bottom:20px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+          '<div style="font-size:13px;font-weight:700">Stato Incassi '+d.year+'</div>' +
+          '<div style="font-size:13px;color:#6b7280">'+cur+' '+fmt(d.totalPaid)+' / '+cur+' '+fmt(d.totalBilled)+'</div></div>' +
+        '<div style="background:#f1f5f9;border-radius:100px;height:10px;overflow:hidden">' +
+          '<div style="height:100%;border-radius:100px;background:linear-gradient(90deg,#059669,#34d399);width:'+pp+'%;transition:width .6s ease"></div></div>' +
+        '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px">' +
+          '<span style="color:#059669;font-weight:600">Incassato '+pp+'%</span>' +
+          '<span style="color:'+(d.totalUnpaid>0?'#dc2626':'#6b7280')+';font-weight:600">Da incassare '+up+'%</span></div>' +
+      '</div>' +
+      (d.lastInvoice ? '<div style="background:white;border:1.5px solid #e2e8f0;border-radius:14px;padding:20px 24px;margin-bottom:20px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:12px">Ultima Fattura</div><div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap"><div style="font-size:16px;font-weight:800">'+d.lastInvoice.number+'</div><div style="font-size:13px;color:#6b7280">'+d.lastInvoice.date+'</div><div style="font-size:15px;font-weight:700">'+(d.lastInvoice.currency||cur)+' '+fmt(d.lastInvoice.total)+'</div></div></div>' : '') +
+      '<div style="display:flex;gap:10px;justify-content:flex-end;align-items:center">' +
+        '<div style="font-size:11px;color:#6b7280">Aggiornato: '+now+'</div>' +
+        '<button class="btn btn-ghost btn-sm" onclick="loadZohoClient()">↺ Aggiorna</button>' +
+      '</div></div>';
+  } catch(e) {
+    el.innerHTML = '<div style="padding:20px;background:#fef2f2;border-radius:12px;color:#dc2626">'+e.message+'</div>';
+  }
 }
 
 function heroHTML() {
@@ -935,6 +1033,7 @@ window.showPanel = function(name, btn) {
   if (btn) btn.classList.add('active');
   if (name === 'documenti') { cwd = '/'; renderDrive(); }
   if (name === 'pratiche') loadPraticheClient();
+  if (name === 'zoho') loadZohoClient();
 };
 
 async function fetchBlob(storagePath) {
