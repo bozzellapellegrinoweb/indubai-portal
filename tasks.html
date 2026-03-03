@@ -204,6 +204,7 @@
 
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/notify.js"></script>
 <script>
 let allTasks = [], currentFilter = 'all', selectedId = null, myId = null, profiles = [];
 
@@ -389,6 +390,16 @@ async function updateStatus(taskId, newStatus) {
     if (task) { task.status = newStatus; if(newStatus==='completed') task.completed_at = updates.completed_at; }
     updateCounts(); renderList();
     ui.showToast('Stato aggiornato ✓', 'success');
+    // Push al cliente se la task è completata e ha un client_id
+    if (newStatus === 'completed' && task?.client_id) {
+      const clientUserId = await getClientUserId(task.client_id);
+      if (clientUserId) pushNotify({
+        action: 'send_to_user', user_id: clientUserId,
+        title: '✅ Task completata',
+        message: task.title + ' è stata completata dal tuo consulente.',
+        url: 'https://indubai-portal.vercel.app/client-portal/dashboard.html'
+      });
+    }
     if (task?.assigned_to && task.assigned_to !== myId) {
       await sb.db.insert('notifications', {
         user_id: task.assigned_to, type:'task_completed',
@@ -449,6 +460,15 @@ async function saveTask() {
     closeModal();
     await loadTasks();
     ui.showToast('Task creata!','success');
+    // Push interno all'operatore assegnato
+    if (data.assigned_to && data.assigned_to !== myId) {
+      pushNotify({
+        action: 'send_to_user', user_id: data.assigned_to,
+        title: '📋 Nuova task assegnata',
+        message: title + (data.client_id ? ' · ' + (document.getElementById('t-client').selectedOptions[0]?.text || '') : ''),
+        url: 'https://indubai-portal.vercel.app/tasks.html'
+      });
+    }
     document.getElementById('t-title').value='';
     document.getElementById('t-desc').value='';
     document.getElementById('t-recurring').checked=false;

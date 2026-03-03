@@ -183,6 +183,7 @@
 
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/notify.js"></script>
 <script>
 let clientId = null;
 let clientData = null;
@@ -638,6 +639,18 @@ async function loadZohoTab() {
     // VAT alert bar config
     const vatPct  = Math.min(100, Math.round(d.rolling12AED / d.vatThreshold * 100));
     const vatRegistered = clientData?.vat_registered;
+
+    // Push alert VAT se non ancora registrato e supera soglie
+    if (!vatRegistered) {
+      const cid = clientData?.id;
+      if (vatPct >= 100 && d.vatStatus === 'exceeded') {
+        // Alert a staff + cliente
+        pushNotifyStaff({ title: '🚨 Soglia VAT superata', message: (clientData?.company_name||'Cliente') + ' ha superato AED ' + d.vatThreshold.toLocaleString() + '. Registrazione obbligatoria.', url: 'https://indubai-portal.vercel.app/client-detail?id=' + cid });
+        getClientUserId(cid).then(uid => { if(uid) pushNotify({ action:'send_to_user', user_id:uid, title:'🚨 Soglia VAT superata', message:'Il tuo fatturato 12 mesi ha superato AED ' + d.vatThreshold.toLocaleString() + '. Contatta il tuo consulente.', url:'https://indubai-portal.vercel.app/client-portal/dashboard.html' }); });
+      } else if (vatPct >= 80 && d.vatStatus === 'warning') {
+        pushNotifyStaff({ title: '⚠️ Soglia VAT all\'80%', message: (clientData?.company_name||'Cliente') + ' è all\''+vatPct+'% della soglia VAT (AED ' + Math.round(d.rolling12AED).toLocaleString() + ' / ' + d.vatThreshold.toLocaleString() + ').', url: 'https://indubai-portal.vercel.app/client-detail?id=' + cid });
+      }
+    }
     const vatColor = vatRegistered ? '#059669' : d.vatStatus === 'exceeded' ? '#dc2626' : d.vatStatus === 'warning' ? '#d97706' : '#059669';
     const vatBg    = vatRegistered ? '#f0fdf4' : d.vatStatus === 'exceeded' ? '#fef2f2' : d.vatStatus === 'warning' ? '#fffbeb' : '#f0fdf4';
     const vatBorder= vatRegistered ? '#86efac' : d.vatStatus === 'exceeded' ? '#fca5a5' : d.vatStatus === 'warning' ? '#fde68a' : '#86efac';
@@ -1232,6 +1245,17 @@ async function savePratica() {
     if (id) await sb.db.update('client_practices', 'id=eq.' + id, data);
     else await sb.db.insert('client_practices', data);
     ui.showToast('Pratica salvata', 'success');
+    // Push al cliente su aggiornamento pratica
+    const clientUserId = await getClientUserId(clientId);
+    if (clientUserId) {
+      const statusLabels = { 'in_corso': 'in corso', 'completato': 'completata ✅', 'in_attesa': 'in attesa', 'sospeso': 'sospesa' };
+      pushNotify({
+        action: 'send_to_user', user_id: clientUserId,
+        title: id ? '📋 Pratica aggiornata' : '📋 Nuova pratica aperta',
+        message: title + (statusLabels[status] ? ' · stato: ' + statusLabels[status] : ''),
+        url: 'https://indubai-portal.vercel.app/client-portal/dashboard.html'
+      });
+    }
     document.getElementById('pratica-form').style.display = 'none';
     await loadPraticheTab();
   } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }

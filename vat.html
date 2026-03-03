@@ -109,6 +109,7 @@
 
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/notify.js"></script>
 <script>
 let vatRows = [];
 let activeVatId = null;
@@ -250,6 +251,17 @@ document.getElementById('btn-save-vat').addEventListener('click', async () => {
     const idx = vatRows.findIndex(r => r.id === activeVatId);
     if (idx >= 0) vatRows[idx] = { ...vatRows[idx], ...updates };
     ui.showToast('VAT aggiornato', 'success');
+    // Push staff se ci sono scadenze entro 30 giorni
+    const today = new Date(); today.setHours(0,0,0,0);
+    const deadlines = [updates.return_deadline_1, updates.return_deadline_2, updates.return_deadline_3, updates.return_deadline_4].filter(Boolean);
+    for (const dl of deadlines) {
+      const d = new Date(dl); const days = Math.ceil((d - today) / 86400000);
+      if (days >= 0 && days <= 30) {
+        const row = vatRows[idx] || {};
+        pushNotifyStaff({ title: '⚠️ Scadenza VAT imminente', message: (row.company_name || 'Cliente') + ' · dichiarazione VAT scade tra ' + days + ' giorni (' + dl + ').', url: 'https://indubai-portal.vercel.app/vat.html' });
+        break;
+      }
+    }
     closeModal();
     renderTable();
   } catch(e) {

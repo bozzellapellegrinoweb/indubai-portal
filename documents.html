@@ -375,6 +375,7 @@
 </div>
 
 <script src="/js/supabase.js"></script>
+<script src="/js/notify.js"></script>
 <script src="/js/app.js"></script>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -725,6 +726,15 @@ const DRV = (() => {
             folder: cwd, uploaded_by: sb.getCurrentUser()?.id||null
           });
           toast(`${file.name} caricato ✓`, 'success');
+          // Push al cliente
+          getClientUserId(client.id).then(uid => {
+            if (uid) pushNotify({
+              action: 'send_to_user', user_id: uid,
+              title: '📄 Nuovo documento disponibile',
+              message: file.name + ' è stato caricato nella tua area documenti.',
+              url: 'https://indubai-portal.vercel.app/client-portal/dashboard.html'
+            });
+          });
         } else {
           let msg = `Errore upload: ${xhr.status}`;
           try { const e=JSON.parse(xhr.responseText); msg=e.error||e.message||msg; } catch{}
