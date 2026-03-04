@@ -354,7 +354,7 @@ async function loadNotificheTab() {
         </div>
         <div>
           <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);display:block;margin-bottom:6px">URL (opzionale)</label>
-          <input id="notif-url" type="text" placeholder="https://indubai-portal.vercel.app/client-portal/dashboard.html" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none"
+          <input id="notif-url" type="text" placeholder="https://portal.indubai.it/client-portal/dashboard.html" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none"
             onfocus="this.style.borderColor='#1a3a5c'" onblur="this.style.borderColor='var(--border)'">
         </div>
       </div>
@@ -421,7 +421,7 @@ async function quickNotif(userId, title, message) {
     const res = await fetch(FN, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + window.ENV_SUPABASE_ANON_KEY },
-      body: JSON.stringify({ action: 'send_to_user', user_id: userId, title, message, url: 'https://indubai-portal.vercel.app/client-portal/dashboard.html' })
+      body: JSON.stringify({ action: 'send_to_user', user_id: userId, title, message, url: 'https://portal.indubai.it/client-portal/dashboard.html' })
     });
     const d = await res.json();
     if (d.error) throw new Error(d.error);
@@ -652,10 +652,10 @@ async function loadZohoTab() {
       const cid = clientData?.id;
       if (vatPct >= 100 && d.vatStatus === 'exceeded') {
         // Alert a staff + cliente
-        pushNotifyStaff({ title: '🚨 Soglia VAT superata', message: (clientData?.company_name||'Cliente') + ' ha superato AED ' + d.vatThreshold.toLocaleString() + '. Registrazione obbligatoria.', url: 'https://indubai-portal.vercel.app/client-detail?id=' + cid });
-        getClientUserId(cid).then(uid => { if(uid) pushNotify({ action:'send_to_user', user_id:uid, title:'🚨 Soglia VAT superata', message:'Il tuo fatturato 12 mesi ha superato AED ' + d.vatThreshold.toLocaleString() + '. Contatta il tuo consulente.', url:'https://indubai-portal.vercel.app/client-portal/dashboard.html' }); });
+        pushNotifyStaff({ title: '🚨 Soglia VAT superata', message: (clientData?.company_name||'Cliente') + ' ha superato AED ' + d.vatThreshold.toLocaleString() + '. Registrazione obbligatoria.', url: 'https://portal.indubai.it/client-detail?id=' + cid });
+        getClientUserId(cid).then(uid => { if(uid) pushNotify({ action:'send_to_user', user_id:uid, title:'🚨 Soglia VAT superata', message:'Il tuo fatturato 12 mesi ha superato AED ' + d.vatThreshold.toLocaleString() + '. Contatta il tuo consulente.', url:'https://portal.indubai.it/client-portal/dashboard.html' }); });
       } else if (vatPct >= 80 && d.vatStatus === 'warning') {
-        pushNotifyStaff({ title: '⚠️ Soglia VAT all\'80%', message: (clientData?.company_name||'Cliente') + ' è all\''+vatPct+'% della soglia VAT (AED ' + Math.round(d.rolling12AED).toLocaleString() + ' / ' + d.vatThreshold.toLocaleString() + ').', url: 'https://indubai-portal.vercel.app/client-detail?id=' + cid });
+        pushNotifyStaff({ title: '⚠️ Soglia VAT all\'80%', message: (clientData?.company_name||'Cliente') + ' è all\''+vatPct+'% della soglia VAT (AED ' + Math.round(d.rolling12AED).toLocaleString() + ' / ' + d.vatThreshold.toLocaleString() + ').', url: 'https://portal.indubai.it/client-detail?id=' + cid });
       }
     }
     const vatColor = vatRegistered ? '#059669' : d.vatStatus === 'exceeded' ? '#dc2626' : d.vatStatus === 'warning' ? '#d97706' : '#059669';
@@ -1260,7 +1260,7 @@ async function savePratica() {
         action: 'send_to_user', user_id: clientUserId,
         title: id ? '📋 Pratica aggiornata' : '📋 Nuova pratica aperta',
         message: title + (statusLabels[status] ? ' · stato: ' + statusLabels[status] : ''),
-        url: 'https://indubai-portal.vercel.app/client-portal/dashboard.html'
+        url: 'https://portal.indubai.it/client-portal/dashboard.html'
       });
     }
     document.getElementById('pratica-form').style.display = 'none';

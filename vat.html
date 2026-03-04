@@ -265,7 +265,7 @@ document.getElementById('btn-save-vat').addEventListener('click', async () => {
       const d = new Date(dl); const days = Math.ceil((d - today) / 86400000);
       if (days >= 0 && days <= 30) {
         const row = vatRows[idx] || {};
-        pushNotifyStaff({ title: '⚠️ Scadenza VAT imminente', message: (row.company_name || 'Cliente') + ' · dichiarazione VAT scade tra ' + days + ' giorni (' + dl + ').', url: 'https://indubai-portal.vercel.app/vat.html' });
+        pushNotifyStaff({ title: '⚠️ Scadenza VAT imminente', message: (row.company_name || 'Cliente') + ' · dichiarazione VAT scade tra ' + days + ' giorni (' + dl + ').', url: 'https://portal.indubai.it/vat.html' });
         break;
       }
     }

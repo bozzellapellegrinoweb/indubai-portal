@@ -404,7 +404,7 @@ async function updateStatus(taskId, newStatus) {
         action: 'send_to_user', user_id: clientUserId,
         title: '✅ Task completata',
         message: task.title + ' è stata completata dal tuo consulente.',
-        url: 'https://indubai-portal.vercel.app/client-portal/dashboard.html'
+        url: 'https://portal.indubai.it/client-portal/dashboard.html'
       });
     }
     if (task?.assigned_to && task.assigned_to !== myId) {
@@ -473,7 +473,7 @@ async function saveTask() {
         action: 'send_to_user', user_id: data.assigned_to,
         title: '📋 Nuova task assegnata',
         message: title + (data.client_id ? ' · ' + (document.getElementById('t-client').selectedOptions[0]?.text || '') : ''),
-        url: 'https://indubai-portal.vercel.app/tasks.html'
+        url: 'https://portal.indubai.it/tasks.html'
       });
     }
     document.getElementById('t-title').value='';
