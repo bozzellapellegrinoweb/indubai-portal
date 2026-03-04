@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const APP_ID = '06f381cd-ed3d-4393-a5c2-3f6ef8322661';
-const API_KEY = 'os_v2_app_a3zydtpnhvbzhjoch5xpqmrgmga7lo2j2aqep2uioz2cpvnkzyu4mjbwdfvz3ef7tfybxxl6l3xxppitk26a247ir3mlpjvpgjsdtaq';
+const API_KEY = 'os_v2_app_a3zydtpnhvbzhjoch5xpqmrgmgknqxwakfqu6yegl2ilnu6gq7ejgzhwn7exafocoy3uythxy775si4eszriemf6fmxuchusjxgvwky';
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type', 'Content-Type': 'application/json' };
 
 async function sendPush(payload: object) {
