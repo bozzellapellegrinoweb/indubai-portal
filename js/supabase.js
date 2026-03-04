@@ -146,14 +146,27 @@ const db = {
 
   // Upsert
   async upsert(table, rows, onConflict = '') {
-    let prefer = 'return=representation,resolution=merge-duplicates';
     let path = `/rest/v1/${table}`;
     if (onConflict) path += `?on_conflict=${onConflict}`;
-    return sbFetch(path, {
+    const token = getSessionToken() || SUPABASE_ANON_KEY;
+    const res = await fetch(`${SUPABASE_URL}${path}`, {
       method: 'POST',
-      prefer,
-      body: JSON.stringify(rows),
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation,resolution=merge-duplicates',
+      },
+      body: JSON.stringify(Array.isArray(rows) ? rows : [rows]),
     });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+    if (!res.ok) {
+      console.error('[upsert] error', res.status, data);
+      throw new Error(data?.message || data?.hint || data?.error || `HTTP ${res.status}`);
+    }
+    return data;
   },
 
   // ── Specific queries ────────────────────────────────────────
