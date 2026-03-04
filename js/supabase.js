@@ -149,14 +149,16 @@ const db = {
     let path = `/rest/v1/${table}`;
     if (onConflict) path += `?on_conflict=${onConflict}`;
     const token = getSessionToken() || SUPABASE_ANON_KEY;
+    // Headers via Headers object — append multipli per Prefer
+    const headers = new Headers();
+    headers.set('apikey', SUPABASE_ANON_KEY);
+    headers.set('Authorization', `Bearer ${token}`);
+    headers.set('Content-Type', 'application/json');
+    headers.append('Prefer', 'return=representation');
+    headers.append('Prefer', 'resolution=merge-duplicates');
     const res = await fetch(`${SUPABASE_URL}${path}`, {
       method: 'POST',
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation,resolution=merge-duplicates',
-      },
+      headers,
       body: JSON.stringify(Array.isArray(rows) ? rows : [rows]),
     });
     const text = await res.text();
