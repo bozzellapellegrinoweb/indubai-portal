@@ -1258,12 +1258,113 @@ window.sheetGo = function(name, label) {
 async function loadClientNews() {
   const el = document.getElementById('client-news-container');
   if (!el) return;
-  // Se già caricato non riscaricare
   if (el.dataset.loaded) return;
 
   const FN = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/news-aggregator';
-  const CATS = { business:'💼 Business', realestate:'🏠 Real Estate', visa:'📋 Visa', governo:'🏛️ Governo', mercati:'💹 Mercati' };
   const CAT_COLORS = { business:'#38bdf8', realestate:'#34d399', visa:'#a78bfa', governo:'#fbbf24', mercati:'#f87171' };
+  const PAGE_SIZE = 10;
+  let allItems = [], filteredItems = [], clientCat = 'all', clientPage = 1;
+
+  function escH(s) { return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function timeAgo(s) {
+    const m = Math.floor((Date.now() - new Date(s)) / 60000);
+    if (m < 2) return 'Ora'; if (m < 60) return m+'min fa';
+    const h = Math.floor(m/60); if (h < 24) return h+'h fa';
+    return Math.floor(h/24)+'g fa';
+  }
+
+  function renderCN() {
+    const total = filteredItems.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (clientPage > totalPages) clientPage = 1;
+    const page = filteredItems.slice((clientPage-1)*PAGE_SIZE, clientPage*PAGE_SIZE);
+
+    const pills = ['all','governo','business','realestate','visa','mercati'].map(c => {
+      const labels = {all:'🌐 Tutte', business:'💼 Business', realestate:'🏠 Real Estate', visa:'📋 Visa', governo:'🏛️ Governo', mercati:'💹 Mercati'};
+      const active = clientCat === c;
+      const col = CAT_COLORS[c] || 'rgba(255,255,255,.6)';
+      return `<button onclick="setCN('${c}')" style="white-space:nowrap;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;border:1.5px solid ${active ? col : 'rgba(255,255,255,.12)'};background:${active ? col+'22' : 'transparent'};color:${active ? col : 'rgba(255,255,255,.45)'}">${labels[c]||c}</button>`;
+    }).join('');
+
+    const cards = page.map((n, i) => {
+      const col = CAT_COLORS[n.category] || '#c9a84c';
+      const idx = (clientPage-1)*PAGE_SIZE + i;
+      return `<div onclick="openCN(${idx})" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-left:3px solid ${col};border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">
+        <div style="font-size:10px;font-weight:700;color:${col};text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">${escH(n.categoryLabel)} · ${escH(n.source)} · ${timeAgo(n.pubDate)}</div>
+        <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.92);line-height:1.4;margin-bottom:6px">${escH(n.title)}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escH(n.summary)}</div>
+      </div>`;
+    }).join('') || '<div style="padding:24px;text-align:center;color:rgba(255,255,255,.3);font-size:13px">Nessuna notizia in questa categoria</div>';
+
+    // Pagination
+    let pag = '';
+    if (totalPages > 1) {
+      const btn = (p, label, active, disabled) =>
+        `<button onclick="pagCN(${p})" style="min-width:32px;height:32px;border-radius:8px;border:1px solid ${active?'rgba(255,255,255,.4)':'rgba(255,255,255,.12)'};background:${active?'rgba(255,255,255,.15)':'transparent'};color:${active?'white':'rgba(255,255,255,.4)'};font-size:12px;font-weight:600;cursor:${disabled?'default':'pointer'};font-family:inherit;padding:0 8px;opacity:${disabled?.35:1}" ${disabled?'disabled':''}>${label}</button>`;
+      pag = `<div style="display:flex;align-items:center;justify-content:center;gap:4px;padding:16px 0 4px">
+        ${btn(clientPage-1,'‹',false,clientPage===1)}`;
+      for (let p=1;p<=totalPages;p++) {
+        if (totalPages<=7 || p===1 || p===totalPages || Math.abs(p-clientPage)<=1) {
+          pag += btn(p,p,p===clientPage,false);
+        } else if (Math.abs(p-clientPage)===2) {
+          pag += `<span style="color:rgba(255,255,255,.3);font-size:12px;padding:0 2px">…</span>`;
+        }
+      }
+      pag += `${btn(clientPage+1,'›',false,clientPage===totalPages)}</div>`;
+    }
+
+    el.innerHTML = `
+      <div style="padding:0 0 12px;display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div style="font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:800;color:white;margin-bottom:2px">📰 UAE News</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.35)">${total} notizie · agg. ${new Date(window._cnGenerated||Date.now()).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})} · in italiano</div>
+        </div>
+        <button onclick="reloadCN()" style="background:transparent;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 10px;font-size:11px;color:rgba(255,255,255,.4);cursor:pointer;font-family:inherit">↻</button>
+      </div>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none;-ms-overflow-style:none;margin-bottom:4px">${pills}</div>
+      ${cards}
+      ${pag}
+      <div style="text-align:center;font-size:10px;color:rgba(255,255,255,.15);padding-top:4px">📡 Gulf News · WAM · Arabian Post · Google News · AI</div>`;
+  }
+
+  // Modal
+  function openCNModal(n) {
+    const col = CAT_COLORS[n.category] || '#c9a84c';
+    const existing = document.getElementById('cn-modal-overlay');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'cn-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:flex-end;animation:fadeIn .2s ease';
+    overlay.innerHTML = `
+      <style>@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}</style>
+      <div style="background:#1a2235;width:100%;border-radius:20px 20px 0 0;max-height:85vh;overflow-y:auto;animation:slideUp .3s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,16px)">
+        <div style="width:40px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin:12px auto 0;cursor:pointer" onclick="document.getElementById('cn-modal-overlay').remove()"></div>
+        <div style="padding:18px 20px 0">
+          <div style="font-size:11px;font-weight:700;color:${col};text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">${escH(n.categoryLabel)}</div>
+          <div style="font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:800;color:white;line-height:1.35;margin-bottom:12px">${escH(n.title)}</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.45);margin-bottom:16px;flex-wrap:wrap">
+            <span>📰 ${escH(n.source)}</span>
+            <span style="width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.3);display:inline-block"></span>
+            <span>${timeAgo(n.pubDate)}</span>
+            <span style="width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.3);display:inline-block"></span>
+            <span>${new Date(n.pubDate).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'})}</span>
+          </div>
+        </div>
+        <div style="height:1px;background:rgba(255,255,255,.08);margin:0 20px 16px"></div>
+        <div style="padding:0 20px;font-size:14px;color:rgba(255,255,255,.65);line-height:1.7">${escH(n.summary)}</div>
+        <div style="padding:20px;display:flex;gap:10px">
+          <button onclick="document.getElementById('cn-modal-overlay').remove()" style="flex:1;padding:13px;border-radius:12px;font-size:14px;font-weight:600;border:1px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.5);cursor:pointer;font-family:inherit">✕ Chiudi</button>
+          <a href="${escH(n.link)}" target="_blank" rel="noopener" style="flex:2;padding:13px;border-radius:12px;font-size:14px;font-weight:600;border:none;background:${col};color:#0f1628;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;font-family:inherit">🔗 Articolo completo</a>
+        </div>
+      </div>`;
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  }
+
+  window.openCN = function(idx) { if (filteredItems[idx]) openCNModal(filteredItems[idx]); };
+  window.setCN = function(cat) { clientCat = cat; clientPage = 1; filteredItems = cat==='all'?allItems:allItems.filter(n=>n.category===cat); renderCN(); };
+  window.pagCN = function(p) { const t=Math.ceil(filteredItems.length/PAGE_SIZE); if(p>=1&&p<=t){clientPage=p;renderCN();el.scrollIntoView({behavior:'smooth',block:'start'});} };
+  window.reloadCN = async function() { el.dataset.loaded=''; await loadClientNews(); };
 
   el.innerHTML = '<div style="text-align:center;padding:32px;color:rgba(255,255,255,.4);font-size:13px">⏳ Caricamento notizie UAE...</div>';
 
@@ -1275,54 +1376,14 @@ async function loadClientNews() {
       },
     });
     const data = await r.json();
-    if (!data.ok || !data.items?.length) throw new Error('Nessuna notizia');
-
+    if (!data.ok || !data.items?.length) throw new Error('Nessuna notizia disponibile');
     el.dataset.loaded = '1';
-
-    // Category filter pills
-    let currentCat = 'all';
-    const items = data.items;
-
-    function timeAgo(s) {
-      const m = Math.floor((Date.now() - new Date(s)) / 60000);
-      if (m < 2) return 'Ora'; if (m < 60) return m+'min'; 
-      const h = Math.floor(m/60); if (h < 24) return h+'h';
-      return Math.floor(h/24)+'g';
-    }
-    function escH(s) { return String(s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-
-    function renderClientNews(cat) {
-      const filtered = cat === 'all' ? items : items.filter(n => n.category === cat);
-      const pills = ['all','governo','business','realestate','visa','mercati'].map(c => {
-        const label = c === 'all' ? '🌐 Tutte' : (CATS[c] || c);
-        const active = cat === c;
-        return `<button onclick="setClientNewsCat('${c}')" style="white-space:nowrap;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid ${active ? CAT_COLORS[c]||'rgba(255,255,255,.6)' : 'rgba(255,255,255,.1)'};background:${active ? (CAT_COLORS[c]||'rgba(255,255,255,.2)')+'22' : 'none'};color:${active ? CAT_COLORS[c]||'white' : 'rgba(255,255,255,.5)'};cursor:pointer;font-family:inherit">${label}</button>`;
-      }).join('');
-
-      const cards = filtered.map(n => {
-        const col = CAT_COLORS[n.category] || '#c9a84c';
-        return `<a href="${escH(n.link)}" target="_blank" rel="noopener" style="display:block;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-left:3px solid ${col};border-radius:12px;padding:14px 16px;margin-bottom:10px;text-decoration:none;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.07)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">
-          <div style="font-size:10px;font-weight:700;color:${col};text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">${escH(n.categoryLabel)} · ${escH(n.source)} · ${timeAgo(n.pubDate)}</div>
-          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.92);line-height:1.4;margin-bottom:6px">${escH(n.title)}</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.5">${escH(n.summary)}</div>
-        </a>`;
-      }).join('');
-
-      el.innerHTML = `
-        <div style="padding:0 0 12px">
-          <div style="font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:800;color:white;margin-bottom:4px">📰 UAE News</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.35)">Aggiornate ${new Date(data.generated).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})} · tradotte in italiano</div>
-        </div>
-        <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none;-ms-overflow-style:none;margin-bottom:8px">${pills}</div>
-        ${cards || '<div style="padding:24px;text-align:center;color:rgba(255,255,255,.3);font-size:13px">Nessuna notizia in questa categoria</div>'}
-        <div style="text-align:center;font-size:10px;color:rgba(255,255,255,.2);padding-top:8px">📡 Gulf News · WAM · Arabian Post · tradotto con AI</div>`;
-    }
-
-    window.setClientNewsCat = function(cat) { currentCat = cat; renderClientNews(cat); };
-    renderClientNews('all');
-
+    allItems = data.items;
+    filteredItems = allItems;
+    window._cnGenerated = data.generated;
+    renderCN();
   } catch(e) {
-    el.innerHTML = `<div style="padding:24px;text-align:center;color:rgba(255,255,255,.3);font-size:13px">⚠️ ${escH ? escH(e.message) : e.message}<br><button onclick="loadClientNews()" style="margin-top:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:white;padding:7px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">Riprova</button></div>`;
+    el.innerHTML = `<div style="padding:24px;text-align:center;color:rgba(255,255,255,.3);font-size:13px">⚠️ ${String(e.message||e)}<br><button onclick="reloadCN()" style="margin-top:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:white;padding:7px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">Riprova</button></div>`;
   }
 }
 
