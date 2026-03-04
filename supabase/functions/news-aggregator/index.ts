@@ -18,7 +18,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 const CORS = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type, x-anthropic-key",
+  "Access-Control-Allow-Headers": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 function parseRSS(xml: string) {
@@ -59,13 +60,20 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    // Chiave Anthropic passata dal frontend nell'header x-anthropic-key
-    const anthropicKey = req.headers.get("x-anthropic-key") || "";
-
     const url = new URL(req.url);
-    const cat = url.searchParams.get("category") || "all";
-    const feeds = cat === "all" ? FEEDS : FEEDS.filter((f) => f.category === cat);
+    let cat = url.searchParams.get("category") || "all";
+    let anthropicKey = "";
 
+    // Legge la chiave dal body JSON (POST) — evita problemi CORS con header custom
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        anthropicKey = body.anthropic_key || "";
+        cat = body.category || cat;
+      } catch { /* body vuoto ok */ }
+    }
+
+    const feeds = cat === "all" ? FEEDS : FEEDS.filter((f) => f.category === cat);
     const results: {
       title: string; summary: string; link: string; pubDate: string;
       source: string; category: string; categoryLabel: string;
