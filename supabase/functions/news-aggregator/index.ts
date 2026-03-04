@@ -38,61 +38,27 @@ function parseRSS(xml: string) {
   return items.slice(0, 5);
 }
 
-async function translateBatch(items: { title: string; desc: string }[], anthropicKey: string) {
-  if (!anthropicKey || !items.length) return items.map(i => ({ title: i.title, summary: i.desc }));
-  const prompt = `Sei un giornalista italiano specializzato negli UAE. Traduci e riassumi in italiano queste notizie. Per ogni notizia: titolo conciso (max 12 parole) + riassunto (max 2 frasi). Rispondi SOLO con array JSON [{title,summary}], nessun altro testo.\n\n${JSON.stringify(items.map((x, i) => ({ i, t: x.title, d: x.desc })))}`;
-  try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": anthropicKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1500, messages: [{ role: "user", content: prompt }] }),
-    });
-    const d = await r.json();
-    const txt = (d.content?.[0]?.text ?? "[]").replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(txt);
-    return Array.isArray(parsed) ? parsed : items.map(i => ({ title: i.title, summary: i.desc }));
-  } catch {
-    return items.map(i => ({ title: i.title, summary: i.desc }));
-  }
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    const url = new URL(req.url);
-    let cat = url.searchParams.get("category") || "all";
-    let anthropicKey = "";
-
-    // Legge la chiave dal body JSON (POST) — evita problemi CORS con header custom
-    if (req.method === "POST") {
-      try {
-        const body = await req.json();
-        anthropicKey = body.anthropic_key || "";
-        cat = body.category || cat;
-      } catch { /* body vuoto ok */ }
-    }
-
-    const feeds = cat === "all" ? FEEDS : FEEDS.filter((f) => f.category === cat);
     const results: {
       title: string; summary: string; link: string; pubDate: string;
       source: string; category: string; categoryLabel: string;
     }[] = [];
 
-    await Promise.all(feeds.map(async (feed) => {
+    await Promise.all(FEEDS.map(async (feed) => {
       try {
         const r = await fetch(feed.url, {
-          headers: { "User-Agent": "InDubai-Portal/1.0" },
-          signal: AbortSignal.timeout(7000),
+          headers: { "User-Agent": "Mozilla/5.0 InDubai-Portal/1.0" },
+          signal: AbortSignal.timeout(8000),
         });
         if (!r.ok) return;
         const raw = parseRSS(await r.text());
-        if (!raw.length) return;
-        const translated = await translateBatch(raw.map((i) => ({ title: i.title, desc: i.desc })), anthropicKey);
-        raw.forEach((item, i) => {
+        raw.forEach((item) => {
           results.push({
-            title: translated[i]?.title || item.title,
-            summary: translated[i]?.summary || item.desc,
+            title: item.title,
+            summary: item.desc,
             link: item.link,
             pubDate: item.pubDate,
             source: feed.source,
