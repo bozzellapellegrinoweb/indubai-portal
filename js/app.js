@@ -503,6 +503,7 @@
         await OneSignal.init({
           appId: '06f381cd-ed3d-4393-a5c2-3f6ef8322661',
           serviceWorkerPath: '/OneSignalSDKWorker.js',
+          serviceWorkerParam: { scope: '/' },
           notifyButton: { enable: false },
           welcomeNotification: { disable: true },
         });

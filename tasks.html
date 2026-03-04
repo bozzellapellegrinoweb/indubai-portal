@@ -58,6 +58,41 @@
     .t-empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
     .t-empty .ei { font-size: 36px; margin-bottom: 12px; }
     .status-sel { padding: 5px 10px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 12px; font-weight: 600; outline: none; cursor: pointer; }
+
+    /* ── MOBILE: bottom sheet per il dettaglio task ── */
+    @media (max-width: 900px) {
+      .tasks-wrap { grid-template-columns: 1fr !important; gap: 12px; }
+      /* Nascondi colonna dettaglio nel flusso normale — usiamo sheet */
+      .tasks-wrap > div:last-child { display: none; }
+
+      /* Bottom sheet overlay */
+      #task-sheet-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,.45); z-index: 300;
+        backdrop-filter: blur(3px);
+      }
+      #task-sheet-overlay.open { display: block; }
+
+      /* Sheet panel */
+      #task-sheet {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        height: 88vh;
+        background: white; border-radius: 20px 20px 0 0;
+        z-index: 301; display: flex; flex-direction: column;
+        transform: translateY(100%);
+        transition: transform .3s cubic-bezier(.4,0,.2,1);
+        overflow: hidden;
+      }
+      #task-sheet.open { transform: translateY(0); }
+
+      /* Handle bar */
+      #task-sheet::before {
+        content: ''; display: block;
+        width: 40px; height: 4px; border-radius: 2px;
+        background: #d1d5db; margin: 12px auto 0;
+        flex-shrink: 0;
+      }
+    }
   </style>
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <link rel="manifest" href="/manifest-admin.json">
@@ -120,6 +155,12 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- Mobile task detail bottom sheet -->
+<div id="task-sheet-overlay" onclick="closeSheet()"></div>
+<div id="task-sheet">
+  <div id="task-sheet-content" style="flex:1;overflow-y:auto;display:flex;flex-direction:column"></div>
 </div>
 
 <!-- Modal nuova task -->
@@ -311,11 +352,29 @@ async function openTask(id) {
   renderList();
   const t = allTasks.find(x => x.id === id);
   if (!t) return;
-  const det = document.getElementById('t-detail');
-  det.style.display = 'flex';
-  det.style.flexDirection = 'column';
-  det.style.alignItems = '';
-  det.style.justifyContent = '';
+
+  const isMobile = window.innerWidth <= 900;
+  let det;
+  if (isMobile) {
+    // Usa bottom sheet su mobile
+    const overlay = document.getElementById('task-sheet-overlay');
+    const sheet = document.getElementById('task-sheet');
+    const content = document.getElementById('task-sheet-content');
+    overlay.classList.add('open');
+    sheet.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    det = content;
+    det.style.display = 'flex';
+    det.style.flexDirection = 'column';
+    det.style.alignItems = '';
+    det.style.justifyContent = '';
+  } else {
+    det = document.getElementById('t-detail');
+    det.style.display = 'flex';
+    det.style.flexDirection = 'column';
+    det.style.alignItems = '';
+    det.style.justifyContent = '';
+  }
   det.innerHTML = '<div class="loading-overlay" style="flex:1"><div class="spinner"></div></div>';
 
   const comments = await sb.db.select('task_comments', {
@@ -420,14 +479,27 @@ async function updateStatus(taskId, newStatus) {
 function closeDetail() {
   selectedId = null;
   renderList();
+  // Chiudi sheet mobile
+  closeSheet();
+  // Reset desktop detail
   const det = document.getElementById('t-detail');
-  det.style.alignItems = 'center';
-  det.style.justifyContent = 'center';
-  det.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">
-    <div style="font-size:32px;margin-bottom:12px">📋</div>
-    <div style="font-size:14px;font-weight:600">Seleziona una task</div>
-    <div style="font-size:12px;margin-top:4px">Clicca su una task per vedere i dettagli</div>
-  </div>`;
+  if (det) {
+    det.style.alignItems = 'center';
+    det.style.justifyContent = 'center';
+    det.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">
+      <div style="font-size:32px;margin-bottom:12px">📋</div>
+      <div style="font-size:14px;font-weight:600">Seleziona una task</div>
+      <div style="font-size:12px;margin-top:4px">Clicca su una task per vedere i dettagli</div>
+    </div>`;
+  }
+}
+
+function closeSheet() {
+  const overlay = document.getElementById('task-sheet-overlay');
+  const sheet = document.getElementById('task-sheet');
+  if (overlay) overlay.classList.remove('open');
+  if (sheet) sheet.classList.remove('open');
+  document.body.style.overflow = '';
 }
 
 function openNewTask() { document.getElementById('modal-task').style.display = 'flex'; }
