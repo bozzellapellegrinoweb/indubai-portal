@@ -30,6 +30,7 @@
   const allNavItems = [
     { id: 'index',      icon: '◈', label: 'Dashboard',     href: '/index.html',      section: 'OVERVIEW' },
     { id: 'tasks',      icon: '✓', label: 'Task',           href: '/tasks.html' },
+    { id: 'notifiche',  icon: '🔔', label: 'Notifiche',     href: '/notifiche.html' },
     { id: 'clients',    icon: '◉', label: 'Clienti',        href: '/clients.html',    section: 'GESTIONE' },
     { id: 'zoho-setup', icon: '',   label: '↳ Setup Zoho',     href: '/zoho-setup.html', roles: ['admin','senior','junior'] },
     { id: 'zoho-vat',   icon: '',   label: '↳ Monitor VAT',    href: '/zoho-vat.html',   roles: ['admin','senior','junior'] },
@@ -43,7 +44,6 @@
     { id: 'reports',    icon: '📊', label: 'Report',         href: '/reports.html',    section: 'ANALYTICS' },
     { id: 'news',       icon: '📰', label: 'UAE News',       href: '/news.html' },
     { id: 'search',     icon: '🔍', label: 'Ricerca',        href: '/search.html' },
-    { id: 'notifiche', icon: '🔔', label: 'Notifiche', href: '/notifiche.html', section: 'GESTIONE' },
     ...(role === 'admin' ? [{ id: 'users', icon: '👥', label: 'Utenti', href: '/users.html', section: 'ADMIN' }] : []),
   ];
 

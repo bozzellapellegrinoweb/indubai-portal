@@ -457,7 +457,7 @@ async function saveTask() {
       recur_day: document.getElementById('t-recurring').checked ? (parseInt(document.getElementById('t-recur-day').value)||null) : null,
     };
     const result = await sb.db.insert('tasks', data);
-    // Notifica sempre — anche se auto-assegnata
+    // Notifica interna (campanella) — sempre, anche se auto-assegnata
     if (data.assigned_to) {
       await sb.db.insert('notifications', {
         user_id: data.assigned_to, type:'task_assigned',
@@ -468,8 +468,8 @@ async function saveTask() {
     closeModal();
     await loadTasks();
     ui.showToast('Task creata!','success');
-    // Push solo se assegnata ad altro utente
-    if (data.assigned_to && data.assigned_to !== myId) {
+    // Push OneSignal — sempre se c'è un assegnatario
+    if (data.assigned_to) {
       pushNotify({
         action: 'send_to_user', user_id: data.assigned_to,
         title: '📋 Nuova task assegnata',
