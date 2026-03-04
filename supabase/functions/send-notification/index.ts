@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const APP_ID = '06f381cd-ed3d-4393-a5c2-3f6ef8322661';
-const API_KEY = 'os_v2_app_a3zydtpnhvbzhjoch5xpqmrgmgknqxwakfqu6yegl2ilnu6gq7ejgzhwn7exafocoy3uythxy775si4eszriemf6fmxuchusjxgvwky';
+const API_KEY = Deno.env.get('ONESIGNAL_API_KEY') || '';
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type', 'Content-Type': 'application/json' };
 
 async function sendPush(payload: object) {
@@ -16,6 +16,7 @@ async function sendPush(payload: object) {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   try {
+    if (!API_KEY) throw new Error('ONESIGNAL_API_KEY secret not configured');
     const { action, title, message, url, user_id, company } = await req.json();
     if (!title || !message) throw new Error('title and message are required');
     const notification: any = { headings: { it: title, en: title }, contents: { it: message, en: message } };
