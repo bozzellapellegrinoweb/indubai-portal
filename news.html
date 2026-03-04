@@ -366,9 +366,11 @@
     document.getElementById('news-count').textContent = 'Caricamento...';
 
     try {
-      const tok = sb.getSession()?.access_token || window.ENV_SUPABASE_ANON_KEY;
       const r = await fetch(FN_URL, {
-        headers: { Authorization: 'Bearer ' + tok },
+        headers: {
+          'apikey': window.ENV_SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + window.ENV_SUPABASE_ANON_KEY,
+        },
       });
       const data = await r.json();
 

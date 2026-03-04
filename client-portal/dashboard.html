@@ -1269,7 +1269,10 @@ async function loadClientNews() {
 
   try {
     const r = await fetch(FN, {
-      headers: { Authorization: 'Bearer ' + window.ENV_SUPABASE_ANON_KEY },
+      headers: {
+        'apikey': window.ENV_SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + window.ENV_SUPABASE_ANON_KEY,
+      },
     });
     const data = await r.json();
     if (!data.ok || !data.items?.length) throw new Error('Nessuna notizia');
