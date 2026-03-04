@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifiche — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <style>
+    .notif-row {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background .15s;
+      background: white;
+    }
+    .notif-row.unread { background: #f0f6ff; }
+    .notif-row:hover { background: #f5f9ff; }
+    .notif-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+    .notif-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+    .notif-row.unread .notif-title { color: #1a3a5c; }
+    .notif-body { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+    .notif-time { font-size: 11px; color: var(--text-muted); }
+    .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #2563a8; flex-shrink: 0; margin-top: 6px; }
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: white; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; }
+    .filter-btn.active { background: #1a3a5c; color: white; border-color: #1a3a5c; }
+    .empty-state { padding: 60px 20px; text-align: center; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="topbar-title">🔔 Notifiche</div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="markAllRead()" id="btn-mark-all">Segna tutte lette</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteAllRead()" style="color:#dc2626">Elimina lette</button>
+      </div>
+    </div>
+    <div class="page-content">
+
+      <!-- Stats -->
+      <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+        <div class="card" style="padding:14px 20px;flex:1;min-width:120px;text-align:center">
+          <div id="stat-unread" style="font-size:28px;font-weight:800;color:#1a3a5c">—</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Non lette</div>
+        </div>
+        <div class="card" style="padding:14px 20px;flex:1;min-width:120px;text-align:center">
+          <div id="stat-today" style="font-size:28px;font-weight:800;color:#059669">—</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Oggi</div>
+        </div>
+        <div class="card" style="padding:14px 20px;flex:1;min-width:120px;text-align:center">
+          <div id="stat-total" style="font-size:28px;font-weight:800;color:#7c3aed">—</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Totali</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="setFilter('all',this)">🌐 Tutte</button>
+        <button class="filter-btn" onclick="setFilter('task_assigned',this)">📋 Task</button>
+        <button class="filter-btn" onclick="setFilter('task_completed',this)">✅ Completate</button>
+        <button class="filter-btn" onclick="setFilter('vat_deadline',this)">📅 VAT</button>
+        <button class="filter-btn" onclick="setFilter('unread',this)">🔵 Non lette</button>
+      </div>
+
+      <!-- List -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="notif-main-list">
+          <div class="empty-state">⏳ Caricamento...</div>
+        </div>
+        <div id="notif-load-more" style="display:none;padding:12px;text-align:center">
+          <button class="btn btn-ghost btn-sm" onclick="loadMore()">Carica altri</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+const PAGE = 50;
+let allNotifs = [], filtered = [], currentFilter = 'all', offset = 0;
+
+const TYPE_ICONS = {
+  task_assigned: '📋', task_comment: '💬', task_completed: '✅',
+  vat_deadline: '📅', payment_failed: '⚠️', statement_missing: '📂',
+  document_uploaded: '📄', default: '🔔'
+};
+
+function escH(s) { return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function timeAgo(d) {
+  const m = Math.floor((Date.now()-new Date(d))/60000);
+  if (m<2) return 'Ora'; if (m<60) return m+'min fa';
+  const h=Math.floor(m/60); if(h<24) return h+'h fa';
+  const days=Math.floor(h/24); if(days<7) return days+'g fa';
+  return new Date(d).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'2-digit'});
+}
+
+async function init() {
+  await sb.requireAuth();
+  await loadAll();
+}
+
+async function loadAll() {
+  const userId = sb.getCurrentUser()?.id;
+  if (!userId) return;
+  const list = document.getElementById('notif-main-list');
+  list.innerHTML = '<div class="empty-state">⏳ Caricamento...</div>';
+  try {
+    allNotifs = await sb.db.select('notifications', {
+      filter: `user_id=eq.${userId}`,
+      order: 'created_at.desc',
+      limit: 200
+    }) || [];
+    updateStats();
+    applyFilter();
+  } catch(e) {
+    list.innerHTML = `<div class="empty-state">⚠️ ${escH(e.message)}</div>`;
+  }
+}
+
+function updateStats() {
+  const today = new Date().toDateString();
+  document.getElementById('stat-unread').textContent = allNotifs.filter(n=>!n.read).length;
+  document.getElementById('stat-today').textContent = allNotifs.filter(n=>new Date(n.created_at).toDateString()===today).length;
+  document.getElementById('stat-total').textContent = allNotifs.length;
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function applyFilter() {
+  if (currentFilter === 'all') filtered = [...allNotifs];
+  else if (currentFilter === 'unread') filtered = allNotifs.filter(n=>!n.read);
+  else filtered = allNotifs.filter(n=>n.type===currentFilter);
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('notif-main-list');
+  const page = filtered.slice(0, PAGE);
+  if (!filtered.length) {
+    list.innerHTML = '<div class="empty-state">🎉 Nessuna notifica qui</div>';
+    document.getElementById('notif-load-more').style.display = 'none';
+    return;
+  }
+  list.innerHTML = page.map(n => `
+    <div class="notif-row ${n.read?'':'unread'}" onclick="handleClick('${n.id}','${escH(n.link||'')}')">
+      <div class="notif-icon">${TYPE_ICONS[n.type]||TYPE_ICONS.default}</div>
+      <div style="flex:1;min-width:0">
+        <div class="notif-title">${escH(n.title)}</div>
+        ${n.body ? `<div class="notif-body">${escH(n.body)}</div>` : ''}
+        <div class="notif-time">${timeAgo(n.created_at)} · ${new Date(n.created_at).toLocaleDateString('it-IT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
+        ${!n.read ? '<div class="notif-dot"></div>' : ''}
+        <button onclick="event.stopPropagation();deleteNotif('${n.id}')" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:0" title="Elimina">✕</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('notif-load-more').style.display = filtered.length > PAGE ? 'block' : 'none';
+}
+
+async function handleClick(id, link) {
+  try { await sb.db.update('notifications', `id=eq.${id}`, { read: true }); } catch(e) {}
+  const n = allNotifs.find(x=>x.id===id);
+  if (n) n.read = true;
+  updateStats(); applyFilter();
+  if (link) window.location.href = link;
+}
+
+async function deleteNotif(id) {
+  try {
+    await sb.db.delete('notifications', `id=eq.${id}`);
+    allNotifs = allNotifs.filter(n=>n.id!==id);
+    updateStats(); applyFilter();
+  } catch(e) { ui.showToast('Errore eliminazione','error'); }
+}
+
+window.markAllRead = async function() {
+  const userId = sb.getCurrentUser()?.id;
+  if (!userId) return;
+  const btn = document.getElementById('btn-mark-all');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    await sb.db.update('notifications', `user_id=eq.${userId}&read=eq.false`, { read: true });
+    allNotifs.forEach(n=>n.read=true);
+    updateStats(); applyFilter();
+    ui.showToast('Tutte segnate come lette ✓','success');
+  } catch(e) { ui.showToast('Errore','error'); }
+  finally { btn.disabled=false; btn.textContent='Segna tutte lette'; }
+};
+
+window.deleteAllRead = async function() {
+  if (!confirm('Eliminare tutte le notifiche già lette?')) return;
+  const userId = sb.getCurrentUser()?.id;
+  try {
+    await sb.db.delete('notifications', `user_id=eq.${userId}&read=eq.true`);
+    allNotifs = allNotifs.filter(n=>!n.read);
+    updateStats(); applyFilter();
+    ui.showToast('Notifiche lette eliminate ✓','success');
+  } catch(e) { ui.showToast('Errore','error'); }
+};
+
+init();
+</script>
+</body>
+</html>

@@ -1091,3 +1091,128 @@ html, body {
   }
   .page-content { padding: 14px; }
 }
+
+/* ============================================================
+   DESKTOP RESPONSIVE — fix layout 900px-1400px
+   ============================================================ */
+
+/* Assicura che il layout principale funzioni sempre */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0; /* prevent overflow */
+  overflow-x: hidden;
+}
+
+/* Topbar sempre flex con spazio */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+.topbar-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* KPI grid responsive */
+@media (min-width: 901px) and (max-width: 1200px) {
+  .kpi-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+@media (min-width: 1201px) {
+  .kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+/* Dashboard grid 2 col su desktop medio */
+@media (min-width: 901px) and (max-width: 1199px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* Tabelle: non overflow su desktop */
+@media (min-width: 901px) {
+  .table-container, .table-wrap {
+    overflow-x: auto;
+  }
+  table {
+    min-width: 600px;
+  }
+}
+
+/* Page content max-width leggibile su wide screen */
+@media (min-width: 1400px) {
+  .page-content {
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+}
+
+/* Fix topbar-actions su schermi medi */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .topbar-actions .btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .topbar-actions .btn span {
+    display: none; /* nascondi testo lungo */
+  }
+}
+
+/* Notif panel: non esca dallo schermo */
+#notif-panel {
+  max-width: calc(100vw - 40px);
+  right: 0;
+}
+
+/* Sidebar sempre visibile su desktop */
+@media (min-width: 901px) {
+  .sidebar {
+    transform: translateX(0) !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+  }
+  .main-content {
+    margin-left: var(--sidebar-w) !important;
+  }
+  .hamburger {
+    display: none !important;
+  }
+  .sidebar-overlay {
+    display: none !important;
+  }
+}
+
+/* Card grid generiche */
+@media (min-width: 901px) {
+  [style*="grid-template-columns: 1fr 1fr"],
+  .two-col-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Fix overflow nelle pagine con tab */
+.tab-panel {
+  overflow-x: auto;
+}

@@ -23,7 +23,7 @@
     admin:      null, // null = all pages
     senior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search','news'],
     junior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search','news'],
-    mini_admin: ['tasks','clients','documents','search','news'],
+    mini_admin: ['tasks','clients','documents','search','news','notifiche'],
   };
   const allowed = ROLE_PAGES[role]; // null = no restriction
 
@@ -43,6 +43,7 @@
     { id: 'reports',    icon: '📊', label: 'Report',         href: '/reports.html',    section: 'ANALYTICS' },
     { id: 'news',       icon: '📰', label: 'UAE News',       href: '/news.html' },
     { id: 'search',     icon: '🔍', label: 'Ricerca',        href: '/search.html' },
+    { id: 'notifiche', icon: '🔔', label: 'Notifiche', href: '/notifiche.html', section: 'GESTIONE' },
     ...(role === 'admin' ? [{ id: 'users', icon: '👥', label: 'Utenti', href: '/users.html', section: 'ADMIN' }] : []),
   ];
 
@@ -168,7 +169,10 @@
         ">
           <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
             <div style="font-size:14px;font-weight:700">Notifiche</div>
-            <button onclick="markAllRead()" style="font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;font-weight:600">Segna tutte lette</button>
+            <div style="display:flex;gap:12px;align-items:center">
+              <button onclick="markAllRead()" style="font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;font-weight:600">Segna lette</button>
+              <a href="/notifiche.html" style="font-size:12px;color:#1a3a5c;font-weight:700;text-decoration:none">Vedi tutte →</a>
+            </div>
           </div>
           <div id="notif-list" style="max-height:400px;overflow-y:auto">
             <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">Caricamento...</div>
@@ -294,7 +298,7 @@
     'index': 'Dashboard', 'tasks': 'Task', 'clients': 'Clienti',
     'documents': 'Documenti', 'vat': 'VAT Register', 'corp-tax': 'Corporate Tax',
     'payments': 'Abbonamenti', 'statements': 'Estratti', 'onboarding': 'Onboarding',
-    'reports': 'Report', 'news': 'UAE News', 'search': 'Ricerca', 'users': 'Utenti',
+    'reports': 'Report', 'news': 'UAE News', 'search': 'Ricerca', 'users': 'Utenti', 'notifiche': 'Notifiche',
     'affinitas': 'Affinitas', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
     'client-detail': 'Cliente',
   };

@@ -457,17 +457,18 @@ async function saveTask() {
       recur_day: document.getElementById('t-recurring').checked ? (parseInt(document.getElementById('t-recur-day').value)||null) : null,
     };
     const result = await sb.db.insert('tasks', data);
-    if (data.assigned_to && data.assigned_to !== myId) {
+    // Notifica sempre — anche se auto-assegnata
+    if (data.assigned_to) {
       await sb.db.insert('notifications', {
         user_id: data.assigned_to, type:'task_assigned',
-        title: 'Nuova task: '+title, body: data.description?.substring(0,80)||'',
+        title: '📋 Nuova task: '+title, body: data.description?.substring(0,80)||'',
         link:'/tasks.html', entity_type:'task', entity_id:result?.[0]?.id
       }).catch(()=>{});
     }
     closeModal();
     await loadTasks();
     ui.showToast('Task creata!','success');
-    // Push interno all'operatore assegnato
+    // Push solo se assegnata ad altro utente
     if (data.assigned_to && data.assigned_to !== myId) {
       pushNotify({
         action: 'send_to_user', user_id: data.assigned_to,
