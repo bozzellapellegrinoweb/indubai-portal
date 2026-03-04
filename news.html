@@ -368,7 +368,10 @@
     try {
       const tok = sb.getSession()?.access_token || window.ENV_SUPABASE_ANON_KEY;
       const r = await fetch(FN_URL, {
-        headers: { Authorization: 'Bearer ' + tok }
+        headers: {
+          Authorization: 'Bearer ' + tok,
+          'x-anthropic-key': window.ENV_ANTHROPIC_KEY || '',
+        }
       });
       const data = await r.json();
 

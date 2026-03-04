@@ -1268,7 +1268,10 @@ async function loadClientNews() {
   el.innerHTML = '<div style="text-align:center;padding:32px;color:rgba(255,255,255,.4);font-size:13px">⏳ Caricamento notizie UAE...</div>';
 
   try {
-    const r = await fetch(FN, { headers: { Authorization: 'Bearer ' + window.ENV_SUPABASE_ANON_KEY } });
+    const r = await fetch(FN, { headers: { 
+      Authorization: 'Bearer ' + window.ENV_SUPABASE_ANON_KEY,
+      'x-anthropic-key': window.ENV_ANTHROPIC_KEY || '',
+    } });
     const data = await r.json();
     if (!data.ok || !data.items?.length) throw new Error('Nessuna notizia');
 
