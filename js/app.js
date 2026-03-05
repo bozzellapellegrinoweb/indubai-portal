@@ -507,7 +507,8 @@
           notifyButton: { enable: false },
           welcomeNotification: { disable: true },
         });
-        await OneSignal.login(profile.id);
+        // NON usare OneSignal.login() - causa invalid_aliases errors
+        // Tags solo, senza external_id
         await OneSignal.User.addTag('role', profile.role || 'staff');
         await OneSignal.User.addTag('staff', 'true');
         var perm = OneSignal.Notifications.permissionNative;
