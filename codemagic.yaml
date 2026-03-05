@@ -14,7 +14,7 @@ workflows:
         bundle_identifier: it.indubai.clientportal
       vars:
         BUNDLE_ID: it.indubai.clientportal
-        XCODE_WORKSPACE: ios/App/App.xcodeproj/project.xcworkspace
+        XCODE_WORKSPACE: ios/App/App.xcodeproj
         XCODE_SCHEME: App
       node: 22
 
@@ -36,7 +36,7 @@ workflows:
         script: |
           xcode-project use-profiles
           xcodebuild \
-            -workspace "$XCODE_WORKSPACE" \
+            -project "$XCODE_WORKSPACE" \
             -scheme "$XCODE_SCHEME" \
             -configuration Release \
             -archivePath build/App.xcarchive \
@@ -46,7 +46,8 @@ workflows:
       - name: Export IPA
         script: |
           xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
+            --project "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME" \
             --config Release
 
     artifacts:
