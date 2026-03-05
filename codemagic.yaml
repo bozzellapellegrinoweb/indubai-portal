@@ -26,6 +26,8 @@ workflows:
         script: |
           npx cap add ios || true
           npx cap sync ios
+          cd ios/App && pod install && cd ../..
+
 
       - name: Set bundle ID
         script: |
