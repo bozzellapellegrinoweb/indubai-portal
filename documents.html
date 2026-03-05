@@ -951,24 +951,41 @@ const DRV = (() => {
       if (isImg) {
         body.innerHTML = `<img src="${url}" style="max-width:100%;max-height:80vh;object-fit:contain;display:block;padding:12px">`;
       } else {
-        // PDF/Doc: fetch come blob + object tag — funziona in tutti i browser senza CSP issues
+        // PDF: renderizza con PDF.js (funziona ovunque, inline, no CSP issues)
         const r2 = await fetch(url);
         if (!r2.ok) throw new Error('Download fallito: HTTP ' + r2.status);
-        const blob = await r2.blob();
-        const blobUrl = URL.createObjectURL(blob);
+        const arrayBuf = await r2.arrayBuffer();
         body.style.padding = '0';
         body.style.display = 'block';
-        body.innerHTML = `<object
-          data="${blobUrl}"
-          type="application/pdf"
-          style="width:100%;height:78vh;border:none;border-radius:0 0 16px 16px"
-        >
-          <div style="padding:30px;text-align:center;color:var(--text-muted)">
-            <div style="font-size:32px;margin-bottom:12px">📄</div>
-            <div style="font-weight:600;margin-bottom:8px">Anteprima non disponibile</div>
-            <button class="btn btn-accent" onclick="window.open('${blobUrl}','_blank')">↗ Apri nel browser</button>
-          </div>
-        </object>`;
+        body.style.alignItems = 'flex-start';
+        body.style.justifyContent = 'flex-start';
+        body.innerHTML = '<canvas id="pdf-canvas" style="width:100%;display:block"></canvas>';
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+        // Carica PDF.js se non già presente
+        if (!window.pdfjsLib) {
+          await new Promise((res, rej) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+            s.onload = res; s.onerror = rej;
+            document.head.appendChild(s);
+          });
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuf }).promise;
+        // Renderizza tutte le pagine in sequenza
+        body.innerHTML = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const vp = page.getViewport({ scale: 1.5 });
+          const cv = document.createElement('canvas');
+          cv.width = vp.width;
+          cv.height = vp.height;
+          cv.style.cssText = 'width:100%;display:block;margin-bottom:4px';
+          body.appendChild(cv);
+          await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+        }
       }
     } catch(e) {
       body.innerHTML = `<div style="padding:30px;color:var(--danger);text-align:center">Errore: ${e.message}</div>`;
