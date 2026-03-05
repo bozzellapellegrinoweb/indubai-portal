@@ -185,7 +185,7 @@
 
   <script src="../js/supabase.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    // init immediato — DOM già pronto perché script è in fondo al body
       const sess = sb.getSession();
       if (sess?.access_token) {
         window.location.href = 'dashboard.html';
