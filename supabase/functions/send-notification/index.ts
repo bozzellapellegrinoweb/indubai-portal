@@ -12,9 +12,10 @@ async function sendPush(payload: object) {
   const r = await fetch('https://api.onesignal.com/notifications', {
     method: 'POST',
     headers: { 'Authorization': 'Key ' + API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ app_id: APP_ID, target_channel: 'push', ...payload }),
+    body: JSON.stringify({ app_id: APP_ID, ...payload }),
   });
   const text = await r.text();
+  console.log('OneSignal response:', text);
   try { return JSON.parse(text); } catch { return { error: text }; }
 }
 
@@ -24,6 +25,8 @@ serve(async (req) => {
     if (!API_KEY) throw new Error('ONESIGNAL_API_KEY secret not configured');
 
     const { action, title, message, url, user_id, company } = await req.json();
+    console.log('Received:', { action, title, user_id, company });
+    
     if (!title || !message) throw new Error('title and message are required');
 
     const notification: any = {
@@ -35,7 +38,7 @@ serve(async (req) => {
     let data;
 
     if (action === 'send_to_user' && user_id) {
-      // Usa i tag client_id - questo è quello che i device hanno registrato
+      // Filtra per tag client_id
       data = await sendPush({
         ...notification,
         filters: [
@@ -58,9 +61,22 @@ serve(async (req) => {
       throw new Error('Invalid action or missing target');
     }
 
-    if (data?.errors) throw new Error(JSON.stringify(data.errors));
+    console.log('Result:', JSON.stringify(data));
+    
+    // OneSignal errors sono dentro data.errors
+    if (data?.errors) {
+      // Se no recipients trovati non è un errore bloccante
+      if (data.recipients === 0) {
+        return new Response(
+          JSON.stringify({ ok: true, id: data.id, recipients: 0, warning: 'Nessun subscriber trovato per questo cliente' }),
+          { headers: CORS }
+        );
+      }
+      throw new Error(JSON.stringify(data.errors));
+    }
+    
     return new Response(
-      JSON.stringify({ ok: true, id: data?.id, recipients: data?.recipients }),
+      JSON.stringify({ ok: true, id: data?.id, recipients: data?.recipients ?? 0 }),
       { headers: CORS }
     );
   } catch (e: any) {
