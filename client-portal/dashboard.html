@@ -1182,19 +1182,33 @@ async function initOneSignalNative(userId, companyName) {
     // Listener per token APNs
     PushNotifications.addListener('registration', async function(token) {
       console.log('APNs token:', token.value);
-      // Invia token a OneSignal via REST API
       try {
-        await fetch('https://onesignal.com/api/v1/players', {
+        // Step 1: crea/aggiorna il player
+        const res = await fetch('https://onesignal.com/api/v1/players', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             app_id: '06f381cd-ed3d-4393-a5c2-3f6ef8322661',
-            device_type: 0, // iOS
+            device_type: 0,
             identifier: token.value,
-            external_user_id: userId,
             tags: { company: companyName, client_id: userId }
           })
         });
+        const data = await res.json();
+        const playerId = data.id;
+        console.log('OneSignal player_id:', playerId);
+
+        // Step 2: associa external_user_id via API separata
+        if (playerId) {
+          await fetch('https://onesignal.com/api/v1/players/' + playerId + '/identify', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              app_id: '06f381cd-ed3d-4393-a5c2-3f6ef8322661',
+              external_user_id: userId
+            })
+          });
+        }
       } catch(e) { console.warn('OneSignal register:', e); }
     });
 
