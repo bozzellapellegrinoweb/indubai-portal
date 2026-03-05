@@ -10,11 +10,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="InDubai">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="manifest" href="/client-portal/manifest.json">
+  <link rel="manifest" href="manifest.json">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <!-- OneSignal Push -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-  <script src="/js/config.js"></script>
+  <script src="../js/config.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -608,7 +608,7 @@
   </main>
 </div>
 
-<script src="/js/supabase.js"></script>
+<script src="../js/supabase.js"></script>
 <script>
 const SB_URL = window.ENV_SUPABASE_URL;
 const SB_KEY = window.ENV_SUPABASE_ANON_KEY;
@@ -623,7 +623,7 @@ async function GET(path) {
 async function doLogout() {
   try { await fetch(SB_URL + '/auth/v1/logout', { method: 'POST', headers: H() }); } catch {}
   localStorage.removeItem('indubai_session');
-  window.location.href = '/client-portal/login.html';
+  window.location.href = 'login.html';
 }
 
 let clientData = null;
@@ -677,7 +677,7 @@ async function loadVisas(clientId) {
 
 async function init() {
   const sess = sb.getSession();
-  if (!sess?.access_token) { window.location.href = '/client-portal/login.html'; return; }
+  if (!sess?.access_token) { window.location.href = 'login.html'; return; }
 
   try {
     // Get client_id

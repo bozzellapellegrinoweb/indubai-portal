@@ -2,11 +2,8 @@
   "appId": "it.indubai.clientportal",
   "appName": "InDubai",
   "webDir": "client-portal",
-  "server": {
-    "url": "https://portal.indubai.it/client-portal",
-    "cleartext": false,
-    "androidScheme": "https",
-    "iosScheme": "https"
+  "ios": {
+    "contentInset": "always"
   },
   "plugins": {
     "PushNotifications": {
