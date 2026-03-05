@@ -10,40 +10,26 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, 'SF Pro Display', BlinkMacSystemFont, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       background: #0f1e35;
       min-height: 100vh;
-      min-height: -webkit-fill-available;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom);
+      padding: 20px;
+      padding-top: max(20px, env(safe-area-inset-top));
+      padding-bottom: max(20px, env(safe-area-inset-bottom));
       -webkit-font-smoothing: antialiased;
     }
-
-    /* Background pattern */
     body::before {
       content: '';
       position: fixed; inset: 0;
-      background:
-        radial-gradient(ellipse at 20% 50%, rgba(201,168,76,.12) 0%, transparent 60%),
-        radial-gradient(ellipse at 80% 20%, rgba(26,58,92,.4) 0%, transparent 50%);
+      background: radial-gradient(ellipse at 20% 50%, rgba(201,168,76,.12) 0%, transparent 60%);
       pointer-events: none;
     }
-
-    .container {
-      width: 100%;
-      max-width: 390px;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* Logo */
-    .logo-wrap {
-      text-align: center;
-      margin-bottom: 40px;
-    }
+    .container { width: 100%; max-width: 390px; position: relative; z-index: 1; }
+    .logo-wrap { text-align: center; margin-bottom: 40px; }
     .logo-icon {
       width: 72px; height: 72px;
       background: linear-gradient(135deg, #1a3a5c, #0f1e35);
@@ -52,110 +38,46 @@
       display: flex; align-items: center; justify-content: center;
       margin: 0 auto 16px;
       font-size: 32px;
-      box-shadow: 0 8px 32px rgba(0,0,0,.4);
     }
-    .logo-text {
-      font-size: 26px;
-      font-weight: 800;
-      color: white;
-      letter-spacing: -.5px;
-    }
+    .logo-text { font-size: 26px; font-weight: 800; color: white; }
     .logo-text span { color: #c9a84c; }
-    .logo-sub {
-      font-size: 13px;
-      color: rgba(255,255,255,.45);
-      margin-top: 4px;
-      font-weight: 400;
-      letter-spacing: .3px;
-    }
-
-    /* Card */
+    .logo-sub { font-size: 13px; color: rgba(255,255,255,.45); margin-top: 4px; }
     .card {
       background: rgba(255,255,255,.07);
       border: 1px solid rgba(255,255,255,.1);
       border-radius: 20px;
       padding: 28px 24px;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
     }
-
-    .card-title {
-      font-size: 17px;
-      font-weight: 600;
-      color: white;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-
-    /* Fields */
+    .card-title { font-size: 17px; font-weight: 600; color: white; margin-bottom: 20px; text-align: center; }
     .field { margin-bottom: 14px; }
-    .field-label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      color: rgba(255,255,255,.45);
-      text-transform: uppercase;
-      letter-spacing: .6px;
-      margin-bottom: 6px;
-    }
+    .field-label { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
     .field-input {
-      width: 100%;
-      padding: 14px 16px;
+      width: 100%; padding: 14px 16px;
       background: rgba(255,255,255,.08);
       border: 1px solid rgba(255,255,255,.12);
       border-radius: 12px;
-      font-size: 16px;
-      font-family: inherit;
-      color: white;
-      outline: none;
-      -webkit-appearance: none;
-      transition: border-color .2s, background .2s;
+      font-size: 16px; font-family: inherit; color: white;
+      outline: none; -webkit-appearance: none;
     }
     .field-input::placeholder { color: rgba(255,255,255,.3); }
-    .field-input:focus {
-      border-color: rgba(201,168,76,.6);
-      background: rgba(255,255,255,.12);
-    }
-
-    /* Button */
+    .field-input:focus { border-color: rgba(201,168,76,.6); background: rgba(255,255,255,.12); }
     .btn-login {
-      width: 100%;
-      padding: 15px;
-      margin-top: 8px;
-      background: #c9a84c;
-      border: none;
-      border-radius: 14px;
-      font-size: 16px;
-      font-weight: 700;
-      font-family: inherit;
-      color: #0f1e35;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: opacity .15s, transform .1s;
+      width: 100%; padding: 15px; margin-top: 8px;
+      background: #c9a84c; border: none; border-radius: 14px;
+      font-size: 16px; font-weight: 700; font-family: inherit;
+      color: #0f1e35; cursor: pointer;
     }
-    .btn-login:active { opacity: .8; transform: scale(.98); }
     .btn-login:disabled { opacity: .5; }
-
-    /* Alert */
     .alert {
       background: rgba(255,59,48,.12);
       border: 1px solid rgba(255,59,48,.3);
       border-radius: 10px;
       padding: 10px 14px;
-      font-size: 13px;
-      color: #ff6b6b;
+      font-size: 13px; color: #ff6b6b;
       margin-bottom: 14px;
-      display: none;
-      text-align: center;
+      display: none; text-align: center;
     }
-
-    /* Footer */
-    .footer {
-      text-align: center;
-      margin-top: 24px;
-      font-size: 12px;
-      color: rgba(255,255,255,.25);
-    }
+    .footer { text-align: center; margin-top: 24px; font-size: 12px; color: rgba(255,255,255,.25); }
   </style>
 </head>
 <body>
@@ -165,7 +87,6 @@
       <div class="logo-text">In<span>Dubai</span></div>
       <div class="logo-sub">Area Clienti Riservata</div>
     </div>
-
     <div class="card">
       <div class="card-title">Accedi al tuo portale</div>
       <div class="alert" id="alert"></div>
@@ -177,73 +98,69 @@
         <label class="field-label" for="password">Password</label>
         <input class="field-input" type="password" id="password" placeholder="••••••••" autocomplete="current-password">
       </div>
-      <button class="btn-login" id="btn" onclick="doLogin()">Accedi</button>
+      <button class="btn-login" id="btn">Accedi</button>
     </div>
-
     <div class="footer">© InDubai — Portale sicuro e riservato</div>
   </div>
 
   <script src="../js/supabase.js"></script>
   <script>
-    // init immediato — DOM già pronto perché script è in fondo al body
-      const sess = sb.getSession();
-      if (sess?.access_token) {
+    (function() {
+      var sess = sb.getSession();
+      if (sess && sess.access_token) {
         window.location.href = 'dashboard.html';
         return;
       }
 
-      const emailEl = document.getElementById('email');
-      const passEl  = document.getElementById('password');
-      const btn     = document.getElementById('btn');
-      const alertEl = document.getElementById('alert');
+      var emailEl = document.getElementById('email');
+      var passEl  = document.getElementById('password');
+      var btn     = document.getElementById('btn');
+      var alertEl = document.getElementById('alert');
 
-      function showAlert(msg) { alertEl.textContent = msg; alertEl.style.display = 'block'; }
+      function showAlert(msg) {
+        alertEl.textContent = msg;
+        alertEl.style.display = 'block';
+      }
 
-      async function doLogin() {
-        const email = emailEl.value.trim();
-        const pass  = passEl.value;
+      function doLogin() {
+        var email = emailEl.value.trim();
+        var pass  = passEl.value;
         if (!email || !pass) { showAlert('Inserisci email e password'); return; }
 
         btn.textContent = 'Accesso in corso...';
         btn.disabled = true;
         alertEl.style.display = 'none';
 
-        try {
-          const session = await sb.signIn(email, pass);
-
-          const profileRes = await fetch(window.ENV_SUPABASE_URL + '/rest/v1/profiles?id=eq.' + session.user.id + '&select=role', {
+        sb.signIn(email, pass).then(function(session) {
+          return fetch(window.ENV_SUPABASE_URL + '/rest/v1/profiles?id=eq.' + session.user.id + '&select=role', {
             headers: { apikey: window.ENV_SUPABASE_ANON_KEY, Authorization: 'Bearer ' + session.access_token }
+          }).then(function(r) { return r.json(); }).then(function(profiles) {
+            var role = profiles && profiles[0] && profiles[0].role;
+            if (role && role !== 'client') {
+              localStorage.removeItem('indubai_session');
+              showAlert('Accesso riservato ai clienti.');
+              btn.textContent = 'Accedi';
+              btn.disabled = false;
+              return;
+            }
+            window.location.href = 'dashboard.html';
           });
-          const profiles = await profileRes.json();
-          const role = profiles?.[0]?.role;
-
-          if (role && role !== 'client') {
-            try { await fetch(window.ENV_SUPABASE_URL + '/auth/v1/logout', {method:'POST', headers:{apikey:window.ENV_SUPABASE_ANON_KEY, Authorization:'Bearer '+session.access_token}}); } catch{}
-            localStorage.removeItem('indubai_session');
-            showAlert('Accesso riservato ai clienti. Usa il portale gestionale.');
-            btn.textContent = 'Accedi';
-            btn.disabled = false;
-            return;
-          }
-
-          window.location.href = 'dashboard.html';
-        } catch(e) {
-          const msg = e.message || '';
-          if (msg.includes('Invalid login') || msg.includes('invalid_credentials')) {
+        }).catch(function(e) {
+          var msg = e.message || '';
+          if (msg.indexOf('Invalid login') >= 0 || msg.indexOf('invalid_credentials') >= 0) {
             showAlert('Email o password non corretti.');
           } else {
             showAlert('Errore: ' + msg);
           }
           btn.textContent = 'Accedi';
           btn.disabled = false;
-        }
+        });
       }
 
-      window.doLogin = doLogin;
       btn.addEventListener('click', doLogin);
-      passEl.addEventListener('keydown', e => e.key === 'Enter' && doLogin());
-      emailEl.addEventListener('keydown', e => e.key === 'Enter' && passEl.focus());
-    });
+      passEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
+      emailEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') passEl.focus(); });
+    })();
   </script>
 </body>
 </html>
