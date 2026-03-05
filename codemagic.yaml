@@ -16,6 +16,7 @@ workflows:
         BUNDLE_ID: it.indubai.clientportal
         XCODE_WORKSPACE: ios/App/App.xcodeproj
         XCODE_SCHEME: App
+        APP_STORE_APP_ID: "6743720585"
       node: 22
 
     scripts:
@@ -29,11 +30,10 @@ workflows:
       - name: Set bundle ID and version
         script: |
           cd ios/App
-          # Build number incrementale (usato da Apple internamente)
-          BUILD_NUMBER=$(($(date +%s) - 1700000000))
-          # Marketing version leggibile 1.0.x
-          PATCH=$(($BUILD_NUMBER % 1000))
-          xcrun agvtool new-marketing-version "1.0.$PATCH"
+          # Prendi l'ultimo build number da TestFlight e incrementa
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" 2>/dev/null || echo "1")
+          BUILD_NUMBER=$((LATEST + 1))
+          xcrun agvtool new-marketing-version "1.0.$BUILD_NUMBER"
           /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" App/Info.plist
 
@@ -80,6 +80,7 @@ workflows:
       vars:
         XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
+        APP_STORE_APP_ID: "6743720585"
       node: 22
 
     scripts:
