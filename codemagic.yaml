@@ -14,7 +14,7 @@ workflows:
         bundle_identifier: it.indubai.clientportal
       vars:
         BUNDLE_ID: it.indubai.clientportal
-        XCODE_WORKSPACE: ios/App/App.xcworkspace
+        XCODE_WORKSPACE: ios/App/App.xcodeproj/project.xcworkspace
         XCODE_SCHEME: App
       node: 22
 
@@ -23,10 +23,7 @@ workflows:
         script: npm install
 
       - name: Capacitor sync
-        script: |
-          npx cap add ios || true
-          npx cap sync ios
-          cd ios/App && pod install && cd ../..
+        script: npx cap sync ios
 
 
       - name: Set bundle ID
