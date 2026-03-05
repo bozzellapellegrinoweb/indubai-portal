@@ -951,15 +951,24 @@ const DRV = (() => {
       if (isImg) {
         body.innerHTML = `<img src="${url}" style="max-width:100%;max-height:80vh;object-fit:contain;display:block;padding:12px">`;
       } else {
-        // PDF: usa Google Docs Viewer come proxy — funziona con URL pubblici firmati
-        const encoded = encodeURIComponent(url);
+        // PDF/Doc: fetch come blob + object tag — funziona in tutti i browser senza CSP issues
+        const r2 = await fetch(url);
+        if (!r2.ok) throw new Error('Download fallito: HTTP ' + r2.status);
+        const blob = await r2.blob();
+        const blobUrl = URL.createObjectURL(blob);
         body.style.padding = '0';
         body.style.display = 'block';
-        body.innerHTML = `<iframe
-          src="https://docs.google.com/viewer?url=${encoded}&embedded=true"
+        body.innerHTML = `<object
+          data="${blobUrl}"
+          type="application/pdf"
           style="width:100%;height:78vh;border:none;border-radius:0 0 16px 16px"
-          allowfullscreen
-        ></iframe>`;
+        >
+          <div style="padding:30px;text-align:center;color:var(--text-muted)">
+            <div style="font-size:32px;margin-bottom:12px">📄</div>
+            <div style="font-weight:600;margin-bottom:8px">Anteprima non disponibile</div>
+            <button class="btn btn-accent" onclick="window.open('${blobUrl}','_blank')">↗ Apri nel browser</button>
+          </div>
+        </object>`;
       }
     } catch(e) {
       body.innerHTML = `<div style="padding:30px;color:var(--danger);text-align:center">Errore: ${e.message}</div>`;
