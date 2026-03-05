@@ -1140,6 +1140,13 @@ function renderAll() {} // placeholder
 
 // ── ONESIGNAL PUSH ──
 function initOneSignal(userId, companyName) {
+  // Capacitor nativo (app iOS/Android)
+  const isNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  if (isNative) {
+    initOneSignalNative(userId, companyName);
+    return;
+  }
+  // Web fallback
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     try {
@@ -1154,11 +1161,66 @@ function initOneSignal(userId, companyName) {
       await OneSignal.User.addTag('company', companyName);
       await OneSignal.User.addTag('client_id', userId);
       var perm = OneSignal.Notifications.permissionNative;
-      if (perm === 'default') {
-        setTimeout(showPushPrompt, 3000);
-      }
-    } catch(e) { console.warn('OneSignal:', e); }
+      if (perm === 'default') setTimeout(showPushPrompt, 3000);
+    } catch(e) { console.warn('OneSignal web:', e); }
   });
+}
+
+async function initOneSignalNative(userId, companyName) {
+  try {
+    const { PushNotifications } = window.Capacitor.Plugins;
+    if (!PushNotifications) return;
+
+    // Chiedi permesso
+    const perm = await PushNotifications.checkPermissions();
+    if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
+      setTimeout(showPushPrompt, 2000);
+    } else if (perm.receive === 'granted') {
+      await registerNativePush(userId, companyName);
+    }
+
+    // Listener per token APNs
+    PushNotifications.addListener('registration', async function(token) {
+      console.log('APNs token:', token.value);
+      // Invia token a OneSignal via REST API
+      try {
+        await fetch('https://onesignal.com/api/v1/players', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            app_id: '06f381cd-ed3d-4393-a5c2-3f6ef8322661',
+            device_type: 0, // iOS
+            identifier: token.value,
+            external_user_id: userId,
+            tags: { company: companyName, client_id: userId }
+          })
+        });
+      } catch(e) { console.warn('OneSignal register:', e); }
+    });
+
+    PushNotifications.addListener('registrationError', function(err) {
+      console.warn('Push registration error:', err);
+    });
+
+    PushNotifications.addListener('pushNotificationReceived', function(notification) {
+      console.log('Push received:', notification);
+    });
+
+    PushNotifications.addListener('pushNotificationActionPerformed', function(action) {
+      if (action.notification?.data?.url) {
+        window.location.href = action.notification.data.url;
+      }
+    });
+
+  } catch(e) { console.warn('OneSignal native:', e); }
+}
+
+async function registerNativePush(userId, companyName) {
+  try {
+    const { PushNotifications } = window.Capacitor.Plugins;
+    await PushNotifications.requestPermissions();
+    await PushNotifications.register();
+  } catch(e) { console.warn('register push:', e); }
 }
 function showPushPrompt() {
   if (document.getElementById('push-prompt')) return;
@@ -1173,10 +1235,16 @@ function showPushPrompt() {
 }
 window.acceptPush = function() {
   dismissPush();
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OS) {
-    try { await OS.Notifications.requestPermission(); } catch(e) {}
-  });
+  const isNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  if (isNative) {
+    const userId = sb.getSession()?.user?.id;
+    if (userId) registerNativePush(userId, clientData?.company_name || '');
+  } else {
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OS) {
+      try { await OS.Notifications.requestPermission(); } catch(e) {}
+    });
+  }
 };
 window.dismissPush = function() {
   var el = document.getElementById('push-prompt');
