@@ -289,7 +289,7 @@
     .move-opt:last-child { border-bottom: none; }
     .move-opt:hover { background: var(--surface2); }
     .move-opt.selected { background: #e8f0fe; color: var(--primary); font-weight: 600; }
-    .move-opt-cur { opacity: .5; cursor: default; pointer-events: none; }
+    .move-opt-cur { opacity: .5; cursor: default; }
   </style>
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <link rel="manifest" href="/manifest-admin.json">
@@ -884,6 +884,7 @@ const DRV = (() => {
     document.getElementById('m-move-filename').textContent = name;
     document.getElementById('m-move-list').innerHTML = dirEls || '<div style="padding:12px;color:var(--text-muted)">Nessuna cartella</div>';
     document.getElementById('m-move-dest').value = '';
+    document.getElementById('m-move-confirm').disabled = true;
     document.getElementById('m-move').style.display = 'flex';
   }
 
@@ -891,6 +892,8 @@ const DRV = (() => {
     document.querySelectorAll('.move-opt').forEach(e => e.classList.remove('selected'));
     el.classList.add('selected');
     document.getElementById('m-move-dest').value = el.dataset.folder;
+    // Abilita bottone Sposta
+    document.getElementById('m-move-confirm').disabled = false;
   }
 
   async function doMoveFile() {
@@ -935,23 +938,26 @@ const DRV = (() => {
     }
 
     try {
-      // Genera signed URL (valido 60 min) — necessario per PDF in iframe su Chrome/Safari
+      // Signed URL valido 60 min
       const signRes = await fetch(`${SB}/storage/v1/object/sign/${BKT}/${sp}`, {
         method: 'POST',
         headers: { ...H(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ expiresIn: 3600 })
       });
-      if (!signRes.ok) throw new Error('Sign URL failed: HTTP ' + signRes.status);
+      if (!signRes.ok) throw new Error('HTTP ' + signRes.status);
       const { signedURL } = await signRes.json();
       const url = `${SB}/storage/v1${signedURL}`;
 
       if (isImg) {
+        // Immagini: mostrate inline nel modal
         body.innerHTML = `<img src="${url}" style="max-width:100%;max-height:80vh;object-fit:contain;display:block;padding:12px">`;
       } else {
-        body.innerHTML = `<iframe src="${url}#toolbar=1&view=FitH" style="width:100%;height:78vh;border:none;border-radius:8px"></iframe>`;
+        // PDF/Doc: apri nel viewer nativo del browser in nuova scheda
+        modal.style.display = 'none';
+        window.open(url, '_blank');
       }
     } catch(e) {
-      body.innerHTML = `<div style="padding:30px;color:var(--danger);text-align:center">Errore anteprima: ${e.message}</div>`;
+      body.innerHTML = `<div style="padding:30px;color:var(--danger);text-align:center">Errore: ${e.message}</div>`;
     }
   }
 
@@ -982,7 +988,7 @@ document.addEventListener('DOMContentLoaded', () => DRV.boot());
     </div>
     <div class="m-ft">
       <button class="btn btn-ghost" onclick="document.getElementById('m-move').style.display='none'">Annulla</button>
-      <button class="btn btn-accent" onclick="doMoveFile()">↪ Sposta</button>
+      <button id="m-move-confirm" class="btn btn-accent" onclick="doMoveFile()" disabled>↪ Sposta</button>
     </div>
   </div>
 </div>
