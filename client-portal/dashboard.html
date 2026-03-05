@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>InDubai — Il tuo Portale</title>
   <meta name="theme-color" content="#0f1e35">
   <meta name="mobile-web-app-capable" content="yes">
@@ -52,37 +52,18 @@
       min-height: 100vh;
     }
 
-    /* ── SAFE AREA TOP: bg esteso sopra header ── */
-    body::before {
-      content: '';
-      position: fixed; top: 0; left: 0; right: 0;
-      height: env(safe-area-inset-top, 0px);
-      background: rgba(10,22,40,.96);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      z-index: 101;
-      pointer-events: none;
-    }
-    /* Safe area bottom: evita il rimbalzo del tab bar */
-    body::after {
-      content: '';
-      position: fixed; bottom: 0; left: 0; right: 0;
-      height: env(safe-area-inset-bottom, 0px);
-      background: rgba(18,30,48,.92);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      z-index: 101;
-      pointer-events: none;
-    }
+
 
     /* ── HEADER ── */
     .header {
       background: rgba(10,22,40,.96);
       backdrop-filter: saturate(180%) blur(24px);
       -webkit-backdrop-filter: saturate(180%) blur(24px);
-      height: calc(var(--hdr-h) + env(safe-area-inset-top, 0px));
-      padding: env(safe-area-inset-top, 0px) 20px 0;
-      display: flex; align-items: center; justify-content: space-between;
+      /* copre notch: altezza dinamica */
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-left: 20px; padding-right: 20px; padding-bottom: 0;
+      min-height: calc(var(--hdr-h) + env(safe-area-inset-top, 0px));
+      display: flex; align-items: flex-end; padding-bottom: 10px;
       position: sticky; top: 0; z-index: 100;
       border-bottom: 0.5px solid var(--border2);
     }
@@ -114,19 +95,19 @@
     .layout { display: block; }
     .main {
       padding: 16px 16px;
-      padding-bottom: calc(49px + env(safe-area-inset-bottom, 0px) + 20px);
+      padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px) + 16px);
     }
 
     /* ── BOTTOM TAB BAR ── */
     .tab-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
-      height: calc(49px + env(safe-area-inset-bottom, 0px));
       background: rgba(18,30,48,.95);
       backdrop-filter: saturate(180%) blur(24px);
       -webkit-backdrop-filter: saturate(180%) blur(24px);
       border-top: 0.5px solid rgba(255,255,255,.08);
-      display: flex; align-items: flex-start; padding-top: 10px;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
+      display: flex; align-items: flex-start;
+      padding-top: 12px;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
       z-index: 100;
     }
     .tab-item {
@@ -632,20 +613,21 @@ async function loadVisas(clientId) {
 
 
 async function refreshFinancials() {
-  const btn = document.getElementById('fin-refresh-btn');
-  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  const container = document.getElementById('fin-card-container');
+  if (!container) return;
+  const orig = container.innerHTML;
+  container.innerHTML = '<div style="text-align:center;padding:40px 20px"><div class="spinner" style="margin:0 auto"></div><div style="font-size:13px;color:rgba(255,255,255,.4);margin-top:16px">Caricamento dati...</div></div>';
   try {
     if (!clientData?.id) throw new Error('no client');
     const fin = await loadFinancials(clientData.id);
-    const container = document.getElementById('fin-card-container');
-    if (container && fin) {
-      container.outerHTML = '<div id="fin-card-container">' + financialsHTML(fin) + '</div>';
+    if (fin) {
+      container.innerHTML = financialsHTML(fin);
+    } else {
+      container.innerHTML = orig;
     }
   } catch(e) {
     console.warn('refresh failed:', e.message);
-  } finally {
-    const b = document.getElementById('fin-refresh-btn');
-    if (b) { b.textContent = '↻'; b.disabled = false; }
+    container.innerHTML = orig;
   }
 }
 async function init() {
