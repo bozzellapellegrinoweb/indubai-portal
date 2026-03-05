@@ -26,11 +26,15 @@ workflows:
         script: npx cap sync ios
 
 
-      - name: Set bundle ID
+      - name: Set bundle ID and version
         script: |
           cd ios/App
+          # Marketing version (visibile utenti)
           xcrun agvtool new-marketing-version 1.0.0
+          # Bundle version incrementale basato su timestamp
+          BUILD_NUMBER=$(date +%Y%m%d%H%M)
           /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" App/Info.plist
 
       - name: Build iOS
         script: |
