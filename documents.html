@@ -285,6 +285,11 @@
       .m-ov { align-items: flex-end; }
       .m-box { border-radius: 16px 16px 0 0; max-width: 100%; margin: 0; }
     }
+    .move-opt { padding: 10px 14px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border); transition: background .12s; }
+    .move-opt:last-child { border-bottom: none; }
+    .move-opt:hover { background: var(--surface2); }
+    .move-opt.selected { background: #e8f0fe; color: var(--primary); font-weight: 600; }
+    .move-opt-cur { opacity: .5; cursor: default; pointer-events: none; }
   </style>
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <link rel="manifest" href="/manifest-admin.json">
@@ -566,6 +571,7 @@ const DRV = (() => {
         <div class="f-acts">
           <div class="a-btn" data-act="dl" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}" title="Scarica">⬇</div>
           <div class="a-btn" data-act="renfile" data-id="${esc(f.id)}" data-nm="${esc(f.display_name)}" title="Rinomina">✎</div>
+          <div class="a-btn" data-act="movefile" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}" title="Sposta">↪</div>
           <div class="a-btn rm" data-act="delfile" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}" title="Elimina">🗑</div>
         </div>
         <div class="f-ico">${icon(f.mime_type, f.display_name)}</div>
@@ -598,6 +604,7 @@ const DRV = (() => {
         <div class="l-acts">
           <button class="btn btn-ghost btn-sm" data-act="dl" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}">⬇</button>
           <button class="btn btn-ghost btn-sm" data-act="renfile" data-id="${esc(f.id)}" data-nm="${esc(f.display_name)}">✎</button>
+          <button class="btn btn-ghost btn-sm" data-act="movefile" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}" title="Sposta">↪</button>
           <button class="btn btn-sm" style="background:#fee2e2;color:var(--danger);border:1px solid #fca5a5" data-act="delfile" data-id="${esc(f.id)}" data-sp="${esc(f.storage_path)}" data-nm="${esc(f.display_name)}">🗑</button>
         </div>
       </div>`;
@@ -644,11 +651,12 @@ const DRV = (() => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
         const a = btn.dataset.act;
-        if (a==='dl')      dlFile(btn.dataset.sp, btn.dataset.nm);
-        if (a==='renfile') openRenameFile(btn.dataset.id, btn.dataset.nm);
-        if (a==='rendir')  openRenameDir(btn.dataset.n);
-        if (a==='delfile') rmFile(btn.dataset.id, btn.dataset.sp, btn.dataset.nm);
-        if (a==='deldir')  rmDir(btn.dataset.n);
+        if (a==='dl')       dlFile(btn.dataset.sp, btn.dataset.nm);
+        if (a==='renfile')  openRenameFile(btn.dataset.id, btn.dataset.nm);
+        if (a==='rendir')   openRenameDir(btn.dataset.n);
+        if (a==='delfile')  rmFile(btn.dataset.id, btn.dataset.sp, btn.dataset.nm);
+        if (a==='deldir')   rmDir(btn.dataset.n);
+        if (a==='movefile') openMoveFile(btn.dataset.id, btn.dataset.sp, btn.dataset.nm);
       });
     });
   }
@@ -854,6 +862,51 @@ const DRV = (() => {
 
 
   // ── PREVIEW ──────────────────────────────────────────────────
+  // ── move file ────────────────────────────────────────────────
+  let moveCtx = null;
+
+  async function openMoveFile(id, sp, name) {
+    moveCtx = { id, sp, name };
+    // Carica cartelle disponibili per questo client
+    const allFiles = await GET(`/rest/v1/client_files?client_id=eq.${client.id}&select=folder`);
+    const folders = [...new Set((allFiles||[]).map(f => f.folder || '/').filter(Boolean))].sort();
+    // Aggiungi root e cartelle figlie
+    const allDirs = new Set(['/']);
+    folders.forEach(f => { allDirs.add(f); });
+    // Mostra anche subfolder del cwd corrente
+    const dirEls = [...allDirs].map(f => {
+      const label = f === '/' ? '/ (radice)' : f.replace(/\/$/, '');
+      const isCurrent = (f === (cwd || '/')) || (f+'/' === cwd) || (cwd === f);
+      return `<div class="move-opt ${isCurrent?'move-opt-cur':''}" data-folder="${f}" onclick="selectMoveFolder(this)">
+        📁 ${label}${isCurrent?' <span style="font-size:11px;color:var(--text-muted)">(cartella attuale)</span>':''}
+      </div>`;
+    }).join('');
+    document.getElementById('m-move-filename').textContent = name;
+    document.getElementById('m-move-list').innerHTML = dirEls || '<div style="padding:12px;color:var(--text-muted)">Nessuna cartella</div>';
+    document.getElementById('m-move-dest').value = '';
+    document.getElementById('m-move').style.display = 'flex';
+  }
+
+  function selectMoveFolder(el) {
+    document.querySelectorAll('.move-opt').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('m-move-dest').value = el.dataset.folder;
+  }
+
+  async function doMoveFile() {
+    const dest = document.getElementById('m-move-dest').value;
+    if (!dest || !moveCtx) return;
+    const { id, sp, name } = moveCtx;
+    try {
+      // Calcola nuovo folder (normalizzato con slash finale)
+      const newFolder = dest === '/' ? '/' : (dest.endsWith('/') ? dest : dest + '/');
+      await PATCH(`/rest/v1/client_files?id=eq.${id}`, { folder: newFolder, updated_at: new Date().toISOString() });
+      document.getElementById('m-move').style.display = 'none';
+      toast(`"${name}" spostato`, 'success');
+      loadDir();
+    } catch(e) { toast('Errore spostamento: ' + e.message, 'error'); }
+  }
+
   async function previewFile(sp, name, mime) {
     const modal = document.getElementById('m-preview');
     const body  = document.getElementById('prev-body');
@@ -895,12 +948,7 @@ const DRV = (() => {
       if (isImg) {
         body.innerHTML = `<img src="${url}" style="max-width:100%;max-height:80vh;object-fit:contain;display:block;padding:12px">`;
       } else {
-        // PDF: apri in nuova tab se iframe non funziona
-        body.innerHTML = `
-          <iframe src="${url}" style="width:100%;height:75vh;border:none"></iframe>
-          <div style="text-align:center;padding:10px">
-            <a href="${url}" target="_blank" style="font-size:12px;color:var(--primary)">↗ Apri in nuova scheda</a>
-          </div>`;
+        body.innerHTML = `<iframe src="${url}#toolbar=1&view=FitH" style="width:100%;height:78vh;border:none;border-radius:8px"></iframe>`;
       }
     } catch(e) {
       body.innerHTML = `<div style="padding:30px;color:var(--danger);text-align:center">Errore anteprima: ${e.message}</div>`;
@@ -918,6 +966,27 @@ const DRV = (() => {
 // Boot AFTER all scripts have run and DOM is ready
 document.addEventListener('DOMContentLoaded', () => DRV.boot());
 </script>
+<!-- Move file modal -->
+<div id="m-move" class="m-ov" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="m-box" style="max-width:420px;width:90%">
+    <div class="m-hd">
+      <span>↪ Sposta file</span>
+      <button class="m-cls" onclick="document.getElementById('m-move').style.display='none'">✕</button>
+    </div>
+    <div style="padding:16px 20px">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">File:</div>
+      <div id="m-move-filename" style="font-size:14px;font-weight:700;margin-bottom:16px;color:var(--text-primary)"></div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">Seleziona cartella di destinazione:</div>
+      <div id="m-move-list" style="border:1.5px solid var(--border);border-radius:10px;max-height:260px;overflow-y:auto"></div>
+      <input type="hidden" id="m-move-dest">
+    </div>
+    <div class="m-ft">
+      <button class="btn btn-ghost" onclick="document.getElementById('m-move').style.display='none'">Annulla</button>
+      <button class="btn btn-accent" onclick="doMoveFile()">↪ Sposta</button>
+    </div>
+  </div>
+</div>
+
 <!-- Preview modal -->
 <div id="m-preview" class="m-ov" style="display:none" onclick="if(event.target===this)DRV.closePreview()">
   <div style="background:white;border-radius:16px;width:95vw;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)">
