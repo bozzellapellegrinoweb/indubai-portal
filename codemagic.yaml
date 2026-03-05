@@ -30,12 +30,14 @@ workflows:
       - name: Set bundle ID and version
         script: |
           cd ios/App
-          # Prendi l'ultimo build number da TestFlight e incrementa
-          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" 2>/dev/null || echo "1")
+          # Prendi l'ultimo build number da App Store Connect e incrementa
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" 2>/dev/null || echo "2")
           BUILD_NUMBER=$((LATEST + 1))
-          xcrun agvtool new-marketing-version "1.0.$BUILD_NUMBER"
+          echo "Setting build number to: $BUILD_NUMBER"
+          # agvtool aggiorna CURRENT_PROJECT_VERSION nel .xcodeproj
+          xcrun agvtool new-version -all "$BUILD_NUMBER"
+          xcrun agvtool new-marketing-version "1.0.2"
           /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" App/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" App/Info.plist
 
       - name: Build iOS
         script: |
