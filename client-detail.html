@@ -421,7 +421,7 @@ async function quickNotif(userId, title, message) {
     const res = await fetch(FN, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + window.ENV_SUPABASE_ANON_KEY },
-      body: JSON.stringify({ action: 'send_to_user', user_id: userId, title, message, url: 'https://portal.indubai.it/client-portal/dashboard.html' })
+      body: JSON.stringify({ action: 'send_to_user', user_id: clientId, title, message, url: 'https://portal.indubai.it/client-portal/dashboard.html' })
     });
     const d = await res.json();
     if (d.error) throw new Error(d.error);
