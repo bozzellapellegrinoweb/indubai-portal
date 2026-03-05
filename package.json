@@ -1,0 +1,35 @@
+{
+  "name": "indubai-portal",
+  "version": "1.0.0",
+  "description": "InDubai Client Portal",
+  "main": "OneSignalSDKWorker.js",
+  "scripts": {
+    "cap:sync": "npx cap sync",
+    "cap:ios": "npx cap open ios",
+    "cap:android": "npx cap open android",
+    "build": "echo Web assets ready"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bozzellapellegrinoweb/indubai-portal.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bozzellapellegrinoweb/indubai-portal/issues"
+  },
+  "homepage": "https://github.com/bozzellapellegrinoweb/indubai-portal#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/browser": "^8.0.1",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/ios": "^8.1.0",
+    "@capacitor/push-notifications": "^8.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.1.0"
+  }
+}
