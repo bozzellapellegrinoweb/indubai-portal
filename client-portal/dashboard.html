@@ -1171,19 +1171,10 @@ async function initOneSignalNative(userId, companyName) {
     const { PushNotifications } = window.Capacitor.Plugins;
     if (!PushNotifications) return;
 
-    // Chiedi permesso
-    const perm = await PushNotifications.checkPermissions();
-    if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
-      setTimeout(showPushPrompt, 2000);
-    } else if (perm.receive === 'granted') {
-      await registerNativePush(userId, companyName);
-    }
-
-    // Listener per token APNs
+    // Registra i listener PRIMA di tutto
     PushNotifications.addListener('registration', async function(token) {
-      console.log('APNs token:', token.value);
+      console.log('APNs token ricevuto:', token.value);
       try {
-        // Step 1: crea/aggiorna il player
         const res = await fetch('https://onesignal.com/api/v1/players', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1195,40 +1186,52 @@ async function initOneSignalNative(userId, companyName) {
           })
         });
         const data = await res.json();
-        const playerId = data.id;
-        console.log('OneSignal player_id:', playerId);
-
-        // Step 2: aggiorna tags includendo user_id per targeting
-        if (playerId) {
-          await fetch('https://onesignal.com/api/v1/players/' + playerId, {
+        console.log('OneSignal player creato:', data.id);
+        if (data.id) {
+          await fetch('https://onesignal.com/api/v1/players/' + data.id, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               app_id: '06f381cd-ed3d-4393-a5c2-3f6ef8322661',
-              tags: { 
-                company: companyName, 
-                client_id: userId,
-                user_id: userId
-              }
+              tags: { company: companyName, client_id: userId, user_id: userId }
             })
           });
         }
-      } catch(e) { console.warn('OneSignal register:', e); }
+      } catch(e) { console.warn('OneSignal register error:', e); }
     });
 
     PushNotifications.addListener('registrationError', function(err) {
-      console.warn('Push registration error:', err);
+      console.warn('Push registration error:', JSON.stringify(err));
     });
 
-    PushNotifications.addListener('pushNotificationReceived', function(notification) {
-      console.log('Push received:', notification);
+    PushNotifications.addListener('pushNotificationReceived', function(n) {
+      console.log('Push ricevuta:', n.title);
     });
 
-    PushNotifications.addListener('pushNotificationActionPerformed', function(action) {
-      if (action.notification?.data?.url) {
-        window.location.href = action.notification.data.url;
-      }
+    PushNotifications.addListener('pushNotificationActionPerformed', function(a) {
+      if (a.notification?.data?.url) window.location.href = a.notification.data.url;
     });
+
+    // Chiedi permesso nativo iOS direttamente
+    const perm = await PushNotifications.checkPermissions();
+    console.log('Push permission status:', perm.receive);
+    
+    if (perm.receive === 'granted') {
+      // Già autorizzato - registra subito
+      await PushNotifications.register();
+    } else if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
+      // Chiedi permesso nativo (dialog iOS)
+      setTimeout(async function() {
+        const result = await PushNotifications.requestPermissions();
+        console.log('Permission result:', result.receive);
+        if (result.receive === 'granted') {
+          await PushNotifications.register();
+        }
+      }, 2000);
+    } else {
+      console.warn('Push permission denied');
+    }
+    return; // listeners già registrati sopra, esci
 
   } catch(e) { console.warn('OneSignal native:', e); }
 }
