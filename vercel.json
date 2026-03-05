@@ -24,5 +24,8 @@
         }
       ]
     }
-  ]
+  ],
+  "buildCommand": "echo skip",
+  "outputDirectory": ".",
+  "installCommand": "echo skip"
 }
