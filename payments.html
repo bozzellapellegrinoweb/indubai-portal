@@ -214,7 +214,9 @@ function getFiltered() {
 // ── render ────────────────────────────────────────────────────
 function renderGrid() {
   const filtered   = getFiltered();
-  const thisMonth  = ui.currentYearMonth().month;
+  const { month: thisMonth, year: thisYear } = ui.currentYearMonth();
+  const isPastYear   = currentYear < thisYear;
+  const isFutureYear = currentYear > thisYear;
   const totalPages = Math.max(1, Math.ceil(filtered.length/PAGE_SIZE));
   if (currentPage > totalPages) currentPage = totalPages;
   const page = filtered.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
@@ -223,14 +225,18 @@ function renderGrid() {
     `${filtered.length} / ${allClients.length} clienti`;
 
   const monthHeaders = ui.MONTHS.map((m,i) => {
-    const fut = (i+1) > thisMonth;
+    const fut = !isPastYear && (i+1) > thisMonth;
     return `<th class="month-h" style="${fut?'opacity:.3':''}">${m}</th>`;
   }).join('');
 
   const rows = page.map(c => {
     const cells = ui.MONTHS.map((_,i) => {
       const m = i+1;
-      if (m > thisMonth) return `<td class="status-cell" style="opacity:.15">·</td>`;
+      // Anni passati: tutti i mesi cliccabili
+      // Anno corrente: solo fino al mese corrente
+      // Anno futuro: nessun mese cliccabile
+      const isFuture = isFutureYear || (!isPastYear && m > thisMonth);
+      if (isFuture) return `<td class="status-cell" style="opacity:.15">·</td>`;
       const p = payments[`${c.id}_${m}`];
       return `<td class="status-cell" onclick="openPicker('${c.id}',${m},this)" title="${p?.notes||''}">${ui.monthBadge(p?.status||'pending')}</td>`;
     }).join('');
