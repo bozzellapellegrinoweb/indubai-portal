@@ -23,7 +23,9 @@ workflows:
         script: npm install
 
       - name: Capacitor sync
-        script: npx cap sync ios --no-interactive
+        script: |
+          npx cap add ios || true
+          npx cap sync ios
 
       - name: Set bundle ID
         script: |
@@ -79,7 +81,9 @@ workflows:
         script: npm install
 
       - name: Capacitor sync
-        script: npx cap sync android --no-interactive
+        script: |
+          npx cap add android || true
+          npx cap sync android
 
       - name: Set package name
         script: |
