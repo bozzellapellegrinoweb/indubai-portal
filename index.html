@@ -411,23 +411,18 @@ async function loadTaskCharts() {
 async function loadPayIssues() {
   const el=document.getElementById('pay-issues');
   try {
+    // Pagamenti registrati questo mese
     const all=await sb.db.select('subscription_payments',{columns:'client_id,status,notes,clients(company_name)',filter:`year=eq.${year}&month=eq.${month}`});
-    // Debug temporaneo — mostra cosa arriva
-    el.innerHTML=`<div style="padding:12px 16px;font-size:12px;background:#f0f6ff;border-radius:8px;margin:8px">
-      📊 Totale record mese: <b>${all?.length??0}</b><br>
-      Anno: <b>${year}</b> Mese: <b>${month}</b><br>
-      Status trovati: <b>${[...new Set((all||[]).map(r=>r.status))].join(', ')||'nessuno'}</b>
-    </div>`;
-    const rows=(all||[]).filter(r=>['failed','no_tentativo','pending'].includes(r.status));
-    if(!rows.length){
-      if(!all?.length){
-        el.innerHTML+=`<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">Nessun dato per ${ui.MONTHS[month-1]} ${year}</div>`;
-      } else {
-        el.innerHTML+=`<div class="empty-state"><div class="empty-icon">✓</div><h3>Tutto OK!</h3><p>Nessun problema questo mese.</p></div>`;
-      }
+    // Tutti i clienti attivi — chi non ha record è implicitamente pending
+    const allClients=await sb.db.select('clients',{columns:'id,company_name',filter:'is_active=eq.true&in_bilancio=eq.true'});
+    const recordedIds=new Set((all||[]).map(r=>r.client_id));
+    const missing=(allClients||[]).filter(c=>!recordedIds.has(c.id)).map(c=>({client_id:c.id,status:'pending',notes:'Nessun record',clients:{company_name:c.company_name}}));
+    const issues=[...(all||[]).filter(r=>['failed','no_tentativo'].includes(r.status)),...missing];
+    if(!issues.length){
+      el.innerHTML=`<div class="empty-state"><div class="empty-icon">✓</div><h3>Tutto OK!</h3><p>Tutti i clienti hanno pagamenti registrati.</p></div>`;
       return;
     }
-    el.innerHTML+=rows.slice(0,8).map(r=>`<a href="/payments.html" class="drow"><div class="drow-main"><div class="drow-title">${ui.escapeHtml(r.clients?.company_name||r.client_id)}</div><div class="drow-sub">${r.notes||'—'}</div></div><div>${ui.statusBadge(r.status)}</div></a>`).join('') + (rows.length>8?`<div style="padding:10px 20px;font-size:12px;color:var(--text-muted)">+ altri ${rows.length-8}</div>`:'');
+    el.innerHTML=issues.slice(0,8).map(r=>`<a href="/payments.html" class="drow"><div class="drow-main"><div class="drow-title">${ui.escapeHtml(r.clients?.company_name||r.client_id)}</div><div class="drow-sub">${r.notes||'—'}</div></div><div>${ui.statusBadge(r.status)}</div></a>`).join('') + (issues.length>8?`<div style="padding:10px 20px;font-size:12px;color:var(--text-muted)">+ altri ${issues.length-8}</div>`:'');
   } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;}
 }
 async function loadPayStatChart() {
