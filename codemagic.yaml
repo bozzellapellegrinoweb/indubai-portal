@@ -23,7 +23,7 @@ workflows:
         script: npm install
 
       - name: Capacitor sync
-        script: npx cap sync ios
+        script: node_modules/.bin/cap sync ios
 
       - name: Set bundle ID
         script: |
@@ -79,7 +79,7 @@ workflows:
         script: npm install
 
       - name: Capacitor sync
-        script: npx cap sync android
+        script: node_modules/.bin/cap sync android
 
       - name: Set package name
         script: |
