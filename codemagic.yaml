@@ -29,10 +29,11 @@ workflows:
       - name: Set bundle ID and version
         script: |
           cd ios/App
-          # Marketing version (visibile utenti)
-          xcrun agvtool new-marketing-version 1.0.0
-          # Bundle version incrementale basato su timestamp
-          BUILD_NUMBER=$(date +%Y%m%d%H%M)
+          # Build number incrementale (usato da Apple internamente)
+          BUILD_NUMBER=$(($(date +%s) - 1700000000))
+          # Marketing version leggibile 1.0.x
+          PATCH=$(($BUILD_NUMBER % 1000))
+          xcrun agvtool new-marketing-version "1.0.$PATCH"
           /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" App/Info.plist
 

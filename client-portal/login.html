@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>InDubai — Area Clienti</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="/js/config.js"></script>
@@ -43,10 +43,11 @@
 
   <script src="/js/supabase.js"></script>
   <script>
+    document.addEventListener('DOMContentLoaded', function() {
     // If already logged in as client, redirect to dashboard
     const sess = sb.getSession();
     if (sess?.access_token) {
-      window.location.href = '/client-portal/dashboard.html';
+      window.location.href = 'dashboard.html';
     }
 
     const emailEl = document.getElementById('email');
@@ -85,7 +86,7 @@
           return;
         }
 
-        window.location.href = '/client-portal/dashboard.html';
+        window.location.href = 'dashboard.html';
       } catch(e) {
         const msg = e.message || '';
         if (msg.includes('Invalid login') || msg.includes('invalid_credentials')) {
@@ -101,6 +102,7 @@
     btn.addEventListener('click', doLogin);
     passEl.addEventListener('keydown', e => e.key === 'Enter' && doLogin());
     emailEl.addEventListener('keydown', e => e.key === 'Enter' && passEl.focus());
+    }); // end DOMContentLoaded
   </script>
 </body>
 </html>
