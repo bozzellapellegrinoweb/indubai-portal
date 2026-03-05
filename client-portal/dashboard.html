@@ -52,21 +52,36 @@
       min-height: 100vh;
     }
 
-    /* ── SAFE AREA TOP ── */
+    /* ── SAFE AREA TOP: bg esteso sopra header ── */
     body::before {
       content: '';
-      display: block;
+      position: fixed; top: 0; left: 0; right: 0;
       height: env(safe-area-inset-top, 0px);
-      background: var(--bg);
+      background: rgba(10,22,40,.96);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      z-index: 101;
+      pointer-events: none;
+    }
+    /* Safe area bottom: evita il rimbalzo del tab bar */
+    body::after {
+      content: '';
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: env(safe-area-inset-bottom, 0px);
+      background: rgba(18,30,48,.92);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      z-index: 101;
+      pointer-events: none;
     }
 
     /* ── HEADER ── */
     .header {
-      background: rgba(12,26,46,.82);
+      background: rgba(10,22,40,.96);
       backdrop-filter: saturate(180%) blur(24px);
       -webkit-backdrop-filter: saturate(180%) blur(24px);
-      height: var(--hdr-h);
-      padding: 0 20px;
+      height: calc(var(--hdr-h) + env(safe-area-inset-top, 0px));
+      padding: env(safe-area-inset-top, 0px) 20px 0;
       display: flex; align-items: center; justify-content: space-between;
       position: sticky; top: 0; z-index: 100;
       border-bottom: 0.5px solid var(--border2);
@@ -99,14 +114,14 @@
     .layout { display: block; }
     .main {
       padding: 16px 16px;
-      padding-bottom: calc(var(--tab-h) + 20px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(49px + env(safe-area-inset-bottom, 0px) + 20px);
     }
 
     /* ── BOTTOM TAB BAR ── */
     .tab-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
-      height: var(--tab-h);
-      background: rgba(18,30,48,.92);
+      height: calc(49px + env(safe-area-inset-bottom, 0px));
+      background: rgba(18,30,48,.95);
       backdrop-filter: saturate(180%) blur(24px);
       -webkit-backdrop-filter: saturate(180%) blur(24px);
       border-top: 0.5px solid rgba(255,255,255,.08);
@@ -618,21 +633,19 @@ async function loadVisas(clientId) {
 
 async function refreshFinancials() {
   const btn = document.getElementById('fin-refresh-btn');
-  if (btn) { btn.textContent = '...'; btn.disabled = true; }
+  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
   try {
-    const sess = sb.getSession();
-    if (!sess?.access_token) return;
-    const rows = await GET('/rest/v1/profiles?id=eq.' + sess.user.id + '&select=client_id&limit=1');
-    const clientId = rows?.[0]?.client_id;
-    if (!clientId) return;
-    const fin = await loadFinancials(clientId);
-    // Re-render solo il card finanziario
-    const finEl = document.getElementById('fin-card-container');
-    if (finEl) finEl.innerHTML = financialsInnerHTML(fin);
+    if (!clientData?.id) throw new Error('no client');
+    const fin = await loadFinancials(clientData.id);
+    const container = document.getElementById('fin-card-container');
+    if (container && fin) {
+      container.outerHTML = '<div id="fin-card-container">' + financialsHTML(fin) + '</div>';
+    }
   } catch(e) {
     console.warn('refresh failed:', e.message);
   } finally {
-    if (btn) { btn.textContent = '↻'; btn.disabled = false; }
+    const b = document.getElementById('fin-refresh-btn');
+    if (b) { b.textContent = '↻'; b.disabled = false; }
   }
 }
 async function init() {
@@ -687,7 +700,7 @@ function buildMainHTML(visas=[], financials=null) {
     <!-- ANAGRAFICA -->
     <div class="panel active" id="panel-anagrafica">
       ${heroHTML()}
-      ${financialsHTML(financials)}
+      <div id="fin-card-container">${financialsHTML(financials)}</div>
       ${anagraficaHTML()}
     </div>
 
