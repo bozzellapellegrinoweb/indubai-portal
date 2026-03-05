@@ -98,6 +98,7 @@
             <div class="filter-chip on" data-status="all">Tutti</div>
             <div class="filter-chip" data-status="ok">✓ Completi</div>
             <div class="filter-chip" data-status="received">○ Ricevuti</div>
+            <div class="filter-chip" data-status="null">— N/A</div>
             <div class="filter-chip" data-status="missing">✕ Mancanti</div>
           </div>
           <span class="filter-count" id="filter-count"></span>
@@ -167,7 +168,8 @@ function getFiltered() {
       const s = statements[`${c.id}_${m}`];
       if (statusFilter === 'ok'      && !(s?.received && s?.registered)) return false;
       if (statusFilter === 'received'&& !(s?.received && !s?.registered)) return false;
-      if (statusFilter === 'missing' && s?.received) return false;
+      if (statusFilter === 'missing' && (s?.received || s?.not_applicable)) return false;
+      if (statusFilter === 'null'    && !s?.not_applicable) return false;
     }
     return true;
   });
@@ -202,9 +204,10 @@ function renderGrid() {
       if (isFuture) return `<td class="month-cell-td" style="opacity:.2">·</td>`;
       const s = statements[`${c.id}_${m}`];
       let cls='month-fail', sym='✕';
-      if (s?.received && s?.registered) { cls='month-ok';   sym='✓'; }
+      if (s?.not_applicable)            { cls='month-null'; sym='—'; }
+      else if (s?.received && s?.registered) { cls='month-ok';   sym='✓'; }
       else if (s?.received)             { cls='month-warn'; sym='○'; }
-      const title = s?.received ? (s?.registered?'Ricevuto e registrato':'Ricevuto, non registrato') : 'Non ricevuto';
+      const title = s?.not_applicable ? 'N/A — nessun conto bancario' : s?.received ? (s?.registered?'Ricevuto e registrato':'Ricevuto, non registrato') : 'Non ricevuto';
       return `<td class="month-cell-td" onclick="toggleStatement('${c.id}',${m},this)" title="${title}">
         <span class="month-cell ${cls}">${sym}</span></td>`;
     }).join('');
@@ -232,6 +235,7 @@ function renderGrid() {
             Legenda: <span class="month-cell month-ok">✓</span> Ric.+Reg.
             <span class="month-cell month-warn">○</span> Ricevuto
             <span class="month-cell month-fail">✕</span> Mancante
+            <span class="month-cell month-null">—</span> N/A
           </td>
           ${ui.MONTHS.map(()=>'<td></td>').join('')}
         </tr>
@@ -281,15 +285,17 @@ async function toggleStatement(clientId, month, tdEl) {
   const key = `${clientId}_${month}`;
   const cur = statements[key];
   let newState;
-  if (!cur?.received)       newState = {received:true,  registered:false};
-  else if (!cur?.registered) newState = {received:true,  registered:true};
-  else                       newState = {received:false, registered:false};
+  if (cur?.not_applicable)   newState = {received:false, registered:false, not_applicable:false};
+  else if (!cur?.received)   newState = {received:true,  registered:false, not_applicable:false};
+  else if (!cur?.registered) newState = {received:true,  registered:true,  not_applicable:false};
+  else                       newState = {received:false, registered:false, not_applicable:true};
 
   try {
     await sb.db.upsertBankStatement(clientId, currentYear, month, newState);
     statements[key] = {...cur, ...newState, client_id:clientId, month};
     let cls='month-fail',sym='✕';
-    if (newState.received && newState.registered) {cls='month-ok';  sym='✓';}
+    if (newState.not_applicable)                  {cls='month-null';sym='—';}
+    else if (newState.received && newState.registered) {cls='month-ok';  sym='✓';}
     else if (newState.received)                   {cls='month-warn';sym='○';}
     tdEl.innerHTML = `<span class="month-cell ${cls}">${sym}</span>`;
     await sb.db.log('bank_statement_updated', clientId, {month,year:currentYear,...newState});

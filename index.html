@@ -352,8 +352,11 @@ async function loadStatementsOv() {
   const el=document.getElementById('ov-statements');
   try {
     const all   = await sb.db.select('clients',{columns:'id',filter:'is_active=eq.true'});
-    const stmts = await sb.db.select('bank_statements',{columns:'client_id',filter:`year=eq.${year}&month=eq.${month}`});
-    const tot=all?.length||0, done=stmts?.length||0, miss=tot-done, pct=tot?Math.round(done/tot*100):0;
+    const stmts = await sb.db.select('bank_statements',{columns:'client_id,received,not_applicable',filter:`year=eq.${year}&month=eq.${month}`});
+    const na    = (stmts||[]).filter(s=>s.not_applicable).length;
+    const done  = (stmts||[]).filter(s=>s.received).length;
+    const tot   = (all?.length||0) - na;
+    const miss  = Math.max(0, tot - done), pct = tot>0 ? Math.round(done/tot*100) : 100;
     const col=pct>80?'#059669':pct>50?'#d97706':'#dc2626';
     el.innerHTML=`<div class="num3"><div class="num3-cell"><div class="num3-val" style="color:#059669">${done}</div><div class="num3-lbl">Presenti</div></div><div class="num3-cell"><div class="num3-val" style="color:#dc2626">${miss}</div><div class="num3-lbl">Mancanti</div></div><div class="num3-cell"><div class="num3-val">${pct}%</div><div class="num3-lbl">Copertura</div></div></div><div class="stat-bar"><div class="stat-bar-hd"><span>Copertura mese</span><span>${pct}%</span></div><div class="stat-track"><div class="stat-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
   } catch(e){ el.innerHTML=`<div class="alert alert-danger" style="margin:8px">${e.message}</div>`; }
@@ -505,9 +508,10 @@ async function loadMissingSt() {
   const el=document.getElementById('missing-st');
   try {
     const all=await sb.db.select('clients',{columns:'id,company_name',filter:'is_active=eq.true'});
-    const done=await sb.db.select('bank_statements',{columns:'client_id',filter:`year=eq.${year}&month=eq.${month}`});
-    const doneIds=new Set((done||[]).map(s=>s.client_id));
-    const missing=(all||[]).filter(c=>!doneIds.has(c.id));
+    const stmts=await sb.db.select('bank_statements',{columns:'client_id,received,not_applicable',filter:`year=eq.${year}&month=eq.${month}`});
+    const naIds=new Set((stmts||[]).filter(s=>s.not_applicable).map(s=>s.client_id));
+    const doneIds=new Set((stmts||[]).filter(s=>s.received).map(s=>s.client_id));
+    const missing=(all||[]).filter(c=>!doneIds.has(c.id)&&!naIds.has(c.id));
     if(!missing.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">✓</div><h3>Tutti a posto!</h3></div>`;return;}
     el.innerHTML=missing.slice(0,8).map(c=>`<a href="/statements.html" class="drow"><div class="drow-dot" style="background:#dc2626"></div><div class="drow-main"><div class="drow-title">${ui.escapeHtml(c.company_name)}</div></div></a>`).join('') + (missing.length>8?`<div style="padding:10px 20px;font-size:12px;color:var(--text-muted)">+ altri ${missing.length-8}</div>`:'');
   } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;}
