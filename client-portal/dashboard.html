@@ -59,13 +59,16 @@
       background: rgba(10,22,40,.96);
       backdrop-filter: saturate(180%) blur(24px);
       -webkit-backdrop-filter: saturate(180%) blur(24px);
-      /* copre notch: altezza dinamica */
       padding-top: env(safe-area-inset-top, 0px);
       padding-left: 20px; padding-right: 20px; padding-bottom: 0;
-      min-height: calc(var(--hdr-h) + env(safe-area-inset-top, 0px));
-      display: flex; align-items: flex-end; padding-bottom: 10px;
+      display: flex; flex-direction: column; justify-content: flex-end;
       position: sticky; top: 0; z-index: 100;
       border-bottom: 0.5px solid var(--border2);
+    }
+    .header-inner {
+      height: var(--hdr-h);
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%;
     }
     .logo { display: flex; align-items: center; gap: 10px; }
     .logo-mark {
@@ -95,7 +98,7 @@
     .layout { display: block; }
     .main {
       padding: 16px 16px;
-      padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px) + 16px);
+      padding-bottom: calc(58px + max(env(safe-area-inset-bottom, 16px), 16px) + 12px);
     }
 
     /* ── BOTTOM TAB BAR ── */
@@ -107,8 +110,11 @@
       border-top: 0.5px solid rgba(255,255,255,.08);
       display: flex; align-items: flex-start;
       padding-top: 12px;
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+      /* abbraccia home indicator */
+      padding-bottom: max(env(safe-area-inset-bottom, 16px), 16px);
       z-index: 100;
+      /* impedisce stacco al bounce */
+      box-shadow: 0 60px 0 60px rgba(18,30,48,.95);
     }
     .tab-item {
       flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -489,14 +495,14 @@
 
 <!-- Desktop header -->
 <div class="header">
-  <div class="logo">
-    <div class="logo-mark">In<span>Dubai</span></div>
-    <div class="logo-divider"></div>
-    <div class="logo-sub">Area Clienti</div>
-  </div>
-  <div class="header-right">
-    <span class="header-company" id="header-company"></span>
-    <button class="btn-menu" onclick="openSheet()">☰</button>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-mark">In<span>Dubai</span></div>
+    </div>
+    <div class="header-right">
+      <span class="header-company" id="header-company"></span>
+      <button class="btn-menu" onclick="openSheet()">☰</button>
+    </div>
   </div>
 </div>
 
@@ -597,10 +603,15 @@ async function loadFinancials(clientId) {
       }
     } catch(e) { console.warn('live sync failed, using cached:', e.message); }
   }
-  // Fallback: cached data
+  // Fallback: cached data (force fresh from DB)
   try {
-    const rows = await GET('/rest/v1/client_financials?client_id=eq.' + clientId + '&select=*&limit=1');
-    return rows?.[0] || null;
+    const rows = await GET('/rest/v1/client_financials?client_id=eq.' + clientId + '&select=*&order=last_synced_at.desc&limit=1');
+    if (rows?.[0]) {
+      // Aggiorna last_synced_at al momento attuale per mostrare data corretta
+      rows[0]._cached = true;
+      return rows[0];
+    }
+    return null;
   } catch { return null; }
 }
 
@@ -771,16 +782,16 @@ function financialsHTML(f) {
             <div style="font-size:11px;color:#30d158;margin-top:2px">pagamenti ricevuti</div>
           </div>
 
-          <div style="background:${f.total_outstanding > 0 ? '#fffbeb' : '#f8fafc'};border:1.5px solid ${f.total_outstanding > 0 ? '#fde68a' : 'var(--border)'};border-radius:12px;padding:14px 16px">
-            <div style="font-size:11px;font-weight:700;color:${f.total_outstanding > 0 ? '#d97706' : 'var(--muted)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Da Incassare</div>
-            <div style="font-size:18px;font-weight:800;color:${f.total_outstanding > 0 ? '#d97706' : 'var(--navy2)'}">${fmt(f.total_outstanding)}</div>
+          <div style="background:${f.total_outstanding > 0 ? 'rgba(255,159,10,.15)' : 'rgba(255,255,255,.06)'};border:0.5px solid ${f.total_outstanding > 0 ? 'rgba(255,159,10,.3)' : 'rgba(255,255,255,.1)'};border-radius:12px;padding:14px 16px">
+            <div style="font-size:11px;font-weight:700;color:${f.total_outstanding > 0 ? '#ff9f0a' : 'rgba(255,255,255,.45)'};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Da Incassare</div>
+            <div style="font-size:18px;font-weight:800;color:${f.total_outstanding > 0 ? '#ff9f0a' : '#ffffff'}">${fmt(f.total_outstanding)}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px">${f.invoice_count || 0} fatture emesse</div>
           </div>
 
         </div>
 
         <!-- VAT Bar -->
-        <div style="background:${vatBg};border:1.5px solid ${vatBorder};border-radius:12px;padding:16px">
+        <div style="background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.1);border-radius:12px;padding:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
             <div style="font-size:13px;font-weight:700;color:${vatColor}">${vatLabel}</div>
             <div style="font-size:12px;color:var(--muted)">Soglia registrazione IVA UAE</div>
