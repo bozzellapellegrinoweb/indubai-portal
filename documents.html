@@ -971,6 +971,10 @@ const DRV = (() => {
     document.getElementById('prev-body').innerHTML = '';
   }
 
+  // Esponi funzioni usate via onclick inline
+  window.selectMoveFolder = selectMoveFolder;
+  window.doMoveFile       = doMoveFile;
+
   return { boot, setView, newFolderModal, previewFile, closePreview };
 })();
 
