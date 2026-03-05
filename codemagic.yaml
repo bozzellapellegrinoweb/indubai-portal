@@ -7,8 +7,10 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
+      groups:
+        - Main
       ios_signing:
-        distribution_type: app_store       # oppure ad_hoc per test
+        distribution_type: app_store
         bundle_identifier: it.indubai.clientportal
       vars:
         BUNDLE_ID: it.indubai.clientportal
