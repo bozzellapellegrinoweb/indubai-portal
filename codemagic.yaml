@@ -67,6 +67,43 @@ workflows:
         submit_to_testflight: true
 
 
+
+  # ── SIMULATOR (App Preview) ──────────────────────────────────
+  indubai-simulator:
+    name: InDubai iOS Simulator
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+
+    environment:
+      groups:
+        - Main
+      vars:
+        XCODE_PROJECT: ios/App/App.xcodeproj
+        XCODE_SCHEME: App
+      node: 22
+
+    scripts:
+      - name: Install dependencies
+        script: npm install
+
+      - name: Capacitor sync
+        script: npx cap sync ios
+
+      - name: Build for Simulator
+        script: |
+          xcodebuild build \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+    artifacts:
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+
   # ── ANDROID BUILD ────────────────────────────────────────────
   indubai-android:
     name: InDubai Android
