@@ -515,7 +515,7 @@
     <div class="ios-sheet-email" id="sheet-email">—</div>
   </div>
   <div class="ios-sheet-section">Il mio profilo</div>
-  <button class="ios-sheet-item active-item" id="sitem-anagrafica" onclick="sheetGo('anagrafica','AZIENDA')"><span class="item-icon">🏢</span>Anagrafica<span class="item-chevron">›</span></button>
+  <button class="ios-sheet-item active-item" id="sitem-anagrafica" onclick="sheetGo('anagrafica','AZIENDA')"><span class="item-icon">🏢</span>La mia Azienda<span class="item-chevron">›</span></button>
   <button class="ios-sheet-item" id="sitem-documenti"  onclick="sheetGo('documenti','DOCUMENTI')"><span class="item-icon">📁</span>Documenti<span class="item-chevron">›</span></button>
   <button class="ios-sheet-item" id="sitem-scadenze"   onclick="sheetGo('scadenze','SCADENZE')"><span class="item-icon">📅</span>Scadenze<span class="item-chevron">›</span></button>
   <button class="ios-sheet-item" id="sitem-zoho"       onclick="sheetGo('zoho','CONTABILITÀ')"><span class="item-icon">📊</span>Contabilità<span class="item-chevron">›</span></button>
@@ -615,7 +615,29 @@ async function loadVisas(clientId) {
   } catch { return []; }
 }
 
+
+async function refreshFinancials() {
+  const btn = document.getElementById('fin-refresh-btn');
+  if (btn) { btn.textContent = '...'; btn.disabled = true; }
+  try {
+    const sess = sb.getSession();
+    if (!sess?.access_token) return;
+    const rows = await GET('/rest/v1/profiles?id=eq.' + sess.user.id + '&select=client_id&limit=1');
+    const clientId = rows?.[0]?.client_id;
+    if (!clientId) return;
+    const fin = await loadFinancials(clientId);
+    // Re-render solo il card finanziario
+    const finEl = document.getElementById('fin-card-container');
+    if (finEl) finEl.innerHTML = financialsInnerHTML(fin);
+  } catch(e) {
+    console.warn('refresh failed:', e.message);
+  } finally {
+    if (btn) { btn.textContent = '↻'; btn.disabled = false; }
+  }
+}
 async function init() {
+  // Auto-refresh token ogni 10 min
+  setInterval(function() { try { sb.refreshSession && sb.refreshSession(); } catch(e) {} }, 600000);
   const sess = sb.getSession();
   if (!sess?.access_token) { window.location.href = 'login.html'; return; }
 
@@ -727,11 +749,14 @@ function financialsHTML(f) {
   const lastSync = f.last_synced_at ? new Date(f.last_synced_at).toLocaleDateString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric', hour:'2-digit', minute:'2-digit'}) : '—';
 
   return `
-    <div class="card" style="margin-bottom:20px;border-color:#e2e8f0">
-      <div class="card-header" style="background:linear-gradient(135deg,#0f1e35 0%,#1e3a5f 100%);border-radius:12px 12px 0 0">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header" style="background:linear-gradient(135deg,#142540 0%,#1e3a5f 100%);border-radius:16px 16px 0 0">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div class="card-title" style="color:white;font-size:15px">📊 Riepilogo Finanziario</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.5)">Aggiornato: ${lastSync}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:11px;color:rgba(255,255,255,.5)">Aggiornato: ${lastSync}</div>
+            <button onclick="refreshFinancials()" id="fin-refresh-btn" style="background:rgba(255,255,255,.12);border:0.5px solid rgba(255,255,255,.2);border-radius:8px;padding:3px 10px;font-size:11px;font-weight:600;color:rgba(255,255,255,.8);cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent">↻</button>
+          </div>
         </div>
       </div>
       <div class="card-body" style="padding:20px">
@@ -739,16 +764,16 @@ function financialsHTML(f) {
         <!-- KPI Grid -->
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">
 
-          <div style="background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:14px 16px">
+          <div style="background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px">
             <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Fatturato Totale</div>
-            <div style="font-size:18px;font-weight:800;color:var(--navy2)">${fmt(f.total_invoiced)}</div>
+            <div style="font-size:18px;font-weight:800;color:#ffffff">${fmt(f.total_invoiced)}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px">dall'inizio attività</div>
           </div>
 
-          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px 16px">
-            <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Incassato</div>
-            <div style="font-size:18px;font-weight:800;color:#059669">${fmt(f.total_collected)}</div>
-            <div style="font-size:11px;color:#059669;margin-top:2px">pagamenti ricevuti</div>
+          <div style="background:rgba(48,209,88,.12);border:0.5px solid rgba(48,209,88,.2);border-radius:12px;padding:14px 16px">
+            <div style="font-size:11px;font-weight:700;color:#30d158;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Incassato</div>
+            <div style="font-size:18px;font-weight:800;color:#30d158">${fmt(f.total_collected)}</div>
+            <div style="font-size:11px;color:#30d158;margin-top:2px">pagamenti ricevuti</div>
           </div>
 
           <div style="background:${f.total_outstanding > 0 ? '#fffbeb' : '#f8fafc'};border:1.5px solid ${f.total_outstanding > 0 ? '#fde68a' : 'var(--border)'};border-radius:12px;padding:14px 16px">
@@ -857,7 +882,7 @@ async function loadZohoClient() {
         '<div style="background:#f1f5f9;border-radius:100px;height:10px;overflow:hidden">' +
           '<div style="height:100%;border-radius:100px;background:linear-gradient(90deg,#059669,#34d399);width:'+pp+'%;transition:width .6s ease"></div></div>' +
         '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px">' +
-          '<span style="color:#059669;font-weight:600">Incassato '+pp+'%</span>' +
+          '<span style="color:#30d158;font-weight:600">Incassato '+pp+'%</span>' +
           '<span style="color:'+(d.totalUnpaid>0?'#dc2626':'#6b7280')+';font-weight:600">Da incassare '+up+'%</span></div>' +
       '</div>' +
       (d.lastInvoice ? '<div style="background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.1);border-radius:14px;padding:20px 24px;margin-bottom:20px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:12px">Ultima Fattura</div><div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap"><div style="font-size:16px;font-weight:800">'+d.lastInvoice.number+'</div><div style="font-size:13px;color:rgba(255,255,255,.45)">'+d.lastInvoice.date+'</div><div style="font-size:15px;font-weight:700">'+(d.lastInvoice.currency||cur)+' '+fmt(d.lastInvoice.total)+'</div></div></div>' : '') +
@@ -937,7 +962,7 @@ function documentiHTML() {
   return `
     <div class="card" style="overflow:hidden">
       <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-        <div id="drive-bc" style="flex:1;font-size:13px;font-weight:600;color:var(--navy2)">📁 I tuoi documenti</div>
+        <div id="drive-bc" style="flex:1;font-size:13px;font-weight:600;color:#ffffff">📁 I tuoi documenti</div>
         <button class="folder-tab active" id="vbtn-grid" onclick="setDriveView('grid')" title="Griglia" style="padding:5px 10px">⊞</button>
         <button class="folder-tab" id="vbtn-list" onclick="setDriveView('list')" title="Lista" style="padding:5px 10px">☰</button>
       </div>
@@ -1047,7 +1072,7 @@ function renderBC() {
     const isLast = i === parts.length-1;
     html += ` <span style="color:var(--muted)">›</span> `;
     html += isLast
-      ? `<span style="color:var(--navy2)">${esc(p)}</span>`
+      ? `<span style="color:#ffffff">${esc(p)}</span>`
       : `<span style="cursor:pointer;color:var(--gold)" onclick="cwd='${target}';renderDrive()">${esc(p)}</span>`;
   });
   bc.innerHTML = html;
@@ -1199,7 +1224,7 @@ async function loadPraticheClient() {
       <div class="card" style="margin-bottom:12px">
         <div class="card-body" style="padding:18px 24px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">
-            <div style="font-weight:700;font-size:15px;color:var(--navy2)">${p.title}</div>
+            <div style="font-weight:700;font-size:15px;color:#ffffff">${p.title}</div>
             ${badge(p.status)}
           </div>
           ${p.category ? `<div style="display:inline-block;font-size:11px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.1);padding:2px 10px;border-radius:100px;margin-bottom:8px">${p.category}</div>` : ''}
@@ -1207,7 +1232,7 @@ async function loadPraticheClient() {
           <div style="font-size:12px;color:rgba(255,255,255,.45);display:flex;gap:16px;flex-wrap:wrap">
             <span>Aperta: ${fmtDate(p.created_at)}</span>
             ${p.due_date ? `<span style="color:${new Date(p.due_date)<new Date()?'#dc2626':'var(--muted)'}">Scadenza: <strong>${fmtDate(p.due_date)}</strong></span>` : ''}
-            ${p.completed_at ? `<span style="color:#059669">Completata: ${fmtDate(p.completed_at)}</span>` : ''}
+            ${p.completed_at ? `<span style="color:#30d158">Completata: ${fmtDate(p.completed_at)}</span>` : ''}
           </div>
         </div>
       </div>`).join('');
@@ -1393,7 +1418,7 @@ window.previewFile = async function(storagePath, name, mime) {
     const ico = icons[ext] || '📎';
     body.innerHTML = `<div style="text-align:center;padding:50px 30px">
       <div style="font-size:56px;margin-bottom:16px">${ico}</div>
-      <div style="font-size:15px;font-weight:700;margin-bottom:8px;color:var(--text)">${name}</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:8px;color:#ffffff">${name}</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:24px">Anteprima non disponibile — clicca per scaricare</div>
       <button class="btn-dl" onclick="downloadFile('${storagePath.replace(/'/g,"\'")}','${name.replace(/'/g,"\'")}')">⬇ Scarica file</button>
     </div>`;
@@ -1671,7 +1696,7 @@ function syncTabBar(name) {
 <div class="tab-bar" id="tab-bar">
   <button class="tab-item active" id="tab-anagrafica" onclick="tabGo('anagrafica','🏢','AZIENDA',this)">
     <span class="tab-icon">🏢</span>
-    <span class="tab-label">Azienda</span>
+    <span class="tab-label">Home</span>
   </button>
   <button class="tab-item" id="tab-documenti" onclick="tabGo('documenti','📁','DOCUMENTI',this)">
     <span class="tab-icon">📁</span>
