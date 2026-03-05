@@ -1198,14 +1198,18 @@ async function initOneSignalNative(userId, companyName) {
         const playerId = data.id;
         console.log('OneSignal player_id:', playerId);
 
-        // Step 2: associa external_user_id via API separata
+        // Step 2: aggiorna tags includendo user_id per targeting
         if (playerId) {
-          await fetch('https://onesignal.com/api/v1/players/' + playerId + '/identify', {
-            method: 'PATCH',
+          await fetch('https://onesignal.com/api/v1/players/' + playerId, {
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               app_id: '06f381cd-ed3d-4393-a5c2-3f6ef8322661',
-              external_user_id: userId
+              tags: { 
+                company: companyName, 
+                client_id: userId,
+                user_id: userId
+              }
             })
           });
         }

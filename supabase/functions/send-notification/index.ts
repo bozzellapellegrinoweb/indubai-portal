@@ -24,7 +24,8 @@ serve(async (req) => {
 
     let data;
     if (action === 'send_to_user' && user_id) {
-      data = await sendPush({ ...notification, include_aliases: { external_id: [user_id] } });
+      // Prova prima con external_id, fallback su tag user_id
+      data = await sendPush({ ...notification, filters: [{ field: 'tag', key: 'user_id', relation: '=', value: user_id }] });
     } else if (action === 'send_to_company' && company) {
       data = await sendPush({ ...notification, filters: [{ field: 'tag', key: 'company', relation: '=', value: company }] });
     } else if (action === 'send_to_all') {
