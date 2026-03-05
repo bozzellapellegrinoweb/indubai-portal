@@ -12,6 +12,7 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: it.indubai.clientportal
+        automatic_provisioning: true
       vars:
         BUNDLE_ID: it.indubai.clientportal
         XCODE_WORKSPACE: ios/App/App.xcworkspace
