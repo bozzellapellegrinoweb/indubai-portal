@@ -42,7 +42,7 @@ workflows:
         script: |
           cd ios/App
           # Prendi l'ultimo build number da App Store Connect e incrementa
-          BUILD_NUMBER=10
+          BUILD_NUMBER=11
           sed -i "" "s/CURRENT_PROJECT_VERSION = [0-9]*/CURRENT_PROJECT_VERSION = $BUILD_NUMBER/g" App.xcodeproj/project.pbxproj
           sed -i "" "s/MARKETING_VERSION = [0-9.]*/MARKETING_VERSION = 1.0.9/g" App.xcodeproj/project.pbxproj
           /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" App/Info.plist
