@@ -24,7 +24,19 @@ workflows:
         script: npm install
 
       - name: Capacitor sync
-        script: npx cap sync ios
+        script: |
+          npx cap sync ios
+          # Rimuovi riferimento a OnesignalCordovaPlugin che non esiste (plugin rimosso)
+          rm -rf ios/capacitor-cordova-ios-plugins/sources/OnesignalCordovaPlugin 2>/dev/null || true
+          # Rimuovi la voce dal Package.swift dei cordova plugins se esiste
+          if [ -f "ios/App/CapApp-SPM/Package.swift" ]; then
+            sed -i "" "/OnesignalCordovaPlugin/d" ios/App/CapApp-SPM/Package.swift || true
+          fi
+          # Pulisci anche il podspec se presente
+          if [ -f "ios/capacitor-cordova-ios-plugins/CordovaPlugins.podspec" ]; then
+            sed -i "" "/OnesignalCordovaPlugin/d" ios/capacitor-cordova-ios-plugins/CordovaPlugins.podspec || true
+          fi
+          echo "✅ Cleaned OnesignalCordovaPlugin references"
 
       - name: Set bundle ID and version
         script: |
@@ -88,7 +100,11 @@ workflows:
         script: npm install
 
       - name: Capacitor sync
-        script: npx cap sync ios
+        script: |
+          npx cap sync ios
+          rm -rf ios/capacitor-cordova-ios-plugins/sources/OnesignalCordovaPlugin 2>/dev/null || true
+          sed -i "" "/OnesignalCordovaPlugin/d" ios/App/CapApp-SPM/Package.swift 2>/dev/null || true
+          echo "✅ Cleaned OnesignalCordovaPlugin references"
 
       - name: Build for Simulator
         script: |
