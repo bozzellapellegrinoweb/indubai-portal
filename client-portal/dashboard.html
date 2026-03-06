@@ -153,8 +153,9 @@
     .tab-item:active .tab-icon { transform: scale(.88); }
 
     /* ── PANELS ── */
-    .panel { display: none; }
-    .panel.active { display: block; }
+    .panel { display: none; opacity: 0; }
+    .panel.active { display: block; animation: fadeIn .22s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
     /* ── SPINNER ── */
     .spinner {
@@ -389,7 +390,8 @@
       font-size: 9px; font-weight: 800; padding: 2px 7px;
       border-radius: 20px; text-transform: uppercase; letter-spacing: .4px;
     }
-    .srv-icon { font-size: 30px; margin-bottom: 10px; }
+    .srv-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; color: var(--gold); }
+    .srv-icon svg { width: 26px; height: 26px; stroke: var(--gold); }
     .srv-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 5px; }
     .srv-desc { font-size: 11px; color: var(--muted); line-height: 1.45; margin-bottom: 12px; }
     .srv-btn {
@@ -441,7 +443,8 @@
     }
     .ios-sheet-item:active { background: rgba(255,255,255,.05); }
     .ios-sheet-item.active-item { color: var(--blue); }
-    .item-icon { font-size: 18px; margin-right: 14px; width: 24px; text-align: center; }
+    .item-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 14px; }
+    .item-icon svg { width: 20px; height: 20px; stroke: var(--gold); }
     .item-chevron { margin-left: auto; color: var(--muted); font-size: 16px; }
     .ios-sheet-logout {
       width: calc(100% - 32px); margin: 16px 16px;
@@ -505,7 +508,8 @@
       }
       .nav-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
       .nav-item.active { background: rgba(10,132,255,.1); border-left-color: var(--blue); color: var(--blue); font-weight: 600; }
-      .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+      .nav-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .nav-icon svg { width: 18px; height: 18px; stroke: currentColor; }
       .section-title { font-size: 24px; }
     }
 
@@ -543,14 +547,14 @@
     <div class="ios-sheet-email" id="sheet-email">—</div>
   </div>
   <div class="ios-sheet-section">Il mio profilo</div>
-  <button class="ios-sheet-item active-item" id="sitem-anagrafica" onclick="sheetGo('anagrafica','AZIENDA')"><span class="item-icon">🏢</span>La mia Azienda<span class="item-chevron">›</span></button>
-  <button class="ios-sheet-item" id="sitem-documenti"  onclick="sheetGo('documenti','DOCUMENTI')"><span class="item-icon">📁</span>Documenti<span class="item-chevron">›</span></button>
-  <button class="ios-sheet-item" id="sitem-scadenze"   onclick="sheetGo('scadenze','SCADENZE')"><span class="item-icon">📅</span>Scadenze<span class="item-chevron">›</span></button>
-  <button class="ios-sheet-item" id="sitem-zoho"       onclick="sheetGo('zoho','CONTABILITÀ')"><span class="item-icon">📊</span>Contabilità<span class="item-chevron">›</span></button>
-  <button class="ios-sheet-item" id="sitem-pratiche"   onclick="sheetGo('pratiche','PRATICHE')"><span class="item-icon">📋</span>Le mie Pratiche<span class="item-chevron">›</span></button>
+  <button class="ios-sheet-item active-item" id="sitem-anagrafica" onclick="sheetGo('anagrafica','AZIENDA')"><span class="item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>La mia Azienda<span class="item-chevron">›</span></button>
+  <button class="ios-sheet-item" id="sitem-documenti"  onclick="sheetGo('documenti','DOCUMENTI')"><span class="item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></span>Documenti<span class="item-chevron">›</span></button>
+  <button class="ios-sheet-item" id="sitem-scadenze"   onclick="sheetGo('scadenze','SCADENZE')"><span class="item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>Scadenze<span class="item-chevron">›</span></button>
+  <button class="ios-sheet-item" id="sitem-zoho"       onclick="sheetGo('zoho','CONTABILITÀ')"><span class="item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>Contabilità<span class="item-chevron">›</span></button>
+  <button class="ios-sheet-item" id="sitem-pratiche"   onclick="sheetGo('pratiche','PRATICHE')"><span class="item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span>Le mie Pratiche<span class="item-chevron">›</span></button>
   <div class="ios-sheet-section">InDubai</div>
   <button class="ios-sheet-item" id="sitem-servizi"    onclick="sheetGo('servizi','SERVIZI')"><span class="item-icon">✦</span>Servizi<span class="item-chevron">›</span></button>
-  <button class="ios-sheet-item" id="sitem-numeri"     onclick="sheetGo('numeri','NUMERI UTILI')"><span class="item-icon">📞</span>Numeri Utili<span class="item-chevron">›</span></button>
+  <button class="ios-sheet-item" id="sitem-numeri"     onclick="sheetGo('numeri','NUMERI UTILI')"><span class="item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 10.4a19.79 19.79 0 01-3.07-8.67A2 2 0 012.86 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></span>Numeri Utili<span class="item-chevron">›</span></button>
   <button class="ios-sheet-item" id="sitem-news"       onclick="sheetGo('news','UAE NEWS')"><span class="item-icon">📰</span>UAE News<span class="item-chevron">›</span></button>
   <button class="ios-sheet-logout" onclick="closeSheet(); doLogout()">⏻ Esci dall'account</button>
 </div>
@@ -559,14 +563,14 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="nav-section" style="margin-bottom:8px">Menu</div>
-    <button class="nav-item active" onclick="showPanel('anagrafica', this)"><span class="nav-icon">🏢</span> Anagrafica</button>
-    <button class="nav-item" onclick="showPanel('documenti', this)"><span class="nav-icon">📁</span> Documenti</button>
-    <button class="nav-item" onclick="showPanel('scadenze', this)"><span class="nav-icon">📅</span> Scadenze</button>
-    <button class="nav-item" onclick="showPanel('zoho', this)"><span class="nav-icon">📊</span> Contabilità</button>
-    <button class="nav-item" onclick="showPanel('pratiche', this)"><span class="nav-icon">📋</span> Le mie Pratiche</button>
+    <button class="nav-item active" onclick="showPanel('anagrafica', this)"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> Anagrafica</button>
+    <button class="nav-item" onclick="showPanel('documenti', this)"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></span> Documenti</button>
+    <button class="nav-item" onclick="showPanel('scadenze', this)"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Scadenze</button>
+    <button class="nav-item" onclick="showPanel('zoho', this)"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Contabilità</button>
+    <button class="nav-item" onclick="showPanel('pratiche', this)"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span> Le mie Pratiche</button>
     <div class="nav-section" style="margin-top:16px">InDubai</div>
     <button class="nav-item" onclick="showPanel('servizi', this)"><span class="nav-icon">✦</span> Servizi</button>
-    <button class="nav-item" onclick="showPanel('numeri', this)"><span class="nav-icon">📞</span> Numeri Utili</button>
+    <button class="nav-item" onclick="showPanel('numeri', this)"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 10.4a19.79 19.79 0 01-3.07-8.67A2 2 0 012.86 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></span> Numeri Utili</button>
     <button class="nav-item" onclick="showPanel('news', this)"><span class="nav-icon">📰</span> UAE News</button>
   </aside>
 
@@ -786,7 +790,7 @@ function financialsHTML(f) {
     <div class="card" style="margin-bottom:16px">
       <div class="card-header" style="background:linear-gradient(135deg,#142540 0%,#1e3a5f 100%);border-radius:16px 16px 0 0">
         <div style="display:flex;align-items:center;justify-content:space-between">
-          <div class="card-title" style="color:white;font-size:15px">📊 Riepilogo Finanziario</div>
+          <div class="card-title" style="color:white;font-size:15px"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Riepilogo Finanziario</div>
           <div style="display:flex;align-items:center;gap:8px">
             <div style="font-size:11px;color:rgba(255,255,255,.5)">Aggiornato: ${lastSync}</div>
             <button onclick="refreshFinancials()" id="fin-refresh-btn" style="background:rgba(255,255,255,.12);border:0.5px solid rgba(255,255,255,.2);border-radius:8px;padding:3px 10px;font-size:11px;font-weight:600;color:rgba(255,255,255,.8);cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent">↻</button>
@@ -965,7 +969,7 @@ function anagraficaHTML() {
 
   return `
     <div class="card">
-      <div class="card-header"><div class="card-title">🏢 Dati Aziendali</div></div>
+      <div class="card-header"><div class="card-title"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Dati Aziendali</div></div>
       <div class="card-body">
         <div class="info-grid">
           ${f('Ragione Sociale', c.company_name)}
@@ -978,7 +982,7 @@ function anagraficaHTML() {
       </div>
     </div>
     <div class="card">
-      <div class="card-header"><div class="card-title">👤 Contatto Principale</div></div>
+      <div class="card-header"><div class="card-title"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Contatto Principale</div></div>
       <div class="card-body">
         <div class="info-grid">
           ${f('Referente', c.contact_name)}
@@ -996,7 +1000,7 @@ function documentiHTML() {
   return `
     <div class="card" style="overflow:hidden">
       <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-        <div id="drive-bc" style="flex:1;font-size:13px;font-weight:600;color:#ffffff">📁 I tuoi documenti</div>
+        <div id="drive-bc" style="flex:1;font-size:13px;font-weight:600;color:#ffffff"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> I tuoi documenti</div>
         <button class="folder-tab active" id="vbtn-grid" onclick="setDriveView('grid')" title="Griglia" style="padding:5px 10px">⊞</button>
         <button class="folder-tab" id="vbtn-list" onclick="setDriveView('list')" title="Lista" style="padding:5px 10px">☰</button>
       </div>
@@ -1044,7 +1048,7 @@ function renderDrive() {
   let g = '<div class="drv-grid">';
   dirs.forEach(n => {
     g += `<div class="drv-card drv-dir" data-dir="${esc(n)}">
-      <div class="drv-ico">📁</div>
+      <div class="drv-ico"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div>
       <div class="drv-nm">${esc(n)}</div>
       <div class="drv-sz">Cartella</div>
     </div>`;
@@ -1098,7 +1102,7 @@ function renderBC() {
   const bc = document.getElementById('drive-bc');
   if (!bc) return;
   const parts = cwd.split('/').filter(Boolean);
-  let html = `<span style="cursor:pointer;color:var(--gold)" onclick="cwd='/';renderDrive()">📁 Documenti</span>`;
+  let html = `<span style="cursor:pointer;color:var(--gold)" onclick="cwd='/';renderDrive()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> Documenti</span>`;
   let built = '/';
   parts.forEach((p,i) => {
     built += p+'/';
@@ -1142,7 +1146,7 @@ function scadenzeHTML(visas=[]) {
   // Add individual visas
   (visas||[]).forEach(v => addDeadline(`✈️ ${v.holder_name} (${v.visa_type||'Residenza'})`, v.expiry_date, '🛂'));
 
-  if (!items.length) return `<div class="card"><div class="card-body"><div class="empty-state"><div class="icon">📅</div><p>Nessuna scadenza configurata.<br>Contatta il tuo consulente per aggiornarle.</p></div></div></div>`;
+  if (!items.length) return `<div class="card"><div class="card-body"><div class="empty-state"><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><p>Nessuna scadenza configurata.<br>Contatta il tuo consulente per aggiornarle.</p></div></div></div>`;
 
   return items.map(item => {
     const cls = item.days < 0 ? 'danger' : item.days <= 60 ? 'warning' : null;
@@ -1151,7 +1155,7 @@ function scadenzeHTML(visas=[]) {
     return `
       <div class="card" style="margin-bottom:12px">
         <div class="card-body" style="display:flex;align-items:center;gap:16px;padding:16px 24px">
-          <span style="font-size:28px">${item.icon}</span>
+          <span style="display:flex;align-items:center;color:var(--gold)">${getIcon(item.icon, 24)}</span>
           <div style="flex:1">
             <div style="font-weight:600;font-size:14px">${item.label}</div>
             <div style="font-size:13px;color:var(--muted);margin-top:2px">${item.fmt}</div>
@@ -1260,7 +1264,7 @@ function showPushPrompt() {
   var el = document.createElement('div');
   el.id = 'push-prompt';
   el.style.cssText = 'position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px));left:12px;right:12px;background:#1a3a5c;border-radius:16px;padding:16px 18px;z-index:500;box-shadow:0 8px 32px rgba(0,0,0,.4);display:flex;align-items:center;gap:14px;animation:slideUp .35s ease';
-  el.innerHTML = '<span style="font-size:26px">🔔</span><div style="flex:1"><div style="font-size:14px;font-weight:700;color:white;margin-bottom:3px">Attiva le notifiche</div><div style="font-size:12px;color:rgba(255,255,255,.6)">Ricevi aggiornamenti su scadenze e documenti</div></div><button onclick="acceptPush()" style="background:#c9a84c;color:#0f1628;border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Attiva</button><button onclick="dismissPush()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:20px;cursor:pointer;padding:0 4px;flex-shrink:0">&times;</button>';
+  el.innerHTML = '<span style="display:flex;align-items:center;color:white"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></span><div style="flex:1"><div style="font-size:14px;font-weight:700;color:white;margin-bottom:3px">Attiva le notifiche</div><div style="font-size:12px;color:rgba(255,255,255,.6)">Ricevi aggiornamenti su scadenze e documenti</div></div><button onclick="acceptPush()" style="background:#c9a84c;color:#0f1628;border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Attiva</button><button onclick="dismissPush()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:20px;cursor:pointer;padding:0 4px;flex-shrink:0">&times;</button>';
   document.body.appendChild(el);
 }
 window.acceptPush = function() {
@@ -1315,7 +1319,7 @@ async function loadPraticheClient() {
     };
 
     if (!pratiche?.length) {
-      el.innerHTML = `<div class="card"><div class="card-body"><div class="empty-state"><div class="icon">📋</div><p>Nessuna pratica in corso.<br>Contatta il tuo consulente per avviare una nuova pratica.</p></div></div></div>`;
+      el.innerHTML = `<div class="card"><div class="card-body"><div class="empty-state"><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><p>Nessuna pratica in corso.<br>Contatta il tuo consulente per avviare una nuova pratica.</p></div></div></div>`;
       return;
     }
 
@@ -1343,22 +1347,22 @@ async function loadPraticheClient() {
 // SERVIZI
 function serviziHTML() {
   const services = [
-    { icon: '🏢', title: 'Company Formation', desc: 'Costituzione di società nelle principali Free Zone e Mainland UAE. FZCO, FZE, LLC e strutture holding.', tag: 'Più richiesto' },
-    { icon: '📊', title: 'VAT & Tax', desc: 'Registrazione VAT, dichiarazioni trimestrali, ottimizzazione fiscale e compliance con le normative UAE.', tag: null },
+    { icon: 'building', title: 'Company Formation', desc: 'Costituzione di società nelle principali Free Zone e Mainland UAE. FZCO, FZE, LLC e strutture holding.', tag: 'Più richiesto' },
+    { icon: 'chart', title: 'VAT & Tax', desc: 'Registrazione VAT, dichiarazioni trimestrali, ottimizzazione fiscale e compliance con le normative UAE.', tag: null },
     { icon: '🏛', title: 'Corporate Tax', desc: 'Registrazione e gestione della Corporate Tax UAE (9%). Pianificazione e dichiarazioni annuali.', tag: null },
     { icon: '🌟', title: 'Golden Visa', desc: 'Ottenimento del Golden Visa UAE per imprenditori, investitori e professionisti qualificati. 5 e 10 anni.', tag: 'Premium' },
     { icon: '🔢', title: 'Contabilità', desc: 'Gestione contabile completa, bilanci, libri contabili e reportistica finanziaria conforme agli standard UAE.', tag: null },
-    { icon: '🏦', title: 'Banking', desc: 'Apertura conti bancari aziendali e personali, supporto con Wio, Mashreq, ADCB e banche internazionali.', tag: null },
+    { icon: 'bank', title: 'Banking', desc: 'Apertura conti bancari aziendali e personali, supporto con Wio, Mashreq, ADCB e banche internazionali.', tag: null },
     { icon: '🏗', title: 'Real Estate', desc: 'Supporto all\'investimento immobiliare a Dubai, due diligence, strutturazione acquisti off-plan e completati.', tag: null },
-    { icon: '✈️', title: 'Visa & Permessi', desc: 'Visti di residenza, visti dipendenti, Emirates ID, rinnovi e gestione completa delle pratiche immigratorie.', tag: null },
-    { icon: '🔐', title: 'Crypto & VARA', desc: 'Supporto per applicazioni VARA, licenze crypto, strutturazione società per attività con asset digitali.', tag: 'Specialistico' },
+    { icon: 'plane', title: 'Visa & Permessi', desc: 'Visti di residenza, visti dipendenti, Emirates ID, rinnovi e gestione completa delle pratiche immigratorie.', tag: null },
+    { icon: 'lock', title: 'Crypto & VARA', desc: 'Supporto per applicazioni VARA, licenze crypto, strutturazione società per attività con asset digitali.', tag: 'Specialistico' },
     { icon: '📝', title: 'Contratti & Legal', desc: 'Redazione e revisione contratti commerciali, accordi tra soci, NDA, termini di servizio e documentazione legale.', tag: null },
   ];
 
   const cards = services.map(s => `
     <div class="srv-card">
       ${s.tag ? `<div class="srv-tag">${s.tag}</div>` : ''}
-      <div class="srv-icon">${s.icon}</div>
+      <div class="srv-icon">${getIcon(s.icon, 26)}</div>
       <div class="srv-title">${s.title}</div>
       <div class="srv-desc">${s.desc}</div>
       <a href="mailto:info@indubai.it?subject=Richiesta informazioni: ${encodeURIComponent(s.title)}&body=Buongiorno,%0D%0A%0D%0ASono interessato al servizio: ${encodeURIComponent(s.title)}%0D%0A%0D%0APer favore contattatemi per maggiori informazioni.%0D%0A%0D%0AGrazie" class="srv-btn">✉ Richiedi info</a>
@@ -1394,7 +1398,7 @@ function numeriHTML() {
       border: '#bae6fd',
       items: [
         { icon: '⚡', label: 'DEWA (Elettricità/Acqua)', number: '04-601-9999' },
-        { icon: '📡', label: 'Etisalat (e&)', number: '101' },
+        { icon: 'signal', label: 'Etisalat (e&)', number: '101' },
         { icon: '📱', label: 'Du Telecom', number: '155' },
         { icon: '🚇', label: 'RTA (Trasporti)', number: '800-90090' },
       ]
@@ -1431,20 +1435,20 @@ function numeriHTML() {
       items: [
         { icon: '🏛', label: 'Consolato Dubai', number: '04-331-4167' },
         { icon: '📧', label: 'Email Consolato', number: 'dubai.consolare@esteri.it' },
-        { icon: '🌐', label: 'Prenotazione Online', number: 'prenota.esteri.it' },
+        { icon: 'globe', label: 'Prenotazione Online', number: 'prenota.esteri.it' },
         { icon: '🆘', label: 'Emergenze Italiani', number: '+39-06-3691-7779' },
       ]
     },
     {
-      title: '💼 Business & Legal',
+      title: 'Business & Legal',
       color: '#0f1e35',
       bg: '#f8fafc',
       border: '#e2e8f0',
       items: [
-        { icon: '🏢', label: 'DED (Licenze Dubai)', number: '04-445-5555' },
-        { icon: '📋', label: 'MOHRE (Lavoro)', number: '800-60' },
+        { icon: 'building', label: 'DED (Licenze Dubai)', number: '04-445-5555' },
+        { icon: 'clipboard', label: 'MOHRE (Lavoro)', number: '800-60' },
         { icon: '🛃', label: 'Dubai Customs', number: '04-239-9999' },
-        { icon: '🏦', label: 'UAE Central Bank', number: '800-CBUAE' },
+        { icon: 'bank', label: 'UAE Central Bank', number: '800-CBUAE' },
       ]
     },
   ];
@@ -1458,7 +1462,7 @@ function numeriHTML() {
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
           ${s.items.map(item => `
             <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fafafa;border-radius:8px;border:1px solid #f1f5f9">
-              <span style="font-size:18px">${item.icon}</span>
+              <span style="display:flex;align-items:center;color:var(--gold)">${getIcon(item.icon, 20)}</span>
               <div style="flex:1;min-width:0">
                 <div style="font-size:11px;color:var(--muted);font-weight:600">${item.label}</div>
                 <a href="${item.number.startsWith('0')||item.number.startsWith('+')||/^\d+$/.test(item.number.replace('-',''))?'tel:'+item.number.replace(/[^+0-9]/g,''):item.number.includes('@')?'mailto:'+item.number:'https://'+item.number}" 
@@ -1519,7 +1523,7 @@ window.previewFile = async function(storagePath, name, mime) {
       <div style="font-size:56px;margin-bottom:16px">${ico}</div>
       <div style="font-size:15px;font-weight:700;margin-bottom:8px;color:#ffffff">${name}</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:24px">Anteprima non disponibile — clicca per scaricare</div>
-      <button class="btn-dl" onclick="downloadFile('${storagePath.replace(/'/g,"\'")}','${name.replace(/'/g,"\'")}')">⬇ Scarica file</button>
+      <button class="btn-dl" onclick="downloadFile('${storagePath.replace(/'/g,"\'")}','${name.replace(/'/g,"\'")}')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Scarica file</button>
     </div>`;
     return;
   }
@@ -1634,7 +1638,7 @@ async function loadClientNews() {
       <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none;-ms-overflow-style:none;margin-bottom:8px">${pills}</div>
       ${cards}
       ${pag}
-      <div style="text-align:center;font-size:10px;color:rgba(255,255,255,.35);padding-top:8px">📡 Gulf News · WAM · Arabian Post · Google News · tradotto con AI</div>`;
+      <div style="text-align:center;font-size:10px;color:rgba(255,255,255,.35);padding-top:8px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a4 4 0 01-4-4V6a2 2 0 012-2"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/><line x1="9" y1="7" x2="10" y2="7"/></svg> Gulf News · WAM · Arabian Post · Google News · tradotto con AI</div>`;
   }
 
   function openCNModal(n) {
@@ -1662,7 +1666,7 @@ async function loadClientNews() {
         <div style="height:1px;background:#e2e8f0;margin:0 20px 16px"></div>
         <div style="padding:0 20px;font-size:14px;color:rgba(255,255,255,.75);line-height:1.7">${escH(n.summary)}</div>
         <div style="padding:20px;display:flex;gap:10px">
-          <button onclick="document.getElementById('cn-modal-overlay').remove()" style="flex:1;padding:13px;border-radius:12px;font-size:14px;font-weight:600;border:1.5px solid #e2e8f0;background:white;color:rgba(255,255,255,.45);cursor:pointer;font-family:inherit">✕ Chiudi</button>
+          <button onclick="document.getElementById('cn-modal-overlay').remove()" style="flex:1;padding:13px;border-radius:12px;font-size:14px;font-weight:600;border:1.5px solid #e2e8f0;background:white;color:rgba(255,255,255,.45);cursor:pointer;font-family:inherit"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Chiudi</button>
           <a href="${escH(n.link)}" target="_blank" rel="noopener" style="flex:2;padding:13px;border-radius:12px;font-size:14px;font-weight:600;border:none;background:#1a3a5c;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;font-family:inherit">🔗 Articolo completo</a>
         </div>
       </div>`;
@@ -1692,7 +1696,7 @@ async function loadClientNews() {
     window._cnGenerated = data.generated;
     renderCN();
   } catch(e) {
-    el.innerHTML = `<div style="padding:32px;text-align:center;color:rgba(255,255,255,.45);font-size:13px">⚠️ ${String(e.message||e)}<br><button onclick="reloadCN()" style="margin-top:12px;background:#1a3a5c;border:none;color:white;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Riprova</button></div>`;
+    el.innerHTML = `<div style="padding:32px;text-align:center;color:rgba(255,255,255,.45);font-size:13px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> ${String(e.message||e)}<br><button onclick="reloadCN()" style="margin-top:12px;background:#1a3a5c;border:none;color:white;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Riprova</button></div>`;
   }
 }
 
@@ -1745,6 +1749,26 @@ window.showPanel = function(name, btn) {
   }
 })();
 
+
+// ── ICON HELPER ──────────────────────────────────────────
+function getIcon(name, size) {
+  size = size || 20;
+  const icons = {
+    building: '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+    chart:    '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+    bank:     '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 10 5 3 19 3 19 10"/><line x1="7" y1="21" x2="7" y2="10"/><line x1="11" y1="21" x2="11" y2="10"/><line x1="15" y1="21" x2="15" y2="10"/><line x1="19" y1="21" x2="19" y2="10"/></svg>',
+    plane:    '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>',
+    lock:     '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
+    folder:   '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>',
+    signal:   '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1.38 12a11 11 0 0121.24 0"/><path d="M5.16 14.62a7 7 0 0113.68 0"/><path d="M9 17a3 3 0 016 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg>',
+    globe:    '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>',
+    phone:    '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 10.4a19.79 19.79 0 01-3.07-8.67A2 2 0 012.86 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>',
+    clipboard:'<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>',
+    file:     '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+  };
+  return icons[name] || icons.file;
+}
+
 // Safety check before init
 window.addEventListener('DOMContentLoaded', function() {
   if (typeof sb === 'undefined') {
@@ -1781,8 +1805,8 @@ function syncTabBar(name) {
     <div class="prev-header">
       <div class="prev-title" id="preview-title"></div>
       <div style="display:flex;gap:8px;flex-shrink:0">
-        <button class="btn-dl" id="preview-dl-btn" style="padding:7px 14px;font-size:12px">⬇ Scarica</button>
-        <button onclick="closePreview()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:14px">✕</button>
+        <button class="btn-dl" id="preview-dl-btn" style="padding:7px 14px;font-size:12px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Scarica</button>
+        <button onclick="closePreview()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:14px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
     </div>
     <div class="prev-body" id="preview-body"></div>
