@@ -62,7 +62,7 @@
       padding-top: env(safe-area-inset-top, 0px);
       padding-left: 20px; padding-right: 20px; padding-bottom: 0;
       display: flex; flex-direction: column; justify-content: flex-end;
-      position: sticky; top: 0; z-index: 100;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       border-bottom: 0.5px solid var(--border2);
     }
     .header-inner {
@@ -97,7 +97,9 @@
     .sidebar { display: none; }
     .layout { display: block; }
     .main {
-      padding: 16px 16px;
+      padding-top: calc(var(--hdr-h) + env(safe-area-inset-top, 0px) + 16px);
+      padding-left: 16px;
+      padding-right: 16px;
       padding-bottom: calc(58px + max(env(safe-area-inset-bottom, 16px), 16px) + 12px);
     }
 
@@ -625,16 +627,18 @@ async function loadVisas(clientId) {
 
 async function refreshFinancials() {
   const container = document.getElementById('fin-card-container');
-  if (!container) return;
+  if (!container) { console.warn('fin-card-container not found'); return; }
   const orig = container.innerHTML;
-  container.innerHTML = '<div style="text-align:center;padding:40px 20px"><div class="spinner" style="margin:0 auto"></div><div style="font-size:13px;color:rgba(255,255,255,.4);margin-top:16px">Caricamento dati...</div></div>';
+  container.innerHTML = '<div style="text-align:center;padding:40px 20px"><div class="spinner" style="margin:0 auto"></div><div style="font-size:13px;color:rgba(255,255,255,.4);margin-top:16px">Caricamento dati finanziari...</div></div>';
   try {
-    if (!clientData?.id) throw new Error('no client');
+    if (!clientData?.id) throw new Error('clientData non disponibile');
+    console.log('refreshFinancials: clientId=', clientData.id, 'zoho_org_id=', clientData.zoho_org_id);
     const fin = await loadFinancials(clientData.id);
+    console.log('loadFinancials result:', fin);
     if (fin) {
       container.innerHTML = financialsHTML(fin);
     } else {
-      container.innerHTML = orig;
+      container.innerHTML = '<div style="padding:20px;text-align:center;color:rgba(255,255,255,.4);font-size:13px">Nessun dato finanziario disponibile.<br><small>Configura Zoho per dati live.</small></div>';
     }
   } catch(e) {
     console.warn('refresh failed:', e.message);
@@ -1157,9 +1161,10 @@ function initOneSignal(userId, companyName) {
         notifyButton: { enable: false },
         welcomeNotification: { disable: true },
       });
-      await OneSignal.login(userId);
+      // NON usare login() - setta solo i tag per il targeting
       await OneSignal.User.addTag('company', companyName);
       await OneSignal.User.addTag('client_id', userId);
+      await OneSignal.User.addTag('user_id', userId);
       var perm = OneSignal.Notifications.permissionNative;
       if (perm === 'default') setTimeout(showPushPrompt, 3000);
     } catch(e) { console.warn('OneSignal web:', e); }
