@@ -274,11 +274,14 @@
           created_at: new Date().toISOString()
         });
 
-        showMsg('Account creato! Controlla la tua email per confermare.', 'success');
-        btn.textContent = '✓ Registrato!';
-
-        // Redirect dopo 2s
-        setTimeout(() => { window.location.href = 'app.html'; }, 2000);
+        // Auto sign-in subito dopo la registrazione
+        const { error: loginErr } = await sb.auth.signInWithPassword({ email, password });
+        if (loginErr) {
+          showMsg('Account creato! Accedi con le tue credenziali.', 'success');
+          setTimeout(() => { window.location.href = 'login.html'; }, 2000);
+        } else {
+          window.location.href = 'app.html';
+        }
 
       } catch(e) {
         showMsg(e.message || 'Errore durante la registrazione.', 'error');
