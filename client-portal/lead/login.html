@@ -100,7 +100,7 @@
   </div>
 
   <script>
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = supabase.createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_ANON_KEY);
     function showMsg(text, type) {
       const el = document.getElementById('msg');
       el.textContent = text; el.className = 'msg ' + type; el.style.display = 'block';

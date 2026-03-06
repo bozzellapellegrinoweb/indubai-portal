@@ -800,7 +800,7 @@
 </div>
 
 <script>
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = supabase.createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_ANON_KEY);
 const SUPABASE_EDGE_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1';
 
 // ── ONBOARDING ──────────────────────────────────────
