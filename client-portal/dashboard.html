@@ -120,10 +120,13 @@
       border-top: 0.5px solid rgba(255,255,255,.08);
       display: flex; align-items: flex-start;
       padding-top: 12px;
-      /* abbraccia home indicator */
       padding-bottom: max(env(safe-area-inset-bottom, 16px), 16px);
       z-index: 100;
-      /* impedisce stacco al bounce */
+      /* iOS compositing layer — impedisce il ballo durante scroll */
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      will-change: transform;
+      /* copre il bounce overscroll sotto */
       box-shadow: 0 60px 0 60px rgba(18,30,48,.95);
     }
     .tab-item {
@@ -1494,10 +1497,20 @@ async function fetchBlob(storagePath) {
 window.downloadFile = async function(storagePath, name) {
   try {
     const blob = await fetchBlob(storagePath);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = name; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  } catch(e) { alert('Errore download: ' + e.message); }
+    // iOS/Capacitor: usa Web Share API che apre la modale nativa
+    // (Salva su File, AirDrop, Apri con..., ecc.)
+    if (navigator.share && window.Capacitor?.isNativePlatform()) {
+      const file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
+      await navigator.share({ files: [file], title: name });
+    } else {
+      // Fallback web browser standard
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  } catch(e) {
+    if (e.name !== 'AbortError') alert('Errore download: ' + e.message);
+  }
 };
 
 window.previewFile = async function(storagePath, name, mime) {
