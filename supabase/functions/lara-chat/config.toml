@@ -1,0 +1,2 @@
+[functions.lara-chat]
+verify_jwt = false
