@@ -21,12 +21,14 @@
   },
   "homepage": "https://github.com/bozzellapellegrinoweb/indubai-portal#readme",
   "dependencies": {
+    "@awesome-cordova-plugins/onesignal": "^8.1.0",
     "@capacitor/android": "^8.1.0",
     "@capacitor/browser": "^8.0.1",
     "@capacitor/core": "^8.1.0",
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/ios": "^8.1.0",
-    "@capacitor/push-notifications": "^8.0.1"
+    "@capacitor/push-notifications": "^8.0.1",
+    "onesignal-cordova-plugin": "^5.3.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.1.0"

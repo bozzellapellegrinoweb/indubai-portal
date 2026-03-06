@@ -1175,29 +1175,22 @@ async function initOneSignalNative(userId, companyName) {
     PushNotifications.addListener('registration', async function(token) {
       console.log('APNs token ricevuto:', token.value);
       try {
-        const res = await fetch('https://onesignal.com/api/v1/players', {
+        // Registra via Edge Function (server-side con API key)
+        const res = await fetch('https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/register-device', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (sb.getSession()?.access_token || '')
+          },
           body: JSON.stringify({
-            app_id: '06f381cd-ed3d-4393-a5c2-3f6ef8322661',
-            device_type: 0,
-            identifier: token.value,
-            tags: { company: companyName, client_id: userId }
+            token: token.value,
+            client_id: userId,
+            company: companyName
           })
         });
         const data = await res.json();
-        console.log('OneSignal player creato:', data.id);
-        if (data.id) {
-          await fetch('https://onesignal.com/api/v1/players/' + data.id, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              app_id: '06f381cd-ed3d-4393-a5c2-3f6ef8322661',
-              tags: { company: companyName, client_id: userId, user_id: userId }
-            })
-          });
-        }
-      } catch(e) { console.warn('OneSignal register error:', e); }
+        console.log('Device registrato su OneSignal:', data.player_id || data.error);
+      } catch(e) { console.warn('Register device error:', e); }
     });
 
     PushNotifications.addListener('registrationError', function(err) {
