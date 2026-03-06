@@ -574,7 +574,6 @@
           <strong>Consulenza gratuita di 30 min</strong>
           Parla con un esperto InDubai e valuta la tua situazione senza impegno.
         </div>
-        <button onclick="openBookingModal()" style="flex-shrink:0;padding:8px 14px;background:var(--gold);border:none;border-radius:10px;font-size:12px;font-weight:600;color:#0a0e18;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent">Prenota</button>
       </div>
       <div class="section-label">I nostri servizi</div>
       <div class="services-grid" id="services-grid"></div>
@@ -782,15 +781,10 @@
 </div>
 
 <!-- Booking modal -->
-<div class="booking-modal" id="booking-modal" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="booking-modal" id="booking-modal">
   <div class="booking-sheet">
     <div class="booking-handle"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div class="booking-title" style="margin-bottom:0">Prenota una consulenza</div>
-      <button onclick="document.getElementById('booking-modal').classList.remove('open')" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;line-height:0">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
+    <div class="booking-title">Prenota una consulenza</div>
     <div class="booking-sub">30 minuti gratuiti con un esperto InDubai (Dubai time, GMT+4)</div>
     <div class="slot-grid" id="slot-grid">
       <div style="color:var(--muted);font-size:13px;grid-column:1/-1">Caricamento disponibilità…</div>
@@ -801,7 +795,6 @@
 
 <script>
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const SUPABASE_EDGE_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1';
 
 // ── ONBOARDING ──────────────────────────────────────
 let obCurrent = 0;
@@ -1000,34 +993,16 @@ FISCALITÀ UAE (sintetica):
 - Nessuna imposta su dividendi o capital gain
 - ATTENZIONE: aprire una società UAE mentre si è fiscalmente residenti in Italia NON azzera le tasse italiane automaticamente. Bisogna spostare la residenza fiscale.
 
-BOOKING CONSULENZA:
-Quando l'utente vuole prenotare o chiede di parlare con un consulente umano, usa lo strumento "show_booking_modal" per aprire il calendario. Non descrivere il processo a parole: usa direttamente lo strumento.
-
 REGOLE:
 - Risposte brevi (20-30 parole) salvo quando serve dettaglio
 - Fai UNA domanda alla volta
 - Ricorda sempre ciò che l'utente ha già detto
-- Non incoraggiare strategie fiscali irrealistiche`;
-
-const LARA_TOOLS = [{
-  name: 'show_booking_modal',
-  description: 'Apre il modale di prenotazione consulenza. Usalo quando l\'utente vuole prenotare una call, parlare con un consulente, fissare un appuntamento, o chiede disponibilità per una consulenza.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      message: {
-        type: 'string',
-        description: 'Messaggio breve da mostrare all\'utente prima di aprire il modale (es. "Apro subito il calendario!")'
-      }
-    },
-    required: ['message']
-  }
-}];
+- Non incoraggiare strategie fiscali irrealistiche
+- Se l'utente vuole prenotare una call: digli "Per prenotare una consulenza gratuita di 30 minuti, ti passo alla sezione Contatti — o clicca 'Prenota ora' qui."
+- Concludi sempre con "Posso aiutarti con qualcos'altro?"`;
 
 let chatHistory = [];
 let chatUserName = '';
-let chatUserEmail = '';
-let chatUserPhone = '';
 
 function initChat() {
   const welcomeMsg = `Ciao! Sono Lara di InDubai 🇮🇹\n\nTi aiuto a capire se Dubai fa al caso tuo — fiscalità, società, visti e tanto altro. Come posso aiutarti?`;
@@ -1039,11 +1014,13 @@ function addMessage(role, text) {
   const msgs = document.getElementById('chat-messages');
   const row = document.createElement('div');
   row.className = 'msg-row ' + (role === 'user' ? 'user' : 'lara');
+
   if (role === 'lara') {
     row.innerHTML = `<div class="msg-avatar-sm">L</div><div class="bubble">${text.replace(/\n/g,'<br>')}</div>`;
   } else {
     row.innerHTML = `<div class="bubble">${text}</div>`;
   }
+
   msgs.appendChild(row);
   msgs.scrollTop = msgs.scrollHeight;
   return row;
@@ -1076,6 +1053,8 @@ async function sendMessage() {
   addMessage('user', text);
   chatHistory.push({ role: 'user', content: text });
   showTyping();
+
+  // Salva attività chat
   trackChatMessage(text);
 
   try {
@@ -1084,39 +1063,20 @@ async function sendMessage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
+        max_tokens: 400,
         system: LARA_SYSTEM,
-        tools: LARA_TOOLS,
         messages: chatHistory
       })
     });
 
     const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Mi dispiace, non sono riuscita a rispondere. Riprova.';
+
     hideTyping();
+    addMessage('lara', reply);
+    chatHistory.push({ role: 'assistant', content: reply });
 
-    // Gestisci risposta con possibile tool_use
-    let assistantReply = '';
-    let toolUsed = false;
-
-    for (const block of (data.content || [])) {
-      if (block.type === 'text' && block.text) {
-        assistantReply = block.text;
-        addMessage('lara', block.text);
-      } else if (block.type === 'tool_use' && block.name === 'show_booking_modal') {
-        toolUsed = true;
-        const msg = block.input?.message || 'Apro il calendario per te!';
-        addMessage('lara', msg);
-        // Breve delay poi apri il modale
-        setTimeout(() => openBookingModal(), 600);
-      }
-    }
-
-    if (!assistantReply && !toolUsed) {
-      addMessage('lara', 'Mi dispiace, non sono riuscita a rispondere. Riprova.');
-    }
-
-    // Salva in history (includi tool_use se presente)
-    chatHistory.push({ role: 'assistant', content: data.content || [{ type: 'text', text: assistantReply || '' }] });
+    // Limita history
     if (chatHistory.length > 20) chatHistory = chatHistory.slice(-16);
 
   } catch(e) {
@@ -1132,113 +1092,9 @@ function chatKeydown(e) {
     e.preventDefault();
     sendMessage();
   }
+  // Auto-resize textarea
   e.target.style.height = 'auto';
   e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px';
-}
-
-// ── BOOKING GHL ──────────────────────────────────────
-let selectedSlot = null;
-let allSlots = [];
-
-async function openBookingModal() {
-  document.getElementById('booking-modal').classList.add('open');
-  await loadSlots();
-}
-
-async function loadSlots() {
-  const grid = document.getElementById('slot-grid');
-  grid.innerHTML = `<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">Caricamento disponibilità…</div>`;
-  selectedSlot = null;
-  document.getElementById('booking-btn').disabled = true;
-
-  try {
-    const r = await fetch(`${SUPABASE_EDGE_URL}/ghl-booking?action=slots`);
-    const data = await r.json();
-
-    // GHL restituisce { _id: { date: [ {slot,slotTimezone,startTime,endTime}, ... ] } }
-    // Appiattisci tutti gli slot dei prossimi giorni
-    allSlots = [];
-    const entries = data[Object.keys(data)[0]] || data;
-    for (const [date, slots] of Object.entries(entries)) {
-      if (Array.isArray(slots)) {
-        slots.forEach(s => allSlots.push({ ...s, date }));
-      }
-    }
-
-    if (allSlots.length === 0) {
-      grid.innerHTML = `<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">Nessuna disponibilità nei prossimi 14 giorni.<br>Scrivici su WhatsApp.</div>`;
-      return;
-    }
-
-    // Mostra max 12 slot
-    const show = allSlots.slice(0, 12);
-    grid.innerHTML = show.map((s, i) => {
-      const dt = new Date(s.startTime || s.slot);
-      const dayLabel = dt.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
-      const timeLabel = dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' (Dubai)';
-      return `<div class="slot-btn" onclick="selectSlot(${i})" id="slot-${i}">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:2px">${dayLabel}</div>
-        <div style="font-weight:600">${timeLabel}</div>
-      </div>`;
-    }).join('');
-
-  } catch(e) {
-    grid.innerHTML = `<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">Errore nel caricamento. <a href="https://wa.me/971501234567" style="color:var(--gold)">Scrivi su WhatsApp</a></div>`;
-  }
-}
-
-function selectSlot(i) {
-  selectedSlot = allSlots[i];
-  document.querySelectorAll('.slot-btn').forEach((el, idx) => {
-    el.classList.toggle('selected', idx === i);
-  });
-  document.getElementById('booking-btn').disabled = false;
-}
-
-async function confirmBooking() {
-  if (!selectedSlot) return;
-  const btn = document.getElementById('booking-btn');
-  btn.disabled = true;
-  btn.textContent = 'Prenotazione in corso…';
-
-  try {
-    const r = await fetch(`${SUPABASE_EDGE_URL}/ghl-booking?action=book`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: chatUserName || 'Lead InDubai',
-        email: chatUserEmail || '',
-        phone: chatUserPhone || '',
-        slot_start: selectedSlot.startTime || selectedSlot.slot,
-        slot_end: selectedSlot.endTime || '',
-        timezone: 'Asia/Dubai'
-      })
-    });
-
-    const data = await r.json();
-
-    if (data.ok) {
-      document.getElementById('booking-modal').classList.remove('open');
-      // Messaggio di conferma in chat
-      const dt = new Date(selectedSlot.startTime || selectedSlot.slot);
-      const readable = dt.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
-        + ' alle ' + dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' (ora Dubai)';
-      addMessage('lara', `✅ Appuntamento confermato per ${readable}!\n\nRiceverai una email di conferma. A presto! 🇮🇹`);
-      chatHistory.push({ role: 'assistant', content: `Appuntamento confermato per ${readable}.` });
-
-      // Track in Supabase
-      if (userId) {
-        sb.from('lead_activity').insert({ lead_id: userId, section: 'booking_confirmed', visited_at: new Date().toISOString() });
-      }
-    } else {
-      throw new Error(data.error || 'Errore sconosciuto');
-    }
-  } catch(e) {
-    btn.disabled = false;
-    btn.textContent = 'Conferma appuntamento';
-    addMessage('lara', `C'è stato un problema tecnico con la prenotazione. <a href="https://wa.me/971501234567" style="color:var(--gold)">Scrivimi su WhatsApp</a> per fissare la call.`);
-    document.getElementById('booking-modal').classList.remove('open');
-  }
 }
 
 // ── ACTIVITY TRACKING ───────────────────────────────
@@ -1274,8 +1130,6 @@ async function init() {
   const meta = session.user.user_metadata;
   const name = meta?.full_name || session.user.email;
   chatUserName = name.split(' ')[0];
-  chatUserEmail = session.user.email || '';
-  chatUserPhone = meta?.phone || '';
 
   // Header initials
   const initials = (meta?.full_name || 'U').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
