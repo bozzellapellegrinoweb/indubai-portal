@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>InDubai — Lead Admin</title>
+  <link rel="icon" href="../favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #c9a84c; --bg: #080e18; --bg2: #0d1627;
+      --surface: rgba(255,255,255,.04); --surface2: rgba(255,255,255,.07);
+      --border: rgba(255,255,255,.08); --text: #f0ede8; --muted: rgba(240,237,232,.45);
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    .topbar {
+      padding: 14px 24px; background: rgba(8,14,24,.97);
+      border-bottom: 0.5px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar img { height: 22px; }
+    .topbar-title { font-size: 13px; font-weight: 500; color: var(--muted); }
+    .container { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
+    .page-title { font-family: 'Cormorant Garamond', serif; font-size: 30px; font-weight: 300; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+    .stats-row { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+    .stat-card {
+      flex: 1; min-width: 120px; background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 16px; padding: 16px 18px;
+    }
+    .stat-val { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 300; color: var(--gold); }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .search-row { display: flex; gap: 10px; margin-bottom: 16px; }
+    .search-input {
+      flex: 1; background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 10px; padding: 10px 14px; font-size: 14px; color: var(--text);
+      font-family: 'DM Sans', sans-serif; outline: none; -webkit-appearance: none;
+    }
+    .search-input:focus { border-color: rgba(201,168,76,.4); }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      font-size: 11px; font-weight: 500; letter-spacing: .8px; text-transform: uppercase;
+      color: var(--muted); padding: 10px 12px; text-align: left;
+      border-bottom: 0.5px solid var(--border);
+    }
+    td { padding: 14px 12px; font-size: 14px; border-bottom: 0.5px solid rgba(255,255,255,.04); vertical-align: top; }
+    tr:hover td { background: var(--surface); }
+    .lead-name { font-weight: 500; color: var(--text); }
+    .lead-email { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .lead-phone { font-size: 12px; color: var(--muted); }
+    .badge {
+      display: inline-block; font-size: 10px; font-weight: 500; letter-spacing: .5px;
+      padding: 3px 8px; border-radius: 4px; text-transform: uppercase;
+    }
+    .badge-new { background: rgba(201,168,76,.15); color: var(--gold); }
+    .badge-active { background: rgba(74,222,128,.12); color: #4ade80; }
+    .sections-list { display: flex; flex-wrap: wrap; gap: 4px; }
+    .sec-tag {
+      font-size: 10px; padding: 2px 7px; border-radius: 4px;
+      background: var(--surface2); color: var(--muted);
+    }
+    .expand-btn { color: var(--gold); cursor: pointer; font-size: 12px; background: none; border: none; font-family: 'DM Sans', sans-serif; margin-top: 4px; }
+    .chat-preview {
+      font-size: 12px; color: var(--muted); line-height: 1.5;
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 8px; padding: 10px 12px; margin-top: 8px;
+      max-height: 120px; overflow-y: auto; display: none;
+    }
+    .chat-msg { margin-bottom: 8px; }
+    .chat-msg .role { font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+    .chat-msg.user .role { color: var(--gold); }
+    .chat-msg.lara .role { color: #60a5fa; }
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .refresh-btn {
+      padding: 8px 14px; background: var(--surface2); border: 0.5px solid var(--border);
+      border-radius: 8px; font-size: 13px; color: var(--text); cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .refresh-btn:hover { background: rgba(255,255,255,.1); }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <img src="../assets/logo-white-transparent.png" alt="InDubai" />
+    <span class="topbar-title">Admin — Lead Dashboard</span>
+    <button class="refresh-btn" onclick="loadLeads()">↻ Aggiorna</button>
+  </div>
+
+  <div class="container">
+    <div class="page-title">Lead registrati</div>
+    <div class="page-sub">Utenti che si sono registrati tramite la Lead App</div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val" id="stat-total">—</div><div class="stat-label">Totale lead</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-week">—</div><div class="stat-label">Questa settimana</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-active">—</div><div class="stat-label">Attivi oggi</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-chat">—</div><div class="stat-label">Con chat avviata</div></div>
+    </div>
+
+    <div class="search-row">
+      <input type="text" class="search-input" id="search" placeholder="Cerca per nome, email o telefono…" oninput="filterLeads()" />
+    </div>
+
+    <div id="table-wrap">
+      <div class="empty">Caricamento…</div>
+    </div>
+  </div>
+
+  <script>
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let allLeads = [];
+    let allActivity = {};
+
+    async function loadLeads() {
+      document.getElementById('table-wrap').innerHTML = '<div class="empty">Caricamento…</div>';
+
+      // Auth check
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = '../login.html'; return; }
+
+      // Load leads
+      const { data: leads, error } = await sb.from('leads')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        document.getElementById('table-wrap').innerHTML = `<div class="empty">Errore: ${error.message}<br><small>Assicurati di aver creato la tabella leads.</small></div>`;
+        return;
+      }
+
+      allLeads = leads || [];
+
+      // Load activity for all leads
+      const leadIds = allLeads.map(l => l.id);
+      if (leadIds.length > 0) {
+        const { data: acts } = await sb.from('lead_activity')
+          .select('lead_id, section, visited_at')
+          .in('lead_id', leadIds)
+          .order('visited_at', { ascending: false });
+
+        // Group by lead_id
+        (acts || []).forEach(a => {
+          if (!allActivity[a.lead_id]) allActivity[a.lead_id] = [];
+          allActivity[a.lead_id].push(a);
+        });
+      }
+
+      updateStats();
+      renderTable(allLeads);
+    }
+
+    function updateStats() {
+      const now = new Date();
+      const weekAgo = new Date(now - 7 * 86400 * 1000);
+      const todayStart = new Date(now.toDateString());
+
+      document.getElementById('stat-total').textContent = allLeads.length;
+      document.getElementById('stat-week').textContent = allLeads.filter(l => new Date(l.created_at) > weekAgo).length;
+      document.getElementById('stat-active').textContent = allLeads.filter(l => l.last_seen && new Date(l.last_seen) > todayStart).length;
+      document.getElementById('stat-chat').textContent = allLeads.filter(l => l.last_chat).length;
+    }
+
+    function filterLeads() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const filtered = allLeads.filter(l =>
+        (l.name || '').toLowerCase().includes(q) ||
+        (l.email || '').toLowerCase().includes(q) ||
+        (l.phone || '').toLowerCase().includes(q)
+      );
+      renderTable(filtered);
+    }
+
+    function renderTable(leads) {
+      if (!leads.length) {
+        document.getElementById('table-wrap').innerHTML = '<div class="empty">Nessun lead trovato</div>';
+        return;
+      }
+
+      const rows = leads.map(l => {
+        const acts = allActivity[l.id] || [];
+        const sections = [...new Set(acts.map(a => a.section))];
+        const lastSeen = l.last_seen ? timeAgo(new Date(l.last_seen)) : 'mai';
+        const isNew = (Date.now() - new Date(l.created_at)) < 3 * 86400 * 1000;
+        const badge = isNew ? '<span class="badge badge-new">Nuovo</span>' : '';
+        const chat = l.last_chat ? JSON.parse(l.last_chat) : null;
+
+        return `
+          <tr>
+            <td>
+              <div class="lead-name">${l.name || '—'} ${badge}</div>
+              <div class="lead-email">${l.email || ''}</div>
+              <div class="lead-phone">${l.phone || ''}</div>
+            </td>
+            <td>${formatDate(l.created_at)}</td>
+            <td>${lastSeen}</td>
+            <td>
+              <div class="sections-list">
+                ${sections.length ? sections.map(s => `<span class="sec-tag">${s}</span>`).join('') : '<span style="color:var(--muted2);font-size:12px">—</span>'}
+              </div>
+            </td>
+            <td>
+              ${chat ? `
+                <button class="expand-btn" onclick="toggleChat('chat-${l.id}', this)">Vedi chat (${chat.length} msg)</button>
+                <div class="chat-preview" id="chat-${l.id}">
+                  ${chat.map(m => `<div class="chat-msg ${m.role}"><span class="role">${m.role === 'user' ? l.name?.split(' ')[0] || 'Lead' : 'Lara'}</span><div>${m.text || m.content || ''}</div></div>`).join('')}
+                </div>
+              ` : '<span style="color:var(--muted2);font-size:12px">—</span>'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('table-wrap').innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Lead</th>
+              <th>Registrato</th>
+              <th>Ultimo accesso</th>
+              <th>Sezioni visitate</th>
+              <th>Chat con Lara</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function toggleChat(id, btn) {
+      const el = document.getElementById(id);
+      const visible = el.style.display === 'block';
+      el.style.display = visible ? 'none' : 'block';
+      btn.textContent = visible ? btn.textContent.replace('Nascondi', 'Vedi') : btn.textContent.replace('Vedi', 'Nascondi');
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function timeAgo(date) {
+      const diff = Date.now() - date;
+      const min = Math.floor(diff / 60000);
+      if (min < 1) return 'adesso';
+      if (min < 60) return `${min}m fa`;
+      const h = Math.floor(min / 60);
+      if (h < 24) return `${h}h fa`;
+      return `${Math.floor(h/24)}g fa`;
+    }
+
+    loadLeads();
+  </script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>InDubai — Accedi</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" href="../favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #c9a84c; --gold-light: #e8c96a;
+      --bg: #080e18; --surface: rgba(255,255,255,.04);
+      --border: rgba(255,255,255,.08); --text: #f0ede8; --muted: rgba(240,237,232,.45);
+    }
+    body {
+      font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text);
+      min-height: 100vh; min-height: 100dvh;
+      display: flex; align-items: center; justify-content: center;
+      padding: env(safe-area-inset-top,20px) 24px env(safe-area-inset-bottom,20px);
+      -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; opacity: .4;
+    }
+    body::after {
+      content: ''; position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 600px; height: 400px;
+      background: radial-gradient(ellipse, rgba(201,168,76,.12) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+    .card {
+      position: relative; z-index: 1; width: 100%; max-width: 420px;
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 24px; padding: 40px 32px 36px;
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    }
+    .logo-wrap { text-align: center; margin-bottom: 32px; }
+    .logo-wrap img { height: 28px; width: auto; }
+    .title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 300; text-align: center; color: var(--text); margin-bottom: 6px; letter-spacing: .3px; }
+    .subtitle { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 32px; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-bottom: 7px; letter-spacing: .8px; text-transform: uppercase; }
+    .field input {
+      width: 100%; background: rgba(255,255,255,.05); border: 0.5px solid var(--border);
+      border-radius: 12px; padding: 14px 16px; font-size: 15px; color: var(--text);
+      font-family: 'DM Sans', sans-serif; outline: none; transition: border-color .2s; -webkit-appearance: none;
+    }
+    .field input:focus { border-color: rgba(201,168,76,.5); background: rgba(201,168,76,.04); }
+    .field input::placeholder { color: rgba(240,237,232,.2); }
+    .btn {
+      width: 100%; margin-top: 8px; padding: 15px;
+      background: var(--gold); border: none; border-radius: 14px;
+      font-size: 15px; font-weight: 600; color: #0a0e18; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; letter-spacing: .3px;
+      transition: opacity .15s, transform .15s; -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { opacity: .85; transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .register-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--muted); }
+    .register-link a { color: var(--gold); text-decoration: none; font-weight: 500; }
+    .msg { padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; display: none; }
+    .msg.error { background: rgba(220,38,38,.12); border: 0.5px solid rgba(220,38,38,.3); color: #fca5a5; }
+    .msg.success { background: rgba(5,150,105,.12); border: 0.5px solid rgba(5,150,105,.3); color: #6ee7b7; }
+    .divider { height: 0.5px; background: var(--border); margin: 20px 0; }
+    .client-link { text-align: center; font-size: 12px; color: var(--muted); }
+    .client-link a { color: rgba(201,168,76,.6); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo-wrap">
+      <img src="../assets/logo-white-transparent.png" alt="InDubai" />
+    </div>
+    <div class="title">Bentornato</div>
+    <div class="subtitle">Accedi per continuare la tua esperienza InDubai</div>
+    <div class="msg" id="msg"></div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="mario@esempio.com" autocomplete="email" />
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="La tua password" autocomplete="current-password" />
+    </div>
+    <button class="btn" id="btn-login" onclick="doLogin()">Accedi</button>
+    <div class="divider"></div>
+    <div class="register-link">
+      Non hai un account? <a href="register.html">Registrati gratis</a>
+    </div>
+    <div class="client-link" style="margin-top:12px">
+      Sei un cliente InDubai? <a href="../login.html">Area riservata →</a>
+    </div>
+  </div>
+
+  <script>
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    function showMsg(text, type) {
+      const el = document.getElementById('msg');
+      el.textContent = text; el.className = 'msg ' + type; el.style.display = 'block';
+    }
+    async function doLogin() {
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email || !password) return showMsg('Inserisci email e password.', 'error');
+      const btn = document.getElementById('btn-login');
+      btn.disabled = true; btn.textContent = 'Accesso in corso…';
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        window.location.href = 'app.html';
+      } catch(e) {
+        showMsg('Email o password non corretti.', 'error');
+        btn.disabled = false; btn.textContent = 'Accedi';
+      }
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    sb.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.href = 'app.html';
+    });
+  </script>
+</body>
+</html>
