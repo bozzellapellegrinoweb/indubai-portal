@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" href="../favicon.png">
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../config.js"></script>
   <style>
@@ -15,15 +15,16 @@
     :root {
       --gold: #c9a84c; --gold-light: #e8c96a; --gold-dim: rgba(201,168,76,.15);
       --bg: #080e18; --bg2: #0d1627;
-      --surface: rgba(255,255,255,.04); --surface2: rgba(255,255,255,.07);
-      --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.05);
-      --text: #f0ede8; --muted: rgba(240,237,232,.45); --muted2: rgba(240,237,232,.25);
+      --surface: rgba(255,255,255,.05); --surface2: rgba(255,255,255,.09);
+      --border: rgba(255,255,255,.1); --border2: rgba(255,255,255,.06);
+      --text: #f0ede8; --muted: rgba(240,237,232,.55); --muted2: rgba(240,237,232,.3);
       --tab-h: 68px;
     }
     html, body { height: 100%; height: 100dvh; overflow: hidden; }
     body {
-      font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text);
+      font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
       -webkit-font-smoothing: antialiased; -webkit-overflow-scrolling: touch;
+      font-size: 15px;
     }
 
     /* ── ONBOARDING ─────────────────────────────────────── */
@@ -32,73 +33,76 @@
       background: var(--bg);
       display: flex; flex-direction: column;
     }
-    .ob-slides { flex: 1; display: flex; overflow: hidden; position: relative; }
+    .ob-slides-outer {
+      flex: 1; overflow: hidden; position: relative;
+    }
+    .ob-slides-track {
+      display: flex; height: 100%;
+      transition: transform .4s cubic-bezier(.4,0,.2,1);
+    }
     .ob-slide {
       min-width: 100%; height: 100%;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       padding: 48px 32px 0;
-      transition: transform .4s cubic-bezier(.4,0,.2,1);
+      flex-shrink: 0;
     }
     .ob-visual {
-      width: 100%; max-width: 320px;
-      height: 240px;
+      width: 100%; max-width: 300px;
+      height: 220px;
       border-radius: 24px;
       background: var(--surface2);
-      border: 0.5px solid var(--border);
+      border: 1px solid var(--border);
       display: flex; align-items: center; justify-content: center;
-      margin-bottom: 36px;
+      margin-bottom: 32px;
       position: relative; overflow: hidden;
     }
-    .ob-visual svg { opacity: .9; }
     .ob-visual::before {
       content: ''; position: absolute; inset: 0;
-      background: radial-gradient(ellipse at 50% 120%, rgba(201,168,76,.18) 0%, transparent 70%);
+      background: radial-gradient(ellipse at 50% 120%, rgba(201,168,76,.2) 0%, transparent 70%);
     }
     .ob-num {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 72px; font-weight: 300; color: var(--gold);
-      opacity: .25; line-height: 1;
-      position: absolute; bottom: 12px; right: 20px;
-      letter-spacing: -2px;
+      font-family: 'Playfair Display', serif;
+      font-size: 80px; font-weight: 700; color: var(--gold);
+      opacity: .15; line-height: 1;
+      position: absolute; bottom: 8px; right: 16px;
     }
     .ob-tag {
-      font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase;
-      color: var(--gold); margin-bottom: 12px;
+      font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 10px;
     }
     .ob-title {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 30px; font-weight: 300; text-align: center;
-      color: var(--text); margin-bottom: 14px; line-height: 1.25;
+      font-family: 'Playfair Display', serif;
+      font-size: 28px; font-weight: 700; text-align: center;
+      color: var(--text); margin-bottom: 14px; line-height: 1.2;
     }
     .ob-body {
-      font-size: 14px; color: var(--muted); text-align: center;
-      line-height: 1.7; max-width: 300px;
+      font-size: 15px; color: var(--muted); text-align: center;
+      line-height: 1.65; max-width: 300px; font-weight: 400;
     }
     .ob-footer {
       padding: 24px 32px calc(env(safe-area-inset-bottom,16px) + 16px);
-      display: flex; flex-direction: column; align-items: center; gap: 20px;
+      display: flex; flex-direction: column; align-items: center; gap: 18px;
     }
     .ob-dots { display: flex; gap: 8px; }
     .ob-dot {
       width: 6px; height: 6px; border-radius: 3px;
       background: var(--border2); transition: all .3s;
     }
-    .ob-dot.active { width: 20px; background: var(--gold); }
+    .ob-dot.active { width: 22px; background: var(--gold); }
     .ob-next {
       width: 100%; max-width: 320px;
-      padding: 15px; background: var(--gold); border: none; border-radius: 14px;
-      font-size: 15px; font-weight: 600; color: #0a0e18;
-      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      padding: 16px; background: var(--gold); border: none; border-radius: 14px;
+      font-size: 16px; font-weight: 700; color: #0a0e18;
+      cursor: pointer; font-family: 'Inter', sans-serif;
       transition: opacity .15s, transform .15s; -webkit-tap-highlight-color: transparent;
     }
     .ob-next:active { opacity: .85; transform: scale(.98); }
     .ob-skip {
-      font-size: 12px; color: var(--muted2); background: none; border: none;
-      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      font-size: 13px; color: var(--muted2); background: none; border: none;
+      cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 500;
       -webkit-tap-highlight-color: transparent; padding: 4px 8px;
     }
-    .ob-skip:active { opacity: .6; }
 
     /* ── APP SHELL ──────────────────────────────────────── */
     #app { display: none; flex-direction: column; height: 100%; height: 100dvh; }
@@ -111,17 +115,16 @@
       background: rgba(8,14,24,.97);
       backdrop-filter: saturate(200%) blur(20px);
       -webkit-backdrop-filter: saturate(200%) blur(20px);
-      border-bottom: 0.5px solid var(--border2);
+      border-bottom: 1px solid var(--border2);
       display: flex; align-items: center; justify-content: space-between;
       z-index: 100;
     }
-    .hdr img { height: 20px; width: auto; }
-    .hdr-right { display: flex; align-items: center; gap: 14px; }
+    .hdr img { height: 22px; width: auto; }
     .hdr-user {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: var(--gold-dim); border: 1px solid rgba(201,168,76,.3);
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--gold-dim); border: 1.5px solid rgba(201,168,76,.4);
       display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 600; color: var(--gold); cursor: pointer;
+      font-size: 13px; font-weight: 700; color: var(--gold); cursor: pointer;
     }
 
     /* Scroll area */
@@ -134,20 +137,17 @@
       background: rgba(8,14,24,.97);
       backdrop-filter: saturate(180%) blur(24px);
       -webkit-backdrop-filter: saturate(180%) blur(24px);
-      border-top: 0.5px solid var(--border2);
+      border-top: 1px solid var(--border2);
       display: flex; align-items: flex-start;
       padding-top: 10px;
       padding-bottom: max(env(safe-area-inset-bottom,16px), 16px);
-      transform: translateZ(0); -webkit-transform: translateZ(0);
-      will-change: transform;
     }
     .tab-item {
       flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
-      cursor: pointer; -webkit-tap-highlight-color: transparent;
-      padding: 2px 0;
+      cursor: pointer; -webkit-tap-highlight-color: transparent; padding: 2px 0;
     }
     .tab-icon { color: var(--muted2); transition: color .2s; line-height: 0; }
-    .tab-label { font-size: 10px; font-weight: 500; color: var(--muted2); transition: color .2s; letter-spacing: .2px; }
+    .tab-label { font-size: 11px; font-weight: 600; color: var(--muted2); transition: color .2s; letter-spacing: .2px; }
     .tab-item.active .tab-icon,
     .tab-item.active .tab-label { color: var(--gold); }
 
@@ -157,38 +157,67 @@
     @keyframes fadeUp { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
 
     /* ── HOME / SERVIZI ────────────────────────────────── */
-    .hero {
-      padding: 28px 20px 0;
-      margin-bottom: 24px;
-    }
+    .hero { padding: 28px 20px 0; margin-bottom: 20px; }
     .hero-greeting {
-      font-size: 12px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase;
-      color: var(--gold); margin-bottom: 8px;
+      font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 6px;
     }
     .hero-title {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 32px; font-weight: 300; line-height: 1.2;
+      font-family: 'Playfair Display', serif;
+      font-size: 30px; font-weight: 700; line-height: 1.15;
       color: var(--text); margin-bottom: 10px;
     }
-    .hero-body { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 320px; }
+    .hero-body { font-size: 14px; color: var(--muted); line-height: 1.6; font-weight: 400; }
+
+    /* Card Lara live */
+    .lara-live-card {
+      margin: 0 20px 16px;
+      background: linear-gradient(135deg, rgba(74,222,128,.08) 0%, rgba(74,222,128,.03) 100%);
+      border: 1.5px solid rgba(74,222,128,.25);
+      border-radius: 16px; padding: 16px 18px;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      transition: background .15s;
+    }
+    .lara-live-card:active { background: rgba(74,222,128,.12); }
+    .lara-live-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold) 0%, #8b6914 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
+      color: #0a0e18; flex-shrink: 0; position: relative;
+    }
+    .lara-live-dot {
+      position: absolute; bottom: 1px; right: 1px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #4ade80; border: 2px solid var(--bg);
+    }
+    .lara-live-text { flex: 1; }
+    .lara-live-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .lara-live-sub { font-size: 13px; color: #4ade80; font-weight: 500; display: flex; align-items: center; gap: 5px; }
+    .lara-live-sub::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; animation: pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .lara-live-arrow { color: var(--muted2); }
+
+    /* Booking banner */
     .hero-banner {
-      margin: 0 20px 28px;
+      margin: 0 20px 24px;
       background: linear-gradient(135deg, rgba(201,168,76,.12) 0%, rgba(201,168,76,.04) 100%);
-      border: 0.5px solid rgba(201,168,76,.25);
-      border-radius: 18px; padding: 20px;
-      display: flex; align-items: center; gap: 16px;
+      border: 1px solid rgba(201,168,76,.25);
+      border-radius: 16px; padding: 18px;
+      display: flex; align-items: center; gap: 14px;
     }
     .hero-banner-icon {
-      width: 44px; height: 44px; border-radius: 12px;
+      width: 42px; height: 42px; border-radius: 12px;
       background: rgba(201,168,76,.15); display: flex; align-items: center; justify-content: center;
       flex-shrink: 0; color: var(--gold);
     }
-    .hero-banner-text { font-size: 13px; color: var(--text); line-height: 1.5; }
-    .hero-banner-text strong { color: var(--gold); display: block; font-size: 14px; margin-bottom: 2px; }
+    .hero-banner-text { font-size: 13px; color: var(--text); line-height: 1.5; flex: 1; }
+    .hero-banner-text strong { color: var(--gold); display: block; font-size: 14px; font-weight: 700; margin-bottom: 2px; }
 
     /* Servizi grid */
     .section-label {
-      font-size: 11px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase;
+      font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
       color: var(--muted); padding: 0 20px; margin-bottom: 14px;
     }
     .services-grid {
@@ -196,8 +225,8 @@
       gap: 12px; padding: 0 20px; margin-bottom: 28px;
     }
     .srv-card {
-      background: var(--surface); border: 0.5px solid var(--border);
-      border-radius: 18px; padding: 18px 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 16px 14px;
       cursor: pointer; -webkit-tap-highlight-color: transparent;
       transition: background .2s, border-color .2s;
     }
@@ -205,109 +234,101 @@
     .srv-icon {
       width: 38px; height: 38px; border-radius: 10px;
       background: var(--gold-dim); display: flex; align-items: center; justify-content: center;
-      margin-bottom: 12px; color: var(--gold);
+      margin-bottom: 10px; color: var(--gold);
     }
-    .srv-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; line-height: 1.3; }
-    .srv-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+    .srv-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; line-height: 1.3; }
+    .srv-desc { font-size: 12px; color: var(--muted); line-height: 1.4; font-weight: 400; }
 
     /* ── CALCOLATORE ──────────────────────────────────── */
     .calc-wrap { padding: 20px; }
     .calc-hero {
       background: linear-gradient(135deg, rgba(201,168,76,.1) 0%, rgba(201,168,76,.03) 100%);
-      border: 0.5px solid rgba(201,168,76,.2);
-      border-radius: 20px; padding: 24px 20px; margin-bottom: 24px; text-align: center;
+      border: 1px solid rgba(201,168,76,.2);
+      border-radius: 18px; padding: 22px 20px; margin-bottom: 24px; text-align: center;
     }
-    .calc-hero-title {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 26px; font-weight: 300; color: var(--text); margin-bottom: 6px;
-    }
-    .calc-hero-sub { font-size: 13px; color: var(--muted); }
-    .calc-field { margin-bottom: 18px; }
-    .calc-label { font-size: 11px; font-weight: 500; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: block; }
+    .calc-hero-title { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+    .calc-hero-sub { font-size: 14px; color: var(--muted); }
+    .calc-field { margin-bottom: 16px; }
+    .calc-label { font-size: 12px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: block; }
     .calc-input {
-      width: 100%; background: var(--surface); border: 0.5px solid var(--border);
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
       border-radius: 12px; padding: 13px 16px; font-size: 16px; color: var(--text);
-      font-family: 'DM Sans', sans-serif; outline: none; -webkit-appearance: none;
-      transition: border-color .2s;
+      font-family: 'Inter', sans-serif; outline: none; -webkit-appearance: none;
+      font-weight: 500; transition: border-color .2s;
     }
-    .calc-input:focus { border-color: rgba(201,168,76,.4); }
+    .calc-input:focus { border-color: rgba(201,168,76,.5); }
     .calc-select {
-      width: 100%; background: var(--surface); border: 0.5px solid var(--border);
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
       border-radius: 12px; padding: 13px 16px; font-size: 14px; color: var(--text);
-      font-family: 'DM Sans', sans-serif; outline: none; -webkit-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(240,237,232,.4)' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+      font-family: 'Inter', sans-serif; outline: none; -webkit-appearance: none;
+      font-weight: 500;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(240,237,232,.5)' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
       background-repeat: no-repeat; background-position: right 14px center;
     }
     .calc-btn {
-      width: 100%; padding: 15px; background: var(--gold); border: none; border-radius: 14px;
-      font-size: 15px; font-weight: 600; color: #0a0e18; cursor: pointer;
-      font-family: 'DM Sans', sans-serif; margin-top: 8px;
+      width: 100%; padding: 16px; background: var(--gold); border: none; border-radius: 14px;
+      font-size: 16px; font-weight: 700; color: #0a0e18; cursor: pointer;
+      font-family: 'Inter', sans-serif; margin-top: 8px;
       transition: opacity .15s, transform .15s; -webkit-tap-highlight-color: transparent;
     }
     .calc-btn:active { opacity: .85; transform: scale(.98); }
     #calc-result { display: none; margin-top: 24px; }
     .result-card {
       background: linear-gradient(135deg, rgba(201,168,76,.12) 0%, rgba(201,168,76,.04) 100%);
-      border: 0.5px solid rgba(201,168,76,.3);
-      border-radius: 20px; padding: 24px; text-align: center; margin-bottom: 16px;
+      border: 1px solid rgba(201,168,76,.3);
+      border-radius: 18px; padding: 24px; text-align: center; margin-bottom: 16px;
     }
-    .result-label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
-    .result-big {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 48px; font-weight: 300; color: var(--gold); line-height: 1;
-      margin-bottom: 4px;
-    }
-    .result-sub { font-size: 12px; color: var(--muted); }
+    .result-label { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+    .result-big { font-size: 48px; font-weight: 800; color: var(--gold); line-height: 1; margin-bottom: 4px; }
+    .result-sub { font-size: 13px; color: var(--muted); font-weight: 500; }
     .result-row {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 12px 0; border-bottom: 0.5px solid var(--border2);
+      padding: 12px 0; border-bottom: 1px solid var(--border2);
     }
     .result-row:last-child { border-bottom: none; }
-    .result-row-label { font-size: 13px; color: var(--muted); }
-    .result-row-val { font-size: 14px; font-weight: 500; color: var(--text); }
+    .result-row-label { font-size: 14px; color: var(--muted); }
+    .result-row-val { font-size: 15px; font-weight: 700; color: var(--text); }
     .result-row-val.green { color: #4ade80; }
     .result-row-val.red { color: #f87171; }
     .calc-cta {
-      background: var(--surface2); border: 0.5px solid var(--border);
-      border-radius: 16px; padding: 18px; text-align: center;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px; text-align: center;
     }
     .calc-cta p { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
     .calc-cta button {
-      padding: 11px 24px; background: transparent; border: 1px solid var(--gold);
-      border-radius: 10px; color: var(--gold); font-size: 13px; font-weight: 500;
-      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      padding: 12px 24px; background: transparent; border: 1.5px solid var(--gold);
+      border-radius: 10px; color: var(--gold); font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: 'Inter', sans-serif;
       -webkit-tap-highlight-color: transparent;
     }
-    .calc-cta button:active { opacity: .7; }
 
     /* ── NEWS ──────────────────────────────────────────── */
     .news-wrap { padding: 20px; }
     .news-card {
-      background: var(--surface); border: 0.5px solid var(--border);
-      border-radius: 16px; padding: 18px; margin-bottom: 12px; cursor: pointer;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px; margin-bottom: 12px; cursor: pointer;
       -webkit-tap-highlight-color: transparent; transition: background .15s;
     }
     .news-card:active { background: var(--surface2); }
     .news-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
     .news-tag {
-      font-size: 10px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase;
+      font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
       padding: 3px 8px; border-radius: 4px; background: var(--gold-dim); color: var(--gold);
     }
-    .news-date { font-size: 11px; color: var(--muted2); }
-    .news-title { font-size: 15px; font-weight: 500; color: var(--text); line-height: 1.4; margin-bottom: 6px; }
-    .news-excerpt { font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .news-date { font-size: 12px; color: var(--muted2); font-weight: 500; }
+    .news-title { font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.35; margin-bottom: 6px; }
+    .news-excerpt { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
     /* ── CONTATTI ──────────────────────────────────────── */
     .contacts-wrap { padding: 20px; }
     .contact-section { margin-bottom: 28px; }
     .contact-section-title {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 18px; font-weight: 300; color: var(--text);
-      margin-bottom: 12px; padding-bottom: 10px;
-      border-bottom: 0.5px solid var(--border2);
+      font-size: 18px; font-weight: 800; color: var(--text);
+      margin-bottom: 14px; padding-bottom: 10px;
+      border-bottom: 1px solid var(--border2);
     }
     .contact-card {
-      background: var(--surface); border: 0.5px solid var(--border);
+      background: var(--surface); border: 1px solid var(--border);
       border-radius: 14px; padding: 16px; margin-bottom: 10px;
       display: flex; align-items: center; gap: 14px;
       cursor: pointer; -webkit-tap-highlight-color: transparent;
@@ -320,8 +341,8 @@
       flex-shrink: 0; color: var(--gold);
     }
     .contact-info { flex: 1; }
-    .contact-name { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
-    .contact-val { font-size: 12px; color: var(--muted); }
+    .contact-name { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .contact-val { font-size: 13px; color: var(--muted); }
     .contact-arrow { color: var(--muted2); }
 
     /* ── CHAT LARA ─────────────────────────────────────── */
@@ -331,50 +352,50 @@
     }
     .chat-header {
       padding: 16px 20px 14px;
-      border-bottom: 0.5px solid var(--border2);
+      border-bottom: 1px solid var(--border2);
       display: flex; align-items: center; gap: 12px; flex-shrink: 0;
     }
     .lara-avatar {
-      width: 40px; height: 40px; border-radius: 50%;
+      width: 42px; height: 42px; border-radius: 50%;
       background: linear-gradient(135deg, var(--gold) 0%, #8b6914 100%);
       display: flex; align-items: center; justify-content: center;
-      font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 600;
+      font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
       color: #0a0e18; flex-shrink: 0;
     }
     .lara-info { flex: 1; }
-    .lara-name { font-size: 15px; font-weight: 500; color: var(--text); }
-    .lara-status { font-size: 11px; color: #4ade80; display: flex; align-items: center; gap: 5px; }
-    .lara-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; display: inline-block; }
+    .lara-name { font-size: 16px; font-weight: 700; color: var(--text); }
+    .lara-status { font-size: 12px; color: #4ade80; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+    .lara-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; animation: pulse-dot 2s ease-in-out infinite; }
     .chat-messages {
       flex: 1; overflow-y: auto; padding: 16px 16px 8px;
       -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 12px;
     }
     .chat-messages::-webkit-scrollbar { display: none; }
-    .msg-row { display: flex; gap: 8px; max-width: 85%; }
+    .msg-row { display: flex; gap: 8px; max-width: 88%; }
     .msg-row.user { align-self: flex-end; flex-direction: row-reverse; }
     .msg-row.lara { align-self: flex-start; }
     .msg-avatar-sm {
-      width: 28px; height: 28px; border-radius: 50%;
+      width: 30px; height: 30px; border-radius: 50%;
       background: linear-gradient(135deg, var(--gold) 0%, #8b6914 100%);
       display: flex; align-items: center; justify-content: center;
-      font-family: 'Cormorant Garamond', serif; font-size: 13px; font-weight: 600;
+      font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700;
       color: #0a0e18; flex-shrink: 0; margin-top: 2px;
     }
     .bubble {
-      padding: 11px 14px; border-radius: 18px;
-      font-size: 14px; line-height: 1.55; max-width: 100%;
+      padding: 12px 15px; border-radius: 18px;
+      font-size: 15px; line-height: 1.55; max-width: 100%; font-weight: 400;
     }
     .msg-row.lara .bubble {
-      background: var(--surface2); border: 0.5px solid var(--border);
+      background: var(--surface2); border: 1px solid var(--border);
       color: var(--text); border-bottom-left-radius: 4px;
     }
     .msg-row.user .bubble {
-      background: var(--gold); color: #0a0e18; font-weight: 450;
+      background: var(--gold); color: #0a0e18; font-weight: 500;
       border-bottom-right-radius: 4px;
     }
     .typing-indicator { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
     .typing-indicator span {
-      width: 6px; height: 6px; border-radius: 50%; background: var(--muted);
+      width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
       animation: typingBounce 1.2s ease-in-out infinite;
     }
     .typing-indicator span:nth-child(2) { animation-delay: .2s; }
@@ -382,20 +403,20 @@
     @keyframes typingBounce { 0%,60%,100% { transform: translateY(0) } 30% { transform: translateY(-6px) } }
     .chat-input-area {
       padding: 10px 16px 12px;
-      border-top: 0.5px solid var(--border2);
+      border-top: 1px solid var(--border2);
       display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0;
     }
     #chat-input {
-      flex: 1; background: var(--surface); border: 0.5px solid var(--border);
-      border-radius: 22px; padding: 11px 16px; font-size: 14px; color: var(--text);
-      font-family: 'DM Sans', sans-serif; outline: none; resize: none;
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 22px; padding: 12px 16px; font-size: 15px; color: var(--text);
+      font-family: 'Inter', sans-serif; outline: none; resize: none;
       max-height: 100px; line-height: 1.4; -webkit-appearance: none;
-      transition: border-color .2s;
+      font-weight: 400; transition: border-color .2s;
     }
-    #chat-input:focus { border-color: rgba(201,168,76,.4); }
+    #chat-input:focus { border-color: rgba(201,168,76,.5); }
     #chat-input::placeholder { color: var(--muted2); }
     #chat-send {
-      width: 40px; height: 40px; border-radius: 50%;
+      width: 42px; height: 42px; border-radius: 50%;
       background: var(--gold); border: none; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0; -webkit-tap-highlight-color: transparent;
@@ -407,56 +428,59 @@
     /* Booking modal */
     .booking-modal {
       position: fixed; inset: 0; z-index: 300;
-      background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
+      background: rgba(0,0,0,.75); backdrop-filter: blur(8px);
       display: none; align-items: flex-end;
     }
     .booking-modal.open { display: flex; }
     .booking-sheet {
       background: var(--bg2); border-radius: 24px 24px 0 0;
-      border: 0.5px solid var(--border);
+      border: 1px solid var(--border);
       width: 100%; padding: 20px 20px calc(env(safe-area-inset-bottom,16px) + 20px);
       max-height: 80vh; overflow-y: auto;
     }
     .booking-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 20px; }
-    .booking-title { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 300; margin-bottom: 6px; }
-    .booking-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .booking-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .booking-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; font-weight: 400; }
     .slot-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
     .slot-btn {
-      padding: 10px 6px; background: var(--surface); border: 0.5px solid var(--border);
-      border-radius: 10px; font-size: 12px; font-weight: 500; color: var(--text);
+      padding: 10px 6px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; font-size: 11px; font-weight: 600; color: var(--text);
       cursor: pointer; text-align: center; -webkit-tap-highlight-color: transparent;
-      transition: all .15s;
+      transition: all .15s; line-height: 1.3;
     }
-    .slot-btn.selected { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+    .slot-btn .slot-day { font-size: 10px; color: var(--muted); font-weight: 500; margin-bottom: 3px; }
+    .slot-btn .slot-time { font-size: 13px; font-weight: 700; color: var(--text); }
+    .slot-btn.selected { background: var(--gold-dim); border-color: var(--gold); }
+    .slot-btn.selected .slot-time { color: var(--gold); }
     .slot-btn:active { opacity: .7; }
     .booking-confirm {
-      width: 100%; padding: 14px; background: var(--gold); border: none; border-radius: 12px;
-      font-size: 15px; font-weight: 600; color: #0a0e18; cursor: pointer;
-      font-family: 'DM Sans', sans-serif; -webkit-tap-highlight-color: transparent;
+      width: 100%; padding: 15px; background: var(--gold); border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 700; color: #0a0e18; cursor: pointer;
+      font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;
       transition: opacity .15s;
     }
     .booking-confirm:disabled { opacity: .4; }
     .booking-confirm:active { opacity: .8; }
 
     /* Servizi modale */
-    .srv-modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.7); display: none; align-items: flex-end; }
+    .srv-modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.75); display: none; align-items: flex-end; }
     .srv-modal-overlay.open { display: flex; }
     .srv-modal {
       background: var(--bg2); border-radius: 24px 24px 0 0;
-      border-top: 0.5px solid var(--border);
+      border-top: 1px solid var(--border);
       width: 100%; padding: 20px 20px calc(env(safe-area-inset-bottom,16px) + 20px);
       max-height: 85vh; overflow-y: auto;
     }
     .srv-modal-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 20px; }
     .srv-modal-icon { width: 52px; height: 52px; border-radius: 14px; background: var(--gold-dim); display: flex; align-items: center; justify-content: center; color: var(--gold); margin-bottom: 16px; }
-    .srv-modal-title { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 300; margin-bottom: 8px; }
+    .srv-modal-title { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
     .srv-modal-desc { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
-    .srv-modal-price { background: var(--gold-dim); border: 0.5px solid rgba(201,168,76,.2); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; }
-    .srv-modal-price-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
-    .srv-modal-price-val { font-size: 18px; font-weight: 500; color: var(--text); }
-    .srv-cta { width: 100%; padding: 14px; background: var(--gold); border: none; border-radius: 12px; font-size: 15px; font-weight: 600; color: #0a0e18; cursor: pointer; font-family: 'DM Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+    .srv-modal-price { background: var(--gold-dim); border: 1px solid rgba(201,168,76,.2); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; }
+    .srv-modal-price-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+    .srv-modal-price-val { font-size: 18px; font-weight: 700; color: var(--text); }
+    .srv-cta { width: 100%; padding: 15px; background: var(--gold); border: none; border-radius: 12px; font-size: 15px; font-weight: 700; color: #0a0e18; cursor: pointer; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
     .srv-cta:active { opacity: .85; }
-    .srv-close { width: 100%; padding: 12px; background: transparent; border: 0.5px solid var(--border); border-radius: 12px; font-size: 14px; color: var(--muted); cursor: pointer; font-family: 'DM Sans', sans-serif; margin-top: 10px; -webkit-tap-highlight-color: transparent; }
+    .srv-close { width: 100%; padding: 12px; background: transparent; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; font-family: 'Inter', sans-serif; margin-top: 10px; -webkit-tap-highlight-color: transparent; }
 
     /* Bottom padding for scroll panels */
     .pb-tab { padding-bottom: calc(var(--tab-h) + max(env(safe-area-inset-bottom,16px),16px) + 12px); }
@@ -466,73 +490,73 @@
 
 <!-- ══════════════ ONBOARDING ══════════════ -->
 <div id="onboarding">
-  <div class="ob-slides" id="ob-slides">
+  <div class="ob-slides-outer">
+    <div class="ob-slides-track" id="ob-track">
 
-    <!-- Slide 1 -->
-    <div class="ob-slide">
-      <div class="ob-visual">
-        <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="40" cy="40" r="32" stroke="#c9a84c" stroke-width="1"/>
-          <path d="M20 48 L32 28 L40 38 L50 22 L60 48 Z" fill="rgba(201,168,76,.25)" stroke="#c9a84c" stroke-width="1.5" stroke-linejoin="round"/>
-          <circle cx="40" cy="30" r="6" fill="rgba(201,168,76,.2)" stroke="#c9a84c" stroke-width="1.5"/>
-          <path d="M37 30 L39 32 L43 27" stroke="#c9a84c" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        <div class="ob-num">01</div>
+      <!-- Slide 1 -->
+      <div class="ob-slide">
+        <div class="ob-visual">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+            <circle cx="40" cy="40" r="32" stroke="#c9a84c" stroke-width="1.5"/>
+            <path d="M20 50 L32 28 L40 38 L50 22 L60 50 Z" fill="rgba(201,168,76,.25)" stroke="#c9a84c" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="40" cy="30" r="6" fill="rgba(201,168,76,.2)" stroke="#c9a84c" stroke-width="2"/>
+            <path d="M37 30 L39 32 L43 27" stroke="#c9a84c" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <div class="ob-num">01</div>
+        </div>
+        <div class="ob-tag">Benvenuto in InDubai</div>
+        <div class="ob-title">La tua guida italiana a Dubai</div>
+        <div class="ob-body">Siamo specialisti italiani che aiutano imprenditori e professionisti a costruire il futuro a Dubai. Oltre 450 aziende già costituite.</div>
       </div>
-      <div class="ob-tag">Benvenuto in InDubai</div>
-      <div class="ob-title">La tua guida italiana a Dubai</div>
-      <div class="ob-body">Siamo specialisti italiani che aiutano imprenditori e professionisti a costruire il futuro a Dubai. Oltre 450 aziende già costituite.</div>
-    </div>
 
-    <!-- Slide 2 -->
-    <div class="ob-slide">
-      <div class="ob-visual">
-        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-          <rect x="16" y="24" width="48" height="34" rx="4" stroke="#c9a84c" stroke-width="1.2" fill="rgba(201,168,76,.06)"/>
-          <path d="M16 32 L40 46 L64 32" stroke="#c9a84c" stroke-width="1.2"/>
-          <circle cx="58" cy="52" r="10" fill="var(--bg2)" stroke="#4ade80" stroke-width="1.2"/>
-          <path d="M54 52 L57 55 L62 49" stroke="#4ade80" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        <div class="ob-num">02</div>
+      <!-- Slide 2 -->
+      <div class="ob-slide">
+        <div class="ob-visual">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+            <rect x="16" y="24" width="48" height="34" rx="4" stroke="#c9a84c" stroke-width="1.5" fill="rgba(201,168,76,.06)"/>
+            <path d="M16 32 L40 46 L64 32" stroke="#c9a84c" stroke-width="1.5"/>
+            <circle cx="58" cy="52" r="10" fill="var(--bg2)" stroke="#4ade80" stroke-width="1.5"/>
+            <path d="M54 52 L57 55 L62 49" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <div class="ob-num">02</div>
+        </div>
+        <div class="ob-tag">0% di tasse</div>
+        <div class="ob-title">Paghi fino al 70% in meno di tasse</div>
+        <div class="ob-body">Dubai offre 0% tasse sui redditi personali e sulle aziende in Free Zone. Scopri quanto puoi risparmiare col nostro calcolatore.</div>
       </div>
-      <div class="ob-tag">0% di tasse</div>
-      <div class="ob-title">Paghi fino al 70% in meno di tasse</div>
-      <div class="ob-body">Dubai offre 0% di tasse sui redditi personali e sulle aziende in Free Zone. Scopri quanto puoi risparmiare con il nostro calcolatore.</div>
-    </div>
 
-    <!-- Slide 3 -->
-    <div class="ob-slide">
-      <div class="ob-visual">
-        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-          <rect x="22" y="18" width="36" height="44" rx="4" stroke="#c9a84c" stroke-width="1.2" fill="rgba(201,168,76,.06)"/>
-          <line x1="29" y1="30" x2="51" y2="30" stroke="#c9a84c" stroke-width="1" opacity=".5"/>
-          <line x1="29" y1="37" x2="51" y2="37" stroke="#c9a84c" stroke-width="1" opacity=".5"/>
-          <line x1="29" y1="44" x2="44" y2="44" stroke="#c9a84c" stroke-width="1" opacity=".5"/>
-          <path d="M14 14 L26 14 L26 26" stroke="#c9a84c" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-        </svg>
-        <div class="ob-num">03</div>
+      <!-- Slide 3 -->
+      <div class="ob-slide">
+        <div class="ob-visual">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+            <rect x="22" y="18" width="36" height="44" rx="4" stroke="#c9a84c" stroke-width="1.5" fill="rgba(201,168,76,.06)"/>
+            <line x1="29" y1="30" x2="51" y2="30" stroke="#c9a84c" stroke-width="1.5" opacity=".6"/>
+            <line x1="29" y1="38" x2="51" y2="38" stroke="#c9a84c" stroke-width="1.5" opacity=".6"/>
+            <line x1="29" y1="46" x2="44" y2="46" stroke="#c9a84c" stroke-width="1.5" opacity=".6"/>
+            <path d="M14 14 L26 14 L26 26" stroke="#c9a84c" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </svg>
+          <div class="ob-num">03</div>
+        </div>
+        <div class="ob-tag">Servizi completi</div>
+        <div class="ob-title">Dall'idea alla realtà in poche settimane</div>
+        <div class="ob-body">Costituzione società, visto di residenza, apertura conto, Golden Visa. Ti seguiamo in ogni step con esperienza decennale.</div>
       </div>
-      <div class="ob-tag">Servizi completi</div>
-      <div class="ob-title">Dall'idea alla realtà in poche settimane</div>
-      <div class="ob-body">Costituzione società, visto di residenza, apertura conto, Golden Visa. Ti seguiamo in ogni step con esperienza decennale.</div>
-    </div>
 
-    <!-- Slide 4 -->
-    <div class="ob-slide">
-      <div class="ob-visual">
-        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-          <circle cx="32" cy="32" r="14" stroke="#c9a84c" stroke-width="1.2" fill="rgba(201,168,76,.06)"/>
-          <circle cx="52" cy="48" r="14" stroke="#c9a84c" stroke-width="1.2" fill="rgba(201,168,76,.06)"/>
-          <path d="M32 26 L32 32 L37 35" stroke="#c9a84c" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M52 42 L52 48 L57 51" stroke="#c9a84c" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        <div class="ob-num">04</div>
+      <!-- Slide 4 -->
+      <div class="ob-slide">
+        <div class="ob-visual">
+          <div style="background:linear-gradient(135deg,#c9a84c,#8b6914);width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0a0e18;position:relative">
+            L
+            <div style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#4ade80;border:2px solid #080e18"></div>
+          </div>
+          <div class="ob-num">04</div>
+        </div>
+        <div class="ob-tag">Pronto?</div>
+        <div class="ob-title">Parla con Lara, la nostra AI</div>
+        <div class="ob-body">Lara è disponibile 24/7 per risponderti in italiano, capire la tua situazione e guidarti verso la scelta giusta.</div>
       </div>
-      <div class="ob-tag">Pronto?</div>
-      <div class="ob-title">Parla con Lara, la nostra consulente AI</div>
-      <div class="ob-body">Hai domande? Lara è disponibile 24/7 per risponderti in italiano, capire la tua situazione e guidarti verso la scelta giusta.</div>
-    </div>
 
+    </div>
   </div>
 
   <div class="ob-footer">
@@ -552,9 +576,7 @@
   <!-- Header -->
   <div class="hdr">
     <img src="../assets/logo-white-transparent.png" alt="InDubai" />
-    <div class="hdr-right">
-      <div class="hdr-user" id="user-initials">?</div>
-    </div>
+    <div class="hdr-user" id="user-initials">?</div>
   </div>
 
   <!-- Scroll content -->
@@ -563,18 +585,35 @@
     <div class="panel active pb-tab" id="panel-home">
       <div class="hero">
         <div class="hero-greeting" id="hero-greeting">Benvenuto</div>
-        <div class="hero-title">Scopri Dubai<br><em>con noi</em></div>
+        <div class="hero-title">Scopri Dubai<br>con noi</div>
         <div class="hero-body">Oltre 450 aziende costituite, 1.200 visti rilasciati. Il tuo futuro a Dubai inizia qui.</div>
       </div>
+
+      <!-- Card Lara live -->
+      <div class="lara-live-card" onclick="switchTab('chat')">
+        <div class="lara-live-avatar">
+          L
+          <div class="lara-live-dot"></div>
+        </div>
+        <div class="lara-live-text">
+          <div class="lara-live-title">Chatta con Lara</div>
+          <div class="lara-live-sub">Live ora — risposta immediata</div>
+        </div>
+        <svg class="lara-live-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+
+      <!-- Booking banner -->
       <div class="hero-banner">
         <div class="hero-banner-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </div>
         <div class="hero-banner-text">
-          <strong>Consulenza gratuita di 30 min</strong>
-          Parla con un esperto InDubai e valuta la tua situazione senza impegno.
+          <strong>Consulenza gratuita 30 min</strong>
+          Parla con un esperto e valuta la tua situazione senza impegno.
         </div>
+        <button onclick="openBookingModal()" style="flex-shrink:0;padding:9px 14px;background:var(--gold);border:none;border-radius:10px;font-size:13px;font-weight:700;color:#0a0e18;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent">Prenota</button>
       </div>
+
       <div class="section-label">I nostri servizi</div>
       <div class="services-grid" id="services-grid"></div>
     </div>
@@ -584,9 +623,8 @@
       <div class="calc-wrap">
         <div class="calc-hero">
           <div class="calc-hero-title">Calcola il tuo risparmio fiscale</div>
-          <div class="calc-hero-sub">Scopri quanto potresti risparmiare trasferendo la tua attività a Dubai</div>
+          <div class="calc-hero-sub">Scopri quanto risparmi portando la tua attività a Dubai</div>
         </div>
-
         <div class="calc-field">
           <label class="calc-label">Fatturato annuo (€)</label>
           <input type="number" class="calc-input" id="calc-fatturato" placeholder="es. 150000" inputmode="numeric" />
@@ -608,16 +646,14 @@
           <label class="calc-label">Prelievo dividendi annuo (€)</label>
           <input type="number" class="calc-input" id="calc-dividendi" placeholder="es. 40000" inputmode="numeric" />
         </div>
-
-        <button class="calc-btn" onclick="calcolaRisparmio()">Calcola il risparmio</button>
-
+        <button class="calc-btn" onclick="calcolaRisparmio()">Calcola il risparmio →</button>
         <div id="calc-result">
           <div class="result-card">
             <div class="result-label">Risparmio fiscale annuo stimato</div>
             <div class="result-big" id="res-risparmio">€0</div>
             <div class="result-sub" id="res-perc"></div>
           </div>
-          <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
             <div class="result-row">
               <span class="result-row-label">Tasse in Italia (stima)</span>
               <span class="result-row-val red" id="res-it">€0</span>
@@ -632,7 +668,7 @@
             </div>
           </div>
           <div class="calc-cta">
-            <p>Questi sono dati indicativi. Per una valutazione precisa parlaci della tua situazione.</p>
+            <p>Dati indicativi. Per una valutazione precisa parlaci della tua situazione.</p>
             <button onclick="switchTab('chat')">Parla con Lara →</button>
           </div>
         </div>
@@ -649,7 +685,7 @@
       </div>
     </div>
 
-    <!-- CONTATTI UTILI -->
+    <!-- CONTATTI -->
     <div class="panel pb-tab" id="panel-contacts">
       <div class="contacts-wrap">
         <div class="section-label" style="margin-bottom:20px">Numeri utili</div>
@@ -658,63 +694,60 @@
           <div class="contact-section-title">InDubai — Contattaci</div>
           <a class="contact-card" href="https://wa.me/971501234567" target="_blank">
             <div class="contact-ico">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
             </div>
             <div class="contact-info">
               <div class="contact-name">WhatsApp InDubai</div>
               <div class="contact-val">Risposta in pochi minuti</div>
             </div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </a>
           <a class="contact-card" href="mailto:info@indubai.it">
             <div class="contact-ico">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             </div>
             <div class="contact-info">
               <div class="contact-name">Email</div>
               <div class="contact-val">info@indubai.it</div>
             </div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </a>
+          <a class="contact-card" href="https://indubai.it" target="_blank">
+            <div class="contact-ico">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+            </div>
+            <div class="contact-info">
+              <div class="contact-name">Sito Web</div>
+              <div class="contact-val">www.indubai.it</div>
+            </div>
+            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </a>
         </div>
 
         <div class="contact-section">
           <div class="contact-section-title">Emergenze Dubai</div>
           <a class="contact-card" href="tel:999">
-            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
             <div class="contact-info"><div class="contact-name">Polizia / Emergenze</div><div class="contact-val">999</div></div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </a>
           <a class="contact-card" href="tel:998">
-            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
             <div class="contact-info"><div class="contact-name">Ambulanza</div><div class="contact-val">998</div></div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </a>
           <a class="contact-card" href="tel:997">
-            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
             <div class="contact-info"><div class="contact-name">Vigili del fuoco</div><div class="contact-val">997</div></div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </a>
           <a class="contact-card" href="tel:+97142244444">
-            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg></div>
+            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg></div>
             <div class="contact-info"><div class="contact-name">Consolato Italiano Dubai</div><div class="contact-val">+971 4 224 4444</div></div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </a>
         </div>
 
-        <div class="contact-section">
-          <div class="contact-section-title">Istituzioni UAE</div>
-          <a class="contact-card" href="tel:800363">
-            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg></div>
-            <div class="contact-info"><div class="contact-name">DED Dubai (licenze)</div><div class="contact-val">800 363</div></div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-          </a>
-          <a class="contact-card" href="tel:800AMER">
-            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
-            <div class="contact-info"><div class="contact-name">AMER (visti e residenza)</div><div class="contact-val">800 AMER (2637)</div></div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-          </a>
-        </div>
       </div>
     </div>
 
@@ -742,23 +775,26 @@
   <!-- Tab bar -->
   <div class="tab-bar">
     <div class="tab-item active" id="tab-home" onclick="switchTab('home')">
-      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
       <div class="tab-label">Servizi</div>
     </div>
     <div class="tab-item" id="tab-calc" onclick="switchTab('calc')">
-      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg></div>
+      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg></div>
       <div class="tab-label">Calcola</div>
     </div>
     <div class="tab-item" id="tab-news" onclick="switchTab('news')">
-      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8L4 6v14a2 2 0 002 2z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg></div>
+      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8L4 6v14a2 2 0 002 2z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg></div>
       <div class="tab-label">News</div>
     </div>
     <div class="tab-item" id="tab-contacts" onclick="switchTab('contacts')">
-      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
       <div class="tab-label">Contatti</div>
     </div>
     <div class="tab-item" id="tab-chat" onclick="switchTab('chat')">
-      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+      <div class="tab-icon" style="position:relative">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <div style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:#4ade80;border:1.5px solid var(--bg)"></div>
+      </div>
       <div class="tab-label">Lara AI</div>
     </div>
   </div>
@@ -781,46 +817,42 @@
 </div>
 
 <!-- Booking modal -->
-<div class="booking-modal" id="booking-modal">
+<div class="booking-modal" id="booking-modal" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="booking-sheet">
     <div class="booking-handle"></div>
-    <div class="booking-title">Prenota una consulenza</div>
-    <div class="booking-sub">30 minuti gratuiti con un esperto InDubai (Dubai time, GMT+4)</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="booking-title" style="margin-bottom:0">Prenota una consulenza</div>
+      <button onclick="document.getElementById('booking-modal').classList.remove('open')" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;line-height:0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="booking-sub">30 minuti gratuiti con un esperto InDubai (ora Dubai, GMT+4)</div>
     <div class="slot-grid" id="slot-grid">
-      <div style="color:var(--muted);font-size:13px;grid-column:1/-1">Caricamento disponibilità…</div>
+      <div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">Caricamento disponibilità…</div>
     </div>
     <button class="booking-confirm" id="booking-btn" disabled onclick="confirmBooking()">Conferma appuntamento</button>
   </div>
 </div>
 
 <script>
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = supabase.createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_ANON_KEY);
+const SUPABASE_EDGE_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1';
 
 // ── ONBOARDING ──────────────────────────────────────
 let obCurrent = 0;
 const obTotal = 4;
 
 function obUpdateSlides() {
-  const track = document.getElementById('ob-slides');
-  track.style.transform = `translateX(-${obCurrent * 100}%)`;
+  document.getElementById('ob-track').style.transform = `translateX(-${obCurrent * 100}%)`;
   for (let i = 0; i < obTotal; i++) {
-    const d = document.getElementById('dot-' + i);
-    d.className = 'ob-dot' + (i === obCurrent ? ' active' : '');
+    document.getElementById('dot-' + i).className = 'ob-dot' + (i === obCurrent ? ' active' : '');
   }
-  const btn = document.getElementById('ob-next');
-  btn.textContent = obCurrent === obTotal - 1 ? 'Inizia' : 'Continua';
+  document.getElementById('ob-next').textContent = obCurrent === obTotal - 1 ? 'Inizia' : 'Continua';
 }
 
-// Apply translateX to inner slides container not individual slides
-document.getElementById('ob-slides').style.cssText += ';display:flex;transition:transform .4s cubic-bezier(.4,0,.2,1)';
-
 function obNext() {
-  if (obCurrent < obTotal - 1) {
-    obCurrent++;
-    obUpdateSlides();
-  } else {
-    obSkip();
-  }
+  if (obCurrent < obTotal - 1) { obCurrent++; obUpdateSlides(); }
+  else obSkip();
 }
 
 function obSkip() {
@@ -831,30 +863,29 @@ function obSkip() {
 
 // ── SERVIZI DATA ────────────────────────────────────
 const servizi = [
-  { id:'freezone', icon:'building', name:'Free Zone', desc:'Costituzione società in Free Zone UAE con 0% tasse', price:'AED 12.000/anno', fullDesc:'Costituiamo la tua società in una delle principali Free Zone UAE — IFZA, DMCC, DSO, RAK ICC. Pacchetti completi con licenza, flexi-desk e visto inclusi. Processo in 5–7 giorni lavorativi.' },
-  { id:'mainland', icon:'city', name:'Mainland DED', desc:'Società mainland con 100% proprietà straniera', price:'AED 15.000/anno', fullDesc:'Società mainland con licenza DED Dubai. Dal 2021 è possibile avere il 100% di proprietà straniera nella maggior parte dei settori. Ideale per chi vuole operare direttamente con il mercato locale UAE.' },
-  { id:'visto', icon:'passport', name:'Visto Residenza', desc:'Visto 2/3 anni per te e la tua famiglia', price:'AED 3.500', fullDesc:'Ottieni il visto di residenza UAE legato alla tua società. Possibilità di includere familiari a carico. Visto 2 anni (Free Zone) o 3 anni (Mainland). Residence card Emirates ID inclusa.' },
-  { id:'golden', icon:'star', name:'Golden Visa', desc:'Residenza 10 anni per investitori e talenti', price:'AED 8.000', fullDesc:'Il Golden Visa UAE garantisce 10 anni di residenza rinnovabili. Disponibile per investitori immobiliari (AED 2M+), titolari di attività, professionisti qualificati e talenti nelle arti e scienze.' },
-  { id:'conto', icon:'bank', name:'Conto Bancario', desc:'Apertura conto corporate in banche UAE', price:'AED 1.500', fullDesc:'Assistiamo nell\'apertura di conti correnti corporate presso le principali banche UAE — Emirates NBD, RAK Bank, Mashreq, ADIB. KYC e documentazione curati da noi.' },
-  { id:'contabilita', icon:'chart', name:'Contabilità & Tax', desc:'Dichiarazioni fiscali, VAT, Corporate Tax', price:'Da AED 500/mese', fullDesc:'Gestione completa della contabilità aziendale UAE. Registrazione e dichiarazioni IVA (5%), Corporate Tax UAE (9% sopra AED 375.000), payroll e report mensili.' },
-  { id:'crypto', icon:'crypto', name:'Licenza Crypto', desc:'Licenza VARA per attività in crypto e Web3', price:'Su richiesta', fullDesc:'Assistenza per ottenere la licenza VARA (Virtual Assets Regulatory Authority) di Dubai — la più avanzata regolamentazione crypto al mondo. Ideale per exchange, wallet, DeFi e Web3 startup.' },
-  { id:'realestate', icon:'home', name:'Immobiliare', desc:'Acquisto e investimento immobiliare a Dubai', price:'Commissione 2%', fullDesc:'Attraverso il nostro partner KEYPRIME ti assistiamo nell\'acquisto di immobili a Dubai. Proprietà off-plan e pronte, rendite annue del 6–8%, nessuna tassa sulla proprietà.' },
+  { id:'freezone', icon:'building', name:'Free Zone', desc:'Società UAE con 0% tasse', price:'AED 12.000/anno', fullDesc:'Costituiamo la tua società in una delle principali Free Zone UAE — IFZA, DMCC, DSO, RAK ICC. Pacchetti completi con licenza, flexi-desk e visto inclusi. Processo in 5–7 giorni lavorativi.' },
+  { id:'mainland', icon:'city', name:'Mainland', desc:'100% proprietà straniera', price:'AED 15.000/anno', fullDesc:'Società mainland con licenza DED Dubai. Dal 2021 è possibile avere il 100% di proprietà straniera nella maggior parte dei settori. Ideale per chi vuole operare direttamente con il mercato locale UAE.' },
+  { id:'visto', icon:'passport', name:'Visto Residenza', desc:'Visto 2/3 anni per te e la famiglia', price:'AED 3.500', fullDesc:'Ottieni il visto di residenza UAE legato alla tua società. Possibilità di includere familiari a carico. Visto 2 anni (Free Zone) o 3 anni (Mainland). Residence card Emirates ID inclusa.' },
+  { id:'golden', icon:'star', name:'Golden Visa', desc:'Residenza 10 anni', price:'AED 8.000', fullDesc:'Il Golden Visa UAE garantisce 10 anni di residenza rinnovabili. Disponibile per investitori immobiliari (AED 2M+), titolari di attività, professionisti qualificati e talenti nelle arti e scienze.' },
+  { id:'conto', icon:'bank', name:'Conto Bancario', desc:'Apertura conto corporate UAE', price:'AED 1.500', fullDesc:'Assistiamo nell\'apertura di conti correnti corporate presso le principali banche UAE — Emirates NBD, RAK Bank, Mashreq, ADIB. KYC e documentazione curati da noi.' },
+  { id:'contabilita', icon:'chart', name:'Contabilità & Tax', desc:'VAT, Corporate Tax, payroll', price:'Da AED 500/mese', fullDesc:'Gestione completa della contabilità aziendale UAE. Registrazione e dichiarazioni IVA (5%), Corporate Tax UAE (9% sopra AED 375.000), payroll e report mensili.' },
+  { id:'crypto', icon:'crypto', name:'Licenza Crypto', desc:'VARA per Web3 e crypto', price:'Su richiesta', fullDesc:'Assistenza per ottenere la licenza VARA (Virtual Assets Regulatory Authority) di Dubai — la più avanzata regolamentazione crypto al mondo. Ideale per exchange, wallet, DeFi e Web3 startup.' },
+  { id:'realestate', icon:'home', name:'Immobiliare', desc:'Acquisto e investimento a Dubai', price:'Commissione 2%', fullDesc:'Attraverso il nostro partner KEYPRIME ti assistiamo nell\'acquisto di immobili a Dubai. Proprietà off-plan e pronte, rendite annue del 6–8%, nessuna tassa sulla proprietà.' },
 ];
 
 const srvIcons = {
-  building: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2z"/></svg>',
-  city: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 22V4a2 2 0 012-2h8a2 2 0 012 2v18"/><path d="M2 22h20"/><path d="M10 7h4"/><path d="M10 11h4"/><path d="M10 15h4"/></svg>',
-  passport: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="11" r="3"/><line x1="8" y1="17" x2="16" y2="17"/></svg>',
-  star: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-  bank: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 22h18M3 10h18M5 10V6l7-4 7 4v4M7 22v-8m4 8v-8m4 8v-8m4 8v-8"/></svg>',
-  chart: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
-  crypto: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9 9h4a2 2 0 010 4H9v-4zm0 4h4.5a2 2 0 010 4H9v-4z"/><line x1="9" y1="9" x2="9" y2="17"/><line x1="11" y1="7" x2="11" y2="9"/><line x1="11" y1="17" x2="11" y2="19"/></svg>',
-  home: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  building: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2z"/></svg>',
+  city: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 22V4a2 2 0 012-2h8a2 2 0 012 2v18"/><path d="M2 22h20"/><path d="M10 7h4M10 11h4M10 15h4"/></svg>',
+  passport: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="11" r="3"/><line x1="8" y1="17" x2="16" y2="17"/></svg>',
+  star: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  bank: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h18M3 10h18M5 10V6l7-4 7 4v4M7 22v-8m4 8v-8m4 8v-8m4 8v-8"/></svg>',
+  chart: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  crypto: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 9h4a2 2 0 010 4H9v-4zm0 4h4.5a2 2 0 010 4H9v-4z"/><line x1="9" y1="9" x2="9" y2="17"/><line x1="11" y1="7" x2="11" y2="9"/><line x1="11" y1="17" x2="11" y2="19"/></svg>',
+  home: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
 };
 
 function renderServices() {
-  const grid = document.getElementById('services-grid');
-  grid.innerHTML = servizi.map(s => `
+  document.getElementById('services-grid').innerHTML = servizi.map(s => `
     <div class="srv-card" onclick="openSrvModal('${s.id}')">
       <div class="srv-icon">${srvIcons[s.icon] || ''}</div>
       <div class="srv-name">${s.name}</div>
@@ -880,11 +911,9 @@ function closeSrvModal(e) {
 function goToChat() {
   closeSrvModal();
   switchTab('chat');
-  if (currentSrv) {
-    setTimeout(() => {
-      document.getElementById('chat-input').value = `Vorrei sapere di più sul servizio ${currentSrv.name}`;
-    }, 300);
-  }
+  if (currentSrv) setTimeout(() => {
+    document.getElementById('chat-input').value = `Vorrei sapere di più sul servizio ${currentSrv.name}`;
+  }, 300);
 }
 
 // ── TAB NAVIGATION ──────────────────────────────────
@@ -905,42 +934,26 @@ function calcolaRisparmio() {
   const utile     = parseFloat(document.getElementById('calc-utile').value) || 0;
   const forma     = document.getElementById('calc-forma').value;
   const dividendi = parseFloat(document.getElementById('calc-dividendi').value) || 0;
-
-  if (utile === 0 && fatturato === 0) {
-    alert('Inserisci almeno il fatturato o l\'utile per calcolare.');
-    return;
-  }
-
+  if (utile === 0 && fatturato === 0) { alert('Inserisci almeno il fatturato o l\'utile per calcolare.'); return; }
   const imponibile = utile || fatturato * 0.3;
   let tasseIt = 0;
-
   if (forma === 'srl' || forma === 'snc') {
-    const ires   = imponibile * 0.24;
-    const irap   = imponibile * 0.039;
-    const divTax = dividendi * 0.26;
-    tasseIt = ires + irap + divTax;
+    tasseIt = imponibile * 0.24 + imponibile * 0.039 + dividendi * 0.26;
   } else if (forma === 'piva') {
     const irpef = imponibile > 75000 ? (15000*0.23 + 13000*0.25 + 22000*0.35 + (imponibile-50000)*0.43) :
                   imponibile > 50000 ? (15000*0.23 + 13000*0.25 + (imponibile-28000)*0.35) :
                   imponibile > 28000 ? (15000*0.23 + (imponibile-15000)*0.25) : imponibile * 0.23;
-    const inps  = imponibile * 0.26;
-    tasseIt = irpef + inps;
-  } else { // forfettario
-    tasseIt = imponibile * 0.15;
-  }
-
-  // UAE: 0% sotto AED 375k (~€93k), 9% sopra
+    tasseIt = irpef + imponibile * 0.26;
+  } else { tasseIt = imponibile * 0.15; }
   const soglia = 93000;
   const tasseUAE = imponibile > soglia ? (imponibile - soglia) * 0.09 : 0;
   const risparmio = Math.max(0, tasseIt - tasseUAE);
   const perc = tasseIt > 0 ? Math.round(risparmio / tasseIt * 100) : 0;
-
-  document.getElementById('res-it').textContent       = '€' + Math.round(tasseIt).toLocaleString('it-IT');
-  document.getElementById('res-uae').textContent      = '€' + Math.round(tasseUAE).toLocaleString('it-IT');
+  document.getElementById('res-it').textContent = '€' + Math.round(tasseIt).toLocaleString('it-IT');
+  document.getElementById('res-uae').textContent = '€' + Math.round(tasseUAE).toLocaleString('it-IT');
   document.getElementById('res-risparmio').textContent = '€' + Math.round(risparmio).toLocaleString('it-IT');
-  document.getElementById('res-perc').textContent     = `Risparmio del ${perc}% sul carico fiscale attuale`;
-  document.getElementById('res-5y').textContent       = '€' + Math.round(risparmio * 5).toLocaleString('it-IT');
-
+  document.getElementById('res-perc').textContent = `Risparmio del ${perc}% sul carico fiscale attuale`;
+  document.getElementById('res-5y').textContent = '€' + Math.round(risparmio * 5).toLocaleString('it-IT');
   document.getElementById('calc-result').style.display = 'block';
   document.getElementById('calc-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -948,17 +961,16 @@ function calcolaRisparmio() {
 // ── NEWS ─────────────────────────────────────────────
 let newsLoaded = false;
 const staticNews = [
-  { tag:'Fiscalità', date:'Mar 2025', title:'Corporate Tax UAE: guida completa per le Free Zone nel 2025', excerpt:'Il regime QFZP rimane vantaggioso per le aziende che operano prevalentemente con clienti esteri. Ecco cosa cambia nel 2025.' },
-  { tag:'Visti', date:'Feb 2025', title:'Golden Visa: nuove categorie per professionisti del digitale', excerpt:'Dubai amplia le categorie eleggibili al Golden Visa 10 anni includendo freelancer tech, creator e specialisti AI.' },
-  { tag:'Business', date:'Feb 2025', title:'DMCC: oltre 23.000 aziende registrate, record storico', excerpt:'La Jumeirah Lakes Towers Free Zone consolida la sua posizione come la più grande Free Zone degli Emirati per numero di aziende.' },
-  { tag:'Immobiliare', date:'Gen 2025', title:'Prezzi immobili Dubai +22% nel 2024: il mercato non si ferma', excerpt:'Il settore residenziale di lusso guida la crescita. Palm Jumeirah e Dubai Hills Estate trainano le transazioni off-plan.' },
-  { tag:'Banche', date:'Gen 2025', title:'Open banking UAE: arrivano i conti digitali per non residenti', excerpt:'Nuove opportunità per imprenditori stranieri che vogliono aprire un conto UAE prima ancora di trasferirsi.' },
+  { tag:'Fiscalità', date:'Mar 2026', title:'Corporate Tax UAE 2026: tutto quello che devi sapere', excerpt:'Il regime QFZP rimane vantaggioso per le aziende che operano prevalentemente con clienti esteri. Aggiornamento completo per il 2026.' },
+  { tag:'Visti', date:'Feb 2026', title:'Golden Visa: nuove categorie per freelancer e professionisti digitali', excerpt:'Dubai amplia le categorie eleggibili al Golden Visa 10 anni. Ora accessibile anche a creator, specialisti AI e nomadi digitali.' },
+  { tag:'Business', date:'Feb 2026', title:'DMCC: oltre 25.000 aziende registrate, nuovo record storico', excerpt:'La Jumeirah Lakes Towers Free Zone consolida la posizione di Free Zone numero uno degli Emirati per numero di imprese.' },
+  { tag:'Immobiliare', date:'Gen 2026', title:'Prezzi immobili Dubai: crescita sostenuta nel 2025, outlook positivo', excerpt:'Il settore residenziale di lusso guida la crescita. Palm Jumeirah e Dubai Hills Estate trainano le transazioni off-plan.' },
+  { tag:'Banche', date:'Gen 2026', title:'Open banking UAE: conti digitali per non residenti ora disponibili', excerpt:'Nuove opportunità per imprenditori stranieri che vogliono aprire un conto UAE prima ancora di trasferirsi fisicamente.' },
 ];
 
 function loadNews() {
   newsLoaded = true;
-  const list = document.getElementById('news-list');
-  list.innerHTML = staticNews.map(n => `
+  document.getElementById('news-list').innerHTML = staticNews.map(n => `
     <div class="news-card">
       <div class="news-meta">
         <span class="news-tag">${n.tag}</span>
@@ -980,33 +992,41 @@ Rispondi sempre nella lingua dell'utente. Se scrive in italiano, rispondi in ita
 CHI È INDUBAI:
 - Consulenza italiana specializzata in Dubai dal 2018
 - Oltre 450 aziende costituite, 1.200+ visti rilasciati
-- Servizi: Free Zone (da AED 12.000/anno), Mainland DED, Visto Residenza (AED 3.500), Golden Visa 10 anni (AED 8.000), apertura conto bancario, contabilità e VAT, licenza VARA crypto, investimenti immobiliari
+- Servizi: Free Zone (da AED 12.000/anno), Mainland, Visto Residenza (AED 3.500), Golden Visa 10 anni (AED 8.000), apertura conto bancario, contabilità e VAT, licenza VARA crypto, investimenti immobiliari
 - Fondatore: Pellegrino Bozzella, avvocato e consulente fiscale internazionale
-- Sede: JLT, Dubai (Platinum Tower area)
 - Contatti: info@indubai.it | www.indubai.it
 
-FISCALITÀ UAE (sintetica):
+FISCALITÀ UAE:
 - 0% tasse reddito personale
-- 0% Corporate Tax per Free Zone (regime QFZP, se non si opera con il mercato locale)
-- 9% Corporate Tax sul reddito netto sopra AED 375.000 (~€93.000) per mainland e fuori soglia
-- 5% IVA (VAT) su alcune categorie
-- Nessuna imposta su dividendi o capital gain
-- ATTENZIONE: aprire una società UAE mentre si è fiscalmente residenti in Italia NON azzera le tasse italiane automaticamente. Bisogna spostare la residenza fiscale.
+- 0% Corporate Tax per Free Zone (regime QFZP)
+- 9% Corporate Tax sopra AED 375.000 per mainland
+- 5% IVA su alcune categorie
+- ATTENZIONE: bisogna spostare la residenza fiscale dall'Italia
+
+BOOKING: Quando l'utente vuole prenotare o parlare con un consulente umano, usa lo strumento "show_booking_modal".
 
 REGOLE:
 - Risposte brevi (20-30 parole) salvo quando serve dettaglio
 - Fai UNA domanda alla volta
-- Ricorda sempre ciò che l'utente ha già detto
-- Non incoraggiare strategie fiscali irrealistiche
-- Se l'utente vuole prenotare una call: digli "Per prenotare una consulenza gratuita di 30 minuti, ti passo alla sezione Contatti — o clicca 'Prenota ora' qui."
-- Concludi sempre con "Posso aiutarti con qualcos'altro?"`;
+- Non incoraggiare strategie fiscali irrealistiche`;
+
+const LARA_TOOLS = [{
+  name: 'show_booking_modal',
+  description: 'Apre il modale di prenotazione consulenza. Usalo quando l\'utente vuole prenotare una call, parlare con un consulente, fissare un appuntamento.',
+  input_schema: {
+    type: 'object',
+    properties: { message: { type: 'string', description: 'Messaggio breve da mostrare prima di aprire il modale' } },
+    required: ['message']
+  }
+}];
 
 let chatHistory = [];
 let chatUserName = '';
+let chatUserEmail = '';
+let chatUserPhone = '';
 
 function initChat() {
-  const welcomeMsg = `Ciao! Sono Lara di InDubai 🇮🇹\n\nTi aiuto a capire se Dubai fa al caso tuo — fiscalità, società, visti e tanto altro. Come posso aiutarti?`;
-  addMessage('lara', welcomeMsg);
+  addMessage('lara', 'Ciao! Sono Lara di InDubai 🇮🇹\n\nTi aiuto a capire se Dubai fa al caso tuo — fiscalità, società, visti. Come posso aiutarti?');
   chatHistory = [];
 }
 
@@ -1014,13 +1034,11 @@ function addMessage(role, text) {
   const msgs = document.getElementById('chat-messages');
   const row = document.createElement('div');
   row.className = 'msg-row ' + (role === 'user' ? 'user' : 'lara');
-
   if (role === 'lara') {
     row.innerHTML = `<div class="msg-avatar-sm">L</div><div class="bubble">${text.replace(/\n/g,'<br>')}</div>`;
   } else {
     row.innerHTML = `<div class="bubble">${text}</div>`;
   }
-
   msgs.appendChild(row);
   msgs.scrollTop = msgs.scrollHeight;
   return row;
@@ -1029,8 +1047,7 @@ function addMessage(role, text) {
 function showTyping() {
   const msgs = document.getElementById('chat-messages');
   const row = document.createElement('div');
-  row.className = 'msg-row lara';
-  row.id = 'typing-row';
+  row.className = 'msg-row lara'; row.id = 'typing-row';
   row.innerHTML = `<div class="msg-avatar-sm">L</div><div class="bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
   msgs.appendChild(row);
   msgs.scrollTop = msgs.scrollHeight;
@@ -1043,40 +1060,44 @@ function hideTyping() {
 
 async function sendMessage() {
   const input = document.getElementById('chat-input');
-  const text  = input.value.trim();
+  const text = input.value.trim();
   if (!text) return;
-
-  input.value = '';
-  input.style.height = 'auto';
+  input.value = ''; input.style.height = 'auto';
   document.getElementById('chat-send').disabled = true;
-
   addMessage('user', text);
   chatHistory.push({ role: 'user', content: text });
   showTyping();
-
-  // Salva attività chat
   trackChatMessage(text);
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(`${SUPABASE_EDGE_URL}/lara-chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 400,
-        system: LARA_SYSTEM,
-        messages: chatHistory
-      })
+      body: JSON.stringify({ messages: chatHistory, system: LARA_SYSTEM, tools: LARA_TOOLS })
     });
 
     const data = await res.json();
-    const reply = data.content?.[0]?.text || 'Mi dispiace, non sono riuscita a rispondere. Riprova.';
-
     hideTyping();
-    addMessage('lara', reply);
-    chatHistory.push({ role: 'assistant', content: reply });
 
-    // Limita history
+    let assistantReply = '';
+    let toolUsed = false;
+
+    for (const block of (data.content || [])) {
+      if (block.type === 'text' && block.text) {
+        assistantReply = block.text;
+        addMessage('lara', block.text);
+      } else if (block.type === 'tool_use' && block.name === 'show_booking_modal') {
+        toolUsed = true;
+        addMessage('lara', block.input?.message || 'Apro il calendario per te!');
+        setTimeout(() => openBookingModal(), 600);
+      }
+    }
+
+    if (!assistantReply && !toolUsed) {
+      addMessage('lara', 'Mi dispiace, non sono riuscita a rispondere. Riprova.');
+    }
+
+    chatHistory.push({ role: 'assistant', content: data.content || [{ type: 'text', text: assistantReply || '' }] });
     if (chatHistory.length > 20) chatHistory = chatHistory.slice(-16);
 
   } catch(e) {
@@ -1088,68 +1109,177 @@ async function sendMessage() {
 }
 
 function chatKeydown(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-  // Auto-resize textarea
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   e.target.style.height = 'auto';
   e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px';
+}
+
+// ── BOOKING GHL ──────────────────────────────────────
+let selectedSlot = null;
+let allSlots = [];
+
+async function openBookingModal() {
+  document.getElementById('booking-modal').classList.add('open');
+  await loadSlots();
+}
+
+async function loadSlots() {
+  const grid = document.getElementById('slot-grid');
+  grid.innerHTML = `<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">Caricamento disponibilità…</div>`;
+  selectedSlot = null;
+  document.getElementById('booking-btn').disabled = true;
+
+  try {
+    const r = await fetch(`${SUPABASE_EDGE_URL}/ghl-booking?action=slots`);
+    const data = await r.json();
+
+    // Parsing robusto: accetta sia array piatto che oggetto {date: [slots]}
+    allSlots = [];
+    if (Array.isArray(data)) {
+      allSlots = data;
+    } else {
+      // Oggetto con chiavi data
+      for (const key of Object.keys(data)) {
+        const val = data[key];
+        if (Array.isArray(val)) {
+          val.forEach(s => allSlots.push({ ...s, _dateKey: key }));
+        } else if (typeof val === 'object' && val !== null) {
+          // Nested: { _id: { date: [slots] } }
+          for (const dateKey of Object.keys(val)) {
+            const slots = val[dateKey];
+            if (Array.isArray(slots)) {
+              slots.forEach(s => allSlots.push({ ...s, _dateKey: dateKey }));
+            }
+          }
+        }
+      }
+    }
+
+    // Ordina per data
+    allSlots.sort((a, b) => {
+      const ta = new Date(a.startTime || a.slot || a._dateKey).getTime();
+      const tb = new Date(b.startTime || b.slot || b._dateKey).getTime();
+      return ta - tb;
+    });
+
+    if (allSlots.length === 0) {
+      grid.innerHTML = `<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">Nessuna disponibilità nei prossimi 14 giorni.<br>Scrivici su <a href="https://wa.me/971501234567" style="color:var(--gold)">WhatsApp</a>.</div>`;
+      return;
+    }
+
+    const show = allSlots.slice(0, 12);
+    grid.innerHTML = show.map((s, i) => {
+      // Prova a parsare la data da startTime, poi slot, poi _dateKey
+      let dt = null;
+      const raw = s.startTime || s.slot;
+      if (raw) {
+        dt = new Date(raw);
+        if (isNaN(dt.getTime())) dt = null;
+      }
+      if (!dt && s._dateKey) {
+        dt = new Date(s._dateKey);
+        if (isNaN(dt.getTime())) dt = null;
+      }
+
+      let dayLabel = '—';
+      let timeLabel = '—';
+      if (dt) {
+        dayLabel = dt.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Dubai' });
+        timeLabel = dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' });
+      }
+
+      return `<div class="slot-btn" onclick="selectSlot(${i})" id="slot-${i}">
+        <div class="slot-day">${dayLabel}</div>
+        <div class="slot-time">${timeLabel}</div>
+      </div>`;
+    }).join('');
+
+  } catch(e) {
+    grid.innerHTML = `<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">Errore nel caricamento. <a href="https://wa.me/971501234567" style="color:var(--gold)">Scrivi su WhatsApp</a></div>`;
+  }
+}
+
+function selectSlot(i) {
+  selectedSlot = allSlots[i];
+  document.querySelectorAll('.slot-btn').forEach((el, idx) => {
+    el.classList.toggle('selected', idx === i);
+  });
+  document.getElementById('booking-btn').disabled = false;
+}
+
+async function confirmBooking() {
+  if (!selectedSlot) return;
+  const btn = document.getElementById('booking-btn');
+  btn.disabled = true; btn.textContent = 'Prenotazione in corso…';
+
+  try {
+    const r = await fetch(`${SUPABASE_EDGE_URL}/ghl-booking?action=book`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: chatUserName || 'Lead InDubai',
+        email: chatUserEmail || '',
+        phone: chatUserPhone || '',
+        slot_start: selectedSlot.startTime || selectedSlot.slot,
+        slot_end: selectedSlot.endTime || '',
+        timezone: 'Asia/Dubai'
+      })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      document.getElementById('booking-modal').classList.remove('open');
+      const raw = selectedSlot.startTime || selectedSlot.slot;
+      const dt = raw ? new Date(raw) : null;
+      const readable = dt ? dt.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Dubai' }) + ' alle ' + dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' }) + ' (ora Dubai)' : 'data confermata';
+      addMessage('lara', `✅ Appuntamento confermato per ${readable}!\n\nRiceverai una email di conferma. A presto! 🇮🇹`);
+      if (userId) sb.from('lead_activity').insert({ lead_id: userId, section: 'booking_confirmed', visited_at: new Date().toISOString() });
+    } else { throw new Error(data.error || 'Errore'); }
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Conferma appuntamento';
+    addMessage('lara', `C'è stato un problema tecnico. <a href="https://wa.me/971501234567" style="color:var(--gold)">Scrivimi su WhatsApp</a> per fissare la call.`);
+    document.getElementById('booking-modal').classList.remove('open');
+  }
 }
 
 // ── ACTIVITY TRACKING ───────────────────────────────
 let userId = null;
 let chatLog = [];
-
 function trackActivity(section) {
   if (!userId) return;
-  sb.from('lead_activity').insert({
-    lead_id: userId,
-    section: section,
-    visited_at: new Date().toISOString()
-  }).then(() => {});
+  sb.from('lead_activity').insert({ lead_id: userId, section, visited_at: new Date().toISOString() }).then(() => {});
 }
-
 function trackChatMessage(msg) {
   chatLog.push({ role: 'user', text: msg, ts: new Date().toISOString() });
   if (!userId) return;
-  sb.from('leads').update({ last_chat: JSON.stringify(chatLog.slice(-20)) })
-    .eq('id', userId).then(() => {});
+  sb.from('leads').update({ last_chat: JSON.stringify(chatLog.slice(-20)) }).eq('id', userId).then(() => {});
 }
 
 // ── INIT ─────────────────────────────────────────────
 async function init() {
-  // Check auth
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) {
-    window.location.href = 'login.html';
-    return;
-  }
+  if (!session) { window.location.href = 'login.html'; return; }
 
   userId = session.user.id;
   const meta = session.user.user_metadata;
   const name = meta?.full_name || session.user.email;
   chatUserName = name.split(' ')[0];
+  chatUserEmail = session.user.email || '';
+  chatUserPhone = meta?.phone || '';
 
-  // Header initials
   const initials = (meta?.full_name || 'U').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
   document.getElementById('user-initials').textContent = initials;
 
-  // Greeting
   const hour = new Date().getHours();
   const gr = hour < 12 ? 'Buongiorno' : hour < 18 ? 'Buon pomeriggio' : 'Buonasera';
   document.getElementById('hero-greeting').textContent = `${gr}, ${chatUserName}`;
 
-  // Render services
   renderServices();
 
-  // Check onboarding
   if (localStorage.getItem('ob_done')) {
     document.getElementById('onboarding').style.display = 'none';
     document.getElementById('app').classList.add('visible');
   }
 
-  // Update last_seen
   sb.from('leads').update({ last_seen: new Date().toISOString() }).eq('id', userId).then(() => {});
 }
 

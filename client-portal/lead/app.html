@@ -7,558 +7,255 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" href="../favicon.png">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../config.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --gold: #c9a84c; --gold-light: #e8c96a; --gold-dim: rgba(201,168,76,.15);
-      --bg: #080e18; --bg2: #0d1627;
+      --bg: #080e18; --bg2: #0d1627; --bg3: #111c30;
       --surface: rgba(255,255,255,.05); --surface2: rgba(255,255,255,.09);
       --border: rgba(255,255,255,.1); --border2: rgba(255,255,255,.06);
       --text: #f0ede8; --muted: rgba(240,237,232,.55); --muted2: rgba(240,237,232,.3);
-      --tab-h: 68px;
+      --green: #34d399; --tab-h: 72px;
     }
     html, body { height: 100%; height: 100dvh; overflow: hidden; }
-    body {
-      font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
-      -webkit-font-smoothing: antialiased; -webkit-overflow-scrolling: touch;
-      font-size: 15px;
-    }
-
-    /* ── ONBOARDING ─────────────────────────────────────── */
-    #onboarding {
-      position: fixed; inset: 0; z-index: 500;
-      background: var(--bg);
-      display: flex; flex-direction: column;
-    }
-    .ob-slides-outer {
-      flex: 1; overflow: hidden; position: relative;
-    }
-    .ob-slides-track {
-      display: flex; height: 100%;
-      transition: transform .4s cubic-bezier(.4,0,.2,1);
-    }
-    .ob-slide {
-      min-width: 100%; height: 100%;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 48px 32px 0;
-      flex-shrink: 0;
-    }
-    .ob-visual {
-      width: 100%; max-width: 300px;
-      height: 220px;
-      border-radius: 24px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 32px;
-      position: relative; overflow: hidden;
-    }
-    .ob-visual::before {
-      content: ''; position: absolute; inset: 0;
-      background: radial-gradient(ellipse at 50% 120%, rgba(201,168,76,.2) 0%, transparent 70%);
-    }
-    .ob-num {
-      font-family: 'Playfair Display', serif;
-      font-size: 80px; font-weight: 700; color: var(--gold);
-      opacity: .15; line-height: 1;
-      position: absolute; bottom: 8px; right: 16px;
-    }
-    .ob-tag {
-      font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-      color: var(--gold); margin-bottom: 10px;
-    }
-    .ob-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 28px; font-weight: 700; text-align: center;
-      color: var(--text); margin-bottom: 14px; line-height: 1.2;
-    }
-    .ob-body {
-      font-size: 15px; color: var(--muted); text-align: center;
-      line-height: 1.65; max-width: 300px; font-weight: 400;
-    }
-    .ob-footer {
-      padding: 24px 32px calc(env(safe-area-inset-bottom,16px) + 16px);
-      display: flex; flex-direction: column; align-items: center; gap: 18px;
-    }
+    body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+    #onboarding { position: fixed; inset: 0; z-index: 500; background: var(--bg); display: flex; flex-direction: column; overflow: hidden; }
+    .ob-track-outer { flex: 1; overflow: hidden; }
+    .ob-track { display: flex; height: 100%; transition: transform .45s cubic-bezier(.4,0,.2,1); }
+    .ob-slide { min-width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 28px 0; text-align: center; }
+    .ob-visual { width: 200px; height: 200px; border-radius: 32px; background: var(--bg3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; margin-bottom: 36px; position: relative; overflow: hidden; }
+    .ob-visual::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 110%, rgba(201,168,76,.2) 0%, transparent 65%); }
+    .ob-num { font-family: 'Playfair Display', serif; font-size: 64px; font-weight: 600; color: var(--gold); opacity: .15; line-height: 1; position: absolute; bottom: 8px; right: 14px; }
+    .ob-tag { font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
+    .ob-title { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 600; color: var(--text); margin-bottom: 14px; line-height: 1.25; }
+    .ob-body { font-size: 15px; color: var(--muted); line-height: 1.7; max-width: 300px; font-weight: 400; }
+    .ob-footer { padding: 24px 28px calc(env(safe-area-inset-bottom,20px) + 16px); display: flex; flex-direction: column; align-items: center; gap: 18px; }
     .ob-dots { display: flex; gap: 8px; }
-    .ob-dot {
-      width: 6px; height: 6px; border-radius: 3px;
-      background: var(--border2); transition: all .3s;
-    }
-    .ob-dot.active { width: 22px; background: var(--gold); }
-    .ob-next {
-      width: 100%; max-width: 320px;
-      padding: 16px; background: var(--gold); border: none; border-radius: 14px;
-      font-size: 16px; font-weight: 700; color: #0a0e18;
-      cursor: pointer; font-family: 'Inter', sans-serif;
-      transition: opacity .15s, transform .15s; -webkit-tap-highlight-color: transparent;
-    }
+    .ob-dot { width: 8px; height: 8px; border-radius: 4px; background: var(--border); transition: all .35s; }
+    .ob-dot.active { width: 24px; background: var(--gold); }
+    .ob-next { width: 100%; max-width: 340px; padding: 17px; background: var(--gold); border: none; border-radius: 16px; font-size: 16px; font-weight: 700; color: #080e18; cursor: pointer; font-family: 'Manrope', sans-serif; transition: opacity .15s, transform .1s; -webkit-tap-highlight-color: transparent; }
     .ob-next:active { opacity: .85; transform: scale(.98); }
-    .ob-skip {
-      font-size: 13px; color: var(--muted2); background: none; border: none;
-      cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 500;
-      -webkit-tap-highlight-color: transparent; padding: 4px 8px;
-    }
-
-    /* ── APP SHELL ──────────────────────────────────────── */
+    .ob-skip { font-size: 13px; font-weight: 500; color: var(--muted2); background: none; border: none; cursor: pointer; font-family: 'Manrope', sans-serif; -webkit-tap-highlight-color: transparent; padding: 4px 8px; }
     #app { display: none; flex-direction: column; height: 100%; height: 100dvh; }
     #app.visible { display: flex; }
-
-    /* Header */
-    .hdr {
-      flex-shrink: 0;
-      padding: calc(env(safe-area-inset-top,0px) + 14px) 20px 14px;
-      background: rgba(8,14,24,.97);
-      backdrop-filter: saturate(200%) blur(20px);
-      -webkit-backdrop-filter: saturate(200%) blur(20px);
-      border-bottom: 1px solid var(--border2);
-      display: flex; align-items: center; justify-content: space-between;
-      z-index: 100;
-    }
+    .hdr { flex-shrink: 0; padding: calc(env(safe-area-inset-top,0px) + 14px) 20px 14px; background: rgba(8,14,24,.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--border2); display: flex; align-items: center; justify-content: space-between; z-index: 100; }
     .hdr img { height: 22px; width: auto; }
-    .hdr-user {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: var(--gold-dim); border: 1.5px solid rgba(201,168,76,.4);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 700; color: var(--gold); cursor: pointer;
-    }
-
-    /* Scroll area */
+    .hdr-user { width: 36px; height: 36px; border-radius: 50%; background: var(--gold-dim); border: 1.5px solid rgba(201,168,76,.4); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: var(--gold); }
     .scroll { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
     .scroll::-webkit-scrollbar { display: none; }
-
-    /* Tab bar */
-    .tab-bar {
-      flex-shrink: 0;
-      background: rgba(8,14,24,.97);
-      backdrop-filter: saturate(180%) blur(24px);
-      -webkit-backdrop-filter: saturate(180%) blur(24px);
-      border-top: 1px solid var(--border2);
-      display: flex; align-items: flex-start;
-      padding-top: 10px;
-      padding-bottom: max(env(safe-area-inset-bottom,16px), 16px);
-    }
-    .tab-item {
-      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
-      cursor: pointer; -webkit-tap-highlight-color: transparent; padding: 2px 0;
-    }
+    .tab-bar { flex-shrink: 0; background: rgba(8,14,24,.97); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-top: 1px solid var(--border2); display: flex; align-items: flex-start; padding-top: 10px; padding-bottom: max(env(safe-area-inset-bottom,18px), 18px); }
+    .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; -webkit-tap-highlight-color: transparent; padding: 2px 0; position: relative; }
     .tab-icon { color: var(--muted2); transition: color .2s; line-height: 0; }
-    .tab-label { font-size: 11px; font-weight: 600; color: var(--muted2); transition: color .2s; letter-spacing: .2px; }
-    .tab-item.active .tab-icon,
-    .tab-item.active .tab-label { color: var(--gold); }
-
-    /* ── PANELS ─────────────────────────────────────────── */
+    .tab-label { font-size: 10px; font-weight: 600; color: var(--muted2); transition: color .2s; letter-spacing: .3px; }
+    .tab-item.active .tab-icon, .tab-item.active .tab-label { color: var(--gold); }
     .panel { display: none; }
-    .panel.active { display: block; animation: fadeUp .22s ease forwards; }
-    @keyframes fadeUp { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
-
-    /* ── HOME / SERVIZI ────────────────────────────────── */
+    .panel.active { display: block; animation: fadeUp .2s ease forwards; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
+    .pb-tab { padding-bottom: calc(var(--tab-h) + max(env(safe-area-inset-bottom,18px),18px) + 12px); }
     .hero { padding: 28px 20px 0; margin-bottom: 20px; }
-    .hero-greeting {
-      font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
-      color: var(--gold); margin-bottom: 6px;
-    }
-    .hero-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 30px; font-weight: 700; line-height: 1.15;
-      color: var(--text); margin-bottom: 10px;
-    }
-    .hero-body { font-size: 14px; color: var(--muted); line-height: 1.6; font-weight: 400; }
-
-    /* Card Lara live */
-    .lara-live-card {
-      margin: 0 20px 16px;
-      background: linear-gradient(135deg, rgba(74,222,128,.08) 0%, rgba(74,222,128,.03) 100%);
-      border: 1.5px solid rgba(74,222,128,.25);
-      border-radius: 16px; padding: 16px 18px;
-      display: flex; align-items: center; gap: 14px;
-      cursor: pointer; -webkit-tap-highlight-color: transparent;
-      transition: background .15s;
-    }
-    .lara-live-card:active { background: rgba(74,222,128,.12); }
-    .lara-live-avatar {
-      width: 44px; height: 44px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--gold) 0%, #8b6914 100%);
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
-      color: #0a0e18; flex-shrink: 0; position: relative;
-    }
-    .lara-live-dot {
-      position: absolute; bottom: 1px; right: 1px;
-      width: 12px; height: 12px; border-radius: 50%;
-      background: #4ade80; border: 2px solid var(--bg);
-    }
-    .lara-live-text { flex: 1; }
-    .lara-live-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
-    .lara-live-sub { font-size: 13px; color: #4ade80; font-weight: 500; display: flex; align-items: center; gap: 5px; }
-    .lara-live-sub::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; animation: pulse-dot 2s ease-in-out infinite; }
-    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
-    .lara-live-arrow { color: var(--muted2); }
-
-    /* Booking banner */
-    .hero-banner {
-      margin: 0 20px 24px;
-      background: linear-gradient(135deg, rgba(201,168,76,.12) 0%, rgba(201,168,76,.04) 100%);
-      border: 1px solid rgba(201,168,76,.25);
-      border-radius: 16px; padding: 18px;
-      display: flex; align-items: center; gap: 14px;
-    }
-    .hero-banner-icon {
-      width: 42px; height: 42px; border-radius: 12px;
-      background: rgba(201,168,76,.15); display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; color: var(--gold);
-    }
-    .hero-banner-text { font-size: 13px; color: var(--text); line-height: 1.5; flex: 1; }
+    .hero-greeting { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
+    .hero-title { font-family: 'Playfair Display', serif; font-size: 34px; font-weight: 600; line-height: 1.2; color: var(--text); margin-bottom: 10px; }
+    .hero-body { font-size: 14px; color: var(--muted); line-height: 1.65; font-weight: 400; }
+    .hero-banner { margin: 0 20px 16px; background: linear-gradient(135deg, rgba(201,168,76,.13) 0%, rgba(201,168,76,.04) 100%); border: 1px solid rgba(201,168,76,.3); border-radius: 20px; padding: 18px; display: flex; align-items: center; gap: 14px; }
+    .hero-banner-icon { width: 46px; height: 46px; border-radius: 13px; background: rgba(201,168,76,.18); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--gold); }
+    .hero-banner-text { flex: 1; font-size: 13px; color: var(--text); line-height: 1.5; font-weight: 400; }
     .hero-banner-text strong { color: var(--gold); display: block; font-size: 14px; font-weight: 700; margin-bottom: 2px; }
-
-    /* Servizi grid */
-    .section-label {
-      font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
-      color: var(--muted); padding: 0 20px; margin-bottom: 14px;
-    }
-    .services-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 12px; padding: 0 20px; margin-bottom: 28px;
-    }
-    .srv-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; padding: 16px 14px;
-      cursor: pointer; -webkit-tap-highlight-color: transparent;
-      transition: background .2s, border-color .2s;
-    }
+    .btn-prenota { flex-shrink: 0; padding: 9px 15px; background: var(--gold); border: none; border-radius: 11px; font-size: 13px; font-weight: 700; color: #080e18; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; white-space: nowrap; }
+    .lara-live-card { margin: 0 20px 24px; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: border-color .2s; }
+    .lara-live-card:active { border-color: var(--gold); }
+    .lara-live-avatar { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, var(--gold) 0%, #8b6914 100%); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; color: #080e18; position: relative; }
+    .live-dot { position: absolute; bottom: 1px; right: 1px; width: 13px; height: 13px; border-radius: 50%; background: var(--green); border: 2px solid var(--bg3); animation: pulseDot 2s infinite; }
+    @keyframes pulseDot { 0%,100% { box-shadow: 0 0 0 0 rgba(52,211,153,.5); } 50% { box-shadow: 0 0 0 5px rgba(52,211,153,0); } }
+    .lara-live-info { flex: 1; }
+    .lara-live-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+    .lara-live-sub { font-size: 12px; color: var(--green); font-weight: 600; }
+    .section-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 0 20px; margin-bottom: 14px; }
+    .services-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px; margin-bottom: 28px; }
+    .srv-card { background: var(--surface); border: 1px solid var(--border2); border-radius: 20px; padding: 18px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .2s; }
     .srv-card:active { background: var(--surface2); }
-    .srv-icon {
-      width: 38px; height: 38px; border-radius: 10px;
-      background: var(--gold-dim); display: flex; align-items: center; justify-content: center;
-      margin-bottom: 10px; color: var(--gold);
-    }
+    .srv-icon { width: 40px; height: 40px; border-radius: 11px; background: var(--gold-dim); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; color: var(--gold); }
     .srv-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; line-height: 1.3; }
-    .srv-desc { font-size: 12px; color: var(--muted); line-height: 1.4; font-weight: 400; }
-
-    /* ── CALCOLATORE ──────────────────────────────────── */
+    .srv-desc { font-size: 12px; color: var(--muted); line-height: 1.5; font-weight: 400; }
     .calc-wrap { padding: 20px; }
-    .calc-hero {
-      background: linear-gradient(135deg, rgba(201,168,76,.1) 0%, rgba(201,168,76,.03) 100%);
-      border: 1px solid rgba(201,168,76,.2);
-      border-radius: 18px; padding: 22px 20px; margin-bottom: 24px; text-align: center;
-    }
-    .calc-hero-title { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
-    .calc-hero-sub { font-size: 14px; color: var(--muted); }
-    .calc-field { margin-bottom: 16px; }
+    .calc-hero { background: linear-gradient(135deg, rgba(201,168,76,.1) 0%, rgba(201,168,76,.03) 100%); border: 1px solid rgba(201,168,76,.2); border-radius: 22px; padding: 24px 20px; margin-bottom: 24px; text-align: center; }
+    .calc-hero-title { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .calc-hero-sub { font-size: 14px; color: var(--muted); font-weight: 400; }
+    .calc-field { margin-bottom: 18px; }
     .calc-label { font-size: 12px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: block; }
-    .calc-input {
-      width: 100%; background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; padding: 13px 16px; font-size: 16px; color: var(--text);
-      font-family: 'Inter', sans-serif; outline: none; -webkit-appearance: none;
-      font-weight: 500; transition: border-color .2s;
-    }
-    .calc-input:focus { border-color: rgba(201,168,76,.5); }
-    .calc-select {
-      width: 100%; background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; padding: 13px 16px; font-size: 14px; color: var(--text);
-      font-family: 'Inter', sans-serif; outline: none; -webkit-appearance: none;
-      font-weight: 500;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(240,237,232,.5)' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 14px center;
-    }
-    .calc-btn {
-      width: 100%; padding: 16px; background: var(--gold); border: none; border-radius: 14px;
-      font-size: 16px; font-weight: 700; color: #0a0e18; cursor: pointer;
-      font-family: 'Inter', sans-serif; margin-top: 8px;
-      transition: opacity .15s, transform .15s; -webkit-tap-highlight-color: transparent;
-    }
-    .calc-btn:active { opacity: .85; transform: scale(.98); }
+    .calc-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; font-size: 16px; color: var(--text); font-family: 'Manrope', sans-serif; outline: none; -webkit-appearance: none; transition: border-color .2s; font-weight: 500; }
+    .calc-input:focus { border-color: rgba(201,168,76,.5); background: var(--surface2); }
+    .calc-select { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; font-size: 14px; color: var(--text); font-family: 'Manrope', sans-serif; outline: none; -webkit-appearance: none; font-weight: 500; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(240,237,232,.4)' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+    .calc-btn { width: 100%; padding: 16px; background: var(--gold); border: none; border-radius: 16px; font-size: 16px; font-weight: 700; color: #080e18; cursor: pointer; font-family: 'Manrope', sans-serif; margin-top: 8px; transition: opacity .15s; -webkit-tap-highlight-color: transparent; }
+    .calc-btn:active { opacity: .85; }
     #calc-result { display: none; margin-top: 24px; }
-    .result-card {
-      background: linear-gradient(135deg, rgba(201,168,76,.12) 0%, rgba(201,168,76,.04) 100%);
-      border: 1px solid rgba(201,168,76,.3);
-      border-radius: 18px; padding: 24px; text-align: center; margin-bottom: 16px;
-    }
-    .result-label { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
-    .result-big { font-size: 48px; font-weight: 800; color: var(--gold); line-height: 1; margin-bottom: 4px; }
-    .result-sub { font-size: 13px; color: var(--muted); font-weight: 500; }
-    .result-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 12px 0; border-bottom: 1px solid var(--border2);
-    }
+    .result-card { background: linear-gradient(135deg, rgba(201,168,76,.14) 0%, rgba(201,168,76,.05) 100%); border: 1px solid rgba(201,168,76,.35); border-radius: 22px; padding: 24px; text-align: center; margin-bottom: 16px; }
+    .result-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
+    .result-big { font-family: 'Playfair Display', serif; font-size: 52px; font-weight: 600; color: var(--gold); line-height: 1; margin-bottom: 6px; }
+    .result-sub { font-size: 13px; color: var(--muted); }
+    .result-row { display: flex; justify-content: space-between; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--border2); }
     .result-row:last-child { border-bottom: none; }
     .result-row-label { font-size: 14px; color: var(--muted); }
-    .result-row-val { font-size: 15px; font-weight: 700; color: var(--text); }
-    .result-row-val.green { color: #4ade80; }
+    .result-row-val { font-size: 15px; font-weight: 700; }
+    .result-row-val.green { color: var(--green); }
     .result-row-val.red { color: #f87171; }
-    .calc-cta {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 14px; padding: 18px; text-align: center;
-    }
+    .calc-cta { background: var(--surface2); border: 1px solid var(--border); border-radius: 18px; padding: 18px; text-align: center; }
     .calc-cta p { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
-    .calc-cta button {
-      padding: 12px 24px; background: transparent; border: 1.5px solid var(--gold);
-      border-radius: 10px; color: var(--gold); font-size: 14px; font-weight: 700;
-      cursor: pointer; font-family: 'Inter', sans-serif;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    /* ── NEWS ──────────────────────────────────────────── */
+    .calc-cta button { padding: 12px 26px; background: transparent; border: 1.5px solid var(--gold); border-radius: 12px; color: var(--gold); font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Manrope', sans-serif; -webkit-tap-highlight-color: transparent; }
     .news-wrap { padding: 20px; }
-    .news-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 14px; padding: 18px; margin-bottom: 12px; cursor: pointer;
-      -webkit-tap-highlight-color: transparent; transition: background .15s;
-    }
+    .news-card { background: var(--surface); border: 1px solid var(--border2); border-radius: 18px; padding: 18px; margin-bottom: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .15s; }
     .news-card:active { background: var(--surface2); }
     .news-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-    .news-tag {
-      font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
-      padding: 3px 8px; border-radius: 4px; background: var(--gold-dim); color: var(--gold);
-    }
-    .news-date { font-size: 12px; color: var(--muted2); font-weight: 500; }
-    .news-title { font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.35; margin-bottom: 6px; }
+    .news-tag { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; padding: 3px 9px; border-radius: 5px; background: var(--gold-dim); color: var(--gold); }
+    .news-date { font-size: 11px; color: var(--muted2); font-weight: 500; }
+    .news-title { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.4; margin-bottom: 6px; }
     .news-excerpt { font-size: 13px; color: var(--muted); line-height: 1.6; }
-
-    /* ── CONTATTI ──────────────────────────────────────── */
     .contacts-wrap { padding: 20px; }
     .contact-section { margin-bottom: 28px; }
-    .contact-section-title {
-      font-size: 18px; font-weight: 800; color: var(--text);
-      margin-bottom: 14px; padding-bottom: 10px;
-      border-bottom: 1px solid var(--border2);
-    }
-    .contact-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 14px; padding: 16px; margin-bottom: 10px;
-      display: flex; align-items: center; gap: 14px;
-      cursor: pointer; -webkit-tap-highlight-color: transparent;
-      transition: background .15s; text-decoration: none;
-    }
+    .contact-section-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border2); }
+    .contact-card { background: var(--surface); border: 1px solid var(--border2); border-radius: 16px; padding: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .15s; text-decoration: none; }
     .contact-card:active { background: var(--surface2); }
-    .contact-ico {
-      width: 40px; height: 40px; border-radius: 10px;
-      background: var(--gold-dim); display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; color: var(--gold);
-    }
+    .contact-ico { width: 42px; height: 42px; border-radius: 12px; background: var(--gold-dim); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--gold); }
     .contact-info { flex: 1; }
-    .contact-name { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .contact-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
     .contact-val { font-size: 13px; color: var(--muted); }
     .contact-arrow { color: var(--muted2); }
-
-    /* ── CHAT LARA ─────────────────────────────────────── */
-    .chat-wrap {
-      display: flex; flex-direction: column;
-      height: calc(100vh - env(safe-area-inset-top,0px) - 56px - var(--tab-h) - max(env(safe-area-inset-bottom,16px),16px) - 10px);
-    }
-    .chat-header {
-      padding: 16px 20px 14px;
-      border-bottom: 1px solid var(--border2);
-      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
-    }
-    .lara-avatar {
-      width: 42px; height: 42px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--gold) 0%, #8b6914 100%);
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
-      color: #0a0e18; flex-shrink: 0;
-    }
+    /* CHAT */
+    .chat-wrap { display: flex; flex-direction: column; height: calc(100dvh - env(safe-area-inset-top,0px) - 56px - var(--tab-h) - max(env(safe-area-inset-bottom,18px),18px) - 10px); }
+    .chat-header { padding: 14px 20px 12px; border-bottom: 1px solid var(--border2); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .lara-avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, var(--gold) 0%, #8b6914 100%); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; color: #080e18; position: relative; }
+    .avatar-dot { position: absolute; bottom: 1px; right: 1px; width: 12px; height: 12px; border-radius: 50%; background: var(--green); border: 2px solid var(--bg); animation: pulseDot 2s infinite; }
     .lara-info { flex: 1; }
-    .lara-name { font-size: 16px; font-weight: 700; color: var(--text); }
-    .lara-status { font-size: 12px; color: #4ade80; font-weight: 600; display: flex; align-items: center; gap: 5px; }
-    .lara-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; animation: pulse-dot 2s ease-in-out infinite; }
-    .chat-messages {
-      flex: 1; overflow-y: auto; padding: 16px 16px 8px;
-      -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 12px;
-    }
+    .lara-name { font-size: 15px; font-weight: 700; color: var(--text); }
+    .lara-status { font-size: 12px; color: var(--green); font-weight: 600; margin-top: 1px; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 20px 16px 12px; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 16px; }
     .chat-messages::-webkit-scrollbar { display: none; }
-    .msg-row { display: flex; gap: 8px; max-width: 88%; }
+    .msg-row { display: flex; gap: 10px; max-width: 88%; animation: msgIn .22s ease; }
+    @keyframes msgIn { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
     .msg-row.user { align-self: flex-end; flex-direction: row-reverse; }
     .msg-row.lara { align-self: flex-start; }
-    .msg-avatar-sm {
-      width: 30px; height: 30px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--gold) 0%, #8b6914 100%);
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700;
-      color: #0a0e18; flex-shrink: 0; margin-top: 2px;
-    }
-    .bubble {
-      padding: 12px 15px; border-radius: 18px;
-      font-size: 15px; line-height: 1.55; max-width: 100%; font-weight: 400;
-    }
-    .msg-row.lara .bubble {
-      background: var(--surface2); border: 1px solid var(--border);
-      color: var(--text); border-bottom-left-radius: 4px;
-    }
-    .msg-row.user .bubble {
-      background: var(--gold); color: #0a0e18; font-weight: 500;
-      border-bottom-right-radius: 4px;
-    }
-    .typing-indicator { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
-    .typing-indicator span {
-      width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
-      animation: typingBounce 1.2s ease-in-out infinite;
-    }
-    .typing-indicator span:nth-child(2) { animation-delay: .2s; }
-    .typing-indicator span:nth-child(3) { animation-delay: .4s; }
-    @keyframes typingBounce { 0%,60%,100% { transform: translateY(0) } 30% { transform: translateY(-6px) } }
-    .chat-input-area {
-      padding: 10px 16px 12px;
-      border-top: 1px solid var(--border2);
-      display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0;
-    }
-    #chat-input {
-      flex: 1; background: var(--surface); border: 1px solid var(--border);
-      border-radius: 22px; padding: 12px 16px; font-size: 15px; color: var(--text);
-      font-family: 'Inter', sans-serif; outline: none; resize: none;
-      max-height: 100px; line-height: 1.4; -webkit-appearance: none;
-      font-weight: 400; transition: border-color .2s;
-    }
+    .msg-av { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; background: linear-gradient(135deg, var(--gold) 0%, #8b6914 100%); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 600; color: #080e18; }
+    .bubble { padding: 12px 16px; border-radius: 20px; font-size: 15px; line-height: 1.6; max-width: 100%; font-weight: 400; }
+    .msg-row.lara .bubble { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 5px; }
+    .msg-row.user .bubble { background: var(--gold); color: #080e18; font-weight: 600; border-bottom-right-radius: 5px; }
+    .typing-wrap { display: flex; gap: 10px; align-self: flex-start; animation: msgIn .2s ease; }
+    .typing-bubble { background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; border-bottom-left-radius: 5px; padding: 14px 18px; display: flex; gap: 5px; align-items: center; }
+    .typing-bubble span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: typingB 1.3s ease-in-out infinite; }
+    .typing-bubble span:nth-child(2) { animation-delay: .18s; }
+    .typing-bubble span:nth-child(3) { animation-delay: .36s; }
+    @keyframes typingB { 0%,60%,100% { transform:translateY(0);opacity:.5 } 30% { transform:translateY(-7px);opacity:1 } }
+    .chat-prompts { padding: 0 16px 10px; display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0; }
+    .chat-prompts::-webkit-scrollbar { display: none; }
+    .prompt-chip { flex-shrink: 0; padding: 9px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+    .prompt-chip:active { border-color: var(--gold); color: var(--gold); }
+    .chat-input-area { padding: 10px 16px 14px; border-top: 1px solid var(--border2); display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
+    #chat-input { flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 24px; padding: 12px 18px; font-size: 15px; color: var(--text); font-family: 'Manrope', sans-serif; outline: none; resize: none; max-height: 110px; line-height: 1.45; -webkit-appearance: none; font-weight: 400; transition: border-color .2s; }
     #chat-input:focus { border-color: rgba(201,168,76,.5); }
     #chat-input::placeholder { color: var(--muted2); }
-    #chat-send {
-      width: 42px; height: 42px; border-radius: 50%;
-      background: var(--gold); border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; -webkit-tap-highlight-color: transparent;
-      transition: opacity .15s, transform .15s;
-    }
-    #chat-send:active { opacity: .8; transform: scale(.93); }
-    #chat-send:disabled { opacity: .4; cursor: not-allowed; }
-
-    /* Booking modal */
-    .booking-modal {
-      position: fixed; inset: 0; z-index: 300;
-      background: rgba(0,0,0,.75); backdrop-filter: blur(8px);
-      display: none; align-items: flex-end;
-    }
+    #chat-send { width: 42px; height: 42px; border-radius: 50%; background: var(--gold); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; -webkit-tap-highlight-color: transparent; transition: opacity .15s, transform .1s; }
+    #chat-send:active { opacity: .8; transform: scale(.92); }
+    #chat-send:disabled { opacity: .35; cursor: not-allowed; }
+    /* BOOKING */
+    .booking-modal { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,.75); backdrop-filter: blur(10px); display: none; align-items: flex-end; }
     .booking-modal.open { display: flex; }
-    .booking-sheet {
-      background: var(--bg2); border-radius: 24px 24px 0 0;
-      border: 1px solid var(--border);
-      width: 100%; padding: 20px 20px calc(env(safe-area-inset-bottom,16px) + 20px);
-      max-height: 80vh; overflow-y: auto;
-    }
+    .booking-sheet { background: var(--bg2); border-radius: 28px 28px 0 0; border: 1px solid var(--border); width: 100%; padding: 20px 20px calc(env(safe-area-inset-bottom,20px) + 20px); max-height: 82vh; overflow-y: auto; animation: sheetUp .3s cubic-bezier(.4,0,.2,1); }
+    @keyframes sheetUp { from { transform:translateY(40px);opacity:.5 } to { transform:translateY(0);opacity:1 } }
     .booking-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 20px; }
-    .booking-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
-    .booking-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; font-weight: 400; }
-    .slot-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
-    .slot-btn {
-      padding: 10px 6px; background: var(--surface); border: 1px solid var(--border);
-      border-radius: 10px; font-size: 11px; font-weight: 600; color: var(--text);
-      cursor: pointer; text-align: center; -webkit-tap-highlight-color: transparent;
-      transition: all .15s; line-height: 1.3;
-    }
-    .slot-btn .slot-day { font-size: 10px; color: var(--muted); font-weight: 500; margin-bottom: 3px; }
-    .slot-btn .slot-time { font-size: 13px; font-weight: 700; color: var(--text); }
-    .slot-btn.selected { background: var(--gold-dim); border-color: var(--gold); }
-    .slot-btn.selected .slot-time { color: var(--gold); }
+    .booking-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+    .booking-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .slot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+    .slot-btn { padding: 12px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; font-size: 12px; font-weight: 600; color: var(--text); cursor: pointer; text-align: center; -webkit-tap-highlight-color: transparent; transition: all .15s; }
     .slot-btn:active { opacity: .7; }
-    .booking-confirm {
-      width: 100%; padding: 15px; background: var(--gold); border: none; border-radius: 12px;
-      font-size: 16px; font-weight: 700; color: #0a0e18; cursor: pointer;
-      font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;
-      transition: opacity .15s;
-    }
-    .booking-confirm:disabled { opacity: .4; }
+    .slot-btn.selected { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+    .slot-day { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 3px; }
+    .slot-time { font-size: 14px; font-weight: 700; }
+    .booking-empty { text-align: center; padding: 24px 16px; color: var(--muted); font-size: 14px; grid-column: 1/-1; line-height: 1.7; }
+    .booking-confirm { width: 100%; padding: 16px; background: var(--gold); border: none; border-radius: 16px; font-size: 16px; font-weight: 700; color: #080e18; cursor: pointer; font-family: 'Manrope', sans-serif; transition: opacity .15s; }
+    .booking-confirm:disabled { opacity: .35; cursor: not-allowed; }
     .booking-confirm:active { opacity: .8; }
-
-    /* Servizi modale */
-    .srv-modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.75); display: none; align-items: flex-end; }
+    /* SERVIZI MODAL */
+    .srv-modal-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.7); display: none; align-items: flex-end; }
     .srv-modal-overlay.open { display: flex; }
-    .srv-modal {
-      background: var(--bg2); border-radius: 24px 24px 0 0;
-      border-top: 1px solid var(--border);
-      width: 100%; padding: 20px 20px calc(env(safe-area-inset-bottom,16px) + 20px);
-      max-height: 85vh; overflow-y: auto;
-    }
+    .srv-modal { background: var(--bg2); border-radius: 28px 28px 0 0; border-top: 1px solid var(--border); width: 100%; padding: 20px 20px calc(env(safe-area-inset-bottom,20px) + 20px); max-height: 85vh; overflow-y: auto; animation: sheetUp .3s cubic-bezier(.4,0,.2,1); }
     .srv-modal-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 20px; }
-    .srv-modal-icon { width: 52px; height: 52px; border-radius: 14px; background: var(--gold-dim); display: flex; align-items: center; justify-content: center; color: var(--gold); margin-bottom: 16px; }
-    .srv-modal-title { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
-    .srv-modal-desc { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
-    .srv-modal-price { background: var(--gold-dim); border: 1px solid rgba(201,168,76,.2); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; }
-    .srv-modal-price-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+    .srv-modal-icon { width: 54px; height: 54px; border-radius: 15px; background: var(--gold-dim); display: flex; align-items: center; justify-content: center; color: var(--gold); margin-bottom: 16px; }
+    .srv-modal-title { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 600; margin-bottom: 8px; }
+    .srv-modal-desc { font-size: 14px; color: var(--muted); line-height: 1.75; margin-bottom: 20px; }
+    .srv-modal-price { background: var(--gold-dim); border: 1px solid rgba(201,168,76,.2); border-radius: 14px; padding: 14px 16px; margin-bottom: 20px; }
+    .srv-modal-price-label { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
     .srv-modal-price-val { font-size: 18px; font-weight: 700; color: var(--text); }
-    .srv-cta { width: 100%; padding: 15px; background: var(--gold); border: none; border-radius: 12px; font-size: 15px; font-weight: 700; color: #0a0e18; cursor: pointer; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+    .srv-cta { width: 100%; padding: 16px; background: var(--gold); border: none; border-radius: 14px; font-size: 15px; font-weight: 700; color: #080e18; cursor: pointer; font-family: inherit; }
     .srv-cta:active { opacity: .85; }
-    .srv-close { width: 100%; padding: 12px; background: transparent; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; font-family: 'Inter', sans-serif; margin-top: 10px; -webkit-tap-highlight-color: transparent; }
-
-    /* Bottom padding for scroll panels */
-    .pb-tab { padding-bottom: calc(var(--tab-h) + max(env(safe-area-inset-bottom,16px),16px) + 12px); }
+    .srv-close { width: 100%; padding: 13px; background: transparent; border: 1px solid var(--border); border-radius: 14px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; font-family: inherit; margin-top: 10px; }
   </style>
 </head>
 <body>
 
-<!-- ══════════════ ONBOARDING ══════════════ -->
 <div id="onboarding">
-  <div class="ob-slides-outer">
-    <div class="ob-slides-track" id="ob-track">
-
-      <!-- Slide 1 -->
+  <div class="ob-track-outer">
+    <div class="ob-track" id="ob-track">
       <div class="ob-slide">
         <div class="ob-visual">
-          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-            <circle cx="40" cy="40" r="32" stroke="#c9a84c" stroke-width="1.5"/>
-            <path d="M20 50 L32 28 L40 38 L50 22 L60 50 Z" fill="rgba(201,168,76,.25)" stroke="#c9a84c" stroke-width="2" stroke-linejoin="round"/>
-            <circle cx="40" cy="30" r="6" fill="rgba(201,168,76,.2)" stroke="#c9a84c" stroke-width="2"/>
-            <path d="M37 30 L39 32 L43 27" stroke="#c9a84c" stroke-width="2" stroke-linecap="round"/>
+          <svg width="90" height="90" viewBox="0 0 90 90" fill="none">
+            <circle cx="45" cy="45" r="36" stroke="#c9a84c" stroke-width="1.2" opacity=".4"/>
+            <path d="M20 56L35 30L45 42L56 22L70 56Z" fill="rgba(201,168,76,.2)" stroke="#c9a84c" stroke-width="1.8" stroke-linejoin="round"/>
+            <circle cx="45" cy="33" r="9" fill="rgba(201,168,76,.15)" stroke="#c9a84c" stroke-width="1.8"/>
+            <path d="M41 33L44.5 37L51 27" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <div class="ob-num">01</div>
         </div>
         <div class="ob-tag">Benvenuto in InDubai</div>
         <div class="ob-title">La tua guida italiana a Dubai</div>
-        <div class="ob-body">Siamo specialisti italiani che aiutano imprenditori e professionisti a costruire il futuro a Dubai. Oltre 450 aziende già costituite.</div>
+        <div class="ob-body">Specialisti italiani che aiutano imprenditori e professionisti a costruire il futuro a Dubai. Oltre 450 aziende costituite.</div>
       </div>
-
-      <!-- Slide 2 -->
       <div class="ob-slide">
         <div class="ob-visual">
-          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-            <rect x="16" y="24" width="48" height="34" rx="4" stroke="#c9a84c" stroke-width="1.5" fill="rgba(201,168,76,.06)"/>
-            <path d="M16 32 L40 46 L64 32" stroke="#c9a84c" stroke-width="1.5"/>
-            <circle cx="58" cy="52" r="10" fill="var(--bg2)" stroke="#4ade80" stroke-width="1.5"/>
-            <path d="M54 52 L57 55 L62 49" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/>
+          <svg width="90" height="90" viewBox="0 0 90 90" fill="none">
+            <rect x="16" y="24" width="58" height="42" rx="6" stroke="#c9a84c" stroke-width="1.2" fill="rgba(201,168,76,.06)"/>
+            <path d="M16 36L45 53L74 36" stroke="#c9a84c" stroke-width="1.2"/>
+            <circle cx="67" cy="64" r="13" fill="#0d1627" stroke="#34d399" stroke-width="1.5"/>
+            <path d="M61 64L65 68L73 58" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <div class="ob-num">02</div>
         </div>
         <div class="ob-tag">0% di tasse</div>
-        <div class="ob-title">Paghi fino al 70% in meno di tasse</div>
-        <div class="ob-body">Dubai offre 0% tasse sui redditi personali e sulle aziende in Free Zone. Scopri quanto puoi risparmiare col nostro calcolatore.</div>
+        <div class="ob-title">Paghi fino al 70% in meno</div>
+        <div class="ob-body">Dubai offre 0% tasse sui redditi personali e 0% Corporate Tax per le Free Zone. Scopri quanto puoi risparmiare.</div>
       </div>
-
-      <!-- Slide 3 -->
       <div class="ob-slide">
         <div class="ob-visual">
-          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-            <rect x="22" y="18" width="36" height="44" rx="4" stroke="#c9a84c" stroke-width="1.5" fill="rgba(201,168,76,.06)"/>
-            <line x1="29" y1="30" x2="51" y2="30" stroke="#c9a84c" stroke-width="1.5" opacity=".6"/>
-            <line x1="29" y1="38" x2="51" y2="38" stroke="#c9a84c" stroke-width="1.5" opacity=".6"/>
-            <line x1="29" y1="46" x2="44" y2="46" stroke="#c9a84c" stroke-width="1.5" opacity=".6"/>
-            <path d="M14 14 L26 14 L26 26" stroke="#c9a84c" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <svg width="90" height="90" viewBox="0 0 90 90" fill="none">
+            <rect x="24" y="14" width="42" height="56" rx="5" stroke="#c9a84c" stroke-width="1.2" fill="rgba(201,168,76,.06)"/>
+            <line x1="32" y1="28" x2="58" y2="28" stroke="#c9a84c" stroke-width="1.4" opacity=".6"/>
+            <line x1="32" y1="38" x2="58" y2="38" stroke="#c9a84c" stroke-width="1.4" opacity=".6"/>
+            <line x1="32" y1="48" x2="50" y2="48" stroke="#c9a84c" stroke-width="1.4" opacity=".6"/>
+            <circle cx="70" cy="22" r="10" fill="#0d1627" stroke="#c9a84c" stroke-width="1.2"/>
+            <path d="M65 22L69 26L76 17" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <div class="ob-num">03</div>
         </div>
         <div class="ob-tag">Servizi completi</div>
-        <div class="ob-title">Dall'idea alla realtà in poche settimane</div>
-        <div class="ob-body">Costituzione società, visto di residenza, apertura conto, Golden Visa. Ti seguiamo in ogni step con esperienza decennale.</div>
+        <div class="ob-title">Dall'idea alla realtà in settimane</div>
+        <div class="ob-body">Società Free Zone, visto residenza, conto bancario, Golden Visa. Ti seguiamo in ogni step con esperienza decennale.</div>
       </div>
-
-      <!-- Slide 4 -->
       <div class="ob-slide">
         <div class="ob-visual">
-          <div style="background:linear-gradient(135deg,#c9a84c,#8b6914);width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#0a0e18;position:relative">
-            L
-            <div style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#4ade80;border:2px solid #080e18"></div>
-          </div>
+          <svg width="90" height="90" viewBox="0 0 90 90" fill="none">
+            <circle cx="45" cy="40" r="24" fill="rgba(201,168,76,.12)" stroke="#c9a84c" stroke-width="1.5"/>
+            <text x="45" y="50" text-anchor="middle" font-family="serif" font-size="32" font-weight="600" fill="#c9a84c">L</text>
+            <circle cx="68" cy="62" r="9" fill="#0d1627" stroke="#34d399" stroke-width="1.5"/>
+            <circle cx="68" cy="62" r="4" fill="#34d399"/>
+          </svg>
           <div class="ob-num">04</div>
         </div>
-        <div class="ob-tag">Pronto?</div>
-        <div class="ob-title">Parla con Lara, la nostra AI</div>
-        <div class="ob-body">Lara è disponibile 24/7 per risponderti in italiano, capire la tua situazione e guidarti verso la scelta giusta.</div>
+        <div class="ob-tag">AI Consultant</div>
+        <div class="ob-title">Chatta con Lara, subito</div>
+        <div class="ob-body">Lara è la nostra consulente AI disponibile 24/7. Risponde in italiano, capisce la tua situazione e ti guida verso Dubai.</div>
       </div>
-
     </div>
   </div>
-
   <div class="ob-footer">
     <div class="ob-dots">
       <div class="ob-dot active" id="dot-0"></div>
@@ -571,106 +268,69 @@
   </div>
 </div>
 
-<!-- ══════════════ APP ══════════════ -->
 <div id="app">
-  <!-- Header -->
   <div class="hdr">
     <img src="../assets/logo-white-transparent.png" alt="InDubai" />
     <div class="hdr-user" id="user-initials">?</div>
   </div>
-
-  <!-- Scroll content -->
   <div class="scroll">
-    <!-- HOME / SERVIZI -->
+
+    <!-- HOME -->
     <div class="panel active pb-tab" id="panel-home">
       <div class="hero">
         <div class="hero-greeting" id="hero-greeting">Benvenuto</div>
-        <div class="hero-title">Scopri Dubai<br>con noi</div>
+        <div class="hero-title">Scopri Dubai<br><em>con noi</em></div>
         <div class="hero-body">Oltre 450 aziende costituite, 1.200 visti rilasciati. Il tuo futuro a Dubai inizia qui.</div>
       </div>
-
-      <!-- Card Lara live -->
+      <div class="hero-banner">
+        <div class="hero-banner-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="hero-banner-text">
+          <strong>Consulenza gratuita — 30 min</strong>
+          Parla con un esperto InDubai, senza impegno.
+        </div>
+        <button class="btn-prenota" onclick="openBookingModal()">Prenota</button>
+      </div>
       <div class="lara-live-card" onclick="switchTab('chat')">
         <div class="lara-live-avatar">
           L
-          <div class="lara-live-dot"></div>
+          <div class="live-dot"></div>
         </div>
-        <div class="lara-live-text">
-          <div class="lara-live-title">Chatta con Lara</div>
-          <div class="lara-live-sub">Live ora — risposta immediata</div>
+        <div class="lara-live-info">
+          <div class="lara-live-title">Chatta con noi</div>
+          <div class="lara-live-sub">● Live ora — risposta immediata</div>
         </div>
-        <svg class="lara-live-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>
       </div>
-
-      <!-- Booking banner -->
-      <div class="hero-banner">
-        <div class="hero-banner-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </div>
-        <div class="hero-banner-text">
-          <strong>Consulenza gratuita 30 min</strong>
-          Parla con un esperto e valuta la tua situazione senza impegno.
-        </div>
-        <button onclick="openBookingModal()" style="flex-shrink:0;padding:9px 14px;background:var(--gold);border:none;border-radius:10px;font-size:13px;font-weight:700;color:#0a0e18;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent">Prenota</button>
-      </div>
-
       <div class="section-label">I nostri servizi</div>
       <div class="services-grid" id="services-grid"></div>
     </div>
 
-    <!-- CALCOLATORE -->
+    <!-- CALCOLA -->
     <div class="panel pb-tab" id="panel-calc">
       <div class="calc-wrap">
         <div class="calc-hero">
-          <div class="calc-hero-title">Calcola il tuo risparmio fiscale</div>
-          <div class="calc-hero-sub">Scopri quanto risparmi portando la tua attività a Dubai</div>
+          <div class="calc-hero-title">Calcola il risparmio fiscale</div>
+          <div class="calc-hero-sub">Scopri quanto potresti risparmiare a Dubai</div>
         </div>
-        <div class="calc-field">
-          <label class="calc-label">Fatturato annuo (€)</label>
-          <input type="number" class="calc-input" id="calc-fatturato" placeholder="es. 150000" inputmode="numeric" />
-        </div>
-        <div class="calc-field">
-          <label class="calc-label">Utile / reddito imponibile (€)</label>
-          <input type="number" class="calc-input" id="calc-utile" placeholder="es. 80000" inputmode="numeric" />
-        </div>
-        <div class="calc-field">
-          <label class="calc-label">Forma societaria attuale</label>
-          <select class="calc-select" id="calc-forma">
-            <option value="srl">SRL / SPA</option>
-            <option value="snc">SNC / SAS</option>
-            <option value="piva">Partita IVA individuale</option>
-            <option value="forfettario">Regime forfettario</option>
-          </select>
-        </div>
-        <div class="calc-field">
-          <label class="calc-label">Prelievo dividendi annuo (€)</label>
-          <input type="number" class="calc-input" id="calc-dividendi" placeholder="es. 40000" inputmode="numeric" />
-        </div>
-        <button class="calc-btn" onclick="calcolaRisparmio()">Calcola il risparmio →</button>
+        <div class="calc-field"><label class="calc-label">Fatturato annuo (€)</label><input type="number" class="calc-input" id="calc-fatturato" placeholder="es. 150.000" inputmode="numeric"/></div>
+        <div class="calc-field"><label class="calc-label">Utile / reddito imponibile (€)</label><input type="number" class="calc-input" id="calc-utile" placeholder="es. 80.000" inputmode="numeric"/></div>
+        <div class="calc-field"><label class="calc-label">Forma societaria attuale</label><select class="calc-select" id="calc-forma"><option value="srl">SRL / SPA</option><option value="snc">SNC / SAS</option><option value="piva">Partita IVA individuale</option><option value="forfettario">Regime forfettario</option></select></div>
+        <div class="calc-field"><label class="calc-label">Prelievo dividendi annuo (€)</label><input type="number" class="calc-input" id="calc-dividendi" placeholder="es. 40.000" inputmode="numeric"/></div>
+        <button class="calc-btn" onclick="calcolaRisparmio()">Calcola il risparmio</button>
         <div id="calc-result">
           <div class="result-card">
             <div class="result-label">Risparmio fiscale annuo stimato</div>
             <div class="result-big" id="res-risparmio">€0</div>
             <div class="result-sub" id="res-perc"></div>
           </div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
-            <div class="result-row">
-              <span class="result-row-label">Tasse in Italia (stima)</span>
-              <span class="result-row-val red" id="res-it">€0</span>
-            </div>
-            <div class="result-row">
-              <span class="result-row-label">Tasse a Dubai</span>
-              <span class="result-row-val green" id="res-uae">€0</span>
-            </div>
-            <div class="result-row">
-              <span class="result-row-label">Risparmio in 5 anni</span>
-              <span class="result-row-val" id="res-5y" style="color:var(--gold)">€0</span>
-            </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:16px">
+            <div class="result-row"><span class="result-row-label">Tasse in Italia (stima)</span><span class="result-row-val red" id="res-it">€0</span></div>
+            <div class="result-row"><span class="result-row-label">Tasse a Dubai</span><span class="result-row-val green" id="res-uae">€0</span></div>
+            <div class="result-row"><span class="result-row-label">Risparmio in 5 anni</span><span class="result-row-val" id="res-5y" style="color:var(--gold)">€0</span></div>
           </div>
-          <div class="calc-cta">
-            <p>Dati indicativi. Per una valutazione precisa parlaci della tua situazione.</p>
-            <button onclick="switchTab('chat')">Parla con Lara →</button>
-          </div>
+          <div class="calc-cta"><p>Dati indicativi. Per una valutazione precisa, parlaci della tua situazione.</p><button onclick="switchTab('chat')">Parla con Lara →</button></div>
         </div>
       </div>
     </div>
@@ -678,10 +338,8 @@
     <!-- NEWS -->
     <div class="panel pb-tab" id="panel-news">
       <div class="news-wrap">
-        <div class="section-label" style="margin-bottom:20px">Notizie UAE</div>
-        <div id="news-list">
-          <div style="text-align:center;padding:40px;color:var(--muted)">Caricamento…</div>
-        </div>
+        <div class="section-label" style="margin-bottom:20px">Notizie UAE — 2026</div>
+        <div id="news-list"><div style="text-align:center;padding:40px;color:var(--muted)">Caricamento…</div></div>
       </div>
     </div>
 
@@ -689,434 +347,335 @@
     <div class="panel pb-tab" id="panel-contacts">
       <div class="contacts-wrap">
         <div class="section-label" style="margin-bottom:20px">Numeri utili</div>
-
         <div class="contact-section">
           <div class="contact-section-title">InDubai — Contattaci</div>
           <a class="contact-card" href="https://wa.me/971501234567" target="_blank">
-            <div class="contact-ico">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
-            </div>
-            <div class="contact-info">
-              <div class="contact-name">WhatsApp InDubai</div>
-              <div class="contact-val">Risposta in pochi minuti</div>
-            </div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
+            <div class="contact-info"><div class="contact-name">WhatsApp InDubai</div><div class="contact-val">Risposta in pochi minuti</div></div>
+            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>
           </a>
           <a class="contact-card" href="mailto:info@indubai.it">
-            <div class="contact-ico">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            </div>
-            <div class="contact-info">
-              <div class="contact-name">Email</div>
-              <div class="contact-val">info@indubai.it</div>
-            </div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+            <div class="contact-info"><div class="contact-name">Email</div><div class="contact-val">info@indubai.it</div></div>
+            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>
           </a>
-          <a class="contact-card" href="https://indubai.it" target="_blank">
-            <div class="contact-ico">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-            </div>
-            <div class="contact-info">
-              <div class="contact-name">Sito Web</div>
-              <div class="contact-val">www.indubai.it</div>
-            </div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          <a class="contact-card" href="https://www.indubai.it" target="_blank">
+            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
+            <div class="contact-info"><div class="contact-name">Sito web</div><div class="contact-val">www.indubai.it</div></div>
+            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>
           </a>
         </div>
-
         <div class="contact-section">
           <div class="contact-section-title">Emergenze Dubai</div>
-          <a class="contact-card" href="tel:999">
-            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
-            <div class="contact-info"><div class="contact-name">Polizia / Emergenze</div><div class="contact-val">999</div></div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-          </a>
-          <a class="contact-card" href="tel:998">
-            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
-            <div class="contact-info"><div class="contact-name">Ambulanza</div><div class="contact-val">998</div></div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-          </a>
-          <a class="contact-card" href="tel:997">
-            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
-            <div class="contact-info"><div class="contact-name">Vigili del fuoco</div><div class="contact-val">997</div></div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-          </a>
-          <a class="contact-card" href="tel:+97142244444">
-            <div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg></div>
-            <div class="contact-info"><div class="contact-name">Consolato Italiano Dubai</div><div class="contact-val">+971 4 224 4444</div></div>
-            <svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-          </a>
+          <a class="contact-card" href="tel:999"><div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div><div class="contact-info"><div class="contact-name">Polizia / Emergenze</div><div class="contact-val">999</div></div><svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg></a>
+          <a class="contact-card" href="tel:998"><div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div><div class="contact-info"><div class="contact-name">Ambulanza</div><div class="contact-val">998</div></div><svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg></a>
+          <a class="contact-card" href="tel:997"><div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div><div class="contact-info"><div class="contact-name">Vigili del fuoco</div><div class="contact-val">997</div></div><svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg></a>
+          <a class="contact-card" href="tel:+97142244444"><div class="contact-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg></div><div class="contact-info"><div class="contact-name">Consolato Italiano Dubai</div><div class="contact-val">+971 4 224 4444</div></div><svg class="contact-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg></a>
         </div>
-
       </div>
     </div>
 
-    <!-- CHAT LARA -->
+    <!-- CHAT -->
     <div class="panel" id="panel-chat">
       <div class="chat-wrap">
         <div class="chat-header">
-          <div class="lara-avatar">L</div>
+          <div class="lara-avatar">L<div class="avatar-dot"></div></div>
           <div class="lara-info">
             <div class="lara-name">Lara — InDubai</div>
             <div class="lara-status">Online ora</div>
           </div>
         </div>
         <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-prompts" id="chat-prompts">
+          <div class="prompt-chip" onclick="usePrompt('Come apro una società a Dubai?')">Aprire società</div>
+          <div class="prompt-chip" onclick="usePrompt('Quanto costa il visto di residenza?')">Visto residenza</div>
+          <div class="prompt-chip" onclick="usePrompt('Cos\'è il Golden Visa UAE?')">Golden Visa</div>
+          <div class="prompt-chip" onclick="usePrompt('Devo pagare tasse in Italia se mi trasferisco a Dubai?')">Tasse Italia-UAE</div>
+          <div class="prompt-chip" onclick="usePrompt('Voglio prenotare una consulenza gratuita')">Prenota call</div>
+        </div>
         <div class="chat-input-area">
-          <textarea id="chat-input" placeholder="Scrivi a Lara…" rows="1" onkeydown="chatKeydown(event)"></textarea>
+          <textarea id="chat-input" placeholder="Scrivi a Lara…" rows="1" onkeydown="chatKeydown(event)" oninput="autoResize(this)"></textarea>
           <button id="chat-send" onclick="sendMessage()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0a0e18" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#080e18" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
       </div>
     </div>
+
   </div>
 
-  <!-- Tab bar -->
   <div class="tab-bar">
     <div class="tab-item active" id="tab-home" onclick="switchTab('home')">
-      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <div class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
       <div class="tab-label">Servizi</div>
     </div>
     <div class="tab-item" id="tab-calc" onclick="switchTab('calc')">
-      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg></div>
+      <div class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg></div>
       <div class="tab-label">Calcola</div>
     </div>
     <div class="tab-item" id="tab-news" onclick="switchTab('news')">
-      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8L4 6v14a2 2 0 002 2z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg></div>
+      <div class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8L4 6v14a2 2 0 002 2z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg></div>
       <div class="tab-label">News</div>
     </div>
     <div class="tab-item" id="tab-contacts" onclick="switchTab('contacts')">
-      <div class="tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+      <div class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
       <div class="tab-label">Contatti</div>
     </div>
     <div class="tab-item" id="tab-chat" onclick="switchTab('chat')">
-      <div class="tab-icon" style="position:relative">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        <div style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:#4ade80;border:1.5px solid var(--bg)"></div>
-      </div>
-      <div class="tab-label">Lara AI</div>
+      <div class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+      <div class="tab-label">Lara</div>
+      <div id="chat-tab-dot" style="position:absolute;top:2px;right:calc(50% - 13px);width:8px;height:8px;border-radius:50%;background:var(--green);border:1.5px solid var(--bg)"></div>
     </div>
   </div>
 </div>
 
-<!-- Servizi modal -->
 <div class="srv-modal-overlay" id="srv-overlay" onclick="closeSrvModal(event)">
-  <div class="srv-modal" id="srv-modal">
+  <div class="srv-modal">
     <div class="srv-modal-handle"></div>
     <div class="srv-modal-icon" id="srv-m-icon"></div>
     <div class="srv-modal-title" id="srv-m-title"></div>
     <div class="srv-modal-desc" id="srv-m-desc"></div>
-    <div class="srv-modal-price">
-      <div class="srv-modal-price-label">A partire da</div>
-      <div class="srv-modal-price-val" id="srv-m-price"></div>
-    </div>
+    <div class="srv-modal-price"><div class="srv-modal-price-label">A partire da</div><div class="srv-modal-price-val" id="srv-m-price"></div></div>
     <button class="srv-cta" onclick="goToChat()">Richiedi info a Lara →</button>
     <button class="srv-close" onclick="closeSrvModal()">Chiudi</button>
   </div>
 </div>
 
-<!-- Booking modal -->
 <div class="booking-modal" id="booking-modal" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="booking-sheet">
     <div class="booking-handle"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div class="booking-title" style="margin-bottom:0">Prenota una consulenza</div>
+      <div class="booking-title" style="margin-bottom:0">Prenota consulenza</div>
       <button onclick="document.getElementById('booking-modal').classList.remove('open')" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;line-height:0">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
-    <div class="booking-sub">30 minuti gratuiti con un esperto InDubai (ora Dubai, GMT+4)</div>
-    <div class="slot-grid" id="slot-grid">
-      <div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">Caricamento disponibilità…</div>
-    </div>
+    <div class="booking-sub">30 minuti gratuiti con un esperto InDubai — ora Dubai (GMT+4)</div>
+    <div class="slot-grid" id="slot-grid"><div class="booking-empty">Caricamento disponibilità…</div></div>
     <button class="booking-confirm" id="booking-btn" disabled onclick="confirmBooking()">Conferma appuntamento</button>
   </div>
 </div>
 
 <script>
 const sb = supabase.createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_ANON_KEY);
-const SUPABASE_EDGE_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1';
+const EDGE = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1';
 
-// ── ONBOARDING ──────────────────────────────────────
-let obCurrent = 0;
-const obTotal = 4;
-
+// ONBOARDING
+let obI = 0;
 function obUpdateSlides() {
-  document.getElementById('ob-track').style.transform = `translateX(-${obCurrent * 100}%)`;
-  for (let i = 0; i < obTotal; i++) {
-    document.getElementById('dot-' + i).className = 'ob-dot' + (i === obCurrent ? ' active' : '');
-  }
-  document.getElementById('ob-next').textContent = obCurrent === obTotal - 1 ? 'Inizia' : 'Continua';
+  document.getElementById('ob-track').style.transform = `translateX(-${obI*100}%)`;
+  for(let i=0;i<4;i++) document.getElementById('dot-'+i).className='ob-dot'+(i===obI?' active':'');
+  document.getElementById('ob-next').textContent = obI===3?'Inizia':'Continua';
 }
+function obNext() { if(obI<3){obI++;obUpdateSlides();}else obSkip(); }
+function obSkip() { localStorage.setItem('ob_done','1'); document.getElementById('onboarding').style.display='none'; document.getElementById('app').classList.add('visible'); }
 
-function obNext() {
-  if (obCurrent < obTotal - 1) { obCurrent++; obUpdateSlides(); }
-  else obSkip();
-}
-
-function obSkip() {
-  localStorage.setItem('ob_done', '1');
-  document.getElementById('onboarding').style.display = 'none';
-  document.getElementById('app').classList.add('visible');
-}
-
-// ── SERVIZI DATA ────────────────────────────────────
+// SERVIZI
 const servizi = [
-  { id:'freezone', icon:'building', name:'Free Zone', desc:'Società UAE con 0% tasse', price:'AED 12.000/anno', fullDesc:'Costituiamo la tua società in una delle principali Free Zone UAE — IFZA, DMCC, DSO, RAK ICC. Pacchetti completi con licenza, flexi-desk e visto inclusi. Processo in 5–7 giorni lavorativi.' },
-  { id:'mainland', icon:'city', name:'Mainland', desc:'100% proprietà straniera', price:'AED 15.000/anno', fullDesc:'Società mainland con licenza DED Dubai. Dal 2021 è possibile avere il 100% di proprietà straniera nella maggior parte dei settori. Ideale per chi vuole operare direttamente con il mercato locale UAE.' },
-  { id:'visto', icon:'passport', name:'Visto Residenza', desc:'Visto 2/3 anni per te e la famiglia', price:'AED 3.500', fullDesc:'Ottieni il visto di residenza UAE legato alla tua società. Possibilità di includere familiari a carico. Visto 2 anni (Free Zone) o 3 anni (Mainland). Residence card Emirates ID inclusa.' },
-  { id:'golden', icon:'star', name:'Golden Visa', desc:'Residenza 10 anni', price:'AED 8.000', fullDesc:'Il Golden Visa UAE garantisce 10 anni di residenza rinnovabili. Disponibile per investitori immobiliari (AED 2M+), titolari di attività, professionisti qualificati e talenti nelle arti e scienze.' },
-  { id:'conto', icon:'bank', name:'Conto Bancario', desc:'Apertura conto corporate UAE', price:'AED 1.500', fullDesc:'Assistiamo nell\'apertura di conti correnti corporate presso le principali banche UAE — Emirates NBD, RAK Bank, Mashreq, ADIB. KYC e documentazione curati da noi.' },
-  { id:'contabilita', icon:'chart', name:'Contabilità & Tax', desc:'VAT, Corporate Tax, payroll', price:'Da AED 500/mese', fullDesc:'Gestione completa della contabilità aziendale UAE. Registrazione e dichiarazioni IVA (5%), Corporate Tax UAE (9% sopra AED 375.000), payroll e report mensili.' },
-  { id:'crypto', icon:'crypto', name:'Licenza Crypto', desc:'VARA per Web3 e crypto', price:'Su richiesta', fullDesc:'Assistenza per ottenere la licenza VARA (Virtual Assets Regulatory Authority) di Dubai — la più avanzata regolamentazione crypto al mondo. Ideale per exchange, wallet, DeFi e Web3 startup.' },
-  { id:'realestate', icon:'home', name:'Immobiliare', desc:'Acquisto e investimento a Dubai', price:'Commissione 2%', fullDesc:'Attraverso il nostro partner KEYPRIME ti assistiamo nell\'acquisto di immobili a Dubai. Proprietà off-plan e pronte, rendite annue del 6–8%, nessuna tassa sulla proprietà.' },
+  {id:'freezone',icon:'building',name:'Free Zone',desc:'Costituzione società con 0% tasse, da AED 12.000/anno',price:'AED 12.000/anno',fullDesc:'Costituiamo la tua società nelle principali Free Zone UAE — IFZA, DMCC, DSO, RAK ICC. Licenza, flexi-desk e 1 visto inclusi. Pronta in 5–7 giorni. 0% Corporate Tax per attività internazionali (regime QFZP).'},
+  {id:'mainland',icon:'city',name:'Mainland',desc:'Società mainland con 100% proprietà straniera',price:'AED 15.000/anno',fullDesc:'Società mainland con licenza DED Dubai. 100% proprietà straniera possibile dal 2021 nella maggior parte dei settori. Ideale per chi opera direttamente con il mercato UAE.'},
+  {id:'visto',icon:'passport',name:'Visto Residenza',desc:'Visto 2/3 anni per te e la tua famiglia',price:'AED 3.500',fullDesc:'Visto residenza UAE: 2 anni (Free Zone) o 3 anni (Mainland). Possibilità di estendere ai familiari a carico (AED 2.500 cad.). Emirates ID incluso. Tutta la procedura seguita da noi.'},
+  {id:'golden',icon:'star',name:'Golden Visa',desc:'Residenza 10 anni per investitori e talenti',price:'AED 8.000',fullDesc:'Residenza UAE 10 anni rinnovabili. Per investitori immobiliari (AED 2M+), imprenditori con fatturato AED 1M+, professionisti qualificati, talenti. Nessun sponsor richiesto.'},
+  {id:'conto',icon:'bank',name:'Conto Bancario',desc:'Apertura conto corporate UAE assistita',price:'AED 1.500',fullDesc:'Assistiamo nell\'apertura di conti corporate presso Emirates NBD, RAK Bank, Mashreq, ADIB. Gestiamo noi il dossier KYC e tutta la documentazione richiesta dalla banca.'},
+  {id:'contabilita',icon:'chart',name:'Contabilità & Tax',desc:'VAT, Corporate Tax UAE, dichiarazioni',price:'Da AED 500/mese',fullDesc:'Gestione completa: registrazione e dichiarazioni IVA (5%), Corporate Tax UAE (9% sopra AED 375.000), payroll, bilanci e report mensili.'},
+  {id:'crypto',icon:'crypto',name:'Licenza Crypto',desc:'Licenza VARA per crypto e Web3',price:'Su richiesta',fullDesc:'Assistenza per licenza VARA (Virtual Assets Regulatory Authority) Dubai — la regolamentazione crypto più avanzata al mondo. Per exchange, wallet, DeFi, Web3 startup.'},
+  {id:'realestate',icon:'home',name:'Immobiliare',desc:'Acquisto e investimento a Dubai',price:'Commissione 2%',fullDesc:'Tramite KEYPRIME assistiamo l\'acquisto di immobili a Dubai. Off-plan e pronto. Rendite nette 6–8%, nessuna imposta sulla proprietà.'},
 ];
-
 const srvIcons = {
-  building: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2z"/></svg>',
-  city: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 22V4a2 2 0 012-2h8a2 2 0 012 2v18"/><path d="M2 22h20"/><path d="M10 7h4M10 11h4M10 15h4"/></svg>',
-  passport: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="11" r="3"/><line x1="8" y1="17" x2="16" y2="17"/></svg>',
-  star: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-  bank: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h18M3 10h18M5 10V6l7-4 7 4v4M7 22v-8m4 8v-8m4 8v-8m4 8v-8"/></svg>',
-  chart: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
-  crypto: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 9h4a2 2 0 010 4H9v-4zm0 4h4.5a2 2 0 010 4H9v-4z"/><line x1="9" y1="9" x2="9" y2="17"/><line x1="11" y1="7" x2="11" y2="9"/><line x1="11" y1="17" x2="11" y2="19"/></svg>',
-  home: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  building:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2z"/></svg>',
+  city:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 22V4a2 2 0 012-2h8a2 2 0 012 2v18"/><path d="M2 22h20"/><path d="M10 7h4"/><path d="M10 11h4"/><path d="M10 15h4"/></svg>',
+  passport:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="11" r="3"/><line x1="8" y1="17" x2="16" y2="17"/></svg>',
+  star:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  bank:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 22h18M3 10h18M5 10V6l7-4 7 4v4M7 22v-8m4 8v-8m4 8v-8m4 8v-8"/></svg>',
+  chart:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  crypto:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9 9h4a2 2 0 010 4H9v-4zm0 4h4.5a2 2 0 010 4H9v-4z"/><line x1="9" y1="9" x2="9" y2="17"/><line x1="11" y1="7" x2="11" y2="9"/><line x1="11" y1="17" x2="11" y2="19"/></svg>',
+  home:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
 };
-
 function renderServices() {
-  document.getElementById('services-grid').innerHTML = servizi.map(s => `
-    <div class="srv-card" onclick="openSrvModal('${s.id}')">
-      <div class="srv-icon">${srvIcons[s.icon] || ''}</div>
-      <div class="srv-name">${s.name}</div>
-      <div class="srv-desc">${s.desc}</div>
-    </div>
-  `).join('');
+  document.getElementById('services-grid').innerHTML = servizi.map(s=>`<div class="srv-card" onclick="openSrvModal('${s.id}')"><div class="srv-icon">${srvIcons[s.icon]||''}</div><div class="srv-name">${s.name}</div><div class="srv-desc">${s.desc}</div></div>`).join('');
 }
-
-let currentSrv = null;
+let currentSrv=null;
 function openSrvModal(id) {
-  currentSrv = servizi.find(s => s.id === id);
-  if (!currentSrv) return;
-  document.getElementById('srv-m-icon').innerHTML = srvIcons[currentSrv.icon] || '';
-  document.getElementById('srv-m-title').textContent = currentSrv.name;
-  document.getElementById('srv-m-desc').textContent = currentSrv.fullDesc;
-  document.getElementById('srv-m-price').textContent = currentSrv.price;
+  currentSrv=servizi.find(s=>s.id===id); if(!currentSrv)return;
+  document.getElementById('srv-m-icon').innerHTML=srvIcons[currentSrv.icon]||'';
+  document.getElementById('srv-m-title').textContent=currentSrv.name;
+  document.getElementById('srv-m-desc').textContent=currentSrv.fullDesc;
+  document.getElementById('srv-m-price').textContent=currentSrv.price;
   document.getElementById('srv-overlay').classList.add('open');
 }
-function closeSrvModal(e) {
-  if (!e || e.target === document.getElementById('srv-overlay'))
-    document.getElementById('srv-overlay').classList.remove('open');
-}
-function goToChat() {
-  closeSrvModal();
-  switchTab('chat');
-  if (currentSrv) setTimeout(() => {
-    document.getElementById('chat-input').value = `Vorrei sapere di più sul servizio ${currentSrv.name}`;
-  }, 300);
-}
+function closeSrvModal(e) { if(!e||e.target===document.getElementById('srv-overlay')) document.getElementById('srv-overlay').classList.remove('open'); }
+function goToChat() { closeSrvModal(); switchTab('chat'); if(currentSrv) setTimeout(()=>{document.getElementById('chat-input').value=`Vorrei sapere di più sul servizio ${currentSrv.name}`;},300); }
 
-// ── TAB NAVIGATION ──────────────────────────────────
-const tabs = ['home','calc','news','contacts','chat'];
+// TABS
+const tabs=['home','calc','news','contacts','chat'];
 function switchTab(id) {
-  tabs.forEach(t => {
-    document.getElementById('panel-' + t).classList.toggle('active', t === id);
-    document.getElementById('tab-' + t).classList.toggle('active', t === id);
-  });
-  if (id === 'news' && !newsLoaded) loadNews();
-  if (id === 'chat' && chatHistory.length === 0) initChat();
+  tabs.forEach(t=>{document.getElementById('panel-'+t).classList.toggle('active',t===id);document.getElementById('tab-'+t).classList.toggle('active',t===id);});
+  if(id==='news'&&!newsLoaded)loadNews();
+  if(id==='chat'&&chatHistory.length===0)initChat();
+  if(id==='chat'){const d=document.getElementById('chat-tab-dot');if(d)d.style.display='none';}
   trackActivity(id);
 }
 
-// ── CALCOLATORE ─────────────────────────────────────
+// CALCOLO
 function calcolaRisparmio() {
-  const fatturato = parseFloat(document.getElementById('calc-fatturato').value) || 0;
-  const utile     = parseFloat(document.getElementById('calc-utile').value) || 0;
-  const forma     = document.getElementById('calc-forma').value;
-  const dividendi = parseFloat(document.getElementById('calc-dividendi').value) || 0;
-  if (utile === 0 && fatturato === 0) { alert('Inserisci almeno il fatturato o l\'utile per calcolare.'); return; }
-  const imponibile = utile || fatturato * 0.3;
-  let tasseIt = 0;
-  if (forma === 'srl' || forma === 'snc') {
-    tasseIt = imponibile * 0.24 + imponibile * 0.039 + dividendi * 0.26;
-  } else if (forma === 'piva') {
-    const irpef = imponibile > 75000 ? (15000*0.23 + 13000*0.25 + 22000*0.35 + (imponibile-50000)*0.43) :
-                  imponibile > 50000 ? (15000*0.23 + 13000*0.25 + (imponibile-28000)*0.35) :
-                  imponibile > 28000 ? (15000*0.23 + (imponibile-15000)*0.25) : imponibile * 0.23;
-    tasseIt = irpef + imponibile * 0.26;
-  } else { tasseIt = imponibile * 0.15; }
-  const soglia = 93000;
-  const tasseUAE = imponibile > soglia ? (imponibile - soglia) * 0.09 : 0;
-  const risparmio = Math.max(0, tasseIt - tasseUAE);
-  const perc = tasseIt > 0 ? Math.round(risparmio / tasseIt * 100) : 0;
-  document.getElementById('res-it').textContent = '€' + Math.round(tasseIt).toLocaleString('it-IT');
-  document.getElementById('res-uae').textContent = '€' + Math.round(tasseUAE).toLocaleString('it-IT');
-  document.getElementById('res-risparmio').textContent = '€' + Math.round(risparmio).toLocaleString('it-IT');
-  document.getElementById('res-perc').textContent = `Risparmio del ${perc}% sul carico fiscale attuale`;
-  document.getElementById('res-5y').textContent = '€' + Math.round(risparmio * 5).toLocaleString('it-IT');
-  document.getElementById('calc-result').style.display = 'block';
-  document.getElementById('calc-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  const fatturato=parseFloat(document.getElementById('calc-fatturato').value)||0;
+  const utile=parseFloat(document.getElementById('calc-utile').value)||0;
+  const forma=document.getElementById('calc-forma').value;
+  const dividendi=parseFloat(document.getElementById('calc-dividendi').value)||0;
+  if(utile===0&&fatturato===0){alert('Inserisci almeno il fatturato o l\'utile.');return;}
+  const imp=utile||fatturato*0.3;
+  let tIt=0;
+  if(forma==='srl'||forma==='snc'){tIt=imp*0.24+imp*0.039+dividendi*0.26;}
+  else if(forma==='piva'){const irpef=imp>75000?(15000*0.23+13000*0.25+22000*0.35+(imp-50000)*0.43):imp>50000?(15000*0.23+13000*0.25+(imp-28000)*0.35):imp>28000?(15000*0.23+(imp-15000)*0.25):imp*0.23;tIt=irpef+imp*0.26;}
+  else{tIt=imp*0.15;}
+  const tUAE=imp>93000?(imp-93000)*0.09:0;
+  const risp=Math.max(0,tIt-tUAE);
+  const perc=tIt>0?Math.round(risp/tIt*100):0;
+  document.getElementById('res-it').textContent='€'+Math.round(tIt).toLocaleString('it-IT');
+  document.getElementById('res-uae').textContent='€'+Math.round(tUAE).toLocaleString('it-IT');
+  document.getElementById('res-risparmio').textContent='€'+Math.round(risp).toLocaleString('it-IT');
+  document.getElementById('res-perc').textContent=`Risparmio del ${perc}% sul carico fiscale attuale`;
+  document.getElementById('res-5y').textContent='€'+Math.round(risp*5).toLocaleString('it-IT');
+  document.getElementById('calc-result').style.display='block';
+  setTimeout(()=>document.getElementById('calc-result').scrollIntoView({behavior:'smooth',block:'nearest'}),50);
 }
 
-// ── NEWS ─────────────────────────────────────────────
-let newsLoaded = false;
-const staticNews = [
-  { tag:'Fiscalità', date:'Mar 2026', title:'Corporate Tax UAE 2026: tutto quello che devi sapere', excerpt:'Il regime QFZP rimane vantaggioso per le aziende che operano prevalentemente con clienti esteri. Aggiornamento completo per il 2026.' },
-  { tag:'Visti', date:'Feb 2026', title:'Golden Visa: nuove categorie per freelancer e professionisti digitali', excerpt:'Dubai amplia le categorie eleggibili al Golden Visa 10 anni. Ora accessibile anche a creator, specialisti AI e nomadi digitali.' },
-  { tag:'Business', date:'Feb 2026', title:'DMCC: oltre 25.000 aziende registrate, nuovo record storico', excerpt:'La Jumeirah Lakes Towers Free Zone consolida la posizione di Free Zone numero uno degli Emirati per numero di imprese.' },
-  { tag:'Immobiliare', date:'Gen 2026', title:'Prezzi immobili Dubai: crescita sostenuta nel 2025, outlook positivo', excerpt:'Il settore residenziale di lusso guida la crescita. Palm Jumeirah e Dubai Hills Estate trainano le transazioni off-plan.' },
-  { tag:'Banche', date:'Gen 2026', title:'Open banking UAE: conti digitali per non residenti ora disponibili', excerpt:'Nuove opportunità per imprenditori stranieri che vogliono aprire un conto UAE prima ancora di trasferirsi fisicamente.' },
+// NEWS
+let newsLoaded=false;
+const staticNews=[
+  {tag:'Fiscalità',date:'Mar 2026',title:'Corporate Tax UAE 2026: tutto quello che devi sapere',excerpt:'Il regime QFZP continua a garantire l\'esenzione fiscale per le Free Zone che operano con clienti internazionali. Aggiornamenti sulle soglie e obblighi di sostanza economica.'},
+  {tag:'Visti',date:'Feb 2026',title:'Golden Visa 2026: nuovi criteri e categorie ampliate',excerpt:'Dubai amplia le categorie del Golden Visa a 10 anni: nuovi criteri per freelancer tech, creator digitali e specialisti AI e Web3.'},
+  {tag:'Business',date:'Feb 2026',title:'DMCC supera 25.000 aziende: record storico a JLT',excerpt:'La Free Zone di Jumeirah Lakes Towers consolida il suo primato. Nuovi incentivi per startup e PMI italiane nel 2026.'},
+  {tag:'Immobiliare',date:'Gen 2026',title:'Mercato immobiliare Dubai: +18% nel 2025, previsioni 2026',excerpt:'Dubai Hills Estate e Business Bay guidano la crescita. Il segmento off-plan continua ad attirare investitori con rendite nette del 6–8%.'},
+  {tag:'Banche',date:'Gen 2026',title:'Nuove banche digitali UAE: conto in 48 ore',excerpt:'Diverse fintech ora permettono l\'apertura di conti corporate in meno di 48 ore, anche prima dell\'arrivo a Dubai.'},
+  {tag:'Residenza',date:'Dic 2025',title:'Emirates ID: rinnovo digitale e nuovi servizi ICA',excerpt:'Il portale ICA.GOV.AE si aggiorna con nuovi servizi online per rinnovo visti e Emirates ID senza necessità di presenziarsi allo sportello.'},
 ];
-
 function loadNews() {
-  newsLoaded = true;
-  document.getElementById('news-list').innerHTML = staticNews.map(n => `
-    <div class="news-card">
-      <div class="news-meta">
-        <span class="news-tag">${n.tag}</span>
-        <span class="news-date">${n.date}</span>
-      </div>
-      <div class="news-title">${n.title}</div>
-      <div class="news-excerpt">${n.excerpt}</div>
-    </div>
-  `).join('');
+  newsLoaded=true;
+  document.getElementById('news-list').innerHTML=staticNews.map(n=>`<div class="news-card"><div class="news-meta"><span class="news-tag">${n.tag}</span><span class="news-date">${n.date}</span></div><div class="news-title">${n.title}</div><div class="news-excerpt">${n.excerpt}</div></div>`).join('');
 }
 
-// ── CHAT LARA ────────────────────────────────────────
-const LARA_SYSTEM = `Sei Lara di InDubai. Sei una consulente italiana esperta di Dubai.
+// CHAT LARA
+const LARA_SYSTEM=`Sei Lara, consulente di InDubai.it — la principale consulenza italiana per imprenditori che vogliono aprire una società o trasferirsi a Dubai.
 
-NON sei un chatbot. Comportati come una persona reale: ascolta, rispondi a quello che dice l'utente, fai una domanda alla volta.
-Non dire mai "Perfetto!", "Ottimo!" o elenca multiple domande consecutive.
-Rispondi sempre nella lingua dell'utente. Se scrive in italiano, rispondi in italiano.
+PERSONALITÀ: Sei diretta, competente, calda. Non sei un bot. Rispondi come una persona reale: ascolti, capisci la situazione specifica, fai UNA domanda alla volta. MAI elenchi di domande consecutive. MAI "Ottimo!", "Perfetto!", "Certamente!".
 
 CHI È INDUBAI:
-- Consulenza italiana specializzata in Dubai dal 2018
+- Fondata nel 2018 da Pellegrino Bozzella, avvocato e consulente fiscale internazionale
+- Sede: JLT, Dubai (Platinum Tower area)
 - Oltre 450 aziende costituite, 1.200+ visti rilasciati
-- Servizi: Free Zone (da AED 12.000/anno), Mainland, Visto Residenza (AED 3.500), Golden Visa 10 anni (AED 8.000), apertura conto bancario, contabilità e VAT, licenza VARA crypto, investimenti immobiliari
-- Fondatore: Pellegrino Bozzella, avvocato e consulente fiscale internazionale
-- Contatti: info@indubai.it | www.indubai.it
+- Trustpilot 4.8/5
+- Contatti: info@indubai.it | wa.me/971501234567 | www.indubai.it
+
+SERVIZI E PREZZI:
+1. Società Free Zone (IFZA, DMCC, DSO, RAK ICC): da AED 12.000/anno — licenza + flexi-desk + 1 visto. Pronta in 5-7 giorni.
+2. Società Mainland DED: da AED 15.000/anno — 100% proprietà straniera, accesso mercato locale.
+3. Visto Residenza UAE: AED 3.500 — 2 anni (Free Zone) o 3 anni (Mainland). Emirates ID incluso. Familiari: AED 2.500 cad.
+4. Golden Visa 10 anni: AED 8.000 — investitori, professionisti qualificati, talenti.
+5. Apertura conto bancario corporate: AED 1.500 — Emirates NBD, RAK Bank, Mashreq, ADIB.
+6. Contabilità & Corporate Tax: da AED 500/mese — VAT 5%, Corporate Tax UAE.
+7. Licenza VARA crypto: variabile.
+8. Immobiliare tramite KEYPRIME: commissione 2%.
 
 FISCALITÀ UAE:
-- 0% tasse reddito personale
-- 0% Corporate Tax per Free Zone (regime QFZP)
-- 9% Corporate Tax sopra AED 375.000 per mainland
-- 5% IVA su alcune categorie
-- ATTENZIONE: bisogna spostare la residenza fiscale dall'Italia
+- 0% tasse sul reddito personale
+- 0% Corporate Tax per Free Zone (regime QFZP) se reddito qualificato e non da mercato UAE locale
+- 9% Corporate Tax sopra AED 375.000 (~€93.000) per mainland
+- 5% VAT su molte categorie
+- 0% su dividendi, capital gain, successioni
+- ATTENZIONE: aprire una società UAE mentre si è residenti in Italia NON azzera le tasse italiane. Serve spostamento residenza fiscale + AIRE.
 
-BOOKING: Quando l'utente vuole prenotare o parlare con un consulente umano, usa lo strumento "show_booking_modal".
+PROCEDURA RESIDENZA FISCALE ITALIANA → UAE:
+1. Costituire la società UAE
+2. Ottenere visto + Emirates ID
+3. Iscriversi all'AIRE
+4. Radicamento effettivo a Dubai (183+ giorni/anno o centro interessi vitali)
+5. Chiudere/sospendere partita IVA italiana
 
-REGOLE:
-- Risposte brevi (20-30 parole) salvo quando serve dettaglio
-- Fai UNA domanda alla volta
-- Non incoraggiare strategie fiscali irrealistiche`;
+FREE ZONE PRINCIPALI:
+- IFZA: ottimo rapporto qualità/prezzo, consulenti e servizi
+- DMCC (JLT): la più grande e prestigiosa, trading e commodity
+- DSO: tech e startup
+- RAK ICC: offshore, costi minimi, nessun ufficio fisico
 
-const LARA_TOOLS = [{
-  name: 'show_booking_modal',
-  description: 'Apre il modale di prenotazione consulenza. Usalo quando l\'utente vuole prenotare una call, parlare con un consulente, fissare un appuntamento.',
-  input_schema: {
-    type: 'object',
-    properties: { message: { type: 'string', description: 'Messaggio breve da mostrare prima di aprire il modale' } },
-    required: ['message']
-  }
-}];
+GOLDEN VISA categorie:
+- Investitori immobiliari: AED 2M+
+- Imprenditori: fatturato AED 1M+ o startup approvata
+- Professionisti: medici, ingegneri, avvocati con esperienza documentata
+- Talenti: artisti, scienziati, atleti
 
-let chatHistory = [];
-let chatUserName = '';
-let chatUserEmail = '';
-let chatUserPhone = '';
+BANKING:
+- Emirates NBD: la più grande, ottima per corporate
+- RAK Bank: flessibile per nuove aziende
+- Mashreq: digitale-first, app eccellente
+- ADIB: banca islamica
+Alcune banche richiedono storia bancaria o fatturato dimostrabile. Noi curiamo il dossier KYC.
+
+PRENOTAZIONE: Quando l'utente vuole prenotare, parlare con un esperto, fissare una call, usa SEMPRE lo strumento "show_booking_modal". Non descrivere: apri direttamente il calendario.
+
+REGOLE: Risposte concise (20-40 parole) salvo dettagli tecnici richiesti. UNA domanda alla volta. Ricorda sempre il contesto della conversazione.`;
+
+const LARA_TOOLS=[{name:'show_booking_modal',description:'Apre il calendario prenotazione consulenza gratuita. Usalo quando l\'utente vuole prenotare, fissare una call, parlare con un consulente, vedere disponibilità.',input_schema:{type:'object',properties:{message:{type:'string',description:'Breve messaggio da mostrare prima di aprire il modale'}},required:['message']}}];
+
+let chatHistory=[],chatUserName='',chatUserEmail='',chatUserPhone='';
 
 function initChat() {
-  addMessage('lara', 'Ciao! Sono Lara di InDubai 🇮🇹\n\nTi aiuto a capire se Dubai fa al caso tuo — fiscalità, società, visti. Come posso aiutarti?');
-  chatHistory = [];
+  addMessage('lara','Ciao! Sono Lara di InDubai 🇮🇹\n\nTi aiuto a capire se Dubai fa al caso tuo — fiscalità, società, visti e molto altro. Cosa ti ha portato qui?');
+  chatHistory=[];
 }
-
-function addMessage(role, text) {
-  const msgs = document.getElementById('chat-messages');
-  const row = document.createElement('div');
-  row.className = 'msg-row ' + (role === 'user' ? 'user' : 'lara');
-  if (role === 'lara') {
-    row.innerHTML = `<div class="msg-avatar-sm">L</div><div class="bubble">${text.replace(/\n/g,'<br>')}</div>`;
-  } else {
-    row.innerHTML = `<div class="bubble">${text}</div>`;
-  }
+function addMessage(role,text) {
+  const msgs=document.getElementById('chat-messages');
+  const row=document.createElement('div');
+  row.className='msg-row '+(role==='user'?'user':'lara');
+  const fmt=text.replace(/\n/g,'<br>');
+  row.innerHTML=role==='lara'?`<div class="msg-av">L</div><div class="bubble">${fmt}</div>`:`<div class="bubble">${fmt}</div>`;
   msgs.appendChild(row);
-  msgs.scrollTop = msgs.scrollHeight;
+  msgs.scrollTop=msgs.scrollHeight;
+  if(role==='user'){const p=document.getElementById('chat-prompts');if(p)p.style.display='none';}
   return row;
 }
-
 function showTyping() {
-  const msgs = document.getElementById('chat-messages');
-  const row = document.createElement('div');
-  row.className = 'msg-row lara'; row.id = 'typing-row';
-  row.innerHTML = `<div class="msg-avatar-sm">L</div><div class="bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
-  msgs.appendChild(row);
-  msgs.scrollTop = msgs.scrollHeight;
+  const msgs=document.getElementById('chat-messages');
+  const w=document.createElement('div');
+  w.className='typing-wrap';w.id='typing-row';
+  w.innerHTML='<div class="msg-av">L</div><div class="typing-bubble"><span></span><span></span><span></span></div>';
+  msgs.appendChild(w);msgs.scrollTop=msgs.scrollHeight;
 }
-
-function hideTyping() {
-  const el = document.getElementById('typing-row');
-  if (el) el.remove();
-}
+function hideTyping(){const el=document.getElementById('typing-row');if(el)el.remove();}
+function usePrompt(text){document.getElementById('chat-input').value=text;sendMessage();}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,110)+'px';}
 
 async function sendMessage() {
-  const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = ''; input.style.height = 'auto';
-  document.getElementById('chat-send').disabled = true;
-  addMessage('user', text);
-  chatHistory.push({ role: 'user', content: text });
+  const input=document.getElementById('chat-input');
+  const text=input.value.trim();
+  if(!text)return;
+  input.value='';input.style.height='auto';
+  document.getElementById('chat-send').disabled=true;
+  addMessage('user',text);
+  chatHistory.push({role:'user',content:text});
   showTyping();
   trackChatMessage(text);
-
   try {
-    const res = await fetch(`${SUPABASE_EDGE_URL}/lara-chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: chatHistory, system: LARA_SYSTEM, tools: LARA_TOOLS })
-    });
-
-    const data = await res.json();
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:LARA_SYSTEM,tools:LARA_TOOLS,messages:chatHistory})});
+    const data=await res.json();
     hideTyping();
-
-    let assistantReply = '';
-    let toolUsed = false;
-
-    for (const block of (data.content || [])) {
-      if (block.type === 'text' && block.text) {
-        assistantReply = block.text;
-        addMessage('lara', block.text);
-      } else if (block.type === 'tool_use' && block.name === 'show_booking_modal') {
-        toolUsed = true;
-        addMessage('lara', block.input?.message || 'Apro il calendario per te!');
-        setTimeout(() => openBookingModal(), 600);
-      }
+    let assistantReply='',toolUsed=false;
+    for(const block of(data.content||[])){
+      if(block.type==='text'&&block.text){assistantReply=block.text;addMessage('lara',block.text);}
+      else if(block.type==='tool_use'&&block.name==='show_booking_modal'){toolUsed=true;addMessage('lara',block.input?.message||'Apro il calendario per te! 📅');setTimeout(()=>openBookingModal(),700);}
     }
-
-    if (!assistantReply && !toolUsed) {
-      addMessage('lara', 'Mi dispiace, non sono riuscita a rispondere. Riprova.');
-    }
-
-    chatHistory.push({ role: 'assistant', content: data.content || [{ type: 'text', text: assistantReply || '' }] });
-    if (chatHistory.length > 20) chatHistory = chatHistory.slice(-16);
-
+    if(!assistantReply&&!toolUsed)addMessage('lara','Ho avuto un problema tecnico. Riprova tra un momento.');
+    chatHistory.push({role:'assistant',content:data.content||[{type:'text',text:assistantReply}]});
+    if(chatHistory.length>24)chatHistory=chatHistory.slice(-20);
   } catch(e) {
-    hideTyping();
-    addMessage('lara', 'Sto avendo qualche difficoltà tecnica. Prova a scrivermi tra un momento.');
+    hideTyping();addMessage('lara','Sto avendo qualche difficoltà. Scrivimi su WhatsApp: +971 50 123 4567');
   }
-
-  document.getElementById('chat-send').disabled = false;
+  document.getElementById('chat-send').disabled=false;
 }
+function chatKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
 
-function chatKeydown(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  e.target.style.height = 'auto';
-  e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px';
-}
-
-// ── BOOKING GHL ──────────────────────────────────────
-let selectedSlot = null;
-let allSlots = [];
+// BOOKING — parsing robusto del formato GHL
+let selectedSlot=null,allSlots=[];
 
 async function openBookingModal() {
   document.getElementById('booking-modal').classList.add('open');
@@ -1124,165 +683,118 @@ async function openBookingModal() {
 }
 
 async function loadSlots() {
-  const grid = document.getElementById('slot-grid');
-  grid.innerHTML = `<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">Caricamento disponibilità…</div>`;
-  selectedSlot = null;
-  document.getElementById('booking-btn').disabled = true;
-
+  const grid=document.getElementById('slot-grid');
+  grid.innerHTML='<div class="booking-empty">Caricamento disponibilità…</div>';
+  selectedSlot=null;
+  document.getElementById('booking-btn').disabled=true;
   try {
-    const r = await fetch(`${SUPABASE_EDGE_URL}/ghl-booking?action=slots`);
-    const data = await r.json();
+    const r=await fetch(`${EDGE}/ghl-booking?action=slots`);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const raw=await r.json();
+    console.log('[Booking] raw GHL:',JSON.stringify(raw).substring(0,600));
+    allSlots=[];
 
-    // Parsing robusto: accetta sia array piatto che oggetto {date: [slots]}
-    allSlots = [];
-    if (Array.isArray(data)) {
-      allSlots = data;
-    } else {
-      // Oggetto con chiavi data
-      for (const key of Object.keys(data)) {
-        const val = data[key];
-        if (Array.isArray(val)) {
-          val.forEach(s => allSlots.push({ ...s, _dateKey: key }));
-        } else if (typeof val === 'object' && val !== null) {
-          // Nested: { _id: { date: [slots] } }
-          for (const dateKey of Object.keys(val)) {
-            const slots = val[dateKey];
-            if (Array.isArray(slots)) {
-              slots.forEach(s => allSlots.push({ ...s, _dateKey: dateKey }));
-            }
+    // Parsing difensivo multi-formato GHL
+    function extractSlots(obj) {
+      if(Array.isArray(obj)){
+        obj.forEach(s=>{
+          const start=s.startTime||s.start||s.slot||s.time||s.dateTime||s.starttime;
+          if(start)allSlots.push({startTime:start,endTime:s.endTime||s.end||''});
+        });
+      } else if(obj&&typeof obj==='object'){
+        for(const[k,v] of Object.entries(obj)){
+          if(Array.isArray(v)){
+            v.forEach(s=>{
+              const start=s.startTime||s.start||s.slot||s.time||s.dateTime||s.starttime;
+              if(start)allSlots.push({startTime:start,endTime:s.endTime||s.end||'',_date:k});
+              // se è solo una stringa (timestamp), usarla direttamente
+              else if(typeof s==='string')allSlots.push({startTime:s,endTime:'',_date:k});
+            });
           }
         }
       }
     }
 
-    // Ordina per data
-    allSlots.sort((a, b) => {
-      const ta = new Date(a.startTime || a.slot || a._dateKey).getTime();
-      const tb = new Date(b.startTime || b.slot || b._dateKey).getTime();
-      return ta - tb;
-    });
-
-    if (allSlots.length === 0) {
-      grid.innerHTML = `<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">Nessuna disponibilità nei prossimi 14 giorni.<br>Scrivici su <a href="https://wa.me/971501234567" style="color:var(--gold)">WhatsApp</a>.</div>`;
-      return;
+    // GHL spesso restituisce { _id: { dateMap } } o { dateMap } direttamente
+    if(raw&&raw[Object.keys(raw)[0]]&&typeof raw[Object.keys(raw)[0]]==='object'&&!Array.isArray(raw[Object.keys(raw)[0]])){
+      // potrebbe essere { _id: { '2026-03-09': [...] } }
+      const inner=raw[Object.keys(raw)[0]];
+      if(inner&&typeof inner==='object')extractSlots(inner);
+      if(allSlots.length===0)extractSlots(raw);
+    } else {
+      extractSlots(raw);
     }
 
-    const show = allSlots.slice(0, 12);
-    grid.innerHTML = show.map((s, i) => {
-      // Prova a parsare la data da startTime, poi slot, poi _dateKey
-      let dt = null;
-      const raw = s.startTime || s.slot;
-      if (raw) {
-        dt = new Date(raw);
-        if (isNaN(dt.getTime())) dt = null;
-      }
-      if (!dt && s._dateKey) {
-        dt = new Date(s._dateKey);
-        if (isNaN(dt.getTime())) dt = null;
-      }
+    console.log('[Booking] parsed',allSlots.length,'slots, first:',allSlots[0]);
 
-      let dayLabel = '—';
-      let timeLabel = '—';
-      if (dt) {
-        dayLabel = dt.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Dubai' });
-        timeLabel = dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' });
-      }
-
-      return `<div class="slot-btn" onclick="selectSlot(${i})" id="slot-${i}">
-        <div class="slot-day">${dayLabel}</div>
-        <div class="slot-time">${timeLabel}</div>
-      </div>`;
+    if(allSlots.length===0){
+      grid.innerHTML='<div class="booking-empty">Nessuna disponibilità nei prossimi 14 giorni.<br><br>Scrivici su <a href="https://wa.me/971501234567" style="color:var(--gold)">WhatsApp</a>.</div>';
+      return;
+    }
+    const show=allSlots.slice(0,12);
+    grid.innerHTML=show.map((s,i)=>{
+      const dt=new Date(s.startTime);
+      const ok=!isNaN(dt.getTime());
+      const day=ok?dt.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}):s._date||'—';
+      const time=ok?dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})+'':'—';
+      return `<div class="slot-btn" onclick="selectSlot(${i})"><div class="slot-day">${day}</div><div class="slot-time">${time} DXB</div></div>`;
     }).join('');
-
   } catch(e) {
-    grid.innerHTML = `<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:16px">Errore nel caricamento. <a href="https://wa.me/971501234567" style="color:var(--gold)">Scrivi su WhatsApp</a></div>`;
+    console.error('[Booking]',e);
+    grid.innerHTML='<div class="booking-empty">Errore nel caricamento.<br>Scrivici su <a href="https://wa.me/971501234567" style="color:var(--gold)">WhatsApp</a>.</div>';
   }
 }
-
-function selectSlot(i) {
-  selectedSlot = allSlots[i];
-  document.querySelectorAll('.slot-btn').forEach((el, idx) => {
-    el.classList.toggle('selected', idx === i);
-  });
-  document.getElementById('booking-btn').disabled = false;
+function selectSlot(i){
+  selectedSlot=allSlots[i];
+  document.querySelectorAll('.slot-btn').forEach((el,idx)=>el.classList.toggle('selected',idx===i));
+  document.getElementById('booking-btn').disabled=false;
 }
-
 async function confirmBooking() {
-  if (!selectedSlot) return;
-  const btn = document.getElementById('booking-btn');
-  btn.disabled = true; btn.textContent = 'Prenotazione in corso…';
-
+  if(!selectedSlot)return;
+  const btn=document.getElementById('booking-btn');
+  btn.disabled=true;btn.textContent='Prenotazione in corso…';
   try {
-    const r = await fetch(`${SUPABASE_EDGE_URL}/ghl-booking?action=book`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: chatUserName || 'Lead InDubai',
-        email: chatUserEmail || '',
-        phone: chatUserPhone || '',
-        slot_start: selectedSlot.startTime || selectedSlot.slot,
-        slot_end: selectedSlot.endTime || '',
-        timezone: 'Asia/Dubai'
-      })
-    });
-    const data = await r.json();
-    if (data.ok) {
+    const r=await fetch(`${EDGE}/ghl-booking?action=book`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:chatUserName||'Lead InDubai',email:chatUserEmail||'',phone:chatUserPhone||'',slot_start:selectedSlot.startTime||selectedSlot.slot,slot_end:selectedSlot.endTime||'',timezone:'Asia/Dubai'})});
+    const data=await r.json();
+    if(data.ok){
       document.getElementById('booking-modal').classList.remove('open');
-      const raw = selectedSlot.startTime || selectedSlot.slot;
-      const dt = raw ? new Date(raw) : null;
-      const readable = dt ? dt.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Dubai' }) + ' alle ' + dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' }) + ' (ora Dubai)' : 'data confermata';
-      addMessage('lara', `✅ Appuntamento confermato per ${readable}!\n\nRiceverai una email di conferma. A presto! 🇮🇹`);
-      if (userId) sb.from('lead_activity').insert({ lead_id: userId, section: 'booking_confirmed', visited_at: new Date().toISOString() });
-    } else { throw new Error(data.error || 'Errore'); }
+      const dt=new Date(selectedSlot.startTime);
+      const readable=!isNaN(dt.getTime())?dt.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})+' alle '+dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})+' (Dubai)':'data confermata';
+      addMessage('lara',`✅ Appuntamento confermato per ${readable}!\n\nRiceverai una email di conferma. A presto! 🇮🇹`);
+      chatHistory.push({role:'assistant',content:`Appuntamento confermato per ${readable}.`});
+      if(userId)sb.from('lead_activity').insert({lead_id:userId,section:'booking_confirmed',visited_at:new Date().toISOString()});
+    } else throw new Error(data.error||'Errore');
   } catch(e) {
-    btn.disabled = false; btn.textContent = 'Conferma appuntamento';
-    addMessage('lara', `C'è stato un problema tecnico. <a href="https://wa.me/971501234567" style="color:var(--gold)">Scrivimi su WhatsApp</a> per fissare la call.`);
+    btn.disabled=false;btn.textContent='Conferma appuntamento';
     document.getElementById('booking-modal').classList.remove('open');
+    addMessage('lara','C\'è stato un problema tecnico. <a href="https://wa.me/971501234567" style="color:var(--gold)">Scrivimi su WhatsApp</a>.');
   }
 }
 
-// ── ACTIVITY TRACKING ───────────────────────────────
-let userId = null;
-let chatLog = [];
-function trackActivity(section) {
-  if (!userId) return;
-  sb.from('lead_activity').insert({ lead_id: userId, section, visited_at: new Date().toISOString() }).then(() => {});
-}
-function trackChatMessage(msg) {
-  chatLog.push({ role: 'user', text: msg, ts: new Date().toISOString() });
-  if (!userId) return;
-  sb.from('leads').update({ last_chat: JSON.stringify(chatLog.slice(-20)) }).eq('id', userId).then(() => {});
-}
+// TRACKING
+let userId=null,chatLog=[];
+function trackActivity(section){if(!userId)return;sb.from('lead_activity').insert({lead_id:userId,section,visited_at:new Date().toISOString()});}
+function trackChatMessage(msg){chatLog.push({role:'user',text:msg,ts:new Date().toISOString()});if(!userId)return;sb.from('leads').update({last_chat:JSON.stringify(chatLog.slice(-20))}).eq('id',userId);}
 
-// ── INIT ─────────────────────────────────────────────
+// INIT
 async function init() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { window.location.href = 'login.html'; return; }
-
-  userId = session.user.id;
-  const meta = session.user.user_metadata;
-  const name = meta?.full_name || session.user.email;
-  chatUserName = name.split(' ')[0];
-  chatUserEmail = session.user.email || '';
-  chatUserPhone = meta?.phone || '';
-
-  const initials = (meta?.full_name || 'U').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
-  document.getElementById('user-initials').textContent = initials;
-
-  const hour = new Date().getHours();
-  const gr = hour < 12 ? 'Buongiorno' : hour < 18 ? 'Buon pomeriggio' : 'Buonasera';
-  document.getElementById('hero-greeting').textContent = `${gr}, ${chatUserName}`;
-
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){window.location.href='login.html';return;}
+  userId=session.user.id;
+  const meta=session.user.user_metadata;
+  const name=meta?.full_name||session.user.email;
+  chatUserName=name.split(' ')[0];
+  chatUserEmail=session.user.email||'';
+  chatUserPhone=meta?.phone||'';
+  const initials=(meta?.full_name||'U').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  document.getElementById('user-initials').textContent=initials;
+  const hour=new Date().getHours();
+  const gr=hour<12?'Buongiorno':hour<18?'Buon pomeriggio':'Buonasera';
+  document.getElementById('hero-greeting').textContent=`${gr}, ${chatUserName}`;
   renderServices();
-
-  if (localStorage.getItem('ob_done')) {
-    document.getElementById('onboarding').style.display = 'none';
-    document.getElementById('app').classList.add('visible');
-  }
-
-  sb.from('leads').update({ last_seen: new Date().toISOString() }).eq('id', userId).then(() => {});
+  if(localStorage.getItem('ob_done')){document.getElementById('onboarding').style.display='none';document.getElementById('app').classList.add('visible');}
+  sb.from('leads').update({last_seen:new Date().toISOString()}).eq('id',userId);
 }
-
 init();
 </script>
 </body>
