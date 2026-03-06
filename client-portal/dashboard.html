@@ -697,7 +697,7 @@ function buildMainHTML(visas=[], financials=null) {
     <!-- ANAGRAFICA -->
     <div class="panel active" id="panel-anagrafica">
       ${heroHTML()}
-      <div id="fin-card-container">${financialsHTML(financials)}</div>
+      <div id="scadenze-home-container">${scadenzeHTML(visas)}</div>
       ${anagraficaHTML()}
     </div>
 
@@ -1142,11 +1142,12 @@ function setupNav() {}
 
 function renderAll() {} // placeholder
 
-// ── ONESIGNAL PUSH (tramite onesignal-cordova-plugin) ──
+// ── PUSH NOTIFICATIONS ──
+// Web: OneSignal Web SDK | Native: @capacitor/push-notifications → Edge Function
 function initOneSignal(userId, companyName) {
   const isNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
   if (!isNative) {
-    // Web: usa OneSignal Web SDK
+    // WEB
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
       try {
@@ -1166,48 +1167,58 @@ function initOneSignal(userId, companyName) {
     return;
   }
 
-  // Native iOS: usa onesignal-cordova-plugin (window.plugins.OneSignal)
-  function waitForOneSignal(cb, tries) {
-    tries = tries || 0;
-    if (window.plugins && window.plugins.OneSignal) {
-      cb(window.plugins.OneSignal);
-    } else if (tries < 30) {
-      setTimeout(function() { waitForOneSignal(cb, tries + 1); }, 200);
-    } else {
-      console.warn('OneSignal plugin non disponibile dopo 6s');
-    }
-  }
+  // NATIVE iOS - usa @capacitor/push-notifications per il token APNs
+  // poi registra il device su OneSignal via Edge Function server-side
+  var { PushNotifications } = window.Capacitor.Plugins;
+  if (!PushNotifications) { console.warn('PushNotifications plugin non trovato'); return; }
 
-  waitForOneSignal(function(OS) {
+  // Listener APNs token
+  PushNotifications.addListener('registration', async function(token) {
+    console.log('APNs token:', token.value.substring(0,20) + '...');
     try {
-      console.log('OneSignal plugin trovato, inizializzazione...');
-      OS.initialize('06f381cd-ed3d-4393-a5c2-3f6ef8322661');
-
-      // Listener notifica aperta
-      OS.Notifications.addEventListener('click', function(result) {
-        var url = result && result.notification && result.notification.launchURL;
-        if (url) window.location.href = url;
+      var sess = sb.getSession();
+      var res = await fetch('https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/register-device', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (sess?.access_token || '')
+        },
+        body: JSON.stringify({ token: token.value, client_id: userId, company: companyName })
       });
+      var data = await res.json();
+      if (data.player_id) {
+        console.log('✅ Device registrato su OneSignal:', data.player_id);
+      } else {
+        console.warn('❌ register-device error:', data.error);
+      }
+    } catch(e) { console.warn('register-device fetch error:', e); }
+  });
 
-      // Imposta tags per targeting
-      OS.User.addTags({ client_id: userId, company: companyName });
+  PushNotifications.addListener('registrationError', function(err) {
+    console.warn('APNs registrationError:', JSON.stringify(err));
+  });
 
-      // Richiedi permesso dopo 2 secondi
-      setTimeout(async function() {
-        try {
-          var hasPerm = await OS.Notifications.getPermissionAsync();
-          console.log('Push permission:', hasPerm);
-          if (!hasPerm) {
-            var granted = await OS.Notifications.requestPermission(true);
-            console.log('Permission granted:', granted);
+  PushNotifications.addListener('pushNotificationActionPerformed', function(action) {
+    var url = action?.notification?.data?.url;
+    if (url) window.location.href = url;
+  });
+
+  // Richiedi permesso
+  PushNotifications.checkPermissions().then(function(status) {
+    console.log('Push permission status:', status.receive);
+    if (status.receive === 'granted') {
+      PushNotifications.register();
+    } else if (status.receive !== 'denied') {
+      // Mostra prompt dopo 2s
+      setTimeout(function() {
+        PushNotifications.requestPermissions().then(function(result) {
+          console.log('Push permission result:', result.receive);
+          if (result.receive === 'granted') {
+            PushNotifications.register();
           }
-          // Verifica subscription
-          var subId = await OS.User.pushSubscription.getIdAsync();
-          console.log('OneSignal subscription ID:', subId);
-        } catch(e) { console.warn('OneSignal permission error:', e); }
+        });
       }, 2000);
-
-    } catch(e) { console.warn('OneSignal native init error:', e); }
+    }
   });
 }
 
