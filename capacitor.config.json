@@ -3,7 +3,8 @@
   "appName": "InDubai",
   "webDir": "client-portal",
   "ios": {
-    "contentInset": "always"
+    "contentInset": "always",
+    "handleApplicationNotifications": false
   },
   "plugins": {
     "PushNotifications": {
