@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const GHL_TOKEN = "pit-78a1afd7-7dca-40b2-8fed-21fd74e7185c";
+const GHL_TOKEN = "pit-98c12ff9-94f7-46fe-93fc-7ba94db1c6e5";
 const CALENDAR_ID = "CChGNv3OYX4rFHzx2UMI";
 const LOCATION_ID = "KzCZHYcMDxOZMD7KBuZV";
 const GHL_BASE = "https://services.leadconnectorhq.com";
@@ -44,7 +44,7 @@ serve(async (req) => {
       // 1. Cerca contatto esistente
       let contactId: string | null = null;
       const searchR = await fetch(
-        `${GHL_BASE}/contacts/search?locationId=${LOCATION_ID}&query=${encodeURIComponent(email)}`,
+        `${GHL_BASE}/contacts/?locationId=${LOCATION_ID}&query=${encodeURIComponent(email)}`,
         { headers: { Authorization: `Bearer ${GHL_TOKEN}`, Version: "2021-04-15" } }
       );
       const searchData = await searchR.json();
