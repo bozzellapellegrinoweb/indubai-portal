@@ -157,24 +157,7 @@
     #chat-send { width: 42px; height: 42px; border-radius: 50%; background: var(--gold); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; -webkit-tap-highlight-color: transparent; transition: opacity .15s, transform .1s; }
     #chat-send:active { opacity: .8; transform: scale(.92); }
     #chat-send:disabled { opacity: .35; cursor: not-allowed; }
-    /* BOOKING */
-    .booking-modal { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,.75); backdrop-filter: blur(10px); display: none; align-items: flex-end; }
-    .booking-modal.open { display: flex; }
-    .booking-sheet { background: var(--bg2); border-radius: 28px 28px 0 0; border: 1px solid var(--border); width: 100%; padding: 20px 20px calc(env(safe-area-inset-bottom,20px) + 20px); max-height: 82vh; overflow-y: auto; animation: sheetUp .3s cubic-bezier(.4,0,.2,1); }
-    @keyframes sheetUp { from { transform:translateY(40px);opacity:.5 } to { transform:translateY(0);opacity:1 } }
-    .booking-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 20px; }
-    .booking-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 600; margin-bottom: 4px; }
-    .booking-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
-    .slot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
-    .slot-btn { padding: 12px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; font-size: 12px; font-weight: 600; color: var(--text); cursor: pointer; text-align: center; -webkit-tap-highlight-color: transparent; transition: all .15s; }
-    .slot-btn:active { opacity: .7; }
-    .slot-btn.selected { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
-    .slot-day { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 3px; }
-    .slot-time { font-size: 14px; font-weight: 700; }
-    .booking-empty { text-align: center; padding: 24px 16px; color: var(--muted); font-size: 14px; grid-column: 1/-1; line-height: 1.7; }
-    .booking-confirm { width: 100%; padding: 16px; background: var(--gold); border: none; border-radius: 16px; font-size: 16px; font-weight: 700; color: #080e18; cursor: pointer; font-family: 'Manrope', sans-serif; transition: opacity .15s; }
-    .booking-confirm:disabled { opacity: .35; cursor: not-allowed; }
-    .booking-confirm:active { opacity: .8; }
+
     /* SERVIZI MODAL */
     .srv-modal-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.7); display: none; align-items: flex-end; }
     .srv-modal-overlay.open { display: flex; }
@@ -441,20 +424,7 @@
   </div>
 </div>
 
-<div class="booking-modal" id="booking-modal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="booking-sheet">
-    <div class="booking-handle"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div class="booking-title" style="margin-bottom:0">Prenota consulenza</div>
-      <button onclick="document.getElementById('booking-modal').classList.remove('open')" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;line-height:0">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <div class="booking-sub">30 minuti gratuiti con un esperto InDubai — ora Dubai (GMT+4)</div>
-    <div class="slot-grid" id="slot-grid"><div class="booking-empty">Caricamento disponibilità…</div></div>
-    <button class="booking-confirm" id="booking-btn" disabled onclick="confirmBooking()">Conferma appuntamento</button>
-  </div>
-</div>
+<!-- Booking: apre widget GHL nativo in nuova tab con dati precompilati -->
 
 <script>
 const sb = supabase.createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_ANON_KEY);
@@ -681,7 +651,7 @@ async function sendMessage() {
     let assistantReply='',toolUsed=false;
     for(const block of(data.content||[])){
       if(block.type==='text'&&block.text){assistantReply=block.text;addMessage('lara',block.text);}
-      else if(block.type==='tool_use'&&block.name==='show_booking_modal'){toolUsed=true;addMessage('lara',block.input?.message||'Apro il calendario per te! 📅');setTimeout(()=>openBookingModal(),700);}
+      else if(block.type==='tool_use'&&block.name==='show_booking_modal'){toolUsed=true;addMessage('lara',block.input?.message||'Ti apro il calendario di prenotazione! 📅');setTimeout(()=>openBookingModal(),700);}
     }
     if(!assistantReply&&!toolUsed)addMessage('lara','Ho avuto un problema tecnico. Riprova tra un momento.');
     // Save only text content in history to avoid tool_use/tool_result issues
@@ -696,90 +666,19 @@ async function sendMessage() {
 function chatKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
 
 // BOOKING — parsing robusto del formato GHL
-let selectedSlot=null,allSlots=[];
 
-async function openBookingModal() {
-  document.getElementById('booking-modal').classList.add('open');
-  await loadSlots();
-}
 
-async function loadSlots() {
-  const grid=document.getElementById('slot-grid');
-  grid.innerHTML='<div class="booking-empty">Caricamento disponibilità…</div>';
-  selectedSlot=null;
-  document.getElementById('booking-btn').disabled=true;
-  try {
-    const r=await fetch(`${EDGE}/ghl-booking?action=slots`);
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const raw=await r.json();
-    console.log('[Booking] raw GHL:',JSON.stringify(raw).substring(0,600));
-    allSlots=[];
-
-    // Parsing formato GHL: { "2026-03-09": { "slots": ["ISO", ...] }, ... }
-    allSlots = [];
-    const now = Date.now();
-    if(raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      for(const [dateKey, dayObj] of Object.entries(raw)) {
-        const arr = Array.isArray(dayObj) ? dayObj : (dayObj && dayObj.slots ? dayObj.slots : []);
-        arr.forEach(s => {
-          let startTime = null;
-          if(typeof s === 'string') startTime = s;
-          else if(s && typeof s === 'object') startTime = s.startTime||s.start||s.slot||s.time||s.dateTime||null;
-          if(startTime) {
-            const d = new Date(startTime);
-            if(!isNaN(d.getTime()) && d.getTime() > now) {
-              allSlots.push({startTime, endTime: (typeof s==='object' ? (s.endTime||s.end||'') : ''), _date: dateKey});
-            }
-          }
-        });
-      }
-      allSlots.sort((a,b) => new Date(a.startTime) - new Date(b.startTime));
-    }
-
-    console.log('[Booking] parsed',allSlots.length,'slots, first:',allSlots[0]);
-
-    if(allSlots.length===0){
-      grid.innerHTML='<div class="booking-empty">Nessuna disponibilità nei prossimi 14 giorni.<br><br>Scrivici su <a href="https://wa.me/971501234567" style="color:var(--gold)">WhatsApp</a>.</div>';
-      return;
-    }
-    const show=allSlots.slice(0,12);
-    grid.innerHTML=show.map((s,i)=>{
-      const dt=new Date(s.startTime);
-      const ok=!isNaN(dt.getTime());
-      const day=ok?dt.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}):s._date||'—';
-      const time=ok?dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}):'—';
-      return `<div class="slot-btn" onclick="selectSlot(${i})"><div class="slot-day">${day}</div><div class="slot-time">${time} DXB</div></div>`;
-    }).join('');
-  } catch(e) {
-    console.error('[Booking]',e);
-    grid.innerHTML='<div class="booking-empty">Errore nel caricamento.<br>Scrivici su <a href="https://wa.me/971501234567" style="color:var(--gold)">WhatsApp</a>.</div>';
-  }
-}
-function selectSlot(i){
-  selectedSlot=allSlots[i];
-  document.querySelectorAll('.slot-btn').forEach((el,idx)=>el.classList.toggle('selected',idx===i));
-  document.getElementById('booking-btn').disabled=false;
-}
-async function confirmBooking() {
-  if(!selectedSlot)return;
-  const btn=document.getElementById('booking-btn');
-  btn.disabled=true;btn.textContent='Prenotazione in corso…';
-  try {
-    const r=await fetch(`${EDGE}/ghl-booking?action=book`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:chatUserName||'Lead InDubai',email:chatUserEmail||'',phone:chatUserPhone||'',slot_start:selectedSlot.startTime||selectedSlot.slot,slot_end:selectedSlot.endTime||'',timezone:'Asia/Dubai'})});
-    const data=await r.json();
-    if(data.ok){
-      document.getElementById('booking-modal').classList.remove('open');
-      const dt=new Date(selectedSlot.startTime);
-      const readable=!isNaN(dt.getTime())?dt.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})+' alle '+dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})+' (Dubai)':'data confermata';
-      addMessage('lara',`✅ Appuntamento confermato per ${readable}!\n\nRiceverai una email di conferma. A presto! 🇮🇹`);
-      chatHistory.push({role:'assistant',content:`Appuntamento confermato per ${readable}.`});
-      if(userId)sb.from('lead_activity').insert({lead_id:userId,section:'booking_confirmed',visited_at:new Date().toISOString()});
-    } else throw new Error(data.error||'Errore');
-  } catch(e) {
-    btn.disabled=false;btn.textContent='Conferma appuntamento';
-    document.getElementById('booking-modal').classList.remove('open');
-    addMessage('lara','C\'è stato un problema tecnico. <a href="https://wa.me/971501234567" style="color:var(--gold)">Scrivimi su WhatsApp</a>.');
-  }
+// Apre il widget GHL nativo con dati utente precompilati
+function openBookingModal() {
+  const firstName = (chatUserName || '').split(' ')[0] || '';
+  const lastName = (chatUserName || '').split(' ').slice(1).join(' ') || '';
+  const email = encodeURIComponent(chatUserEmail || '');
+  const phone = encodeURIComponent(chatUserPhone || '');
+  const fn = encodeURIComponent(firstName);
+  const ln = encodeURIComponent(lastName);
+  const url = `https://api.leadconnectorhq.com/widget/booking/CChGNv3OYX4rFHzx2UMI?firstname=${fn}&lastname=${ln}&email=${email}&phone=${phone}`;
+  window.open(url, '_blank');
+  if(userId) sb.from('lead_activity').insert({lead_id:userId,section:'booking_opened',visited_at:new Date().toISOString()});
 }
 
 // TRACKING
