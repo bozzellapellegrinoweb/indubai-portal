@@ -670,7 +670,7 @@ async function sendMessage() {
   showTyping();
   trackChatMessage(text);
   try {
-    const res=await fetch(`${EDGE}/lara-chat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:chatHistory})});
+    const res=await fetch(`${EDGE}/lara-chat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:chatHistory,userEmail:chatUserEmail,userName:chatUserName})});
     if(!res.ok){const err=await res.text();console.error('lara-chat error:',res.status,err);throw new Error('HTTP '+res.status);}
     const data=await res.json();
     hideTyping();
