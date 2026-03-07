@@ -694,41 +694,47 @@ function chatKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send
 // BOOKING — parsing robusto del formato GHL
 
 
-// Booking: panel fullscreen con embed GHL ufficiale (no iframe cross-origin)
+// Booking: panel fullscreen con GHL
+// Su app iOS/Android (Capacitor) funziona nativo; su browser web fallback a link esterno
 function openBookingModal() {
   const firstName = (chatUserName || '').split(' ')[0] || '';
   const lastName  = (chatUserName || '').split(' ').slice(1).join(' ') || '';
   const email     = chatUserEmail || '';
   const phone     = chatUserPhone || '';
   const calId     = 'CChGNv3OYX4rFHzx2UMI';
-  const uid       = `${calId}_${Date.now()}`;
+  const url       = `https://api.leadconnectorhq.com/widget/booking/${calId}?firstname=${encodeURIComponent(firstName)}&lastname=${encodeURIComponent(lastName)}&email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`;
 
-  // Build embed identico all'embed ufficiale GHL con dati precompilati
-  const inner = document.getElementById('booking-panel-inner');
-  inner.innerHTML = `<iframe 
-    src="https://api.leadconnectorhq.com/widget/booking/${calId}?firstname=${encodeURIComponent(firstName)}&lastname=${encodeURIComponent(lastName)}&email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}"
-    style="width:100%;border:none;overflow:hidden;min-height:700px;"
-    scrolling="no"
-    id="${uid}"
-    allow="camera; microphone; fullscreen"
-  ></iframe>`;
+  // Detect Capacitor (app nativa iOS/Android)
+  const isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform?.();
 
-  // Script ufficiale GHL per postMessage resize (caricato una sola volta)
-  if (!document.getElementById('ghl-embed-script')) {
-    const s = document.createElement('script');
-    s.id = 'ghl-embed-script';
-    s.src = 'https://link.msgsndr.com/js/form_embed.js';
-    document.body.appendChild(s);
+  if (isNative) {
+    // App nativa: InAppBrowser Capacitor (no restrizioni iframe)
+    window.Capacitor?.Plugins?.Browser?.open({ url }) || window.open(url, '_blank');
+  } else {
+    // Web browser: apre il panel con iframe
+    // Nota: GHL blocca iframe su browser per X-Frame-Options
+    // → se bloccato mostriamo il link diretto
+    const inner = document.getElementById('booking-panel-inner');
+    inner.innerHTML = `
+      <div style="padding:24px 20px 0;text-align:center">
+        <p style="font-size:14px;color:#555;margin-bottom:20px;line-height:1.7">
+          Prenota la tua consulenza gratuita di 30 minuti con il team InDubai.<br>
+          Il calendario si aprirà nella pagina dedicata.
+        </p>
+        <a href="${url}" target="_blank" style="display:block;background:#c9a84c;color:#080e18;padding:16px;border-radius:14px;font-weight:700;font-size:16px;text-decoration:none;font-family:inherit;margin-bottom:12px">
+          📅 Apri il calendario →
+        </a>
+        <p style="font-size:12px;color:#999">Si aprirà in una nuova finestra</p>
+      </div>`;
+    document.getElementById('booking-panel').classList.add('open');
+    document.body.style.overflow = 'hidden';
   }
 
-  document.getElementById('booking-panel').classList.add('open');
-  document.body.style.overflow = 'hidden';
   if(userId) sb.from('lead_activity').insert({lead_id:userId,section:'booking_opened',visited_at:new Date().toISOString()});
 }
 function closeBookingModal() {
   document.getElementById('booking-panel').classList.remove('open');
   document.body.style.overflow = '';
-  // Piccolo delay prima di svuotare per non vedere la transizione con iframe vuoto
   setTimeout(() => { document.getElementById('booking-panel-inner').innerHTML = ''; }, 350);
 }
 
