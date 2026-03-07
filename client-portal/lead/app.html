@@ -158,16 +158,18 @@
     #chat-send:active { opacity: .8; transform: scale(.92); }
     #chat-send:disabled { opacity: .35; cursor: not-allowed; }
 
-    /* BOOKING MODAL (iframe GHL) */
-    .booking-modal { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,.75); backdrop-filter: blur(10px); display: none; align-items: flex-end; }
-    .booking-modal.open { display: flex; }
-    .booking-sheet { background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; animation: sheetUp .3s cubic-bezier(.4,0,.2,1); }
-    @keyframes sheetUp { from { transform:translateY(40px);opacity:.5 } to { transform:translateY(0);opacity:1 } }
-    .booking-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px; border-bottom: 1px solid #eee; flex-shrink: 0; }
-    .booking-header-title { font-size: 15px; font-weight: 700; color: #111; }
-    .booking-close-btn { background: none; border: none; cursor: pointer; color: #666; padding: 4px; line-height: 0; }
-    .booking-embed-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-    .booking-embed-wrap iframe { width: 100% !important; border: none !important; display: block; }
+
+    /* BOOKING PANEL (fullscreen in-app, no iframe restrictions) */
+    .booking-panel { position: fixed; inset: 0; z-index: 500; background: #fff; display: flex; flex-direction: column; transform: translateY(100%); transition: transform .35s cubic-bezier(.4,0,.2,1); }
+    .booking-panel.open { transform: translateY(0); }
+    .booking-panel-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; padding-top: max(14px, env(safe-area-inset-top)); border-bottom: 1px solid #eee; flex-shrink: 0; background: #fff; }
+    .booking-back-btn { background: none; border: none; cursor: pointer; color: #333; padding: 4px; line-height: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; font-family: inherit; }
+    .booking-panel-title { font-size: 15px; font-weight: 700; color: #111; flex: 1; }
+    .booking-panel-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0; }
+    .booking-panel-inner { width: 100%; }
+    /* override per compatibility */
+    .booking-modal { display: none !important; }
+
     /* SERVIZI MODAL */
     .srv-modal-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.7); display: none; align-items: flex-end; }
     .srv-modal-overlay.open { display: flex; }
@@ -436,18 +438,17 @@
 
 <!-- Booking: apre widget GHL nativo in nuova tab con dati precompilati -->
 
-<!-- Booking Modal con embed ufficiale GHL -->
-<div class="booking-modal" id="booking-modal" onclick="if(event.target===this)closeBookingModal()">
-  <div class="booking-sheet">
-    <div class="booking-header">
-      <span class="booking-header-title">📅 Prenota consulenza gratuita</span>
-      <button class="booking-close-btn" onclick="closeBookingModal()">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <div class="booking-embed-wrap" id="booking-embed-wrap">
-      <!-- iframe iniettato dinamicamente con dati utente precompilati -->
-    </div>
+<!-- Booking Panel fullscreen (no iframe cross-origin issues) -->
+<div class="booking-panel" id="booking-panel">
+  <div class="booking-panel-header">
+    <button class="booking-back-btn" onclick="closeBookingModal()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Indietro
+    </button>
+    <span class="booking-panel-title">Prenota consulenza gratuita</span>
+  </div>
+  <div class="booking-panel-body">
+    <div class="booking-panel-inner" id="booking-panel-inner"></div>
   </div>
 </div>
 
@@ -693,34 +694,42 @@ function chatKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send
 // BOOKING — parsing robusto del formato GHL
 
 
-// Apre il widget GHL ufficiale embedded nell'app (bottom sheet)
+// Booking: panel fullscreen con embed GHL ufficiale (no iframe cross-origin)
 function openBookingModal() {
-  const firstName = encodeURIComponent((chatUserName || '').split(' ')[0] || '');
-  const lastName  = encodeURIComponent((chatUserName || '').split(' ').slice(1).join(' ') || '');
-  const email     = encodeURIComponent(chatUserEmail || '');
-  const phone     = encodeURIComponent(chatUserPhone || '');
+  const firstName = (chatUserName || '').split(' ')[0] || '';
+  const lastName  = (chatUserName || '').split(' ').slice(1).join(' ') || '';
+  const email     = chatUserEmail || '';
+  const phone     = chatUserPhone || '';
   const calId     = 'CChGNv3OYX4rFHzx2UMI';
-  const iframeId  = `${calId}_${Date.now()}`;
-  const src       = `https://api.leadconnectorhq.com/widget/booking/${calId}?firstname=${firstName}&lastname=${lastName}&email=${email}&phone=${phone}`;
+  const uid       = `${calId}_${Date.now()}`;
 
-  const wrap = document.getElementById('booking-embed-wrap');
-  wrap.innerHTML = `<iframe src="${src}" style="width:100%;border:none;overflow:hidden;min-height:600px;" scrolling="no" id="${iframeId}"></iframe>`;
+  // Build embed identico all'embed ufficiale GHL con dati precompilati
+  const inner = document.getElementById('booking-panel-inner');
+  inner.innerHTML = `<iframe 
+    src="https://api.leadconnectorhq.com/widget/booking/${calId}?firstname=${encodeURIComponent(firstName)}&lastname=${encodeURIComponent(lastName)}&email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}"
+    style="width:100%;border:none;overflow:hidden;min-height:700px;"
+    scrolling="no"
+    id="${uid}"
+    allow="camera; microphone; fullscreen"
+  ></iframe>`;
 
-  // Carica lo script ufficiale GHL per auto-resize (solo una volta)
+  // Script ufficiale GHL per postMessage resize (caricato una sola volta)
   if (!document.getElementById('ghl-embed-script')) {
     const s = document.createElement('script');
     s.id = 'ghl-embed-script';
     s.src = 'https://link.msgsndr.com/js/form_embed.js';
-    s.type = 'text/javascript';
     document.body.appendChild(s);
   }
 
-  document.getElementById('booking-modal').classList.add('open');
+  document.getElementById('booking-panel').classList.add('open');
+  document.body.style.overflow = 'hidden';
   if(userId) sb.from('lead_activity').insert({lead_id:userId,section:'booking_opened',visited_at:new Date().toISOString()});
 }
 function closeBookingModal() {
-  document.getElementById('booking-modal').classList.remove('open');
-  document.getElementById('booking-embed-wrap').innerHTML = '';
+  document.getElementById('booking-panel').classList.remove('open');
+  document.body.style.overflow = '';
+  // Piccolo delay prima di svuotare per non vedere la transizione con iframe vuoto
+  setTimeout(() => { document.getElementById('booking-panel-inner').innerHTML = ''; }, 350);
 }
 
 // TRACKING
