@@ -237,21 +237,6 @@ async function getGHLContactId(email: string): Promise<string | null> {
 }
 
 
-
-// ─── GHL CONTACT LOOKUP BY EMAIL ─────────────────────────────────────────────
-async function getGHLContactId(email: string): Promise<string | null> {
-  if (!email) return null;
-  try {
-    const r = await fetch(
-      `https://services.leadconnectorhq.com/contacts/?locationId=${LOCATION_ID}&email=${encodeURIComponent(email)}`,
-      { headers: { "Authorization": `Bearer ${GHL_TOKEN}`, "Version": "2021-04-15" } }
-    );
-    if (!r.ok) return null;
-    const data = await r.json();
-    return data?.contacts?.[0]?.id || null;
-  } catch { return null; }
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
