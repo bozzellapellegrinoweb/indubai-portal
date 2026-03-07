@@ -3,3 +3,9 @@ enabled = true
 
 [functions.zoho-proxy]
 verify_jwt = false
+
+[functions.ghl-booking]
+verify_jwt = false
+
+[functions.lara-chat]
+verify_jwt = false
