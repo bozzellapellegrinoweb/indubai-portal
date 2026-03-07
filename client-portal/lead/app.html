@@ -123,7 +123,7 @@
     .contact-val { font-size: 13px; color: var(--muted); }
     .contact-arrow { color: var(--muted2); }
     /* CHAT */
-    .chat-wrap { display: flex; flex-direction: column; height: calc(100dvh - env(safe-area-inset-top,0px) - 56px - var(--tab-h) - max(env(safe-area-inset-bottom,18px),18px) - 10px); }
+    .chat-wrap { display: flex; flex-direction: column; height: 100dvh; }
     .chat-header { padding: 14px 20px 12px; border-bottom: 1px solid var(--border2); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
     .lara-avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, var(--gold) 0%, #8b6914 100%); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; color: #080e18; position: relative; }
     .avatar-dot { position: absolute; bottom: 1px; right: 1px; width: 12px; height: 12px; border-radius: 50%; background: var(--green); border: 2px solid var(--bg); animation: pulseDot 2s infinite; }
@@ -266,7 +266,7 @@
 <div id="app">
   <div class="hdr">
     <img src="../assets/logo-white-transparent.png" alt="InDubai" />
-    <div class="hdr-user" id="user-initials">?</div>
+    <button class="hdr-user" id="user-initials" onclick="openProfile()" style="cursor:pointer;border:none;background:var(--gold-dim)">?</button>
   </div>
   <div class="scroll">
 
@@ -373,12 +373,16 @@
     <!-- CHAT -->
     <div class="panel" id="panel-chat">
       <div class="chat-wrap">
-        <div class="chat-header">
+        <div class="chat-header" style="padding-top:calc(env(safe-area-inset-top,0px) + 14px)">
+          <button onclick="switchTab('home')" style="background:none;border:none;cursor:pointer;padding:4px 8px 4px 0;color:var(--muted);display:flex;align-items:center;-webkit-tap-highlight-color:transparent;flex-shrink:0">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          </button>
           <div class="lara-avatar">L<div class="avatar-dot"></div></div>
           <div class="lara-info">
             <div class="lara-name">Lara — InDubai</div>
             <div class="lara-status">Online ora</div>
           </div>
+          <button onclick="openBookingModal()" style="background:var(--gold);border:none;cursor:pointer;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:700;color:#080e18;font-family:inherit;flex-shrink:0;-webkit-tap-highlight-color:transparent">Prenota</button>
         </div>
         <div class="chat-messages" id="chat-messages"></div>
         <div class="chat-prompts" id="chat-prompts">
@@ -505,10 +509,20 @@ function goToChat() { closeSrvModal(); switchTab('chat'); if(currentSrv) setTime
 // TABS
 const tabs=['home','calc','news','contacts','chat'];
 function switchTab(id) {
-  tabs.forEach(t=>{document.getElementById('panel-'+t).classList.toggle('active',t===id);document.getElementById('tab-'+t).classList.toggle('active',t===id);});
+  tabs.forEach(t=>{document.getElementById('panel-'+t).classList.toggle('active',t===id);document.getElementById('tab-'+t)?.classList.toggle('active',t===id);});
   if(id==='news'&&!newsLoaded)loadNews();
   if(id==='chat'&&chatHistory.length===0)initChat();
   if(id==='chat'){const d=document.getElementById('chat-tab-dot');if(d)d.style.display='none';}
+  // Chat fullscreen: nascondi tab-bar e header
+  const tabBar=document.querySelector('.tab-bar');
+  const hdr=document.querySelector('.hdr');
+  if(id==='chat'){
+    if(tabBar)tabBar.style.display='none';
+    if(hdr)hdr.style.display='none';
+  } else {
+    if(tabBar)tabBar.style.display='';
+    if(hdr)hdr.style.display='';
+  }
   trackActivity(id);
 }
 
@@ -570,71 +584,10 @@ function toggleNews(i){
 }
 
 // CHAT LARA
-const LARA_SYSTEM=`Sei Lara, consulente di InDubai.it — la principale consulenza italiana per imprenditori che vogliono aprire una società o trasferirsi a Dubai.
-
-PERSONALITÀ: Sei diretta, competente, calda. Non sei un bot. Rispondi come una persona reale: ascolti, capisci la situazione specifica, fai UNA domanda alla volta. MAI elenchi di domande consecutive. MAI "Ottimo!", "Perfetto!", "Certamente!".
-
-CHI È INDUBAI:
-- Fondata nel 2018 da Pellegrino Bozzella, avvocato e consulente fiscale internazionale
-- Sede: JLT, Dubai (Platinum Tower area)
-- Oltre 450 aziende costituite, 1.200+ visti rilasciati
-- Trustpilot 4.8/5
-- Contatti: info@indubai.it | wa.me/971501234567 | www.indubai.it
-
-SERVIZI E PREZZI:
-1. Società Free Zone (IFZA, DMCC, DSO, RAK ICC): da AED 12.000/anno — licenza + flexi-desk + 1 visto. Pronta in 5-7 giorni.
-2. Società Mainland DED: da AED 15.000/anno — 100% proprietà straniera, accesso mercato locale.
-3. Visto Residenza UAE: AED 3.500 — 2 anni (Free Zone) o 3 anni (Mainland). Emirates ID incluso. Familiari: AED 2.500 cad.
-4. Golden Visa 10 anni: AED 8.000 — investitori, professionisti qualificati, talenti.
-5. Apertura conto bancario corporate: AED 1.500 — Emirates NBD, RAK Bank, Mashreq, ADIB.
-6. Contabilità & Corporate Tax: da AED 500/mese — VAT 5%, Corporate Tax UAE.
-7. Licenza VARA crypto: variabile.
-8. Immobiliare tramite KEYPRIME: commissione 2%.
-
-FISCALITÀ UAE:
-- 0% tasse sul reddito personale
-- 0% Corporate Tax per Free Zone (regime QFZP) se reddito qualificato e non da mercato UAE locale
-- 9% Corporate Tax sopra AED 375.000 (~€93.000) per mainland
-- 5% VAT su molte categorie
-- 0% su dividendi, capital gain, successioni
-- ATTENZIONE: aprire una società UAE mentre si è residenti in Italia NON azzera le tasse italiane. Serve spostamento residenza fiscale + AIRE.
-
-PROCEDURA RESIDENZA FISCALE ITALIANA → UAE:
-1. Costituire la società UAE
-2. Ottenere visto + Emirates ID
-3. Iscriversi all'AIRE
-4. Radicamento effettivo a Dubai (183+ giorni/anno o centro interessi vitali)
-5. Chiudere/sospendere partita IVA italiana
-
-FREE ZONE PRINCIPALI:
-- IFZA: ottimo rapporto qualità/prezzo, consulenti e servizi
-- DMCC (JLT): la più grande e prestigiosa, trading e commodity
-- DSO: tech e startup
-- RAK ICC: offshore, costi minimi, nessun ufficio fisico
-
-GOLDEN VISA categorie:
-- Investitori immobiliari: AED 2M+
-- Imprenditori: fatturato AED 1M+ o startup approvata
-- Professionisti: medici, ingegneri, avvocati con esperienza documentata
-- Talenti: artisti, scienziati, atleti
-
-BANKING:
-- Emirates NBD: la più grande, ottima per corporate
-- RAK Bank: flessibile per nuove aziende
-- Mashreq: digitale-first, app eccellente
-- ADIB: banca islamica
-Alcune banche richiedono storia bancaria o fatturato dimostrabile. Noi curiamo il dossier KYC.
-
-PRENOTAZIONE: Quando l'utente vuole prenotare, parlare con un esperto, fissare una call, usa SEMPRE lo strumento "show_booking_modal". Non descrivere: apri direttamente il calendario.
-
-REGOLE: Risposte concise (20-40 parole) salvo dettagli tecnici richiesti. UNA domanda alla volta. Ricorda sempre il contesto della conversazione.`;
-
-const LARA_TOOLS=[{name:'show_booking_modal',description:'Apre il calendario prenotazione consulenza gratuita. Usalo quando l\'utente vuole prenotare, fissare una call, parlare con un consulente, vedere disponibilità.',input_schema:{type:'object',properties:{message:{type:'string',description:'Breve messaggio da mostrare prima di aprire il modale'}},required:['message']}}];
-
 let chatHistory=[],chatUserName='',chatUserEmail='',chatUserPhone='';
 
 function initChat() {
-  addMessage('lara','Ciao! Sono Lara di InDubai 🇮🇹\n\nTi aiuto a capire se Dubai fa al caso tuo — fiscalità, società, visti e molto altro. Cosa ti ha portato qui?');
+  addMessage('lara','Piacere, sono Lara di InDubai. Ti aiuto a capire se Dubai fa al caso tuo — società, fiscalità, visti. Cosa ti ha portato qui?');
   chatHistory=[];
 }
 function addMessage(role,text) {
@@ -743,6 +696,24 @@ let userId=null,chatLog=[];
 function trackActivity(section){if(!userId)return;sb.from('lead_activity').insert({lead_id:userId,section,visited_at:new Date().toISOString()});}
 function trackChatMessage(msg){chatLog.push({role:'user',text:msg,ts:new Date().toISOString()});if(!userId)return;sb.from('leads').update({last_chat:JSON.stringify(chatLog.slice(-20))}).eq('id',userId);}
 
+
+function openProfile() {
+  document.getElementById('profile-initials').textContent = document.getElementById('user-initials').textContent;
+  document.getElementById('profile-name').textContent = chatUserName || '—';
+  document.getElementById('profile-email').textContent = chatUserEmail || '—';
+  if(chatUserPhone){document.getElementById('profile-phone').textContent=chatUserPhone;document.getElementById('profile-phone-row').style.display='';}
+  document.getElementById('profile-overlay').style.display='block';
+  requestAnimationFrame(()=>{ document.getElementById('profile-drawer').style.transform='translateY(0)'; });
+}
+function closeProfile() {
+  document.getElementById('profile-drawer').style.transform='translateY(100%)';
+  setTimeout(()=>{ document.getElementById('profile-overlay').style.display='none'; },350);
+}
+async function doLogout() {
+  await sb.auth.signOut();
+  window.location.href='login.html';
+}
+
 // INIT
 async function init() {
   const {data:{session}}=await sb.auth.getSession();
@@ -764,5 +735,33 @@ async function init() {
 }
 init();
 </script>
+
+<!-- PROFILE DRAWER -->
+<div id="profile-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;backdrop-filter:blur(4px)" onclick="closeProfile()"></div>
+<div id="profile-drawer" style="position:fixed;bottom:0;left:0;right:0;background:#0d1627;border-radius:28px 28px 0 0;z-index:1001;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);padding-bottom:max(env(safe-area-inset-bottom,24px),24px)">
+  <div style="display:flex;justify-content:center;padding:12px"><div style="width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.15)"></div></div>
+  <div style="padding:0 24px 24px">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,.07)">
+      <div style="width:52px;height:52px;border-radius:50%;background:rgba(201,168,76,.15);border:1.5px solid rgba(201,168,76,.4);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#c9a84c" id="profile-initials">?</div>
+      <div>
+        <div id="profile-name" style="font-size:16px;font-weight:700;color:#f0ede8;margin-bottom:3px">—</div>
+        <div id="profile-email" style="font-size:13px;color:rgba(240,237,232,.45)">—</div>
+      </div>
+    </div>
+    <div id="profile-phone-row" style="display:none;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:4px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,232,.4);margin-bottom:4px">Telefono</div>
+      <div id="profile-phone" style="font-size:14px;color:#f0ede8"></div>
+    </div>
+    <div style="padding:13px 0;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:4px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,232,.4);margin-bottom:4px">Account</div>
+      <div style="font-size:13px;color:rgba(240,237,232,.45)">Registrato tramite InDubai Lead Portal</div>
+    </div>
+    <button onclick="doLogout()" style="width:100%;padding:15px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;font-size:15px;font-weight:700;color:#f0ede8;cursor:pointer;font-family:inherit;margin-top:16px;display:flex;align-items:center;justify-content:center;gap:10px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Esci dall'app
+    </button>
+  </div>
+</div>
+
 </body>
 </html>
