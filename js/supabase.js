@@ -31,6 +31,7 @@ async function sbFetch(path, options = {}, _retry = true) {
   const token = getSessionToken() || SUPABASE_ANON_KEY;
   const res = await fetch(`${SUPABASE_URL}${path}`, {
     ...options,
+    cache: 'no-store',
     headers: {
       'apikey': SUPABASE_ANON_KEY,
       'Authorization': `Bearer ${token}`,
