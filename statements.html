@@ -314,26 +314,16 @@ document.getElementById('stmt-picker').querySelectorAll('.status-opt').forEach(b
       not_applicable: btn.dataset.na === 'true',
     };
     try {
-      const result = await sb.db.upsertBankStatement(clientId, currentYear, month, newState);
-      // Verify: re-read from DB to confirm the save
-      const verify = await sb.db.select('bank_statements', {
-        filter: `client_id=eq.${clientId}&year=eq.${currentYear}&month=eq.${month}`,
-        columns: 'received,registered,not_applicable'
-      });
-      const saved = verify?.[0];
-      if (!saved) {
-        ui.showToast('Errore: riga non trovata nel DB dopo il salvataggio', 'error');
-        return;
-      }
+      await sb.db.upsertBankStatement(clientId, currentYear, month, newState);
       const key = `${clientId}_${month}`;
-      statements[key] = {...(statements[key]||{}), ...saved, client_id:clientId, month};
+      statements[key] = {...(statements[key]||{}), ...newState, client_id:clientId, month};
       let cls='month-fail', sym='✕';
-      if (saved.not_applicable)                      { cls='month-null'; sym='—'; }
-      else if (saved.received && saved.registered)   { cls='month-ok';   sym='✓'; }
-      else if (saved.received)                       { cls='month-warn'; sym='○'; }
+      if (newState.not_applicable)                       { cls='month-null'; sym='—'; }
+      else if (newState.received && newState.registered) { cls='month-ok';   sym='✓'; }
+      else if (newState.received)                        { cls='month-warn'; sym='○'; }
       tdEl.innerHTML = `<span class="month-cell ${cls}">${sym}</span>`;
-      ui.showToast('Salvato ✓', 'success');
-      await sb.db.log('bank_statement_updated', clientId, {month,year:currentYear,...saved});
+      ui.showToast('Salvato', 'success');
+      await sb.db.log('bank_statement_updated', clientId, {month,year:currentYear,...newState});
     } catch(e) {
       console.error('upsertBankStatement error:', e);
       ui.showToast('Errore: ' + e.message, 'error');
