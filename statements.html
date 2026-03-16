@@ -151,7 +151,8 @@ async function loadData() {
     });
     const stmts = await sb.db.select('bank_statements', {
       filter: `year=eq.${currentYear}`,
-      columns:'client_id,month,received,registered,not_applicable'
+      columns:'client_id,month,received,registered,not_applicable',
+      limit: 2000
     });
     statements = {};
     (stmts||[]).forEach(s => { statements[`${s.client_id}_${s.month}`] = s; });
