@@ -27,7 +27,7 @@ const SUPABASE_ANON_KEY = window.ENV_SUPABASE_ANON_KEY;
 
 // ── Low-level fetch wrapper ──────────────────────────────────
 
-async function sbFetch(path, options = {}) {
+async function sbFetch(path, options = {}, _retry = true) {
   const token = getSessionToken() || SUPABASE_ANON_KEY;
   const res = await fetch(`${SUPABASE_URL}${path}`, {
     ...options,
@@ -40,15 +40,37 @@ async function sbFetch(path, options = {}) {
     },
   });
 
+  // Auto-refresh on 401 (expired JWT)
+  if (res.status === 401 && _retry) {
+    const refreshed = await tryRefreshSession();
+    if (refreshed) return sbFetch(path, options, false);
+  }
+
   let data = null;
   const text = await res.text();
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
 
   if (!res.ok) {
-    console.error('Supabase error:', data);
+    console.error('Supabase error:', res.status, data);
     throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
   }
   return data;
+}
+
+async function tryRefreshSession() {
+  try {
+    const session = getSession();
+    if (!session?.refresh_token) return false;
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: session.refresh_token }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    setSession({ ...data, profile: session.profile });
+    return true;
+  } catch { return false; }
 }
 
 // ── Auth ─────────────────────────────────────────────────────
