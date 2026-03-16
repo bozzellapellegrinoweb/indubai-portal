@@ -12,6 +12,7 @@
     .month-cell-td:hover { background:var(--surface2); }
     .client-col { min-width:200px; }
     .bank-col   { min-width:110px; font-size:11px; color:var(--text-muted); }
+    .status-opt:hover { background:var(--surface2); }
 
     /* Filter bar */
     .filter-bar {
@@ -120,6 +121,15 @@
   </div>
 </div>
 
+<!-- Statement picker -->
+<div id="stmt-picker" style="display:none;position:fixed;z-index:300;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:8px;min-width:170px">
+  <div style="font-size:11px;font-weight:600;color:var(--text-muted);padding:4px 8px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Cambia stato</div>
+  <button class="status-opt" data-received="false" data-registered="false" data-na="false" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px">✕ Mancante</button>
+  <button class="status-opt" data-received="true"  data-registered="false" data-na="false" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px">○ Ricevuto</button>
+  <button class="status-opt" data-received="true"  data-registered="true"  data-na="false" style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px">✓ Ricevuto + Registrato</button>
+  <button class="status-opt" data-received="false" data-registered="false" data-na="true"  style="display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;cursor:pointer;border-radius:6px;font-size:13px">— N/A</button>
+</div>
+
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
 <script>
@@ -208,7 +218,7 @@ function renderGrid() {
       else if (s?.received && s?.registered) { cls='month-ok';   sym='✓'; }
       else if (s?.received)             { cls='month-warn'; sym='○'; }
       const title = s?.not_applicable ? 'N/A — nessun conto bancario' : s?.received ? (s?.registered?'Ricevuto e registrato':'Ricevuto, non registrato') : 'Non ricevuto';
-      return `<td class="month-cell-td" onclick="toggleStatement('${c.id}',${m},this)" title="${title}">
+      return `<td class="month-cell-td" onclick="openPicker('${c.id}',${m},this)" title="${title}">
         <span class="month-cell ${cls}">${sym}</span></td>`;
     }).join('');
 
@@ -280,27 +290,51 @@ function goPage(p) {
   document.querySelector('.card').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-// ── toggle ────────────────────────────────────────────────────
-async function toggleStatement(clientId, month, tdEl) {
-  const key = `${clientId}_${month}`;
-  const cur = statements[key];
-  let newState;
-  if (cur?.not_applicable)   newState = {received:false, registered:false, not_applicable:false};
-  else if (!cur?.received)   newState = {received:true,  registered:false, not_applicable:false};
-  else if (!cur?.registered) newState = {received:true,  registered:true,  not_applicable:false};
-  else                       newState = {received:false, registered:false, not_applicable:true};
+// ── picker ────────────────────────────────────────────────────
+let activePicker = null;
 
-  try {
-    await sb.db.upsertBankStatement(clientId, currentYear, month, newState);
-    statements[key] = {...cur, ...newState, client_id:clientId, month};
-    let cls='month-fail',sym='✕';
-    if (newState.not_applicable)                  {cls='month-null';sym='—';}
-    else if (newState.received && newState.registered) {cls='month-ok';  sym='✓';}
-    else if (newState.received)                   {cls='month-warn';sym='○';}
-    tdEl.innerHTML = `<span class="month-cell ${cls}">${sym}</span>`;
-    await sb.db.log('bank_statement_updated', clientId, {month,year:currentYear,...newState});
-  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+function openPicker(clientId, month, tdEl) {
+  activePicker = {clientId, month, tdEl};
+  const picker = document.getElementById('stmt-picker');
+  const rect   = tdEl.getBoundingClientRect();
+  let left = rect.left + window.scrollX;
+  if (left + 180 > window.innerWidth) left = window.innerWidth - 185;
+  picker.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+  picker.style.left = left + 'px';
+  picker.style.display = 'block';
 }
+
+document.getElementById('stmt-picker').querySelectorAll('.status-opt').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const {clientId, month, tdEl} = activePicker;
+    document.getElementById('stmt-picker').style.display = 'none';
+    const newState = {
+      received:       btn.dataset.received === 'true',
+      registered:     btn.dataset.registered === 'true',
+      not_applicable: btn.dataset.na === 'true',
+    };
+    try {
+      await sb.db.upsertBankStatement(clientId, currentYear, month, newState);
+      const key = `${clientId}_${month}`;
+      statements[key] = {...(statements[key]||{}), ...newState, client_id:clientId, month};
+      let cls='month-fail', sym='✕';
+      if (newState.not_applicable)                       { cls='month-null'; sym='—'; }
+      else if (newState.received && newState.registered) { cls='month-ok';   sym='✓'; }
+      else if (newState.received)                        { cls='month-warn'; sym='○'; }
+      tdEl.innerHTML = `<span class="month-cell ${cls}">${sym}</span>`;
+      ui.showToast('Salvato', 'success');
+      await sb.db.log('bank_statement_updated', clientId, {month,year:currentYear,...newState});
+    } catch(e) {
+      console.error('upsertBankStatement error:', e);
+      ui.showToast('Errore: ' + e.message, 'error');
+    }
+  });
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#stmt-picker') && !e.target.closest('.month-cell-td'))
+    document.getElementById('stmt-picker').style.display = 'none';
+});
 
 // ── events ────────────────────────────────────────────────────
 document.getElementById('search').addEventListener('input', () => { currentPage=1; renderGrid(); });
