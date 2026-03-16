@@ -241,21 +241,25 @@ const db = {
   },
 
   async upsertBankStatement(clientId, year, month, data) {
-    const updated = await this.update('bank_statements',
-      `client_id=eq.${clientId}&year=eq.${year}&month=eq.${month}`, data);
-    if (!updated || updated.length === 0) {
-      return this.insert('bank_statements', { client_id: clientId, year, month, ...data });
-    }
-    return updated;
+    const rows = await sbFetch(
+      `/rest/v1/bank_statements?client_id=eq.${clientId}&year=eq.${year}&month=eq.${month}`,
+      { method: 'PATCH', prefer: 'return=representation', body: JSON.stringify(data) }
+    );
+    if (rows && rows.length > 0) return rows;
+    return sbFetch('/rest/v1/bank_statements',
+      { method: 'POST', prefer: 'return=representation', body: JSON.stringify([{ client_id: clientId, year, month, ...data }]) }
+    );
   },
 
   async upsertSubscriptionPayment(clientId, year, month, data) {
-    const updated = await this.update('subscription_payments',
-      `client_id=eq.${clientId}&year=eq.${year}&month=eq.${month}`, data);
-    if (!updated || updated.length === 0) {
-      return this.insert('subscription_payments', { client_id: clientId, year, month, ...data });
-    }
-    return updated;
+    const rows = await sbFetch(
+      `/rest/v1/subscription_payments?client_id=eq.${clientId}&year=eq.${year}&month=eq.${month}`,
+      { method: 'PATCH', prefer: 'return=representation', body: JSON.stringify(data) }
+    );
+    if (rows && rows.length > 0) return rows;
+    return sbFetch('/rest/v1/subscription_payments',
+      { method: 'POST', prefer: 'return=representation', body: JSON.stringify([{ client_id: clientId, year, month, ...data }]) }
+    );
   },
 
   async log(action, clientId = null, details = null) {
