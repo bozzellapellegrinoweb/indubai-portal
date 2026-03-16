@@ -156,13 +156,13 @@ async function loadData() {
       order:  'company_name.asc',
       columns:'id,company_name,contact_name,bank_accounts'
     });
-    const rows = await sb.db.select('bank_statements', {
-      filter:  `year=eq.${currentYear}`,
-      columns: 'client_id,month,received,registered,not_applicable',
-      limit:   2000
-    });
+    // PostgREST server max-rows=1000: fetch in two pages to get all rows (87 clients × 12 months = 1044)
+    const [page1, page2] = await Promise.all([
+      sb.db.select('bank_statements', { filter: `year=eq.${currentYear}&limit=1000&offset=0`,    columns: 'client_id,month,received,registered,not_applicable' }),
+      sb.db.select('bank_statements', { filter: `year=eq.${currentYear}&limit=1000&offset=1000`, columns: 'client_id,month,received,registered,not_applicable' }),
+    ]);
     statements = {};
-    (rows||[]).forEach(r => { statements[`${r.client_id}_${r.month}`] = r; });
+    [...(page1||[]), ...(page2||[])].forEach(r => { statements[`${r.client_id}_${r.month}`] = r; });
     renderSummary();
     currentPage = 1;
     renderGrid();
