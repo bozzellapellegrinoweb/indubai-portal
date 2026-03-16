@@ -154,8 +154,7 @@ const db = {
     headers.set('apikey', SUPABASE_ANON_KEY);
     headers.set('Authorization', `Bearer ${token}`);
     headers.set('Content-Type', 'application/json');
-    headers.append('Prefer', 'return=representation');
-    headers.append('Prefer', 'resolution=merge-duplicates');
+    headers.set('Prefer', 'return=representation, resolution=merge-duplicates');
     const res = await fetch(`${SUPABASE_URL}${path}`, {
       method: 'POST',
       headers,
@@ -220,15 +219,21 @@ const db = {
   },
 
   async upsertBankStatement(clientId, year, month, data) {
-    return this.upsert('bank_statements', {
-      client_id: clientId, year, month, ...data
-    }, 'client_id,year,month');
+    const updated = await this.update('bank_statements',
+      `client_id=eq.${clientId}&year=eq.${year}&month=eq.${month}`, data);
+    if (!updated || updated.length === 0) {
+      return this.insert('bank_statements', { client_id: clientId, year, month, ...data });
+    }
+    return updated;
   },
 
   async upsertSubscriptionPayment(clientId, year, month, data) {
-    return this.upsert('subscription_payments', {
-      client_id: clientId, year, month, ...data
-    }, 'client_id,year,month');
+    const updated = await this.update('subscription_payments',
+      `client_id=eq.${clientId}&year=eq.${year}&month=eq.${month}`, data);
+    if (!updated || updated.length === 0) {
+      return this.insert('subscription_payments', { client_id: clientId, year, month, ...data });
+    }
+    return updated;
   },
 
   async log(action, clientId = null, details = null) {

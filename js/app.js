@@ -23,7 +23,7 @@
     admin:      null, // null = all pages
     senior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search','news'],
     junior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search','news'],
-    mini_admin: ['tasks','clients','documents','search','news','notifiche'],
+    mini_admin: ['tasks','clients','documents','search','news','notifiche','payments'],
   };
   const allowed = ROLE_PAGES[role]; // null = no restriction
 
