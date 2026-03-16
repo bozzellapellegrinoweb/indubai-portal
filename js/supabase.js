@@ -154,8 +154,7 @@ const db = {
     headers.set('apikey', SUPABASE_ANON_KEY);
     headers.set('Authorization', `Bearer ${token}`);
     headers.set('Content-Type', 'application/json');
-    headers.append('Prefer', 'return=representation');
-    headers.append('Prefer', 'resolution=merge-duplicates');
+    headers.set('Prefer', 'return=representation, resolution=merge-duplicates');
     const res = await fetch(`${SUPABASE_URL}${path}`, {
       method: 'POST',
       headers,
