@@ -139,6 +139,7 @@
 
         <!-- Col 2: Task list -->
         <div style="display:flex;flex-direction:column;gap:8px">
+          <input type="text" id="task-search" class="form-control" placeholder="🔍 Cerca per titolo, cliente, assegnatario..." oninput="renderList()" style="border-radius:10px;font-size:13px">
           <div id="t-list"></div>
         </div>
 
@@ -300,19 +301,36 @@ async function loadTasks() {
 
 function updateCounts() {
   const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
-  set('cnt-all', allTasks.length);
-  set('cnt-mine', allTasks.filter(t => t.assigned_to === myId).length);
-  set('cnt-open', allTasks.filter(t => t.status === 'open').length);
+  const active = allTasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled');
+  set('cnt-all',       active.length);
+  set('cnt-mine',      active.filter(t => t.assigned_to === myId).length);
+  set('cnt-open',      allTasks.filter(t => t.status === 'open').length);
   set('cnt-in_progress', allTasks.filter(t => t.status === 'in_progress').length);
   set('cnt-completed', allTasks.filter(t => t.status === 'completed').length);
-  document.getElementById('task-count').textContent = allTasks.length + ' task totali';
+  document.getElementById('task-count').textContent = active.length + ' task attive';
 }
 
 function filtered() {
-  if (currentFilter === 'all') return allTasks;
-  if (currentFilter === 'mine') return allTasks.filter(t => t.assigned_to === myId);
-  if (['open','in_progress','completed','cancelled'].includes(currentFilter)) return allTasks.filter(t => t.status === currentFilter);
-  return allTasks.filter(t => t.category === currentFilter);
+  const q = (document.getElementById('task-search')?.value || '').toLowerCase().trim();
+  // Escludi completate/annullate da tutti i filtri tranne "completed"/"cancelled"
+  const showCompleted = currentFilter === 'completed' || currentFilter === 'cancelled';
+  let tasks = showCompleted
+    ? allTasks.filter(t => t.status === currentFilter)
+    : allTasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled');
+
+  if (currentFilter === 'mine') tasks = tasks.filter(t => t.assigned_to === myId);
+  else if (currentFilter === 'open')        tasks = tasks.filter(t => t.status === 'open');
+  else if (currentFilter === 'in_progress') tasks = tasks.filter(t => t.status === 'in_progress');
+  else if (!['all','mine','completed','cancelled'].includes(currentFilter))
+    tasks = tasks.filter(t => t.category === currentFilter);
+
+  // Ricerca testuale
+  if (q) tasks = tasks.filter(t =>
+    t.title.toLowerCase().includes(q) ||
+    (t.clients?.company_name || '').toLowerCase().includes(q) ||
+    (t.assigned_profile?.full_name || '').toLowerCase().includes(q)
+  );
+  return tasks;
 }
 
 function setFilter(f, el) {
@@ -455,6 +473,11 @@ async function updateStatus(taskId, newStatus) {
     const task = allTasks.find(t => t.id === taskId);
     if (task) { task.status = newStatus; if(newStatus==='completed') task.completed_at = updates.completed_at; }
     updateCounts(); renderList();
+    // Se la task è completata/annullata e il filtro attivo non la mostra, chiudi il dettaglio
+    if ((newStatus === 'completed' || newStatus === 'cancelled') &&
+        currentFilter !== newStatus) {
+      closeDetail();
+    }
     ui.showToast('Stato aggiornato ✓', 'success');
     // Push al cliente se la task è completata e ha un client_id
     if (newStatus === 'completed' && task?.client_id) {
