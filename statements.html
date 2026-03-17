@@ -369,6 +369,7 @@ document.getElementById('btn-reset').addEventListener('click',()=>{
 });
 
 loadData();
+window.addEventListener('pageshow', (e) => { if (e.persisted) loadData(); });
 </script>
 </body>
 </html>

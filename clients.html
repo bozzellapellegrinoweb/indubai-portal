@@ -290,6 +290,9 @@ if (new URLSearchParams(location.search).get('action') === 'new') {
 }
 
 loadClients();
+
+// Ricarica se la pagina viene ripristinata dal bfcache (tasto ← del browser)
+window.addEventListener('pageshow', (e) => { if (e.persisted) loadClients(); });
 </script>
 </body>
 </html>
