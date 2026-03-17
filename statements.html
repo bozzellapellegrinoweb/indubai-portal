@@ -310,12 +310,17 @@ function goPage(p) {
 function openPicker(clientId, month, tdEl) {
   activePicker = {clientId, month, tdEl};
   const picker = document.getElementById('stmt-picker');
-  const rect   = tdEl.getBoundingClientRect();
-  let left = rect.left + window.scrollX;
-  if (left + 210 > window.innerWidth) left = window.innerWidth - 215;
-  picker.style.top  = (rect.bottom + window.scrollY + 4)+'px';
-  picker.style.left = left+'px';
   picker.style.display = 'block';
+  const rect = tdEl.getBoundingClientRect();
+  const ph   = picker.offsetHeight;
+  const pw   = picker.offsetWidth;
+  // position:fixed → coordinate relative al viewport, NON aggiungere scrollY/scrollX
+  let top  = rect.bottom + 4;
+  let left = rect.left;
+  if (top  + ph > window.innerHeight - 8) top  = rect.top - ph - 4;
+  if (left + pw > window.innerWidth  - 8) left = window.innerWidth - pw - 8;
+  picker.style.top  = top  + 'px';
+  picker.style.left = left + 'px';
 }
 
 document.getElementById('stmt-picker').querySelectorAll('.status-opt').forEach(btn => {
