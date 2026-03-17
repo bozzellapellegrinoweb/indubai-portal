@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bilanci — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <style>
+    /* KPI cards */
+    .kpi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+    .kpi-card { background:white; border:1.5px solid var(--border); border-radius:14px; padding:18px 20px; position:relative; overflow:hidden; }
+    .kpi-card.success { border-color:#86efac; background:#f0fdf4; }
+    .kpi-card.danger  { border-color:#fca5a5; background:#fef2f2; }
+    .kpi-card.warn    { border-color:#fcd34d; background:#fffbeb; }
+    .kpi-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); margin-bottom:6px; }
+    .kpi-value { font-size:32px; font-weight:900; color:var(--text-primary); line-height:1; }
+    .kpi-sub   { font-size:12px; color:var(--text-muted); margin-top:4px; }
+    .kpi-icon  { position:absolute; right:16px; top:16px; font-size:28px; opacity:.15; }
+
+    /* Filters */
+    .filter-row { display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+    .filter-chip { padding:6px 14px; border-radius:20px; border:1.5px solid var(--border); background:white; font-size:12px; font-weight:600; cursor:pointer; transition:all .12s; color:var(--text-muted); }
+    .filter-chip.on { background:var(--primary); color:white; border-color:var(--primary); }
+    .filter-chip.chip-ok   { }
+    .filter-chip.chip-ok.on   { background:#16a34a; border-color:#16a34a; }
+    .filter-chip.chip-warn.on { background:#d97706; border-color:#d97706; }
+    .filter-chip.chip-red.on  { background:#dc2626; border-color:#dc2626; }
+
+    /* Table */
+    .tbl-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    thead th { background:var(--surface2); padding:10px 12px; text-align:left; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); white-space:nowrap; position:sticky; top:0; z-index:2; }
+    tbody tr { border-bottom:1px solid var(--border); transition:background .1s; }
+    tbody tr:hover { background:var(--surface2); }
+    tbody td { padding:10px 12px; vertical-align:middle; }
+    .client-name { font-weight:700; color:var(--text-primary); font-size:13px; }
+    .client-ref  { font-size:11px; color:var(--text-muted); }
+
+    /* Bool cells */
+    .bool-cell { text-align:center; cursor:pointer; user-select:none; }
+    .bool-cell span { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; font-size:14px; transition:all .15s; }
+    .bool-yes { background:#dcfce7; color:#16a34a; }
+    .bool-no  { background:#fee2e2; color:#dc2626; }
+
+    /* Editable cells */
+    .edit-cell { cursor:pointer; min-width:90px; }
+    .edit-cell:hover .edit-val { text-decoration:underline; text-decoration-style:dotted; color:var(--primary); }
+    .edit-val { display:inline-block; }
+    .edit-inp { padding:4px 7px; border:1.5px solid var(--primary); border-radius:6px; font-size:13px; font-family:inherit; outline:none; width:110px; }
+
+    /* Fatto da picker */
+    .fatto-cell { cursor:pointer; }
+    .fatto-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+    .fb-noi      { background:#dbeafe; color:#1d4ed8; }
+    .fb-vat      { background:#fef3c7; color:#92400e; }
+    .fb-affinitas{ background:#f3e8ff; color:#7c3aed; }
+    .fb-none     { background:#f3f4f6; color:#9ca3af; }
+
+    /* Picker dropdown */
+    #fatto-picker { display:none; position:fixed; z-index:300; background:white; border:1.5px solid var(--border); border-radius:10px; box-shadow:var(--shadow-lg); padding:6px; min-width:140px; }
+    .fp-opt { display:block; width:100%; text-align:left; padding:7px 10px; border:none; background:none; cursor:pointer; border-radius:6px; font-size:13px; }
+    .fp-opt:hover { background:var(--surface2); }
+
+    @media(max-width:768px) {
+      .kpi-grid { grid-template-columns:1fr 1fr; }
+    }
+  </style>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <link rel="manifest" href="/manifest-admin.json">
+  <meta name="theme-color" content="#0f1628">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="InDubai">
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Bilanci</div>
+        <div class="topbar-subtitle">Gestione bilanci annuali clienti</div>
+      </div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- KPI cards -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card success"><div class="kpi-label">Completati e pagati</div><div class="kpi-value" id="kpi-done">—</div><div class="kpi-sub">Bilancio ✓ + Pagato ✓</div><div class="kpi-icon">✓</div></div>
+        <div class="kpi-card danger"><div class="kpi-label">Da fare</div><div class="kpi-value" id="kpi-todo">—</div><div class="kpi-sub">Bilancio non ancora fatto</div><div class="kpi-icon">✕</div></div>
+        <div class="kpi-card warn"><div class="kpi-label">Da incassare</div><div class="kpi-value" id="kpi-unpaid">—</div><div class="kpi-sub">Bilancio fatto, non pagato</div><div class="kpi-icon">€</div></div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="card" style="padding:14px 20px;margin-bottom:16px">
+        <div class="filter-row">
+          <select id="filter-year" class="form-control" style="width:auto">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+          </select>
+          <input type="text" id="search" class="form-control" placeholder="🔍 Cerca cliente..." style="max-width:260px">
+          <span style="font-size:12px;color:var(--text-muted);margin-left:auto" id="count-label">—</span>
+          <div class="filter-chip on"  data-f="all"    onclick="setFilter('all',this)">Tutti</div>
+          <div class="filter-chip chip-ok"  data-f="done"   onclick="setFilter('done',this)">✓ Completati</div>
+          <div class="filter-chip chip-warn" data-f="unpaid" onclick="setFilter('unpaid',this)">€ Da incassare</div>
+          <div class="filter-chip chip-red"  data-f="todo"   onclick="setFilter('todo',this)">✕ Da fare</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card" style="padding:0">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:260px">Cliente</th>
+                <th style="width:90px;text-align:center">Bilancio</th>
+                <th style="width:130px">Data bilancio</th>
+                <th style="width:130px">Quotazione</th>
+                <th style="width:90px;text-align:center">Pagato</th>
+                <th style="width:120px">Fatto da</th>
+                <th style="width:200px">Note</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-body">
+              <tr><td colspan="7" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Fatto da picker -->
+<div id="fatto-picker">
+  <button class="fp-opt" data-val="">— Nessuno</button>
+  <button class="fp-opt" data-val="noi">🔵 Noi</button>
+  <button class="fp-opt" data-val="vat">🟡 VAT Consultant</button>
+  <button class="fp-opt" data-val="affinitas">🟣 Affinitas</button>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/notify.js"></script>
+<script>
+let allClients = [], bilanci = {}, currentYear = 2026, statusFilter = 'all';
+
+// ── helpers ────────────────────────────────────────────────────
+function bRow(clientId) { return bilanci[clientId] || {}; }
+
+function rowStatus(b) {
+  if (!b || !b.bilancio) return 'todo';
+  if (b.bilancio && !b.pagato) return 'unpaid';
+  return 'done';
+}
+
+function fattoBadge(val) {
+  if (!val) return '<span class="fatto-badge fb-none">—</span>';
+  const map = { noi:'🔵 Noi', vat:'🟡 VAT', affinitas:'🟣 Affinitas' };
+  const cls  = { noi:'fb-noi', vat:'fb-vat', affinitas:'fb-affinitas' };
+  return `<span class="fatto-badge ${cls[val]||'fb-none'}">${map[val]||val}</span>`;
+}
+
+// ── load ───────────────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('tbl-body').innerHTML =
+    '<tr><td colspan="7" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>';
+  try {
+    [allClients] = await Promise.all([
+      sb.db.select('clients', {
+        filter: 'is_active=eq.true&in_bilancio=eq.true',
+        columns: 'id,company_name,contact_name',
+        order: 'company_name.asc'
+      })
+    ]);
+    const rows = await sb.db.select('bilanci', {
+      filter: `year=eq.${currentYear}`,
+      columns: 'client_id,bilancio,data_bilancio,quotazione,pagato,fatto_da,notes'
+    }) || [];
+    bilanci = {};
+    rows.forEach(r => { bilanci[r.client_id] = r; });
+    renderKPI();
+    renderTable();
+  } catch(e) {
+    document.getElementById('tbl-body').innerHTML =
+      `<tr><td colspan="7"><div class="alert alert-danger" style="margin:16px">${e.message}</div></td></tr>`;
+  }
+}
+
+// ── KPI ────────────────────────────────────────────────────────
+function renderKPI() {
+  let done=0, todo=0, unpaid=0;
+  allClients.forEach(c => {
+    const s = rowStatus(bRow(c.id));
+    if (s==='done')   done++;
+    else if (s==='todo')   todo++;
+    else if (s==='unpaid') unpaid++;
+  });
+  document.getElementById('kpi-done').textContent   = done;
+  document.getElementById('kpi-todo').textContent   = todo;
+  document.getElementById('kpi-unpaid').textContent = unpaid;
+}
+
+// ── filters ────────────────────────────────────────────────────
+function setFilter(f, el) {
+  statusFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  renderTable();
+}
+
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase();
+  return allClients.filter(c => {
+    if (q && !(c.company_name||'').toLowerCase().includes(q)) return false;
+    const s = rowStatus(bRow(c.id));
+    if (statusFilter !== 'all' && s !== statusFilter) return false;
+    return true;
+  });
+}
+
+// ── render ─────────────────────────────────────────────────────
+function renderTable() {
+  const list = getFiltered();
+  document.getElementById('count-label').textContent = `${list.length} / ${allClients.length} clienti`;
+  if (!list.length) {
+    document.getElementById('tbl-body').innerHTML =
+      '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">Nessun cliente trovato</td></tr>';
+    return;
+  }
+  document.getElementById('tbl-body').innerHTML = list.map(c => {
+    const b = bRow(c.id);
+    const bilYes = b.bilancio;
+    const pagYes = b.pagato;
+    const dataVal = b.data_bilancio || '';
+    const quotaVal = b.quotazione != null ? b.quotazione : '';
+    return `<tr data-cid="${c.id}">
+      <td>
+        <div class="client-name">${ui.escapeHtml(c.company_name)}</div>
+        ${c.contact_name ? `<div class="client-ref">${ui.escapeHtml(c.contact_name)}</div>` : ''}
+      </td>
+      <td class="bool-cell" onclick="toggleBool('${c.id}','bilancio',${bilYes?'false':'true'})" title="Clicca per cambiare">
+        <span class="${bilYes?'bool-yes':'bool-no'}">${bilYes?'✓':'✕'}</span>
+      </td>
+      <td class="edit-cell" onclick="editCell(this,'${c.id}','data_bilancio','date')" data-field="data_bilancio" data-cid="${c.id}">
+        <span class="edit-val">${dataVal ? ui.formatDate(dataVal) : '<span style="color:var(--text-muted)">—</span>'}</span>
+      </td>
+      <td class="edit-cell" onclick="editCell(this,'${c.id}','quotazione','number')" data-field="quotazione" data-cid="${c.id}">
+        <span class="edit-val">${quotaVal !== '' ? 'AED '+Number(quotaVal).toLocaleString() : '<span style="color:var(--text-muted)">—</span>'}</span>
+      </td>
+      <td class="bool-cell ${bilYes?'':'disabled-cell'}" onclick="${bilYes?`toggleBool('${c.id}','pagato',${pagYes?'false':'true'})`:'void(0)'}" title="${bilYes?'Clicca per cambiare':'Prima spunta Bilancio'}">
+        <span class="${pagYes?'bool-yes':'bool-no'}" style="${!bilYes?'opacity:.3':''}">${pagYes?'✓':'✕'}</span>
+      </td>
+      <td class="fatto-cell" onclick="openFattoPicker('${c.id}',this)" title="Clicca per cambiare">
+        ${fattoBadge(b.fatto_da)}
+      </td>
+      <td class="edit-cell" onclick="editCell(this,'${c.id}','notes','text')" data-field="notes" data-cid="${c.id}">
+        <span class="edit-val" style="color:var(--text-muted);font-size:12px">${b.notes ? ui.escapeHtml(b.notes) : '<span style="color:#d1d5db">aggiungi nota...</span>'}</span>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── toggle bool ────────────────────────────────────────────────
+async function toggleBool(clientId, field, newVal) {
+  const parsed = newVal === 'true' || newVal === true;
+  try {
+    await saveField(clientId, { [field]: parsed });
+    if (!bilanci[clientId]) bilanci[clientId] = { client_id: clientId };
+    bilanci[clientId][field] = parsed;
+    renderKPI();
+    renderTable();
+  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+}
+
+// ── inline edit ────────────────────────────────────────────────
+function editCell(td, clientId, field, type) {
+  const valSpan = td.querySelector('.edit-val');
+  const b = bRow(clientId);
+  const current = b[field] != null ? b[field] : '';
+  const inp = document.createElement('input');
+  inp.type = type === 'number' ? 'number' : type === 'date' ? 'date' : 'text';
+  inp.className = 'edit-inp';
+  inp.value = type === 'date' ? (current||'') : (type === 'number' ? (current||'') : (current||''));
+  if (type === 'number') { inp.step = '50'; inp.min = '0'; }
+  if (type === 'text')   { inp.style.width = '160px'; }
+  td.innerHTML = '';
+  td.appendChild(inp);
+  inp.focus();
+
+  async function save() {
+    const raw = inp.value.trim();
+    let val = null;
+    if (raw) {
+      val = type === 'number' ? parseFloat(raw) : raw;
+    }
+    try {
+      await saveField(clientId, { [field]: val });
+      if (!bilanci[clientId]) bilanci[clientId] = { client_id: clientId };
+      bilanci[clientId][field] = val;
+      renderTable();
+    } catch(e) {
+      ui.showToast('Errore: '+e.message,'error');
+      renderTable();
+    }
+  }
+
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') { renderTable(); }
+  });
+}
+
+// ── fatto da picker ────────────────────────────────────────────
+let activeFatto = null;
+function openFattoPicker(clientId, el) {
+  activeFatto = clientId;
+  const picker = document.getElementById('fatto-picker');
+  picker.style.display = 'block';
+  const rect = el.getBoundingClientRect();
+  const ph = picker.offsetHeight, pw = picker.offsetWidth;
+  let top = rect.bottom + 4, left = rect.left;
+  if (top + ph > window.innerHeight - 8) top = rect.top - ph - 4;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  picker.style.top = top + 'px';
+  picker.style.left = left + 'px';
+}
+
+document.getElementById('fatto-picker').querySelectorAll('.fp-opt').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    if (!activeFatto) return;
+    document.getElementById('fatto-picker').style.display = 'none';
+    const val = btn.dataset.val || null;
+    try {
+      await saveField(activeFatto, { fatto_da: val });
+      if (!bilanci[activeFatto]) bilanci[activeFatto] = { client_id: activeFatto };
+      bilanci[activeFatto].fatto_da = val;
+      renderTable();
+    } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+  });
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#fatto-picker') && !e.target.closest('.fatto-cell'))
+    document.getElementById('fatto-picker').style.display = 'none';
+});
+
+// ── save to DB (update se esiste, insert altrimenti) ──────────
+async function saveField(clientId, data) {
+  if (bilanci[clientId]) {
+    await sb.db.update('bilanci', `client_id=eq.${clientId}&year=eq.${currentYear}`, data);
+  } else {
+    await sb.db.insert('bilanci', { client_id: clientId, year: currentYear, ...data });
+    bilanci[clientId] = { client_id: clientId, year: currentYear };
+  }
+  ui.showToast('Salvato ✓', 'success');
+}
+
+// ── events ─────────────────────────────────────────────────────
+document.getElementById('search').addEventListener('input', () => renderTable());
+document.getElementById('filter-year').addEventListener('change', e => {
+  currentYear = parseInt(e.target.value); loadData();
+});
+
+async function init() {
+  await sb.requireAuth();
+  await loadData();
+}
+
+init();
+window.addEventListener('pageshow', e => { if (e.persisted) loadData(); });
+</script>
+</body>
+</html>

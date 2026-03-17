@@ -21,8 +21,8 @@
   // Pages allowed per role
   const ROLE_PAGES = {
     admin:      null, // null = all pages
-    senior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search','news'],
-    junior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','vat','corp-tax','affinitas','documents','search','news'],
+    senior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','bilanci','vat','corp-tax','affinitas','documents','search','news'],
+    junior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','bilanci','vat','corp-tax','affinitas','documents','search','news'],
     mini_admin: ['tasks','clients','documents','search','news','notifiche','payments'],
   };
   const allowed = ROLE_PAGES[role]; // null = no restriction
@@ -38,6 +38,7 @@
     { id: 'onboarding', icon: '✦', label: 'Onboarding',     href: '/onboarding.html' },
     { id: 'statements', icon: '◎', label: 'Estratti Conto', href: '/statements.html' },
     { id: 'payments',   icon: '◆', label: 'Abbonamenti',    href: '/payments.html' },
+    { id: 'bilanci',    icon: '📒', label: 'Bilanci',        href: '/bilanci.html' },
     { id: 'vat',        icon: '◇', label: 'VAT Register',   href: '/vat.html',        section: 'COMPLIANCE' },
     { id: 'corp-tax',   icon: '◈', label: 'Corporate Tax',  href: '/corp-tax.html' },
     { id: 'affinitas',  icon: '◉', label: 'Affinitas',      href: '/affinitas.html' },
