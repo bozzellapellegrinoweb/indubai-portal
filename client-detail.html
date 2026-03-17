@@ -465,36 +465,54 @@ async function toggleCheck(key, value) {
 }
 
 async function loadPayments() {
+  const year = new Date().getFullYear();
+  document.querySelector('#tab-payments .card-title').textContent = `◆ Pagamenti Abbonamento ${year}`;
   try {
     const data = await sb.db.select('subscription_payments', {
-      filter: `client_id=eq.${clientId}&year=eq.2026`,
+      filter: `client_id=eq.${clientId}&year=eq.${year}`,
       order: 'month.asc'
     });
+    // Map existing rows by month
+    const byMonth = {};
+    (data||[]).forEach(p => { byMonth[p.month] = p; });
     const tbody = document.getElementById('payments-tbody');
-    if (!data?.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">Nessun dato</td></tr>'; return; }
-    tbody.innerHTML = data.map(p => `<tr>
-      <td>${ui.MONTHS_FULL[p.month-1]} ${p.year}</td>
-      <td>${ui.statusBadge(p.status)}</td>
-      <td>${p.amount ? 'AED '+p.amount : '—'}</td>
-      <td style="color:var(--text-muted)">${p.notes||'—'}</td>
-    </tr>`).join('');
+    const rows = [];
+    for (let m = 1; m <= 12; m++) {
+      const p = byMonth[m];
+      rows.push(`<tr>
+        <td>${ui.MONTHS_FULL[m-1]} ${year}</td>
+        <td>${p ? ui.statusBadge(p.status) : '<span class="badge" style="background:var(--surface2);color:var(--text-muted)">— N/D</span>'}</td>
+        <td>${p?.amount ? 'AED '+p.amount : '—'}</td>
+        <td style="color:var(--text-muted)">${p?.notes||'—'}</td>
+      </tr>`);
+    }
+    tbody.innerHTML = rows.join('');
   } catch(e) { document.getElementById('payments-tbody').innerHTML = `<tr><td colspan="4">${e.message}</td></tr>`; }
 }
 
 async function loadStatements() {
+  const year = new Date().getFullYear();
+  document.querySelector('#tab-statements .card-title').textContent = `◎ Estratti Conto ${year}`;
   try {
     const data = await sb.db.select('bank_statements', {
-      filter: `client_id=eq.${clientId}&year=eq.2026`,
+      filter: `client_id=eq.${clientId}&year=eq.${year}`,
       order: 'month.asc'
     });
+    // Map existing rows by month
+    const byMonth = {};
+    (data||[]).forEach(s => { byMonth[s.month] = s; });
     const tbody = document.getElementById('statements-tbody');
-    if (!data?.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">Nessun dato</td></tr>'; return; }
-    tbody.innerHTML = data.map(s => `<tr>
-      <td>${ui.MONTHS_FULL[s.month-1]} ${s.year}</td>
-      <td>${s.received ? '<span class="badge badge-ok">✓ Sì</span>' : '<span class="badge badge-warn">✕ No</span>'}</td>
-      <td>${s.registered ? '<span class="badge badge-ok">✓ Sì</span>' : '<span class="badge badge-warn">✕ No</span>'}</td>
-      <td style="color:var(--text-muted)">${s.notes||'—'}</td>
-    </tr>`).join('');
+    const rows = [];
+    for (let m = 1; m <= 12; m++) {
+      const s = byMonth[m];
+      rows.push(`<tr>
+        <td>${ui.MONTHS_FULL[m-1]} ${year}</td>
+        <td>${s ? (s.received ? '<span class="badge badge-ok">✓ Sì</span>' : '<span class="badge badge-warn">✕ No</span>') : '<span class="badge" style="background:var(--surface2);color:var(--text-muted)">—</span>'}</td>
+        <td>${s ? (s.registered ? '<span class="badge badge-ok">✓ Sì</span>' : '<span class="badge badge-warn">✕ No</span>') : '<span class="badge" style="background:var(--surface2);color:var(--text-muted)">—</span>'}</td>
+        <td style="color:var(--text-muted)">${s?.notes||'—'}</td>
+      </tr>`);
+    }
+    tbody.innerHTML = rows.join('');
   } catch(e) { document.getElementById('statements-tbody').innerHTML = `<tr><td colspan="4">${e.message}</td></tr>`; }
 }
 
