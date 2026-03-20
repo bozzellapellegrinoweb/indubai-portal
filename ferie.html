@@ -203,6 +203,25 @@ let employees = [], requests = [];
 let myEmployee = null;
 const YEAR = new Date().getFullYear();
 
+// ── calcolo contrattuale ferie ────────────────────────────────
+// Contratto: 2 giorni/mese (24g/anno) dal completamento dei 6 mesi di servizio
+// Clausola 5.1: 2g/mese pro-rata per chi ha tra 6 e 12 mesi (primo anno)
+// Clausola 5.2: 24g/anno (= 2g/mese) per chi ha ≥ 12 mesi di servizio
+function computeEntitlement(startDateStr, year) {
+  if (!startDateStr) return 24; // fallback se start_date non impostata
+  const start = new Date(startDateStr);
+  let total = 0;
+  for (let m = 0; m < 12; m++) {
+    const monthStart = new Date(year, m, 1);
+    // mesi di servizio all'inizio di questo mese
+    const svcMonths = (monthStart.getFullYear() - start.getFullYear()) * 12
+                    + (monthStart.getMonth()    - start.getMonth());
+    if (svcMonths >= 6) total += 2; // 2g/mese da quando si superano i 6 mesi
+    // else: < 6 mesi → 0
+  }
+  return Math.round(total * 10) / 10; // 1 decimale
+}
+
 // ── helpers ──────────────────────────────────────────────────
 function empName(empId) {
   const e = employees.find(x => x.id === empId);
@@ -329,13 +348,13 @@ function renderAdmin() {
       <div class="kpi-card info">
         <div class="kpi-label">Giorni usati Martina</div>
         <div class="kpi-value">${usedDays(employees.find(e=>e.profile?.full_name?.toLowerCase().includes('martina'))?.id)}</div>
-        <div class="kpi-sub">su ${employees.find(e=>e.profile?.full_name?.toLowerCase().includes('martina'))?.annual_leave_days||30} disponibili</div>
+        <div class="kpi-sub">su ${computeEntitlement(employees.find(e=>e.profile?.full_name?.toLowerCase().includes('martina'))?.start_date, YEAR)} disponibili</div>
         <div class="kpi-icon">🏖</div>
       </div>
       <div class="kpi-card info">
         <div class="kpi-label">Giorni usati Mercedes</div>
         <div class="kpi-value">${usedDays(employees.find(e=>e.profile?.full_name?.toLowerCase().includes('mercedes'))?.id)}</div>
-        <div class="kpi-sub">su ${employees.find(e=>e.profile?.full_name?.toLowerCase().includes('mercedes'))?.annual_leave_days||30} disponibili</div>
+        <div class="kpi-sub">su ${computeEntitlement(employees.find(e=>e.profile?.full_name?.toLowerCase().includes('mercedes'))?.start_date, YEAR)} disponibili</div>
         <div class="kpi-icon">🏖</div>
       </div>
     </div>`;
@@ -345,7 +364,7 @@ function renderAdmin() {
   employees.forEach(emp => {
     const name = emp.profile?.full_name || '—';
     const used = usedDays(emp.id);
-    const total = emp.annual_leave_days || 30;
+    const total = computeEntitlement(emp.start_date, YEAR);
     const rem = Math.max(0, total - used);
     const pct = Math.min(100, Math.round((used/total)*100));
     const barCls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : '';
@@ -450,7 +469,7 @@ function renderEmployee() {
   const name   = currentUser.full_name?.split(' ')[0] || 'Dipendente';
   document.getElementById('topbar-sub').textContent = `Ciao ${name} 👋`;
 
-  const total  = myEmployee.annual_leave_days || 30;
+  const total  = computeEntitlement(myEmployee.start_date, YEAR);
   const used   = usedDays(myEmployee.id);
   const rem    = Math.max(0, total - used);
   const pct    = Math.min(100, Math.round((used/total)*100));
@@ -652,8 +671,8 @@ function openSettings() {
         </div>
         <input type="date" value="${emp.start_date||''}" style="width:130px;padding:5px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px" onchange="updateEmpField('${emp.id}','start_date',this.value)">
         <div style="display:flex;align-items:center;gap:6px">
-          <input type="number" value="${emp.annual_leave_days||30}" min="0" max="60" style="width:60px;padding:5px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;text-align:center" onchange="updateEmpField('${emp.id}','annual_leave_days',parseInt(this.value))">
-          <span style="font-size:11px;color:var(--text-muted)">giorni/anno</span>
+          <span style="font-size:13px;font-weight:700;color:var(--primary)">${computeEntitlement(emp.start_date, YEAR)}g</span>
+          <span style="font-size:11px;color:var(--text-muted)">spettanti ${YEAR} (da contratto)</span>
         </div>
       </div>`;
   });
