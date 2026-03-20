@@ -21,8 +21,8 @@
   // Pages allowed per role
   const ROLE_PAGES = {
     admin:      null, // null = all pages
-    senior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','bilanci','vat','corp-tax','affinitas','documents','search','news'],
-    junior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','bilanci','vat','corp-tax','affinitas','documents','search','news'],
+    senior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','bilanci','ferie','vat','corp-tax','affinitas','documents','search','news'],
+    junior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','bilanci','ferie','vat','corp-tax','affinitas','documents','search','news'],
     mini_admin: ['tasks','clients','documents','search','news','notifiche','payments'],
   };
   const allowed = ROLE_PAGES[role]; // null = no restriction
@@ -39,6 +39,7 @@
     { id: 'statements', icon: '◎', label: 'Estratti Conto', href: '/statements.html' },
     { id: 'payments',   icon: '◆', label: 'Abbonamenti',    href: '/payments.html' },
     { id: 'bilanci',    icon: '📒', label: 'Bilanci',        href: '/bilanci.html' },
+    { id: 'ferie',      icon: '🏖', label: 'Ferie & Permessi', href: '/ferie.html' },
     { id: 'vat',        icon: '◇', label: 'VAT Register',   href: '/vat.html',        section: 'COMPLIANCE' },
     { id: 'corp-tax',   icon: '◈', label: 'Corporate Tax',  href: '/corp-tax.html' },
     { id: 'affinitas',  icon: '◉', label: 'Affinitas',      href: '/affinitas.html' },
@@ -290,6 +291,16 @@
       if (kpis.vat_deadlines_next_30_days > 0) {
         const el = document.querySelector('.nav-badge.vat');
         if (el) { el.textContent = kpis.vat_deadlines_next_30_days; el.style.display = ''; el.classList.add('info'); }
+      }
+      // Ferie pending badge (admin only)
+      if (role === 'admin') {
+        try {
+          const pending = await sb.db.select('leave_requests', { filter:'status=eq.pending', columns:'id' });
+          if (pending?.length > 0) {
+            const el = document.querySelector('.nav-badge.ferie');
+            if (el) { el.textContent = pending.length; el.style.display = ''; el.classList.add('warn'); }
+          }
+        } catch(e) {}
       }
     } catch(e) {}
   })();

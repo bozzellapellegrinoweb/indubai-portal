@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Ferie & Permessi — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <style>
+    /* ── KPI ── */
+    .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+    .kpi-card { background:white; border:1.5px solid var(--border); border-radius:14px; padding:18px 20px; position:relative; overflow:hidden; }
+    .kpi-card.success { border-color:#86efac; background:#f0fdf4; }
+    .kpi-card.danger  { border-color:#fca5a5; background:#fef2f2; }
+    .kpi-card.warn    { border-color:#fcd34d; background:#fffbeb; }
+    .kpi-card.info    { border-color:#93c5fd; background:#eff6ff; }
+    .kpi-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); margin-bottom:6px; }
+    .kpi-value { font-size:32px; font-weight:900; color:var(--text-primary); line-height:1; }
+    .kpi-sub   { font-size:12px; color:var(--text-muted); margin-top:4px; }
+    .kpi-icon  { position:absolute; right:16px; top:16px; font-size:28px; opacity:.15; }
+
+    /* ── Employee cards ── */
+    .emp-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+    .emp-card { background:white; border:1.5px solid var(--border); border-radius:14px; padding:20px; }
+    .emp-card h3 { margin:0 0 12px; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; }
+    .emp-avatar { width:32px; height:32px; border-radius:50%; background:var(--primary); color:white; display:inline-flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
+    .emp-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .emp-stat { text-align:center; padding:10px 6px; background:var(--surface2); border-radius:10px; }
+    .emp-stat .val { font-size:22px; font-weight:900; }
+    .emp-stat .lbl { font-size:10px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.4px; margin-top:2px; }
+    .emp-stat.green .val { color:#16a34a; }
+    .emp-stat.red   .val { color:#dc2626; }
+    .emp-stat.blue  .val { color:#2563eb; }
+    .leave-bar { height:8px; border-radius:4px; background:#e5e7eb; margin-top:12px; overflow:hidden; }
+    .leave-bar-fill { height:100%; border-radius:4px; background:var(--primary); transition:width .4s; }
+    .leave-bar-fill.warn { background:#d97706; }
+    .leave-bar-fill.danger { background:#dc2626; }
+
+    /* ── Pending section ── */
+    .section-title { font-size:13px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.6px; margin:20px 0 10px; }
+
+    /* ── Table ── */
+    .tbl-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    thead th { background:var(--surface2); padding:10px 14px; text-align:left; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); white-space:nowrap; }
+    tbody tr { border-bottom:1px solid var(--border); transition:background .1s; }
+    tbody tr:hover { background:var(--surface2); }
+    tbody td { padding:10px 14px; vertical-align:middle; }
+
+    /* ── Status badges ── */
+    .badge-pending  { background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+    .badge-approved { background:#dcfce7; color:#166534; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+    .badge-rejected { background:#fee2e2; color:#991b1b; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+    .badge-ferie    { background:#dbeafe; color:#1e40af; padding:3px 8px; border-radius:8px; font-size:11px; font-weight:700; }
+    .badge-permesso { background:#ede9fe; color:#5b21b6; padding:3px 8px; border-radius:8px; font-size:11px; font-weight:700; }
+    .badge-malattia { background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:8px; font-size:11px; font-weight:700; }
+
+    /* ── Action buttons ── */
+    .btn-approve { background:#16a34a; color:white; border:none; padding:5px 12px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; }
+    .btn-reject  { background:#dc2626; color:white; border:none; padding:5px 12px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; margin-left:6px; }
+    .btn-approve:hover { background:#15803d; }
+    .btn-reject:hover  { background:#b91c1c; }
+
+    /* ── Modal ── */
+    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:center; justify-content:center; }
+    .modal.open { display:flex; }
+    .modal-box { background:white; border-radius:16px; padding:28px; width:100%; max-width:480px; box-shadow:var(--shadow-lg); }
+    .modal-title { font-size:17px; font-weight:800; margin:0 0 20px; }
+    .form-group { margin-bottom:14px; }
+    .form-label { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px; display:block; }
+    .form-control { width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none; box-sizing:border-box; }
+    .form-control:focus { border-color:var(--primary); }
+    .days-preview { background:var(--surface2); border-radius:8px; padding:10px 14px; font-size:13px; font-weight:600; text-align:center; margin-bottom:14px; }
+
+    /* ── Calendar ── */
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-top:10px; }
+    .cal-header { text-align:center; font-size:10px; font-weight:700; color:var(--text-muted); padding:4px 0; }
+    .cal-day { text-align:center; padding:5px 2px; border-radius:6px; font-size:11px; font-weight:500; position:relative; min-height:32px; }
+    .cal-day.today { background:var(--primary); color:white; font-weight:700; }
+    .cal-day.weekend { color:var(--text-muted); }
+    .cal-day.empty { }
+    .cal-day.martina { background:#dbeafe; color:#1e40af; }
+    .cal-day.mercedes { background:#ede9fe; color:#5b21b6; }
+    .cal-day.both { background:linear-gradient(135deg,#dbeafe 50%,#ede9fe 50%); color:#1e40af; }
+    .cal-legend { display:flex; gap:12px; margin-top:8px; font-size:11px; font-weight:600; }
+    .cal-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px; }
+
+    /* ── Note modal ── */
+    #modal-note .modal-box { max-width:380px; }
+    .note-inp { width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none; resize:vertical; box-sizing:border-box; }
+    .note-inp:focus { border-color:var(--primary); }
+
+    /* ── Admin settings ── */
+    .settings-row { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
+    .settings-row:last-child { border-bottom:none; }
+
+    @media(max-width:900px) {
+      .kpi-grid { grid-template-columns:1fr 1fr; }
+      .emp-grid  { grid-template-columns:1fr; }
+    }
+    @media(max-width:600px) {
+      .kpi-grid { grid-template-columns:1fr 1fr; }
+    }
+  </style>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <meta name="theme-color" content="#0f1628">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Ferie & Permessi</div>
+        <div class="topbar-subtitle" id="topbar-sub">Gestione presenze e assenze</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn btn-primary" onclick="openNewRequest()">+ Nuova Richiesta</button>
+      </div>
+    </div>
+
+    <div class="page-content" id="page-content">
+      <div style="text-align:center;padding:60px"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nuova richiesta -->
+<div class="modal" id="modal-request">
+  <div class="modal-box">
+    <div class="modal-title">🏖 Nuova Richiesta</div>
+    <div class="form-group">
+      <label class="form-label">Tipo</label>
+      <select class="form-control" id="req-type" onchange="calcDays()">
+        <option value="ferie">🏖 Ferie</option>
+        <option value="permesso">🕐 Permesso</option>
+        <option value="malattia">🤒 Malattia</option>
+      </select>
+    </div>
+    <!-- Admin only: choose employee -->
+    <div class="form-group" id="req-emp-wrap" style="display:none">
+      <label class="form-label">Dipendente</label>
+      <select class="form-control" id="req-emp"></select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">Dal</label>
+        <input type="date" class="form-control" id="req-from" onchange="calcDays()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Al</label>
+        <input type="date" class="form-control" id="req-to" onchange="calcDays()">
+      </div>
+    </div>
+    <div class="days-preview" id="days-preview">Seleziona le date</div>
+    <div class="form-group">
+      <label class="form-label">Note (opzionale)</label>
+      <textarea class="form-control" id="req-note" rows="2" placeholder="Motivo, dettagli..."></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-request').classList.remove('open')">Annulla</button>
+      <button class="btn btn-primary" onclick="submitRequest()">Invia Richiesta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nota admin -->
+<div class="modal" id="modal-note">
+  <div class="modal-box">
+    <div class="modal-title" id="note-title">Nota admin</div>
+    <div class="form-group">
+      <label class="form-label">Nota (opzionale)</label>
+      <textarea class="note-inp" id="note-text" rows="3" placeholder="Motivo approvazione/rifiuto..."></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-note').classList.remove('open')">Annulla</button>
+      <button class="btn btn-primary" id="note-confirm-btn">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: impostazioni dipendente (admin) -->
+<div class="modal" id="modal-settings">
+  <div class="modal-box">
+    <div class="modal-title">⚙️ Impostazioni Dipendenti</div>
+    <div id="settings-list"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-settings').classList.remove('open')">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/notify.js"></script>
+<script>
+// ── state ────────────────────────────────────────────────────
+let currentUser = null, isAdmin = false;
+let employees = [], requests = [];
+let myEmployee = null;
+const YEAR = new Date().getFullYear();
+
+// ── helpers ──────────────────────────────────────────────────
+function empName(empId) {
+  const e = employees.find(x => x.id === empId);
+  return e ? e.profile?.full_name?.split(' ')[0] || '—' : '—';
+}
+function empInitials(name) {
+  return (name||'').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+function typeBadge(t) {
+  const map = { ferie:'🏖 Ferie', permesso:'🕐 Permesso', malattia:'🤒 Malattia' };
+  const cls  = { ferie:'badge-ferie', permesso:'badge-permesso', malattia:'badge-malattia' };
+  return `<span class="${cls[t]||''}">${map[t]||t}</span>`;
+}
+function statusBadge(s) {
+  if (s==='pending')  return '<span class="badge-pending">⏳ In attesa</span>';
+  if (s==='approved') return '<span class="badge-approved">✓ Approvato</span>';
+  if (s==='rejected') return '<span class="badge-rejected">✕ Rifiutato</span>';
+  return s;
+}
+function fmt(d) {
+  if (!d) return '—';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+function calcCalendarDays(from, to) {
+  if (!from || !to) return 0;
+  const a = new Date(from), b = new Date(to);
+  if (b < a) return 0;
+  return Math.round((b - a) / 86400000) + 1;
+}
+function usedDays(empId, type = null) {
+  return requests.filter(r =>
+    r.employee_id === empId &&
+    r.status === 'approved' &&
+    (!type || r.type === type) &&
+    (r.date_from||'').startsWith(YEAR)
+  ).reduce((s,r) => s + Number(r.days), 0);
+}
+
+// ── days preview ─────────────────────────────────────────────
+function calcDays() {
+  const f = document.getElementById('req-from').value;
+  const t = document.getElementById('req-to').value;
+  const d = calcCalendarDays(f, t);
+  const prev = document.getElementById('days-preview');
+  if (!f || !t) { prev.textContent = 'Seleziona le date'; return; }
+  if (d <= 0) { prev.innerHTML = '<span style="color:red">Data fine prima di data inizio</span>'; return; }
+  prev.innerHTML = `<strong>${d}</strong> giorno${d>1?'i':''} di calendario`;
+}
+
+// ── calendar ─────────────────────────────────────────────────
+function renderCalendar() {
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth();
+  const firstDay = new Date(year, month, 1).getDay(); // 0=sun
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const today = now.getDate();
+  const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+  // Build approved leave map for this month
+  const leaveMap = {}; // day → {martina, mercedes}
+  requests.filter(r => r.status === 'approved').forEach(r => {
+    const emp = employees.find(e => e.id === r.employee_id);
+    const empKey = emp?.profile?.full_name?.toLowerCase().includes('martina') ? 'martina' : 'mercedes';
+    const from = new Date(r.date_from), to = new Date(r.date_to);
+    for (let d = new Date(from); d <= to; d.setDate(d.getDate()+1)) {
+      if (d.getFullYear()===year && d.getMonth()===month) {
+        const day = d.getDate();
+        if (!leaveMap[day]) leaveMap[day] = {};
+        leaveMap[day][empKey] = true;
+      }
+    }
+  });
+
+  // Build calendar HTML
+  const dayNames = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+  let html = `<div style="font-size:13px;font-weight:700;margin-bottom:8px">${monthNames[month]} ${year}</div>`;
+  html += '<div class="cal-grid">';
+  dayNames.forEach(d => html += `<div class="cal-header">${d}</div>`);
+
+  const startOffset = firstDay; // sun=0
+  for (let i=0; i<startOffset; i++) html += '<div class="cal-day empty"></div>';
+
+  for (let d=1; d<=daysInMonth; d++) {
+    const dow = new Date(year,month,d).getDay();
+    const isWeekend = dow===0||dow===6;
+    const lv = leaveMap[d]||{};
+    let cls = 'cal-day';
+    if (d===today && now.getMonth()===month) cls+=' today';
+    else if (lv.martina && lv.mercedes) cls+=' both';
+    else if (lv.martina)  cls+=' martina';
+    else if (lv.mercedes) cls+=' mercedes';
+    else if (isWeekend)   cls+=' weekend';
+    html += `<div class="${cls}">${d}</div>`;
+  }
+  html += '</div>';
+  html += `<div class="cal-legend">
+    <div><span class="cal-dot" style="background:#dbeafe;border:1px solid #93c5fd"></span>Martina</div>
+    <div><span class="cal-dot" style="background:#ede9fe;border:1px solid #c4b5fd"></span>Mercedes</div>
+  </div>`;
+  return html;
+}
+
+// ── main render (admin) ──────────────────────────────────────
+function renderAdmin() {
+  const pending  = requests.filter(r => r.status==='pending');
+  const approved = requests.filter(r => r.status==='approved' && r.date_from?.startsWith(YEAR));
+
+  // KPI
+  let kpiHtml = `
+    <div class="kpi-grid">
+      <div class="kpi-card warn">
+        <div class="kpi-label">Richieste pending</div>
+        <div class="kpi-value">${pending.length}</div>
+        <div class="kpi-sub">Da approvare</div>
+        <div class="kpi-icon">⏳</div>
+      </div>
+      <div class="kpi-card success">
+        <div class="kpi-label">Approvate ${YEAR}</div>
+        <div class="kpi-value">${approved.length}</div>
+        <div class="kpi-sub">Richieste ok</div>
+        <div class="kpi-icon">✓</div>
+      </div>
+      <div class="kpi-card info">
+        <div class="kpi-label">Giorni usati Martina</div>
+        <div class="kpi-value">${usedDays(employees.find(e=>e.profile?.full_name?.toLowerCase().includes('martina'))?.id)}</div>
+        <div class="kpi-sub">su ${employees.find(e=>e.profile?.full_name?.toLowerCase().includes('martina'))?.annual_leave_days||30} disponibili</div>
+        <div class="kpi-icon">🏖</div>
+      </div>
+      <div class="kpi-card info">
+        <div class="kpi-label">Giorni usati Mercedes</div>
+        <div class="kpi-value">${usedDays(employees.find(e=>e.profile?.full_name?.toLowerCase().includes('mercedes'))?.id)}</div>
+        <div class="kpi-sub">su ${employees.find(e=>e.profile?.full_name?.toLowerCase().includes('mercedes'))?.annual_leave_days||30} disponibili</div>
+        <div class="kpi-icon">🏖</div>
+      </div>
+    </div>`;
+
+  // Employee cards
+  let empCardsHtml = '<div class="emp-grid">';
+  employees.forEach(emp => {
+    const name = emp.profile?.full_name || '—';
+    const used = usedDays(emp.id);
+    const total = emp.annual_leave_days || 30;
+    const rem = Math.max(0, total - used);
+    const pct = Math.min(100, Math.round((used/total)*100));
+    const barCls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : '';
+    const usedFerie = usedDays(emp.id, 'ferie');
+    const usedPerm  = usedDays(emp.id, 'permesso');
+    const usedMal   = usedDays(emp.id, 'malattia');
+    const startStr  = emp.start_date ? fmt(emp.start_date) : '—';
+    empCardsHtml += `
+      <div class="emp-card">
+        <h3>
+          <span class="emp-avatar">${empInitials(name)}</span>
+          ${ui.escapeHtml(name)}
+          <span style="margin-left:auto;font-size:11px;color:var(--text-muted);font-weight:500">Da: ${startStr}</span>
+          <button class="btn btn-ghost btn-sm" onclick="openSettings()" style="font-size:11px;padding:3px 8px">⚙</button>
+        </h3>
+        <div class="emp-stats">
+          <div class="emp-stat blue"><div class="val">${total}</div><div class="lbl">Spettanti</div></div>
+          <div class="emp-stat red"><div class="val">${used}</div><div class="lbl">Usati</div></div>
+          <div class="emp-stat green"><div class="val">${rem}</div><div class="lbl">Rimanenti</div></div>
+        </div>
+        <div class="leave-bar" style="margin-top:10px"><div class="leave-bar-fill ${barCls}" style="width:${pct}%"></div></div>
+        <div style="display:flex;gap:8px;margin-top:10px;font-size:11px;color:var(--text-muted)">
+          <span>🏖 Ferie: <b>${usedFerie}g</b></span>
+          <span>🕐 Permessi: <b>${usedPerm}g</b></span>
+          <span>🤒 Malattia: <b>${usedMal}g</b></span>
+        </div>
+      </div>`;
+  });
+  empCardsHtml += '</div>';
+
+  // Calendar
+  const calHtml = `
+    <div class="card" style="padding:20px;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">📅 Calendario Assenze</div>
+      ${renderCalendar()}
+    </div>`;
+
+  // Pending requests
+  let pendingHtml = '';
+  if (pending.length > 0) {
+    pendingHtml = `<div class="section-title">⏳ Richieste in attesa (${pending.length})</div>
+    <div class="card" style="padding:0;margin-bottom:20px">
+      <div class="tbl-wrap"><table>
+        <thead><tr>
+          <th>Dipendente</th><th>Tipo</th><th>Dal</th><th>Al</th><th>Giorni</th><th>Nota</th><th>Inviata il</th><th>Azione</th>
+        </tr></thead>
+        <tbody>
+          ${pending.map(r => `<tr>
+            <td><strong>${empName(r.employee_id)}</strong></td>
+            <td>${typeBadge(r.type)}</td>
+            <td><strong>${fmt(r.date_from)}</strong></td>
+            <td><strong>${fmt(r.date_to)}</strong></td>
+            <td><strong>${r.days}g</strong></td>
+            <td style="color:var(--text-muted);font-size:12px">${r.note_employee||'—'}</td>
+            <td style="color:var(--text-muted);font-size:12px">${fmt(r.created_at?.split('T')[0])}</td>
+            <td>
+              <button class="btn-approve" onclick="reviewRequest('${r.id}','approved')">✓ Approva</button>
+              <button class="btn-reject"  onclick="reviewRequest('${r.id}','rejected')">✕ Rifiuta</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>
+    </div>`;
+  }
+
+  // All requests history
+  const history = [...requests].sort((a,b) => b.created_at?.localeCompare(a.created_at));
+  const historyHtml = `
+    <div class="section-title">📋 Storico Richieste ${YEAR}</div>
+    <div class="card" style="padding:0">
+      <div class="tbl-wrap"><table>
+        <thead><tr>
+          <th>Dipendente</th><th>Tipo</th><th>Dal</th><th>Al</th><th>Giorni</th><th>Stato</th><th>Nota dipendente</th><th>Nota admin</th>
+        </tr></thead>
+        <tbody>
+          ${history.length ? history.map(r => `<tr>
+            <td><strong>${empName(r.employee_id)}</strong></td>
+            <td>${typeBadge(r.type)}</td>
+            <td>${fmt(r.date_from)}</td>
+            <td>${fmt(r.date_to)}</td>
+            <td>${r.days}g</td>
+            <td>${statusBadge(r.status)}</td>
+            <td style="color:var(--text-muted);font-size:12px">${r.note_employee||'—'}</td>
+            <td style="color:var(--text-muted);font-size:12px">${r.note_admin||'—'}</td>
+          </tr>`).join('') :
+          '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">Nessuna richiesta</td></tr>'}
+        </tbody>
+      </table></div>
+    </div>`;
+
+  document.getElementById('page-content').innerHTML =
+    kpiHtml + empCardsHtml + calHtml + pendingHtml + historyHtml;
+}
+
+// ── main render (employee) ───────────────────────────────────
+function renderEmployee() {
+  if (!myEmployee) {
+    document.getElementById('page-content').innerHTML =
+      '<div class="alert alert-danger" style="margin:20px">Profilo dipendente non trovato. Contatta l\'amministratore.</div>';
+    return;
+  }
+  const name   = currentUser.full_name?.split(' ')[0] || 'Dipendente';
+  document.getElementById('topbar-sub').textContent = `Ciao ${name} 👋`;
+
+  const total  = myEmployee.annual_leave_days || 30;
+  const used   = usedDays(myEmployee.id);
+  const rem    = Math.max(0, total - used);
+  const pct    = Math.min(100, Math.round((used/total)*100));
+  const barCls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : '';
+  const pending = requests.filter(r => r.employee_id===myEmployee.id && r.status==='pending');
+  const approved= requests.filter(r => r.employee_id===myEmployee.id && r.status==='approved' && r.date_from?.startsWith(YEAR));
+
+  const kpiHtml = `
+    <div class="kpi-grid">
+      <div class="kpi-card info">
+        <div class="kpi-label">Giorni spettanti ${YEAR}</div>
+        <div class="kpi-value">${total}</div>
+        <div class="kpi-sub">Contratto annuale</div>
+        <div class="kpi-icon">📋</div>
+      </div>
+      <div class="kpi-card danger">
+        <div class="kpi-label">Giorni usati</div>
+        <div class="kpi-value">${used}</div>
+        <div class="kpi-sub">Approvati ${YEAR}</div>
+        <div class="kpi-icon">✓</div>
+      </div>
+      <div class="kpi-card success">
+        <div class="kpi-label">Giorni rimanenti</div>
+        <div class="kpi-value">${rem}</div>
+        <div class="kpi-sub">Disponibili ${YEAR}</div>
+        <div class="kpi-icon">🏖</div>
+      </div>
+      <div class="kpi-card warn">
+        <div class="kpi-label">In attesa</div>
+        <div class="kpi-value">${pending.length}</div>
+        <div class="kpi-sub">Da approvare</div>
+        <div class="kpi-icon">⏳</div>
+      </div>
+    </div>
+    <div class="card" style="padding:16px 20px;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:600">Utilizzo ferie ${YEAR}</span>
+        <span style="font-size:12px;color:var(--text-muted)">${used} / ${total} giorni (${pct}%)</span>
+      </div>
+      <div class="leave-bar"><div class="leave-bar-fill ${barCls}" style="width:${pct}%"></div></div>
+    </div>`;
+
+  const myRequests = [...requests].filter(r=>r.employee_id===myEmployee.id)
+    .sort((a,b)=>b.created_at?.localeCompare(a.created_at));
+
+  const tableHtml = `
+    <div class="section-title">Le mie richieste</div>
+    <div class="card" style="padding:0">
+      <div class="tbl-wrap"><table>
+        <thead><tr>
+          <th>Tipo</th><th>Dal</th><th>Al</th><th>Giorni</th><th>Stato</th><th>Nota admin</th><th>Inviata il</th>
+        </tr></thead>
+        <tbody>
+          ${myRequests.length ? myRequests.map(r => `<tr>
+            <td>${typeBadge(r.type)}</td>
+            <td><strong>${fmt(r.date_from)}</strong></td>
+            <td><strong>${fmt(r.date_to)}</strong></td>
+            <td>${r.days}g</td>
+            <td>${statusBadge(r.status)}</td>
+            <td style="color:var(--text-muted);font-size:12px">${r.note_admin||'—'}</td>
+            <td style="color:var(--text-muted);font-size:12px">${fmt(r.created_at?.split('T')[0])}</td>
+          </tr>`).join('') :
+          '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">Nessuna richiesta ancora</td></tr>'}
+        </tbody>
+      </table></div>
+    </div>`;
+
+  document.getElementById('page-content').innerHTML = kpiHtml + tableHtml;
+}
+
+// ── new request modal ────────────────────────────────────────
+function openNewRequest() {
+  document.getElementById('req-from').value = '';
+  document.getElementById('req-to').value   = '';
+  document.getElementById('req-note').value  = '';
+  document.getElementById('days-preview').textContent = 'Seleziona le date';
+
+  // Admin can choose employee
+  const empWrap = document.getElementById('req-emp-wrap');
+  if (isAdmin) {
+    empWrap.style.display = 'block';
+    const sel = document.getElementById('req-emp');
+    sel.innerHTML = employees.map(e =>
+      `<option value="${e.id}">${e.profile?.full_name||'—'}</option>`
+    ).join('');
+  } else {
+    empWrap.style.display = 'none';
+  }
+
+  document.getElementById('modal-request').classList.add('open');
+}
+
+async function submitRequest() {
+  const from = document.getElementById('req-from').value;
+  const to   = document.getElementById('req-to').value;
+  const type = document.getElementById('req-type').value;
+  const note = document.getElementById('req-note').value.trim();
+  const days = calcCalendarDays(from, to);
+
+  if (!from || !to) { ui.showToast('Seleziona le date','error'); return; }
+  if (days <= 0)    { ui.showToast('Date non valide','error'); return; }
+
+  let empId;
+  if (isAdmin) {
+    empId = document.getElementById('req-emp').value;
+  } else {
+    if (!myEmployee) { ui.showToast('Profilo dipendente non trovato','error'); return; }
+    empId = myEmployee.id;
+  }
+
+  try {
+    const row = await sb.db.insert('leave_requests', {
+      employee_id: empId, type, date_from: from, date_to: to, days, note_employee: note||null
+    });
+    document.getElementById('modal-request').classList.remove('open');
+    ui.showToast('Richiesta inviata ✓','success');
+    // Push notification to admin
+    try {
+      await sendPushToAdmin(empId, type, from, to, days);
+    } catch(e) { console.warn('push failed', e); }
+    await loadData();
+  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+}
+
+async function sendPushToAdmin(empId, type, from, to, days) {
+  const emp  = employees.find(e=>e.id===empId);
+  const name = emp?.profile?.full_name?.split(' ')[0] || 'Dipendente';
+  const typeLabel = {ferie:'Ferie 🏖',permesso:'Permesso 🕐',malattia:'Malattia 🤒'}[type]||type;
+  await fetch('https://onesignal.com/api/v1/notifications', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'Authorization':'Key os_v2_app_a3zydtpnhvbzhjoch5xpqmrgmeliookcss4ecsfhgkvb3hdfycruuiwq32jbh4m5xx35g3jck5gfripdgxiqaiqpjya4n63ila43h4y' },
+    body: JSON.stringify({
+      app_id:'06f381cd-ed3d-4393-a5c2-3f6ef8322661',
+      included_segments:['All'],
+      headings:{ en:`Richiesta ${typeLabel} da ${name}` },
+      contents:{ en:`${name} richiede ${days} giorno/i: ${fmt(from)} → ${fmt(to)}` },
+      url: `${location.origin}/ferie.html`
+    })
+  });
+}
+
+// ── review (approve / reject) ────────────────────────────────
+let reviewAction = null, reviewId = null;
+function reviewRequest(id, action) {
+  reviewId     = id;
+  reviewAction = action;
+  const title  = action==='approved' ? '✓ Approva richiesta' : '✕ Rifiuta richiesta';
+  document.getElementById('note-title').textContent = title;
+  document.getElementById('note-text').value = '';
+  document.getElementById('note-confirm-btn').textContent = action==='approved' ? 'Approva' : 'Rifiuta';
+  document.getElementById('note-confirm-btn').onclick = confirmReview;
+  document.getElementById('modal-note').classList.add('open');
+}
+
+async function confirmReview() {
+  const noteAdmin = document.getElementById('note-text').value.trim();
+  try {
+    await sb.db.update('leave_requests', `id=eq.${reviewId}`, {
+      status: reviewAction,
+      note_admin: noteAdmin||null,
+      updated_at: new Date().toISOString()
+    });
+    document.getElementById('modal-note').classList.remove('open');
+    ui.showToast(reviewAction==='approved' ? 'Approvata ✓' : 'Rifiutata', 'success');
+    // Notify employee
+    const req = requests.find(r=>r.id===reviewId);
+    if (req) {
+      const emp = employees.find(e=>e.id===req.employee_id);
+      const label = reviewAction==='approved' ? 'approvata ✓' : 'rifiutata ✕';
+      try {
+        await fetch('https://onesignal.com/api/v1/notifications', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'Authorization':'Key os_v2_app_a3zydtpnhvbzhjoch5xpqmrgmeliookcss4ecsfhgkvb3hdfycruuiwq32jbh4m5xx35g3jck5gfripdgxiqaiqpjya4n63ila43h4y' },
+          body: JSON.stringify({
+            app_id:'06f381cd-ed3d-4393-a5c2-3f6ef8322661',
+            included_segments:['All'],
+            headings:{ en:`Richiesta ${label}` },
+            contents:{ en:`La tua richiesta di ${req.type} (${fmt(req.date_from)}→${fmt(req.date_to)}) è stata ${label}${noteAdmin?' — '+noteAdmin:''}` },
+            url:`${location.origin}/ferie.html`
+          })
+        });
+      } catch(e) { console.warn('push failed',e); }
+    }
+    await loadData();
+  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+}
+
+// ── admin settings ────────────────────────────────────────────
+function openSettings() {
+  let html = '';
+  employees.forEach(emp => {
+    const name = emp.profile?.full_name || '—';
+    html += `
+      <div class="settings-row">
+        <span class="emp-avatar" style="width:28px;height:28px;font-size:11px">${empInitials(name)}</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700">${ui.escapeHtml(name)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Data assunzione</div>
+        </div>
+        <input type="date" value="${emp.start_date||''}" style="width:130px;padding:5px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px" onchange="updateEmpField('${emp.id}','start_date',this.value)">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" value="${emp.annual_leave_days||30}" min="0" max="60" style="width:60px;padding:5px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;text-align:center" onchange="updateEmpField('${emp.id}','annual_leave_days',parseInt(this.value))">
+          <span style="font-size:11px;color:var(--text-muted)">giorni/anno</span>
+        </div>
+      </div>`;
+  });
+  document.getElementById('settings-list').innerHTML = html;
+  document.getElementById('modal-settings').classList.add('open');
+}
+
+async function updateEmpField(empId, field, value) {
+  try {
+    await sb.db.update('employees', `id=eq.${empId}`, { [field]: value });
+    const emp = employees.find(e=>e.id===empId);
+    if (emp) emp[field] = value;
+    ui.showToast('Salvato','success');
+    if (isAdmin) renderAdmin(); else renderEmployee();
+  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+}
+
+// ── load ──────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const [emps, reqs] = await Promise.all([
+      sb.db.select('employees', {
+        columns: 'id,profile_id,start_date,annual_leave_days,profile:profiles(full_name)'
+      }),
+      sb.db.select('leave_requests', {
+        columns: 'id,employee_id,type,date_from,date_to,days,status,note_employee,note_admin,created_at',
+        order: 'created_at.desc'
+      })
+    ]);
+    employees = emps || [];
+    requests  = reqs || [];
+
+    if (!isAdmin) {
+      myEmployee = employees.find(e => e.profile_id === currentUser.id) || null;
+    }
+
+    if (isAdmin) renderAdmin(); else renderEmployee();
+
+    // Update sidebar badge (pending count)
+    const pendingCount = requests.filter(r=>r.status==='pending').length;
+    const badge = document.querySelector('.nav-badge.ferie');
+    if (badge) {
+      badge.textContent = pendingCount;
+      badge.style.display = pendingCount > 0 ? '' : 'none';
+    }
+  } catch(e) {
+    document.getElementById('page-content').innerHTML =
+      `<div class="alert alert-danger" style="margin:20px">${e.message}</div>`;
+  }
+}
+
+// ── init ──────────────────────────────────────────────────────
+async function init() {
+  await sb.requireAuth();
+  currentUser = sb.getCurrentUser?.() || JSON.parse(localStorage.getItem('indubai_session'))?.user || {};
+  // Get profile with role
+  const profiles = await sb.db.select('profiles', { filter:`id=eq.${currentUser.id}`, columns:'id,full_name,role' });
+  const profile  = profiles?.[0];
+  if (profile) { currentUser = {...currentUser, ...profile}; }
+  isAdmin = profile?.role === 'admin';
+  await loadData();
+}
+
+init();
+window.addEventListener('pageshow', e => { if (e.persisted) loadData(); });
+</script>
+</body>
+</html>
