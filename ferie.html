@@ -198,7 +198,7 @@
 <script src="/js/notify.js"></script>
 <script>
 // ── state ────────────────────────────────────────────────────
-let currentUser = null, isAdmin = false;
+let currentUser = null, amIAdmin = false;
 let employees = [], requests = [];
 let myEmployee = null;
 const YEAR = new Date().getFullYear();
@@ -530,7 +530,7 @@ function openNewRequest() {
 
   // Admin can choose employee
   const empWrap = document.getElementById('req-emp-wrap');
-  if (isAdmin) {
+  if (amIAdmin) {
     empWrap.style.display = 'block';
     const sel = document.getElementById('req-emp');
     sel.innerHTML = employees.map(e =>
@@ -554,7 +554,7 @@ async function submitRequest() {
   if (days <= 0)    { ui.showToast('Date non valide','error'); return; }
 
   let empId;
-  if (isAdmin) {
+  if (amIAdmin) {
     empId = document.getElementById('req-emp').value;
   } else {
     if (!myEmployee) { ui.showToast('Profilo dipendente non trovato','error'); return; }
@@ -667,7 +667,7 @@ async function updateEmpField(empId, field, value) {
     const emp = employees.find(e=>e.id===empId);
     if (emp) emp[field] = value;
     ui.showToast('Salvato','success');
-    if (isAdmin) renderAdmin(); else renderEmployee();
+    if (amIAdmin) renderAdmin(); else renderEmployee();
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
 }
 
@@ -686,11 +686,11 @@ async function loadData() {
     employees = emps || [];
     requests  = reqs || [];
 
-    if (!isAdmin) {
+    if (!amIAdmin) {
       myEmployee = employees.find(e => e.profile_id === currentUser.id) || null;
     }
 
-    if (isAdmin) renderAdmin(); else renderEmployee();
+    if (amIAdmin) renderAdmin(); else renderEmployee();
 
     // Update sidebar badge (pending count)
     const pendingCount = requests.filter(r=>r.status==='pending').length;
@@ -713,7 +713,7 @@ async function init() {
   const profiles = await sb.db.select('profiles', { filter:`id=eq.${currentUser.id}`, columns:'id,full_name,role' });
   const profile  = profiles?.[0];
   if (profile) { currentUser = {...currentUser, ...profile}; }
-  isAdmin = profile?.role === 'admin';
+  amIAdmin = profile?.role === 'admin';
   await loadData();
 }
 
