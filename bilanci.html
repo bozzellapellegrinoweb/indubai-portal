@@ -56,6 +56,7 @@
     .fb-noi      { background:#dbeafe; color:#1d4ed8; }
     .fb-vat      { background:#fef3c7; color:#92400e; }
     .fb-affinitas{ background:#f3e8ff; color:#7c3aed; }
+    .fb-non_fare { background:#fce7f3; color:#9d174d; }
     .fb-none     { background:#f3f4f6; color:#9ca3af; }
 
     /* Picker dropdown */
@@ -142,6 +143,7 @@
   <button class="fp-opt" data-val="noi">🔵 Noi</button>
   <button class="fp-opt" data-val="vat">🟡 VAT Consultant</button>
   <button class="fp-opt" data-val="affinitas">🟣 Affinitas</button>
+  <button class="fp-opt" data-val="non_fare">🚫 Da non fare</button>
 </div>
 
 <script src="/js/supabase.js"></script>
@@ -161,8 +163,8 @@ function rowStatus(b) {
 
 function fattoBadge(val) {
   if (!val) return '<span class="fatto-badge fb-none">—</span>';
-  const map = { noi:'🔵 Noi', vat:'🟡 VAT', affinitas:'🟣 Affinitas' };
-  const cls  = { noi:'fb-noi', vat:'fb-vat', affinitas:'fb-affinitas' };
+  const map = { noi:'🔵 Noi', vat:'🟡 VAT', affinitas:'🟣 Affinitas', non_fare:'🚫 Da non fare' };
+  const cls  = { noi:'fb-noi', vat:'fb-vat', affinitas:'fb-affinitas', non_fare:'fb-non_fare' };
   return `<span class="fatto-badge ${cls[val]||'fb-none'}">${map[val]||val}</span>`;
 }
 
