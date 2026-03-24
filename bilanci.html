@@ -264,8 +264,8 @@ function renderTable() {
       <td class="bool-cell ${bilYes?'':'disabled-cell'}" onclick="${bilYes?`toggleBool('${c.id}','pagato',${pagYes?'false':'true'})`:'void(0)'}" title="${bilYes?'Clicca per cambiare':'Prima spunta Bilancio'}">
         <span class="${pagYes?'bool-yes':'bool-no'}" style="${!bilYes?'opacity:.3':''}">${pagYes?'✓':'✕'}</span>
       </td>
-      <td class="fatto-cell" onclick="openFattoPicker('${c.id}',this)" title="Clicca per cambiare">
-        ${fattoBadge(b.fatto_da)}
+      <td class="fatto-cell" onclick="openFattoPicker('${c.id}',this)" title="Clicca per selezionare">
+        ${b.fatto_da ? fattoBadge(b.fatto_da) : '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:8px;border:1.5px dashed #d1d5db;color:#9ca3af;font-size:11px;font-weight:600;cursor:pointer">＋ Seleziona</span>'}
       </td>
       <td class="edit-cell" onclick="editCell(this,'${c.id}','notes','text')" data-field="notes" data-cid="${c.id}">
         <span class="edit-val" style="color:var(--text-muted);font-size:12px">${b.notes ? ui.escapeHtml(b.notes) : '<span style="color:#d1d5db">aggiungi nota...</span>'}</span>
