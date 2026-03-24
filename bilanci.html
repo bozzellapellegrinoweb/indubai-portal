@@ -27,6 +27,7 @@
     .filter-chip.chip-ok.on   { background:#16a34a; border-color:#16a34a; }
     .filter-chip.chip-warn.on { background:#d97706; border-color:#d97706; }
     .filter-chip.chip-red.on  { background:#dc2626; border-color:#dc2626; }
+    [data-f="non_fare"].on    { background:#9d174d; border-color:#9d174d; color:white; }
 
     /* Table */
     .tbl-wrap { overflow-x:auto; }
@@ -89,10 +90,11 @@
     <div class="page-content">
 
       <!-- KPI cards -->
-      <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi-grid" id="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
         <div class="kpi-card success"><div class="kpi-label">Completati e pagati</div><div class="kpi-value" id="kpi-done">—</div><div class="kpi-sub">Bilancio ✓ + Pagato ✓</div><div class="kpi-icon">✓</div></div>
         <div class="kpi-card danger"><div class="kpi-label">Da fare</div><div class="kpi-value" id="kpi-todo">—</div><div class="kpi-sub">Bilancio non ancora fatto</div><div class="kpi-icon">✕</div></div>
         <div class="kpi-card warn"><div class="kpi-label">Da incassare</div><div class="kpi-value" id="kpi-unpaid">—</div><div class="kpi-sub">Bilancio fatto, non pagato</div><div class="kpi-icon">€</div></div>
+        <div class="kpi-card" style="border-color:#fbcfe8;background:#fdf2f8"><div class="kpi-label">Da non fare</div><div class="kpi-value" id="kpi-non-fare" style="color:#9d174d">—</div><div class="kpi-sub">Esclusi dal bilancio</div><div class="kpi-icon">🚫</div></div>
       </div>
 
       <!-- Toolbar -->
@@ -104,10 +106,11 @@
           </select>
           <input type="text" id="search" class="form-control" placeholder="🔍 Cerca cliente..." style="max-width:260px">
           <span style="font-size:12px;color:var(--text-muted);margin-left:auto" id="count-label">—</span>
-          <div class="filter-chip on"  data-f="all"    onclick="setFilter('all',this)">Tutti</div>
-          <div class="filter-chip chip-ok"  data-f="done"   onclick="setFilter('done',this)">✓ Completati</div>
-          <div class="filter-chip chip-warn" data-f="unpaid" onclick="setFilter('unpaid',this)">€ Da incassare</div>
-          <div class="filter-chip chip-red"  data-f="todo"   onclick="setFilter('todo',this)">✕ Da fare</div>
+          <div class="filter-chip on"  data-f="all"      onclick="setFilter('all',this)">Tutti</div>
+          <div class="filter-chip chip-ok"   data-f="done"     onclick="setFilter('done',this)">✓ Completati</div>
+          <div class="filter-chip chip-warn" data-f="unpaid"   onclick="setFilter('unpaid',this)">€ Da incassare</div>
+          <div class="filter-chip chip-red"  data-f="todo"     onclick="setFilter('todo',this)">✕ Da fare</div>
+          <div class="filter-chip" data-f="non_fare" onclick="setFilter('non_fare',this)" style="--on-bg:#9d174d">🚫 Da non fare</div>
         </div>
       </div>
 
@@ -156,6 +159,7 @@ let allClients = [], bilanci = {}, currentYear = 2026, statusFilter = 'all';
 function bRow(clientId) { return bilanci[clientId] || {}; }
 
 function rowStatus(b) {
+  if (b?.fatto_da === 'non_fare') return 'non_fare';
   if (!b || !b.bilancio) return 'todo';
   if (b.bilancio && !b.pagato) return 'unpaid';
   return 'done';
@@ -196,16 +200,18 @@ async function loadData() {
 
 // ── KPI ────────────────────────────────────────────────────────
 function renderKPI() {
-  let done=0, todo=0, unpaid=0;
+  let done=0, todo=0, unpaid=0, non_fare=0;
   allClients.forEach(c => {
     const s = rowStatus(bRow(c.id));
-    if (s==='done')   done++;
-    else if (s==='todo')   todo++;
-    else if (s==='unpaid') unpaid++;
+    if (s==='done')     done++;
+    else if (s==='todo')     todo++;
+    else if (s==='unpaid')   unpaid++;
+    else if (s==='non_fare') non_fare++;
   });
   document.getElementById('kpi-done').textContent   = done;
-  document.getElementById('kpi-todo').textContent   = todo;
-  document.getElementById('kpi-unpaid').textContent = unpaid;
+  document.getElementById('kpi-todo').textContent     = todo;
+  document.getElementById('kpi-unpaid').textContent   = unpaid;
+  document.getElementById('kpi-non-fare').textContent = non_fare;
 }
 
 // ── filters ────────────────────────────────────────────────────
