@@ -517,3 +517,75 @@ create index if not exists idx_sub_pay_status on subscription_payments(status);
 create index if not exists idx_vat_deadlines on vat_register(return_deadline_1, return_deadline_2, return_deadline_3, return_deadline_4);
 create index if not exists idx_activity_log_client on activity_log(client_id);
 create index if not exists idx_activity_log_user on activity_log(user_id);
+
+-- ============================================================
+-- EMPLOYEES (dipendenti con dati contrattuali)
+-- ============================================================
+
+create table if not exists employees (
+  id uuid primary key default uuid_generate_v4(),
+  profile_id uuid not null references profiles(id) on delete cascade,
+  start_date date,
+  annual_leave_days integer default 24,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(profile_id)
+);
+
+alter table employees enable row level security;
+drop policy if exists "Staff can read employees" on employees;
+create policy "Staff can read employees" on employees
+  for select using (auth.role() = 'authenticated');
+drop policy if exists "Admin can manage employees" on employees;
+create policy "Admin can manage employees" on employees
+  for all using (
+    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  );
+
+grant all on employees to authenticated;
+
+-- ============================================================
+-- LEAVE REQUESTS (richieste ferie/permessi)
+-- ============================================================
+
+create table if not exists leave_requests (
+  id uuid primary key default uuid_generate_v4(),
+  employee_id uuid not null references employees(id) on delete cascade,
+  type text not null check (type in ('ferie', 'permesso', 'malattia')),
+  date_from date not null,
+  date_to date not null,
+  days integer not null,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  note_employee text,
+  note_admin text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table leave_requests enable row level security;
+
+drop policy if exists "Staff vede le proprie richieste" on leave_requests;
+create policy "Staff vede le proprie richieste" on leave_requests
+  for select using (
+    employee_id in (select id from employees where profile_id = auth.uid())
+    or exists (select 1 from profiles where id = auth.uid() and role in ('admin', 'senior'))
+  );
+
+drop policy if exists "Staff inserisce le proprie richieste" on leave_requests;
+create policy "Staff inserisce le proprie richieste" on leave_requests
+  for insert with check (
+    employee_id in (select id from employees where profile_id = auth.uid())
+    or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  );
+
+drop policy if exists "Admin aggiorna tutte le richieste" on leave_requests;
+create policy "Admin aggiorna tutte le richieste" on leave_requests
+  for update using (
+    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  );
+
+create index if not exists idx_leave_requests_employee on leave_requests(employee_id);
+create index if not exists idx_leave_requests_status   on leave_requests(status);
+create index if not exists idx_leave_requests_dates    on leave_requests(date_from, date_to);
+
+grant all on leave_requests to authenticated;

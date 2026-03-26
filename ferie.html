@@ -587,11 +587,71 @@ async function submitRequest() {
     document.getElementById('modal-request').classList.remove('open');
     ui.showToast('Richiesta inviata ✓','success');
     // Push notification to admin
-    try {
-      await sendPushToAdmin(empId, type, from, to, days);
-    } catch(e) { console.warn('push failed', e); }
+    try { await sendPushToAdmin(empId, type, from, to, days); } catch(e) { console.warn('push failed', e); }
+    // Email notification to admin
+    try { await sendLeaveEmailToAdmin(empId, type, from, to, days, note, row?.id); } catch(e) { console.warn('email failed', e); }
     await loadData();
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+}
+
+async function sendLeaveEmailToAdmin(empId, type, from, to, days, note, requestId) {
+  const emp  = employees.find(e => e.id === empId);
+  const name = emp?.profile?.full_name || 'Dipendente';
+  const typeLabel = { ferie:'🏖 Ferie', permesso:'🕐 Permesso', malattia:'🤒 Malattia' }[type] || type;
+  const html = `
+    <h3 style="margin:0 0 14px;color:#1a2744">🏖 Nuova richiesta — ${ui.escapeHtml(name)}</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      <tr><td style="padding:7px 0;color:#6b7280;width:120px">Dipendente</td><td style="font-weight:700">${ui.escapeHtml(name)}</td></tr>
+      <tr><td style="padding:7px 0;color:#6b7280">Tipo</td><td>${typeLabel}</td></tr>
+      <tr><td style="padding:7px 0;color:#6b7280">Dal</td><td><strong>${fmt(from)}</strong></td></tr>
+      <tr><td style="padding:7px 0;color:#6b7280">Al</td><td><strong>${fmt(to)}</strong></td></tr>
+      <tr><td style="padding:7px 0;color:#6b7280">Giorni</td><td><strong>${days}</strong></td></tr>
+      ${note ? `<tr><td style="padding:7px 0;color:#6b7280">Nota</td><td>${ui.escapeHtml(note)}</td></tr>` : ''}
+    </table>
+    <p style="text-align:center;margin-top:24px">
+      <a href="https://portal.indubai.it/ferie.html" style="background:#1a2744;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">Approva o Rifiuta</a>
+    </p>`;
+  await sbFetch('/functions/v1/send-email', {
+    method: 'POST',
+    body: JSON.stringify({
+      to: 'bozzellapellegrino@gmail.com',
+      subject: `🏖 Nuova richiesta ${typeLabel} — ${name}`,
+      html,
+      event_type: 'leave_request_new',
+      entity_id: requestId || null,
+      entity_type: 'leave',
+    }),
+  });
+}
+
+async function sendLeaveEmailToEmployee(req, action, adminNote, emp) {
+  const approved = action === 'approved';
+  const icon     = approved ? '✅' : '❌';
+  const label    = approved ? 'approvata' : 'rifiutata';
+  const typeLabel = { ferie:'🏖 Ferie', permesso:'🕐 Permesso', malattia:'🤒 Malattia' }[req.type] || req.type;
+  const html = `
+    <h3 style="margin:0 0 14px;color:#1a2744">${icon} Richiesta ${label}</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      <tr><td style="padding:7px 0;color:#6b7280;width:120px">Tipo</td><td>${typeLabel}</td></tr>
+      <tr><td style="padding:7px 0;color:#6b7280">Dal</td><td><strong>${fmt(req.date_from)}</strong></td></tr>
+      <tr><td style="padding:7px 0;color:#6b7280">Al</td><td><strong>${fmt(req.date_to)}</strong></td></tr>
+      <tr><td style="padding:7px 0;color:#6b7280">Giorni</td><td><strong>${req.days}</strong></td></tr>
+      ${adminNote ? `<tr><td style="padding:7px 0;color:#6b7280">Nota admin</td><td>${ui.escapeHtml(adminNote)}</td></tr>` : ''}
+    </table>
+    <p style="text-align:center;margin-top:24px">
+      <a href="https://portal.indubai.it/ferie.html" style="background:#1a2744;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">Vedi le tue ferie</a>
+    </p>`;
+  await sbFetch('/functions/v1/send-email', {
+    method: 'POST',
+    body: JSON.stringify({
+      user_id: emp.profile_id,
+      subject: `${icon} Richiesta ${req.type} ${label} — ${fmt(req.date_from)} → ${fmt(req.date_to)}`,
+      html,
+      event_type: approved ? 'leave_request_approved' : 'leave_request_rejected',
+      entity_id: req.id,
+      entity_type: 'leave',
+    }),
+  });
 }
 
 async function sendPushToAdmin(empId, type, from, to, days) {
@@ -634,7 +694,7 @@ async function confirmReview() {
     });
     document.getElementById('modal-note').classList.remove('open');
     ui.showToast(reviewAction==='approved' ? 'Approvata ✓' : 'Rifiutata', 'success');
-    // Notify employee
+    // Notify employee (push + email)
     const req = requests.find(r=>r.id===reviewId);
     if (req) {
       const emp = employees.find(e=>e.id===req.employee_id);
@@ -652,6 +712,10 @@ async function confirmReview() {
           })
         });
       } catch(e) { console.warn('push failed',e); }
+      // Email al dipendente
+      if (emp?.profile_id) {
+        try { await sendLeaveEmailToEmployee(req, reviewAction, noteAdmin, emp); } catch(e) { console.warn('email failed',e); }
+      }
     }
     await loadData();
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
