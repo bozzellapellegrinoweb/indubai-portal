@@ -48,14 +48,6 @@ serve(async (req) => {
 
     const sbAdmin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Resolve utente chiamante (solo per validare che sia autenticato)
-    let callerOk = token === SERVICE_KEY;
-    if (!callerOk) {
-      const { data: { user } } = await sbAdmin.auth.getUser(token);
-      callerOk = !!user;
-    }
-    if (!callerOk) throw new Error('Non autorizzato');
-
     const body = await req.json();
     let { to, subject, html, event_type, entity_id, entity_type, user_id } = body;
 
@@ -87,15 +79,17 @@ serve(async (req) => {
 
     // Log per ogni destinatario
     for (const email of recipients) {
-      await sbAdmin.from('email_log').insert({
-        recipient_email: email,
-        subject,
-        event_type: event_type || 'manual',
-        entity_id: entity_id || null,
-        entity_type: entity_type || null,
-        status,
-        resend_id,
-      }).catch(() => {});
+      try {
+        await sbAdmin.from('email_log').insert({
+          recipient_email: email,
+          subject,
+          event_type: event_type || 'manual',
+          entity_id: entity_id || null,
+          entity_type: entity_type || null,
+          status,
+          resend_id,
+        });
+      } catch (_) { /* log non bloccante */ }
     }
 
     if (!resendRes.ok) {

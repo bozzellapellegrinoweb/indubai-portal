@@ -77,15 +77,17 @@ async function sendEmail(
   });
   const data = await res.json();
   const status = res.ok ? 'sent' : 'failed';
-  await sb.from('email_log').insert({
-    recipient_email: opts.to,
-    subject: opts.subject,
-    event_type: opts.event_type,
-    entity_id: opts.entity_id || null,
-    entity_type: opts.entity_type || null,
-    status,
-    resend_id: data?.id || null,
-  }).catch(() => {});
+  try {
+    await sb.from('email_log').insert({
+      recipient_email: opts.to,
+      subject: opts.subject,
+      event_type: opts.event_type,
+      entity_id: opts.entity_id || null,
+      entity_type: opts.entity_type || null,
+      status,
+      resend_id: data?.id || null,
+    });
+  } catch (_) { /* log non bloccante */ }
   return { ok: res.ok, resend_id: data?.id };
 }
 
