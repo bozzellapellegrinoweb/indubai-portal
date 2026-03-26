@@ -27,5 +27,11 @@
   ],
   "buildCommand": "echo skip",
   "outputDirectory": ".",
-  "installCommand": "echo skip"
+  "installCommand": "echo skip",
+  "crons": [
+    {
+      "path": "/api/trigger-notifications",
+      "schedule": "0 7 * * *"
+    }
+  ]
 }

@@ -478,6 +478,34 @@ where c.is_active = true
   and (bs.received is null or bs.received = false);
 
 -- ============================================================
+-- EMAIL LOG (audit + deduplicazione notifiche email)
+-- ============================================================
+
+create table if not exists email_log (
+  id uuid primary key default uuid_generate_v4(),
+  recipient_email text not null,
+  subject text not null,
+  event_type text not null,
+  -- 'vat_deadline' | 'task_due' | 'task_assigned' | 'payment_failed'
+  -- 'statement_missing' | 'bilancio_todo' | 'affinitas_due'
+  entity_id text,         -- id riga sorgente (uuid o stringa composta es. 'payments_2026_3')
+  entity_type text,       -- 'vat' | 'task' | 'payment' | 'statement' | 'bilancio' | 'affinitas'
+  status text default 'sent', -- 'sent' | 'failed'
+  resend_id text,
+  created_at timestamptz not null default now()
+);
+
+alter table email_log enable row level security;
+create policy "Only admins can read email_log" on email_log
+  for select using (
+    exists (select 1 from profiles where id = auth.uid() and role in ('admin','senior'))
+  );
+
+create index if not exists idx_email_log_dedup
+  on email_log(event_type, entity_id, recipient_email, created_at);
+create index if not exists idx_email_log_created on email_log(created_at desc);
+
+-- ============================================================
 -- INDEXES per performance
 -- ============================================================
 

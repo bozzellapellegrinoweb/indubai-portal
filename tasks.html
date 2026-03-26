@@ -563,13 +563,32 @@ async function saveTask() {
     closeModal();
     await loadTasks();
     ui.showToast('Task creata!','success');
-    // Push OneSignal — sempre se c'è un assegnatario
+    // Push OneSignal + Email — se c'è un assegnatario
     if (data.assigned_to) {
+      const clientLabel = data.client_id ? ' · ' + (document.getElementById('t-client').selectedOptions[0]?.text || '') : '';
       pushNotify({
         action: 'send_to_user', user_id: data.assigned_to,
         title: '📋 Nuova task assegnata',
-        message: title + (data.client_id ? ' · ' + (document.getElementById('t-client').selectedOptions[0]?.text || '') : ''),
+        message: title + clientLabel,
         url: 'https://portal.indubai.it/tasks.html'
+      });
+      const taskId = result?.[0]?.id;
+      const dueLine = data.due_date ? `<tr style="background:#f9f9f9"><td style="padding:8px;color:#6b7280">Scadenza</td><td style="padding:8px;font-weight:600">${new Date(data.due_date).toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'})}</td></tr>` : '';
+      emailNotify({
+        user_id: data.assigned_to,
+        subject: '📋 Nuova task assegnata: ' + title,
+        html: `<h2 style="margin:0 0 16px;color:#1a2744;font-size:20px">📋 Nuova task assegnata</h2>
+               <p style="color:#374151;font-size:15px">Ti è stata assegnata una nuova task.</p>
+               <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:16px">
+                 <tr><td style="padding:8px;color:#6b7280">Task</td><td style="padding:8px;font-weight:600">${title}</td></tr>
+                 ${clientLabel ? `<tr style="background:#f9f9f9"><td style="padding:8px;color:#6b7280">Cliente</td><td style="padding:8px">${clientLabel.replace(' · ','')}</td></tr>` : ''}
+                 ${dueLine}
+                 ${data.description ? `<tr><td style="padding:8px;color:#6b7280">Descrizione</td><td style="padding:8px">${data.description}</td></tr>` : ''}
+               </table>
+               <p style="text-align:center;margin-top:28px"><a href="https://portal.indubai.it/tasks.html" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri Tasks</a></p>`,
+        event_type: 'task_assigned',
+        entity_id: taskId,
+        entity_type: 'task',
       });
     }
     document.getElementById('t-title').value='';

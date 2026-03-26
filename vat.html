@@ -258,14 +258,30 @@ document.getElementById('btn-save-vat').addEventListener('click', async () => {
     const idx = vatRows.findIndex(r => r.id === activeVatId);
     if (idx >= 0) vatRows[idx] = { ...vatRows[idx], ...updates };
     ui.showToast('VAT aggiornato', 'success');
-    // Push staff se ci sono scadenze entro 30 giorni
+    // Push + Email staff se ci sono scadenze entro 30 giorni
     const today = new Date(); today.setHours(0,0,0,0);
     const deadlines = [updates.return_deadline_1, updates.return_deadline_2, updates.return_deadline_3, updates.return_deadline_4].filter(Boolean);
     for (const dl of deadlines) {
       const d = new Date(dl); const days = Math.ceil((d - today) / 86400000);
       if (days >= 0 && days <= 30) {
         const row = vatRows[idx] || {};
-        pushNotifyStaff({ title: '⚠️ Scadenza VAT imminente', message: (row.company_name || 'Cliente') + ' · dichiarazione VAT scade tra ' + days + ' giorni (' + dl + ').', url: 'https://portal.indubai.it/vat.html' });
+        const companyName = row.clients?.company_name || 'Cliente';
+        const dlFormatted = new Date(dl).toLocaleDateString('it-IT', {day:'2-digit', month:'long', year:'numeric'});
+        pushNotifyStaff({ title: '⚠️ Scadenza VAT imminente', message: companyName + ' · dichiarazione VAT scade tra ' + days + ' giorni (' + dl + ').', url: 'https://portal.indubai.it/vat.html' });
+        emailNotifyStaff({
+          subject: `⚠️ Scadenza VAT: ${companyName} tra ${days} giorni`,
+          html: `<h2 style="margin:0 0 16px;color:#1a2744;font-size:20px">⚠️ Scadenza VAT imminente</h2>
+                 <p style="color:#374151;font-size:15px">La dichiarazione VAT di un cliente è in scadenza imminente.</p>
+                 <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:16px">
+                   <tr><td style="padding:8px;color:#6b7280">Cliente</td><td style="padding:8px;font-weight:600">${companyName}</td></tr>
+                   <tr style="background:#f9f9f9"><td style="padding:8px;color:#6b7280">Scadenza</td><td style="padding:8px;font-weight:600;color:#dc2626">${dlFormatted}</td></tr>
+                   <tr><td style="padding:8px;color:#6b7280">Giorni rimanenti</td><td style="padding:8px;font-weight:600">${days}</td></tr>
+                 </table>
+                 <p style="text-align:center;margin-top:28px"><a href="https://portal.indubai.it/vat.html" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri VAT Register</a></p>`,
+          event_type: 'vat_deadline',
+          entity_id: activeVatId + '_' + dl,
+          entity_type: 'vat',
+        });
         break;
       }
     }

@@ -132,6 +132,7 @@
 
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/notify.js"></script>
 <script>
 const PAGE_SIZE = 50;
 let allClients = [], payments = {};
@@ -327,6 +328,27 @@ document.getElementById('status-picker').querySelectorAll('.status-opt').forEach
       renderSummary();
       await sb.db.log('subscription_updated', clientId, {month, year:currentYear, status});
       ui.showToast('Status aggiornato','success');
+      // Email staff se il pagamento è problematico
+      if (status === 'failed' || status === 'no_tentativo') {
+        const client = allClients.find(c => c.id === clientId);
+        const companyName = client?.company_name || 'Cliente';
+        const monthName = new Date(currentYear, month-1, 1).toLocaleString('it-IT', {month:'long'});
+        const statusLabel = status === 'failed' ? '✕ Failed' : '⚠ No Tentativo';
+        emailNotifyStaff({
+          subject: `⚠️ Pagamento ${statusLabel}: ${companyName} — ${monthName} ${currentYear}`,
+          html: `<h2 style="margin:0 0 16px;color:#1a2744;font-size:20px">⚠️ Pagamento da verificare</h2>
+                 <p style="color:#374151;font-size:15px">Il pagamento di un cliente è stato contrassegnato come problematico.</p>
+                 <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:16px">
+                   <tr><td style="padding:8px;color:#6b7280">Cliente</td><td style="padding:8px;font-weight:600">${companyName}</td></tr>
+                   <tr style="background:#f9f9f9"><td style="padding:8px;color:#6b7280">Periodo</td><td style="padding:8px">${monthName} ${currentYear}</td></tr>
+                   <tr><td style="padding:8px;color:#6b7280">Status</td><td style="padding:8px"><span style="background:#fee2e2;color:#dc2626;padding:3px 8px;border-radius:4px;font-size:12px">${statusLabel}</span></td></tr>
+                 </table>
+                 <p style="text-align:center;margin-top:28px"><a href="https://portal.indubai.it/payments.html" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri Pagamenti</a></p>`,
+          event_type: 'payment_failed',
+          entity_id: `${clientId}_${currentYear}_${month}`,
+          entity_type: 'payment',
+        });
+      }
     } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
   });
 });
