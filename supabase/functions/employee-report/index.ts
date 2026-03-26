@@ -56,18 +56,18 @@ serve(async (req) => {
   try {
     const sb = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // ── Finestra "ieri" in UTC ──────────────────────────────────────────────────
+    // ── Finestra "oggi" in Dubai (UTC+4) ──────────────────────────────────────
     const now = new Date();
-    const yStart = new Date(now);
-    yStart.setUTCDate(yStart.getUTCDate() - 1);
-    yStart.setUTCHours(0, 0, 0, 0);
-    const yEnd = new Date(yStart);
-    yEnd.setUTCDate(yEnd.getUTCDate() + 1);
+    // Mezzanotte Dubai = UTC-4h
+    const dubaiOffset = 4 * 60 * 60 * 1000;
+    const dubaiNow = new Date(now.getTime() + dubaiOffset);
+    const dayStart = new Date(Date.UTC(dubaiNow.getUTCFullYear(), dubaiNow.getUTCMonth(), dubaiNow.getUTCDate()) - dubaiOffset);
+    const dayEnd   = now; // fino ad ora
 
-    const yLabel = yStart.toLocaleDateString('it-IT', {
-      day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC',
+    const yLabel = dayStart.toLocaleDateString('it-IT', {
+      day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai',
     });
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = dubaiNow.toISOString().split('T')[0];
 
     // ── Dedup: non reinviare se già inviato oggi ───────────────────────────────
     const { data: existing } = await sb
@@ -85,8 +85,8 @@ serve(async (req) => {
     const { data: activities } = await sb
       .from('activity_log')
       .select('action, details, created_at, user_id')
-      .gte('created_at', yStart.toISOString())
-      .lt('created_at', yEnd.toISOString())
+      .gte('created_at', dayStart.toISOString())
+      .lt('created_at', dayEnd.toISOString())
       .order('user_id')
       .order('created_at');
 

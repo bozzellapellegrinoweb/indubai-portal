@@ -31,7 +31,11 @@
   "crons": [
     {
       "path": "/api/trigger-notifications",
-      "schedule": "0 7 * * *"
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/trigger-employee-report",
+      "schedule": "0 16 * * *"
     }
   ]
 }
