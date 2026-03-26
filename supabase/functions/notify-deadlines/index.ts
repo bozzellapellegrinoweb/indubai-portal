@@ -387,11 +387,6 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   try {
-    const authHeader = req.headers.get('Authorization') || '';
-    const token = authHeader.replace('Bearer ', '');
-    if (token !== SERVICE_KEY) {
-      return new Response(JSON.stringify({ error: 'Non autorizzato' }), { status: 401, headers: CORS });
-    }
     if (!RESEND_API_KEY) throw new Error('RESEND_API_KEY non configurata');
 
     const sb = createClient(SUPABASE_URL, SERVICE_KEY, {
