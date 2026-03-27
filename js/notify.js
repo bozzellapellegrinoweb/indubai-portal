@@ -6,7 +6,7 @@ const NOTIFY_FN = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/send-no
 
 async function pushNotify({ action = 'send_to_user', title, message, user_id, company, url }) {
   try {
-    const tok = (typeof sb !== 'undefined' && (await sb.auth?.getSession?.())?.data?.session?.access_token) || window.ENV_SUPABASE_ANON_KEY;
+    const tok = (typeof sb !== 'undefined' && sb.getSession?.()?.access_token) || window.ENV_SUPABASE_ANON_KEY;
     const body = { action, title, message };
     if (url)     body.url     = url;
     if (user_id) body.user_id = user_id;
@@ -77,7 +77,7 @@ const EMAIL_FN = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/send-ema
  */
 async function emailNotify({ to, user_id, subject, html, event_type, entity_id, entity_type }) {
   try {
-    const tok = (typeof sb !== 'undefined' && (await sb.auth?.getSession?.())?.data?.session?.access_token)
+    const tok = (typeof sb !== 'undefined' && sb.getSession?.()?.access_token)
       || window.ENV_SUPABASE_ANON_KEY;
     const body = { subject, html };
     if (to)          body.to          = to;
