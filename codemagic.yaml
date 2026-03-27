@@ -12,6 +12,8 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: it.indubai.clientportal
+        additional_bundle_identifiers:
+          - it.indubai.clientportal.NotificationService
       vars:
         BUNDLE_ID: it.indubai.clientportal
         XCODE_WORKSPACE: ios/App/App.xcodeproj
@@ -37,6 +39,11 @@ workflows:
             sed -i "" "/OnesignalCordovaPlugin/d" ios/capacitor-cordova-ios-plugins/CordovaPlugins.podspec || true
           fi
           echo "✅ Cleaned OnesignalCordovaPlugin references"
+          # Fix swift-tools-version se cap sync genera .iOS(.v18) che richiede 6.0
+          if [ -f "ios/App/CapApp-SPM/Package.swift" ]; then
+            sed -i "" "s/\/\/ swift-tools-version: 5\.[0-9]/\/\/ swift-tools-version: 6.0/" ios/App/CapApp-SPM/Package.swift || true
+            echo "✅ Patched swift-tools-version to 6.0"
+          fi
 
       - name: Set bundle ID and version
         script: |
