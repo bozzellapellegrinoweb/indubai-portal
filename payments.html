@@ -91,9 +91,9 @@
             <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;pointer-events:none">🔍</span>
             <input type="text" id="search" placeholder="Cerca cliente..." style="padding-left:30px;min-width:180px">
           </div>
-          <!-- Status chips per mese corrente -->
+          <!-- Status chips per ultimo mese completato -->
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-            <span style="font-size:11px;color:var(--text-muted);font-weight:600">Mese corrente:</span>
+            <span id="filter-month-label" style="font-size:11px;color:var(--text-muted);font-weight:600">Ultimo mese:</span>
             <div class="filter-chip on" data-status="all">Tutti</div>
             <div class="filter-chip chip-ok" data-status="ok">✓ OK</div>
             <div class="filter-chip chip-failed" data-status="failed">✕ Failed</div>
@@ -142,6 +142,14 @@ let partnerFilter = '';
 let currentPage   = 1;
 let activePicker  = null;
 
+// Restituisce l'ultimo mese COMPLETATO per l'anno visualizzato.
+function lastDoneMonth() {
+  const { month: tm, year: ty } = ui.currentYearMonth();
+  if (currentYear < ty) return 12;
+  if (currentYear > ty) return 0;
+  return tm - 1;
+}
+
 // ── load ─────────────────────────────────────────────────────
 async function loadData() {
   document.getElementById('table-wrap').innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner"></div></div>';
@@ -165,7 +173,13 @@ async function loadData() {
 
 // ── summary KPIs ──────────────────────────────────────────────
 function renderSummary() {
-  const m = ui.currentYearMonth().month;
+  const m = lastDoneMonth();
+  const label = m > 0 ? ui.MONTHS[m-1] : '—';
+  document.getElementById('filter-month-label').textContent = `${label}:`;
+  if (m === 0) {
+    document.getElementById('summary-cards').innerHTML = '';
+    return;
+  }
   let ok=0, issues=0, pend=0, tot=allClients.length;
   allClients.forEach(c => {
     const s = payments[`${c.id}_${m}`]?.status;
@@ -175,7 +189,7 @@ function renderSummary() {
   });
   document.getElementById('summary-cards').innerHTML = `
     <div class="kpi-card success">
-      <div class="kpi-label">OK (${ui.MONTHS[m-1]})</div>
+      <div class="kpi-label">OK (${label})</div>
       <div class="kpi-value">${ok}</div>
       <div class="kpi-sub">su ${tot} clienti</div>
       <div class="kpi-icon">✓</div>
@@ -197,11 +211,12 @@ function renderSummary() {
 // ── filter ────────────────────────────────────────────────────
 function getFiltered() {
   const q = document.getElementById('search').value.toLowerCase();
-  const m = ui.currentYearMonth().month;
+  const m = lastDoneMonth();
   return allClients.filter(c => {
     if (q && !(c.company_name||'').toLowerCase().includes(q)) return false;
     if (partnerFilter && c.accounting_partner !== partnerFilter) return false;
     if (statusFilter !== 'all') {
+      if (m === 0) return false;
       const s = payments[`${c.id}_${m}`]?.status || 'pending';
       if (statusFilter === 'ok'           && !['ok','manual','annual'].includes(s)) return false;
       if (statusFilter === 'failed'       && s !== 'failed') return false;
@@ -226,17 +241,14 @@ function renderGrid() {
     `${filtered.length} / ${allClients.length} clienti`;
 
   const monthHeaders = ui.MONTHS.map((m,i) => {
-    const fut = !isPastYear && (i+1) > thisMonth;
+    const fut = !isPastYear && (i+1) >= thisMonth;
     return `<th class="month-h" style="${fut?'opacity:.3':''}">${m}</th>`;
   }).join('');
 
   const rows = page.map(c => {
     const cells = ui.MONTHS.map((_,i) => {
       const m = i+1;
-      // Anni passati: tutti i mesi cliccabili
-      // Anno corrente: solo fino al mese corrente
-      // Anno futuro: nessun mese cliccabile
-      const isFuture = isFutureYear || (!isPastYear && m > thisMonth);
+      const isFuture = isFutureYear || (!isPastYear && m >= thisMonth);
       if (isFuture) return `<td class="status-cell" style="opacity:.15">·</td>`;
       const p = payments[`${c.id}_${m}`];
       return `<td class="status-cell" onclick="openPicker('${c.id}',${m},this)" title="${p?.notes||''}">${ui.monthBadge(p?.status||'pending')}</td>`;
