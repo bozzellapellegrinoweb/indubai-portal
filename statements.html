@@ -87,7 +87,7 @@
             <input type="text" id="search" placeholder="Cerca cliente..." style="padding-left:30px;min-width:200px">
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-            <span style="font-size:11px;color:var(--text-muted);font-weight:600">Mese corrente:</span>
+            <span id="filter-month-label" style="font-size:11px;color:var(--text-muted);font-weight:600">Ultimo mese:</span>
             <div class="filter-chip on" data-status="all">Tutti</div>
             <div class="filter-chip" data-status="ok">✓ Completi</div>
             <div class="filter-chip" data-status="received">○ Ricevuti</div>
@@ -132,6 +132,16 @@ let statusFilter = 'all';
 let currentPage  = 1;
 let activePicker = null;
 
+// Restituisce l'ultimo mese COMPLETATO per l'anno visualizzato.
+// Un mese è "completato" solo quando è già finito interamente.
+// Es: oggi 7 Apr 2026 → mese completato = 3 (Marzo)
+function lastDoneMonth() {
+  const { month: tm, year: ty } = ui.currentYearMonth();
+  if (currentYear < ty) return 12;          // anno passato: tutti i mesi completati
+  if (currentYear > ty) return 0;           // anno futuro: nessun mese ancora completato
+  return tm - 1;                            // anno corrente: ultimo mese terminato (0 = nessuno, es. Gennaio)
+}
+
 // ── helpers ───────────────────────────────────────────────────
 function stmtBadge(s) {
   if (!s || (!s.received && !s.not_applicable)) return '<span class="month-fail">✕</span>';
@@ -173,7 +183,13 @@ async function loadData() {
 
 // ── summary ───────────────────────────────────────────────────
 function renderSummary() {
-  const m = ui.currentYearMonth().month;
+  const m = lastDoneMonth();
+  const label = m > 0 ? ui.MONTHS[m-1] : '—';
+  document.getElementById('filter-month-label').textContent = `${label}:`;
+  if (m === 0) {
+    document.getElementById('summary-cards').innerHTML = '';
+    return;
+  }
   let ok=0, received=0, missing=0, na=0;
   allClients.forEach(c => {
     const st = stmtStatus(statements[`${c.id}_${m}`]);
@@ -184,7 +200,7 @@ function renderSummary() {
   });
   document.getElementById('summary-cards').innerHTML = `
     <div class="kpi-card success">
-      <div class="kpi-label">Completi (${ui.MONTHS[m-1]})</div>
+      <div class="kpi-label">Completi (${label})</div>
       <div class="kpi-value">${ok}</div>
       <div class="kpi-sub">Ricevuti + Registrati</div>
       <div class="kpi-icon">✓</div>
@@ -206,10 +222,11 @@ function renderSummary() {
 // ── filter ────────────────────────────────────────────────────
 function getFiltered() {
   const q = document.getElementById('search').value.toLowerCase();
-  const m = ui.currentYearMonth().month;
+  const m = lastDoneMonth();
   return allClients.filter(c => {
     if (q && !(c.company_name||'').toLowerCase().includes(q)) return false;
     if (statusFilter !== 'all') {
+      if (m === 0) return false; // nessun mese completato: filtro non applicabile
       const st = stmtStatus(statements[`${c.id}_${m}`]);
       if (statusFilter !== st) return false;
     }
@@ -231,14 +248,14 @@ function renderGrid() {
     `${filtered.length} / ${allClients.length} clienti`;
 
   const monthHeaders = ui.MONTHS.map((m,i) => {
-    const fut = !isPastYear && (i+1) > thisMonth;
+    const fut = !isPastYear && (i+1) >= thisMonth;
     return `<th class="month-h" style="${fut?'opacity:.3':''}">${m}</th>`;
   }).join('');
 
   const rows = page.map(c => {
     const cells = ui.MONTHS.map((_,i) => {
       const m = i+1;
-      const isFuture = isFutureYear || (!isPastYear && m > thisMonth);
+      const isFuture = isFutureYear || (!isPastYear && m >= thisMonth);
       if (isFuture) return `<td class="status-cell" style="opacity:.15">·</td>`;
       const s = statements[`${c.id}_${m}`];
       return `<td class="status-cell" onclick="openPicker('${c.id}',${m},this)">${stmtBadge(s)}</td>`;
