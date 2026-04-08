@@ -248,14 +248,14 @@ function renderGrid() {
     `${filtered.length} / ${allClients.length} clienti`;
 
   const monthHeaders = ui.MONTHS.map((m,i) => {
-    const fut = !isPastYear && (i+1) >= thisMonth;
+    const fut = !isPastYear && (i+1) > thisMonth;
     return `<th class="month-h" style="${fut?'opacity:.3':''}">${m}</th>`;
   }).join('');
 
   const rows = page.map(c => {
     const cells = ui.MONTHS.map((_,i) => {
       const m = i+1;
-      const isFuture = isFutureYear || (!isPastYear && m >= thisMonth);
+      const isFuture = isFutureYear || (!isPastYear && m > thisMonth);
       if (isFuture) return `<td class="status-cell" style="opacity:.15">·</td>`;
       const s = statements[`${c.id}_${m}`];
       return `<td class="status-cell" onclick="openPicker('${c.id}',${m},this)">${stmtBadge(s)}</td>`;
