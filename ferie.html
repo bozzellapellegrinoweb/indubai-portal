@@ -694,30 +694,28 @@ async function confirmReview() {
     });
     document.getElementById('modal-note').classList.remove('open');
     ui.showToast(reviewAction==='approved' ? 'Approvata ✓' : 'Rifiutata', 'success');
-    // Notify employee (push + email)
+    // Aggiorna subito i totali, poi invia notifiche in background
+    await loadData();
+    // Notify employee (push + email) — fire & forget
     const req = requests.find(r=>r.id===reviewId);
     if (req) {
       const emp = employees.find(e=>e.id===req.employee_id);
       const label = reviewAction==='approved' ? 'approvata ✓' : 'rifiutata ✕';
-      try {
-        await fetch('https://onesignal.com/api/v1/notifications', {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json', 'Authorization':'Key os_v2_app_a3zydtpnhvbzhjoch5xpqmrgmeliookcss4ecsfhgkvb3hdfycruuiwq32jbh4m5xx35g3jck5gfripdgxiqaiqpjya4n63ila43h4y' },
-          body: JSON.stringify({
-            app_id:'06f381cd-ed3d-4393-a5c2-3f6ef8322661',
-            included_segments:['All'],
-            headings:{ en:`Richiesta ${label}` },
-            contents:{ en:`La tua richiesta di ${req.type} (${fmt(req.date_from)}→${fmt(req.date_to)}) è stata ${label}${noteAdmin?' — '+noteAdmin:''}` },
-            url:`${location.origin}/ferie.html`
-          })
-        });
-      } catch(e) { console.warn('push failed',e); }
-      // Email al dipendente
+      fetch('https://onesignal.com/api/v1/notifications', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':'Key os_v2_app_a3zydtpnhvbzhjoch5xpqmrgmeliookcss4ecsfhgkvb3hdfycruuiwq32jbh4m5xx35g3jck5gfripdgxiqaiqpjya4n63ila43h4y' },
+        body: JSON.stringify({
+          app_id:'06f381cd-ed3d-4393-a5c2-3f6ef8322661',
+          included_segments:['All'],
+          headings:{ en:`Richiesta ${label}` },
+          contents:{ en:`La tua richiesta di ${req.type} (${fmt(req.date_from)}→${fmt(req.date_to)}) è stata ${label}${noteAdmin?' — '+noteAdmin:''}` },
+          url:`${location.origin}/ferie.html`
+        })
+      }).catch(e => console.warn('push failed',e));
       if (emp?.profile_id) {
-        try { await sendLeaveEmailToEmployee(req, reviewAction, noteAdmin, emp); } catch(e) { console.warn('email failed',e); }
+        sendLeaveEmailToEmployee(req, reviewAction, noteAdmin, emp).catch(e => console.warn('email failed',e));
       }
     }
-    await loadData();
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
 }
 
