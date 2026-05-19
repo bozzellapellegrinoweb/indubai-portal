@@ -666,15 +666,21 @@ async function loadZohoTab() {
     const vatPct  = Math.min(100, Math.round(d.rolling12AED / d.vatThreshold * 100));
     const vatRegistered = clientData?.vat_registered;
 
-    // Push alert VAT se non ancora registrato e supera soglie
+    // Push alert VAT se non ancora registrato e supera soglie (cooldown 1h per evitare flooding)
     if (!vatRegistered) {
       const cid = clientData?.id;
-      if (vatPct >= 100 && d.vatStatus === 'exceeded') {
-        // Alert a staff + cliente
-        pushNotifyStaff({ title: '🚨 Soglia VAT superata', message: (clientData?.company_name||'Cliente') + ' ha superato AED ' + d.vatThreshold.toLocaleString() + '. Registrazione obbligatoria.', url: 'https://portal.indubai.it/client-detail?id=' + cid });
-        getClientUserId(cid).then(uid => { if(uid) pushNotify({ action:'send_to_user', user_id:uid, title:'🚨 Soglia VAT superata', message:'Il tuo fatturato 12 mesi ha superato AED ' + d.vatThreshold.toLocaleString() + '. Contatta il tuo consulente.', url:'https://portal.indubai.it/client-portal/dashboard.html' }); });
-      } else if (vatPct >= 80 && d.vatStatus === 'warning') {
-        pushNotifyStaff({ title: '⚠️ Soglia VAT all\'80%', message: (clientData?.company_name||'Cliente') + ' è all\''+vatPct+'% della soglia VAT (AED ' + Math.round(d.rolling12AED).toLocaleString() + ' / ' + d.vatThreshold.toLocaleString() + ').', url: 'https://portal.indubai.it/client-detail?id=' + cid });
+      const vatAlertKey = `vat_alert_${cid}_${d.vatStatus}`;
+      const lastAlert = sessionStorage.getItem(vatAlertKey);
+      const COOLDOWN = 60 * 60 * 1000; // 1 ora
+      if (!lastAlert || Date.now() - Number(lastAlert) > COOLDOWN) {
+        if (vatPct >= 100 && d.vatStatus === 'exceeded') {
+          sessionStorage.setItem(vatAlertKey, Date.now());
+          pushNotifyStaff({ title: '🚨 Soglia VAT superata', message: (clientData?.company_name||'Cliente') + ' ha superato AED ' + d.vatThreshold.toLocaleString() + '. Registrazione obbligatoria.', url: 'https://portal.indubai.it/client-detail?id=' + cid });
+          getClientUserId(cid).then(uid => { if(uid) pushNotify({ action:'send_to_user', user_id:uid, title:'🚨 Soglia VAT superata', message:'Il tuo fatturato 12 mesi ha superato AED ' + d.vatThreshold.toLocaleString() + '. Contatta il tuo consulente.', url:'https://portal.indubai.it/client-portal/dashboard.html' }); });
+        } else if (vatPct >= 80 && d.vatStatus === 'warning') {
+          sessionStorage.setItem(vatAlertKey, Date.now());
+          pushNotifyStaff({ title: '⚠️ Soglia VAT all\'80%', message: (clientData?.company_name||'Cliente') + ' è all\''+vatPct+'% della soglia VAT (AED ' + Math.round(d.rolling12AED).toLocaleString() + ' / ' + d.vatThreshold.toLocaleString() + ').', url: 'https://portal.indubai.it/client-detail?id=' + cid });
+        }
       }
     }
     const vatColor = vatRegistered ? '#059669' : d.vatStatus === 'exceeded' ? '#dc2626' : d.vatStatus === 'warning' ? '#d97706' : '#059669';
@@ -973,23 +979,23 @@ async function resetClientPassword() {
 
 async function resetClientPasswordWithValue() {
   const newPwd = document.getElementById('new-pwd-display')?.value || generatePassword();
-  const links = await sb.db.select('client_users', { filter: 'client_id=eq.' + clientId, columns: 'user_id' });
-  const userId = links?.[0]?.user_id;
-  if (!userId) { ui.showToast('Utente non trovato', 'error'); return; }
-  const token = sb.getSession()?.access_token;
-  const r = await fetch('/api/update-password', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: JSON.stringify({ userId, password: newPwd })
-  });
-  const data = await r.json();
-  if (!r.ok || data.error) { ui.showToast('Errore: ' + (data.error || r.status) + (data.role ? ' [role:'+data.role+']' : ''), 'error'); return; }
-  // Show confirmation with the password visible
-  ui.showToast('✅ Password aggiornata!', 'success');
-  // Copy to clipboard automatically
-  navigator.clipboard.writeText('Email: ' + (clientData?.email||'') + '\nPassword: ' + newPwd + '\nLink: /client-portal/login.html')
-    .then(() => ui.showToast('📋 Credenziali copiate negli appunti', 'success', 4000))
-    .catch(() => {});
+  try {
+    const links = await sb.db.select('client_users', { filter: 'client_id=eq.' + clientId, columns: 'user_id' });
+    const userId = links?.[0]?.user_id;
+    if (!userId) { ui.showToast('Utente non trovato', 'error'); return; }
+    const token = sb.getSession()?.access_token;
+    const r = await fetch('/api/update-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ userId, password: newPwd })
+    });
+    const data = await r.json();
+    if (!r.ok || data.error) { ui.showToast('Errore: ' + (data.error || r.status) + (data.role ? ' [role:'+data.role+']' : ''), 'error'); return; }
+    ui.showToast('✅ Password aggiornata!', 'success');
+    navigator.clipboard.writeText('Email: ' + (clientData?.email||'') + '\nPassword: ' + newPwd + '\nLink: /client-portal/login.html')
+      .then(() => ui.showToast('📋 Credenziali copiate negli appunti', 'success', 4000))
+      .catch(() => {});
+  } catch(e) { ui.showToast('Errore reset password: ' + e.message, 'error'); }
 }
 
 
@@ -1020,7 +1026,7 @@ async function loadVistiTab() {
         <td>${fmtDate(v.expiry_date)} ${badgeVisa(v.expiry_date)}</td>
         <td style="color:var(--text-muted);font-size:12px">${v.notes||'—'}</td>
         <td>
-          <button class="btn btn-ghost btn-sm" onclick="editVisa('${v.id}','${v.holder_name.replace(/'/g,"\'")}','${v.visa_type||'Residenza'}','${v.expiry_date||''}','${(v.notes||'').replace(/'/g,"\'")}')">✎</button>
+          <button class="btn btn-ghost btn-sm" data-vid="${v.id}" data-name="${ui.escapeHtml(v.holder_name)}" data-type="${ui.escapeHtml(v.visa_type||'Residenza')}" data-expiry="${v.expiry_date||''}" data-notes="${ui.escapeHtml(v.notes||'')}" onclick="editVisa(this.dataset.vid,this.dataset.name,this.dataset.type,this.dataset.expiry,this.dataset.notes)">✎</button>
           <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteVisa('${v.id}')">🗑</button>
         </td>
       </tr>`).join('');

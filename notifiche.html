@@ -89,7 +89,7 @@
 <script src="/js/app.js"></script>
 <script>
 const PAGE = 50;
-let allNotifs = [], filtered = [], currentFilter = 'all', offset = 0;
+let allNotifs = [], filtered = [], currentFilter = 'all', offset = 0, visibleCount = PAGE;
 
 const TYPE_ICONS = {
   task_assigned: '📋', task_comment: '💬', task_completed: '✅',
@@ -148,12 +148,13 @@ function applyFilter() {
   if (currentFilter === 'all') filtered = [...allNotifs];
   else if (currentFilter === 'unread') filtered = allNotifs.filter(n=>!n.read);
   else filtered = allNotifs.filter(n=>n.type===currentFilter);
+  visibleCount = PAGE;
   renderList();
 }
 
 function renderList() {
   const list = document.getElementById('notif-main-list');
-  const page = filtered.slice(0, PAGE);
+  const page = filtered.slice(0, visibleCount);
   if (!filtered.length) {
     list.innerHTML = '<div class="empty-state">🎉 Nessuna notifica qui</div>';
     document.getElementById('notif-load-more').style.display = 'none';
@@ -172,7 +173,12 @@ function renderList() {
         <button onclick="event.stopPropagation();deleteNotif('${n.id}')" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:0" title="Elimina">✕</button>
       </div>
     </div>`).join('');
-  document.getElementById('notif-load-more').style.display = filtered.length > PAGE ? 'block' : 'none';
+  document.getElementById('notif-load-more').style.display = filtered.length > visibleCount ? 'block' : 'none';
+}
+
+function loadMore() {
+  visibleCount += PAGE;
+  renderList();
 }
 
 async function handleClick(id, link) {

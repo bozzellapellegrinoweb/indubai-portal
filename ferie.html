@@ -368,7 +368,7 @@ function renderAdmin() {
     const used = usedDays(emp.id);
     const total = computeEntitlement(emp.start_date, YEAR);
     const rem = Math.max(0, total - used);
-    const pct = Math.min(100, Math.round((used/total)*100));
+    const pct = total > 0 ? Math.min(100, Math.round((used/total)*100)) : 0;
     const barCls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : '';
     const usedFerie = usedDays(emp.id, 'ferie');
     const usedPerm  = usedDays(emp.id, 'permesso');
@@ -474,7 +474,7 @@ function renderEmployee() {
   const total  = computeEntitlement(myEmployee.start_date, YEAR);
   const used   = usedDays(myEmployee.id);
   const rem    = Math.max(0, total - used);
-  const pct    = Math.min(100, Math.round((used/total)*100));
+  const pct    = total > 0 ? Math.min(100, Math.round((used/total)*100)) : 0;
   const barCls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : '';
   const pending = requests.filter(r => r.employee_id===myEmployee.id && r.status==='pending');
   const approved= requests.filter(r => r.employee_id===myEmployee.id && r.status==='approved' && r.date_from?.startsWith(YEAR));
@@ -660,16 +660,11 @@ async function sendPushToAdmin(empId, type, from, to, days) {
   const emp  = employees.find(e=>e.id===empId);
   const name = emp?.profile?.full_name?.split(' ')[0] || 'Dipendente';
   const typeLabel = {ferie:'Ferie 🏖',permesso:'Permesso 🕐',malattia:'Malattia 🤒'}[type]||type;
-  await fetch('https://onesignal.com/api/v1/notifications', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'Authorization':'Key os_v2_app_a3zydtpnhvbzhjoch5xpqmrgmeliookcss4ecsfhgkvb3hdfycruuiwq32jbh4m5xx35g3jck5gfripdgxiqaiqpjya4n63ila43h4y' },
-    body: JSON.stringify({
-      app_id:'06f381cd-ed3d-4393-a5c2-3f6ef8322661',
-      included_segments:['All'],
-      headings:{ en:`Richiesta ${typeLabel} da ${name}` },
-      contents:{ en:`${name} richiede ${days} giorno/i: ${fmt(from)} → ${fmt(to)}` },
-      url: `${location.origin}/ferie.html`
-    })
+  pushNotifyStaff({
+    roles: ['admin', 'senior'],
+    title: `Richiesta ${typeLabel} da ${name}`,
+    message: `${name} richiede ${days} giorno/i: ${fmt(from)} → ${fmt(to)}`,
+    url: `${location.origin}/ferie.html`
   });
 }
 
@@ -703,17 +698,14 @@ async function confirmReview() {
     if (req) {
       const emp = employees.find(e=>e.id===req.employee_id);
       const label = reviewAction==='approved' ? 'approvata ✓' : 'rifiutata ✕';
-      fetch('https://onesignal.com/api/v1/notifications', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'Authorization':'Key os_v2_app_a3zydtpnhvbzhjoch5xpqmrgmeliookcss4ecsfhgkvb3hdfycruuiwq32jbh4m5xx35g3jck5gfripdgxiqaiqpjya4n63ila43h4y' },
-        body: JSON.stringify({
-          app_id:'06f381cd-ed3d-4393-a5c2-3f6ef8322661',
-          included_segments:['All'],
-          headings:{ en:`Richiesta ${label}` },
-          contents:{ en:`La tua richiesta di ${req.type} (${fmt(req.date_from)}→${fmt(req.date_to)}) è stata ${label}${noteAdmin?' — '+noteAdmin:''}` },
-          url:`${location.origin}/ferie.html`
-        })
-      }).catch(e => console.warn('push failed',e));
+      if (emp?.profile_id) {
+        pushNotify({
+          action: 'send_to_user', user_id: emp.profile_id,
+          title: `Richiesta ${label}`,
+          message: `La tua richiesta di ${req.type} (${fmt(req.date_from)}→${fmt(req.date_to)}) è stata ${label}${noteAdmin?' — '+noteAdmin:''}`,
+          url: `${location.origin}/ferie.html`
+        });
+      }
       if (emp?.profile_id) {
         sendLeaveEmailToEmployee(req, reviewAction, noteAdmin, emp).catch(e => console.warn('email failed',e));
       }

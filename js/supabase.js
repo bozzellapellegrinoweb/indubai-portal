@@ -167,30 +167,15 @@ const db = {
     });
   },
 
-  // Upsert
+  // Upsert (usa sbFetch per auto-refresh token su 401)
   async upsert(table, rows, onConflict = '') {
     let path = `/rest/v1/${table}`;
     if (onConflict) path += `?on_conflict=${onConflict}`;
-    const token = getSessionToken() || SUPABASE_ANON_KEY;
-    // Headers via Headers object — append multipli per Prefer
-    const headers = new Headers();
-    headers.set('apikey', SUPABASE_ANON_KEY);
-    headers.set('Authorization', `Bearer ${token}`);
-    headers.set('Content-Type', 'application/json');
-    headers.set('Prefer', 'return=representation, resolution=merge-duplicates');
-    const res = await fetch(`${SUPABASE_URL}${path}`, {
+    return sbFetch(path, {
       method: 'POST',
-      headers,
+      prefer: 'return=representation, resolution=merge-duplicates',
       body: JSON.stringify(Array.isArray(rows) ? rows : [rows]),
     });
-    const text = await res.text();
-    let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-    if (!res.ok) {
-      console.error('[upsert] error', res.status, data);
-      throw new Error(data?.message || data?.hint || data?.error || `HTTP ${res.status}`);
-    }
-    return data;
   },
 
   // ── Specific queries ────────────────────────────────────────

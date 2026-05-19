@@ -239,7 +239,7 @@ async function loadKPIs() {
       </div>`;
       // Load VAT soglia count from snapshots
       try {
-        const { data: snaps } = await sb.db.select('zoho_snapshots', 'vat_status', 'vat_status=in.(exceeded,warning)');
+        const snaps = await sb.db.select('zoho_snapshots', { columns: 'vat_status', filter: 'vat_status=in.(exceeded,warning)' });
         const exceeded = (snaps||[]).filter(s=>s.vat_status==='exceeded').length;
         const warning  = (snaps||[]).filter(s=>s.vat_status==='warning').length;
         const el  = document.getElementById('kpi-vat-exceeded');
