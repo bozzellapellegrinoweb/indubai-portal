@@ -680,7 +680,9 @@ async function submitRequest() {
 
   try {
     const row = await sb.db.insert('leave_requests', {
-      employee_id: empId, type, date_from: from, date_to: to, days, note_employee: note||null
+      employee_id: empId, type, date_from: from, date_to: to, days, note_employee: note||null,
+      status: amIAdmin ? 'approved' : 'pending',
+      ...(amIAdmin ? { note_admin: 'Approvata automaticamente (inserita da admin)' } : {})
     });
     document.getElementById('modal-request').classList.remove('open');
     ui.showToast('Richiesta inviata ✓','success');
