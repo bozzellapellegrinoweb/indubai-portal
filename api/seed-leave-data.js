@@ -19,14 +19,24 @@ export default async function handler(req, res) {
   try {
     // 1. Find Mercedes employee_id
     const empRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/employees?select=id,profile:profiles(full_name)`,
+      `${SUPABASE_URL}/rest/v1/employees?select=id,profile_id`,
       { headers }
     );
     const employees = await empRes.json();
-    const mercedes = employees.find(e =>
-      e.profile?.full_name?.toLowerCase().includes('mercedes')
+    if (!Array.isArray(employees)) return res.status(500).json({ error: 'employees query failed', employees });
+
+    // Get profiles to match name
+    const profRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?select=id,full_name`,
+      { headers }
     );
-    if (!mercedes) return res.status(404).json({ error: 'Mercedes not found', employees });
+    const profiles = await profRes.json();
+
+    const mercedes = employees.find(e => {
+      const prof = profiles.find(p => p.id === e.profile_id);
+      return prof?.full_name?.toLowerCase().includes('mercedes');
+    });
+    if (!mercedes) return res.status(404).json({ error: 'Mercedes not found', employees, profiles });
 
     // 2. Delete ALL existing leave_requests
     await fetch(`${SUPABASE_URL}/rest/v1/leave_requests?id=gt.0`, {
