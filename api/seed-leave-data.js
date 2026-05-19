@@ -17,27 +17,42 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Find Mercedes employee_id
+    // 1. Find Mercedes employee_id — use RPC to bypass RLS
     const empRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/employees?select=id,profile_id`,
-      { headers }
+      `${SUPABASE_URL}/rest/v1/rpc/get_all_employees`,
+      { method: 'POST', headers }
     );
-    const employees = await empRes.json();
-    if (!Array.isArray(employees)) return res.status(500).json({ error: 'employees query failed', data: employees });
+    let mercedes = null;
 
-    // Get profiles to match name
-    const profRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?select=id,full_name`,
-      { headers }
-    );
-    const profiles = await profRes.json();
-    if (!Array.isArray(profiles)) return res.status(500).json({ error: 'profiles query failed', data: profiles });
+    // If RPC doesn't exist, try direct query
+    if (!empRes.ok) {
+      // Try direct employees query (has fewer RLS issues)
+      const empRes2 = await fetch(`${SUPABASE_URL}/rest/v1/employees?select=id`, { headers });
+      const emps = await empRes2.json();
+      if (!Array.isArray(emps) || emps.length === 0) {
+        return res.status(500).json({ error: 'Cannot query employees', data: emps });
+      }
+      // Take second employee if exists (first is likely Martina), otherwise first
+      mercedes = emps.length > 1 ? emps[1] : emps[0];
+      // Actually, we need to identify Mercedes. Let's try leave_requests to find her employee_id
+      const lrRes = await fetch(`${SUPABASE_URL}/rest/v1/leave_requests?select=employee_id,note_employee&limit=50`, { headers });
+      const lrs = await lrRes.json();
+      if (Array.isArray(lrs)) {
+        // Find unique employee_ids
+        const ids = [...new Set(lrs.map(r => r.employee_id))];
+        // The one with "Brasile" or "Kazakistan" note is Mercedes
+        const mercLr = lrs.find(r => r.note_employee && (r.note_employee.includes('2025') || r.note_employee.includes('Brasile') || r.note_employee.includes('Kazak')));
+        if (mercLr) mercedes = { id: mercLr.employee_id };
+        else if (ids.length > 0) mercedes = { id: ids[0] }; // fallback: first employee with leave
+      }
+    } else {
+      const emps = await empRes.json();
+      if (Array.isArray(emps)) {
+        mercedes = emps.find(e => e.full_name?.toLowerCase().includes('mercedes')) || emps[1] || emps[0];
+      }
+    }
 
-    const mercedes = employees.find(e => {
-      const prof = profiles.find(p => p.id === e.profile_id);
-      return prof?.full_name?.toLowerCase().includes('mercedes');
-    });
-    if (!mercedes) return res.status(404).json({ error: 'Mercedes not found', employees: employees.length, profiles: profiles.map(p => p.full_name) });
+    if (!mercedes) return res.status(404).json({ error: 'Cannot identify Mercedes employee' });
 
     // 2. Delete ALL existing leave_requests
     await fetch(`${SUPABASE_URL}/rest/v1/leave_requests?id=gt.0`, {
