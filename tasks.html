@@ -455,12 +455,57 @@ async function addComment(taskId) {
   try {
     await sb.db.insert('task_comments', {task_id:taskId, author_id:myId, content});
     const task = allTasks.find(t => t.id === taskId);
+    const myName = profiles.find(p => p.id === myId)?.full_name || 'Un collega';
     if (task?.assigned_to && task.assigned_to !== myId) {
       await sb.db.insert('notifications', {
         user_id: task.assigned_to, type:'task_comment',
         title:'Nuovo commento: '+task.title, body:content.substring(0,80),
         link:'/tasks.html', entity_type:'task', entity_id:taskId
       }).catch(()=>{});
+      // Push OneSignal
+      pushNotify({
+        action: 'send_to_user', user_id: task.assigned_to,
+        title: '💬 Nuovo commento',
+        message: myName + ': ' + content.substring(0, 80),
+        url: 'https://portal.indubai.it/tasks.html'
+      });
+      // Email via Resend
+      emailNotify({
+        user_id: task.assigned_to,
+        subject: '💬 Nuovo commento su: ' + task.title,
+        html: `<h2 style="margin:0 0 16px;color:#1a2744;font-size:20px">💬 Nuovo commento</h2>
+               <p style="color:#374151;font-size:15px"><strong>${myName}</strong> ha commentato la task <strong>${task.title}</strong>:</p>
+               <div style="background:#f3f4f6;border-left:4px solid #1a2744;padding:14px 18px;margin:16px 0;border-radius:6px;font-size:14px;color:#374151">${content}</div>
+               <p style="text-align:center;margin-top:28px"><a href="https://portal.indubai.it/tasks.html" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri Tasks</a></p>`,
+        event_type: 'task_comment',
+        entity_id: taskId,
+        entity_type: 'task',
+      });
+    }
+    // Notifica anche il creatore della task (se diverso dall'assegnatario e da chi commenta)
+    if (task?.created_by && task.created_by !== myId && task.created_by !== task.assigned_to) {
+      await sb.db.insert('notifications', {
+        user_id: task.created_by, type:'task_comment',
+        title:'Nuovo commento: '+task.title, body:content.substring(0,80),
+        link:'/tasks.html', entity_type:'task', entity_id:taskId
+      }).catch(()=>{});
+      pushNotify({
+        action: 'send_to_user', user_id: task.created_by,
+        title: '💬 Nuovo commento',
+        message: myName + ': ' + content.substring(0, 80),
+        url: 'https://portal.indubai.it/tasks.html'
+      });
+      emailNotify({
+        user_id: task.created_by,
+        subject: '💬 Nuovo commento su: ' + task.title,
+        html: `<h2 style="margin:0 0 16px;color:#1a2744;font-size:20px">💬 Nuovo commento</h2>
+               <p style="color:#374151;font-size:15px"><strong>${myName}</strong> ha commentato la task <strong>${task.title}</strong>:</p>
+               <div style="background:#f3f4f6;border-left:4px solid #1a2744;padding:14px 18px;margin:16px 0;border-radius:6px;font-size:14px;color:#374151">${content}</div>
+               <p style="text-align:center;margin-top:28px"><a href="https://portal.indubai.it/tasks.html" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri Tasks</a></p>`,
+        event_type: 'task_comment',
+        entity_id: taskId,
+        entity_type: 'task',
+      });
     }
     await openTask(taskId);
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
