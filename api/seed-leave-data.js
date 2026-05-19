@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       { headers }
     );
     const employees = await empRes.json();
-    if (!Array.isArray(employees)) return res.status(500).json({ error: 'employees query failed', employees });
+    if (!Array.isArray(employees)) return res.status(500).json({ error: 'employees query failed', data: employees });
 
     // Get profiles to match name
     const profRes = await fetch(
@@ -31,12 +31,13 @@ export default async function handler(req, res) {
       { headers }
     );
     const profiles = await profRes.json();
+    if (!Array.isArray(profiles)) return res.status(500).json({ error: 'profiles query failed', data: profiles });
 
     const mercedes = employees.find(e => {
       const prof = profiles.find(p => p.id === e.profile_id);
       return prof?.full_name?.toLowerCase().includes('mercedes');
     });
-    if (!mercedes) return res.status(404).json({ error: 'Mercedes not found', employees, profiles });
+    if (!mercedes) return res.status(404).json({ error: 'Mercedes not found', employees: employees.length, profiles: profiles.map(p => p.full_name) });
 
     // 2. Delete ALL existing leave_requests
     await fetch(`${SUPABASE_URL}/rest/v1/leave_requests?id=gt.0`, {
