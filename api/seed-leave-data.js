@@ -54,8 +54,8 @@ export default async function handler(req, res) {
 
     if (!mercedes) return res.status(404).json({ error: 'Cannot identify Mercedes employee' });
 
-    // 2. Delete ALL existing leave_requests
-    await fetch(`${SUPABASE_URL}/rest/v1/leave_requests?id=gt.0`, {
+    // 2. Delete ALL existing leave_requests (UUID ids, use not.is.null)
+    await fetch(`${SUPABASE_URL}/rest/v1/leave_requests?id=not.is.null`, {
       method: 'DELETE',
       headers: { ...headers, 'Prefer': 'return=minimal' },
     });
