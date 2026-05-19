@@ -529,7 +529,7 @@ function renderAdmin() {
     <div class="card" style="padding:0">
       <div class="tbl-wrap"><table>
         <thead><tr>
-          <th>Dipendente</th><th>Tipo</th><th>Dal</th><th>Al</th><th>Giorni</th><th>Stato</th><th>Nota dipendente</th><th>Nota admin</th>
+          <th>Dipendente</th><th>Tipo</th><th>Dal</th><th>Al</th><th>Giorni</th><th>Stato</th><th>Nota dipendente</th><th>Nota admin</th><th></th>
         </tr></thead>
         <tbody>
           ${history.length ? history.map(r => `<tr>
@@ -541,8 +541,9 @@ function renderAdmin() {
             <td>${statusBadge(r.status)}</td>
             <td style="color:var(--text-muted);font-size:12px">${r.note_employee||'—'}</td>
             <td style="color:var(--text-muted);font-size:12px">${r.note_admin||'—'}</td>
+            <td><button onclick="deleteRequest('${r.id}')" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:2px 6px" title="Elimina">🗑</button></td>
           </tr>`).join('') :
-          '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">Nessuna richiesta</td></tr>'}
+          '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted)">Nessuna richiesta</td></tr>'}
         </tbody>
       </table></div>
     </div>`;
@@ -805,6 +806,16 @@ async function confirmReview() {
         sendLeaveEmailToEmployee(req, reviewAction, noteAdmin, emp).catch(e => console.warn('email failed',e));
       }
     }
+  } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
+}
+
+// ── delete request (admin) ────────────────────────────────────
+async function deleteRequest(id) {
+  if (!confirm('Eliminare questa richiesta?')) return;
+  try {
+    await sb.db.delete('leave_requests', `id=eq.${id}`);
+    ui.showToast('Richiesta eliminata','success');
+    await loadData();
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
 }
 
