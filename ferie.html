@@ -679,11 +679,19 @@ async function submitRequest() {
   }
 
   try {
-    const row = await sb.db.insert('leave_requests', {
-      employee_id: empId, type, date_from: from, date_to: to, days, note_employee: note||null,
-      status: amIAdmin ? 'approved' : 'pending',
-      ...(amIAdmin ? { note_admin: 'Approvata automaticamente (inserita da admin)' } : {})
+    const token = sb.getSession()?.access_token;
+    const insertRes = await fetch('/api/leave-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        employee_id: empId, type, date_from: from, date_to: to, days, note_employee: note||null,
+        status: amIAdmin ? 'approved' : 'pending',
+        ...(amIAdmin ? { note_admin: 'Approvata automaticamente (inserita da admin)' } : {})
+      })
     });
+    const rowData = await insertRes.json();
+    if (!insertRes.ok) throw new Error(rowData.error || rowData.message || 'Errore inserimento');
+    const row = Array.isArray(rowData) ? rowData[0] : rowData;
     document.getElementById('modal-request').classList.remove('open');
     ui.showToast('Richiesta inviata ✓','success');
     // Push notification to admin
@@ -782,11 +790,18 @@ function reviewRequest(id, action) {
 async function confirmReview() {
   const noteAdmin = document.getElementById('note-text').value.trim();
   try {
-    await sb.db.update('leave_requests', `id=eq.${reviewId}`, {
-      status: reviewAction,
-      note_admin: noteAdmin||null,
-      updated_at: new Date().toISOString()
+    const tkn = sb.getSession()?.access_token;
+    const patchRes = await fetch('/api/leave-requests', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tkn },
+      body: JSON.stringify({
+        id: reviewId,
+        status: reviewAction,
+        note_admin: noteAdmin||null,
+        updated_at: new Date().toISOString()
+      })
     });
+    if (!patchRes.ok) { const e = await patchRes.json(); throw new Error(e.error || 'Errore aggiornamento'); }
     document.getElementById('modal-note').classList.remove('open');
     ui.showToast(reviewAction==='approved' ? 'Approvata ✓' : 'Rifiutata', 'success');
     // Aggiorna subito i totali, poi invia notifiche in background
@@ -816,10 +831,9 @@ async function deleteRequest(id) {
   if (!confirm('Eliminare questa richiesta?')) return;
   try {
     const token = sb.getSession()?.access_token;
-    const r = await fetch('/api/delete-leave-request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ requestId: id })
+    const r = await fetch('/api/leave-requests?id=' + id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token },
     });
     const data = await r.json();
     if (!r.ok || data.error) throw new Error(data.error || 'Errore eliminazione');
@@ -873,17 +887,17 @@ async function updateEmpField(empId, field, value) {
 // ── load ──────────────────────────────────────────────────────
 async function loadData() {
   try {
+    const token = sb.getSession()?.access_token;
     const [emps, reqs] = await Promise.all([
       sb.db.select('employees', {
         columns: 'id,profile_id,start_date,annual_leave_days,profile:profiles(full_name)'
       }),
-      sb.db.select('leave_requests', {
-        columns: 'id,employee_id,type,date_from,date_to,days,status,note_employee,note_admin,created_at',
-        order: 'created_at.desc'
-      })
+      fetch('/api/leave-requests', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      }).then(r => { if (!r.ok) throw new Error('Errore caricamento ferie'); return r.json(); })
     ]);
     employees = emps || [];
-    requests  = reqs || [];
+    requests  = Array.isArray(reqs) ? reqs : [];
 
     if (!amIAdmin) {
       myEmployee = employees.find(e => e.profile_id === currentUser.id) || null;
