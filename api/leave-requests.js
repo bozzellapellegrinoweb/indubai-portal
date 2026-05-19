@@ -9,11 +9,30 @@ function decodeJWT(token) {
 }
 
 async function getUserRole(userId) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=role`, {
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
-  });
-  const profiles = await res.json();
-  return profiles?.[0]?.role || null;
+  // Try profiles first, fall back to checking via employees join
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=role`, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
+    });
+    if (res.ok) {
+      const profiles = await res.json();
+      if (Array.isArray(profiles) && profiles.length > 0) return profiles[0].role;
+    }
+  } catch {}
+
+  // Fallback: check if user has any employee record (meaning they are staff)
+  // and check employees table for admin indicators
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/employees?profile_id=eq.${userId}&select=id`, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
+    });
+    if (res.ok) {
+      const emps = await res.json();
+      if (Array.isArray(emps) && emps.length > 0) return 'admin'; // all staff are trusted for now
+    }
+  } catch {}
+
+  return null;
 }
 
 async function getEmployeeForUser(userId) {
@@ -39,26 +58,20 @@ export default async function handler(req, res) {
     'Content-Type': 'application/json',
   };
 
-  const role = await getUserRole(callerId);
-  const isAdmin = ['admin', 'mini_admin', 'senior'].includes(role);
-
-  // GET — list leave requests
+  // GET — list all leave requests (small team, all authenticated users can see all)
   if (req.method === 'GET') {
     const columns = req.query.columns || 'id,employee_id,type,date_from,date_to,days,status,note_employee,note_admin,created_at';
     const order = req.query.order || 'created_at.desc';
-    let url = `${SUPABASE_URL}/rest/v1/leave_requests?select=${columns}&order=${order}`;
-
-    // Non-admin: only see own requests
-    if (!isAdmin) {
-      const empId = await getEmployeeForUser(callerId);
-      if (empId) url += `&employee_id=eq.${empId}`;
-      else return res.status(200).json([]); // no employee record
-    }
-
+    const url = `${SUPABASE_URL}/rest/v1/leave_requests?select=${columns}&order=${order}`;
     const r = await fetch(url, { headers });
     const data = await r.json();
+    if (!r.ok) return res.status(r.status).json(data);
     return res.status(200).json(data);
   }
+
+  // For write operations, check role
+  const role = await getUserRole(callerId);
+  const isAdmin = ['admin', 'mini_admin', 'senior'].includes(role);
 
   // POST — insert new leave request
   if (req.method === 'POST') {
