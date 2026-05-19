@@ -23,7 +23,10 @@ export default async function handler(req, res) {
     headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
   });
   const profiles = await profileRes.json();
-  if (profiles?.[0]?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const role = profiles?.[0]?.role;
+  if (!['admin', 'mini_admin', 'senior'].includes(role)) {
+    return res.status(403).json({ error: 'Admin only', role });
+  }
 
   const { requestId } = req.body;
   if (!requestId) return res.status(400).json({ error: 'requestId required' });
