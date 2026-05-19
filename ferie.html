@@ -813,8 +813,15 @@ async function confirmReview() {
 async function deleteRequest(id) {
   if (!confirm('Eliminare questa richiesta?')) return;
   try {
-    await sb.db.delete('leave_requests', `id=eq.${id}`);
-    ui.showToast('Richiesta eliminata','success');
+    const token = sb.getSession()?.access_token;
+    const r = await fetch('/api/delete-leave-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ requestId: id })
+    });
+    const data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || 'Errore eliminazione');
+    ui.showToast('Richiesta eliminata ✓','success');
     await loadData();
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
 }
