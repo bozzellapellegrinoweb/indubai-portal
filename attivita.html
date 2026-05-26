@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <link rel="manifest" href="/manifest-admin.json">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Attività Staff — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <style>
+    .staff-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; margin-bottom:24px; }
+    .staff-card { background:white; border:1.5px solid var(--border); border-radius:14px; padding:18px 20px; position:relative; }
+    .staff-card .sc-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+    .sc-avatar { width:40px; height:40px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; flex-shrink:0; }
+    .sc-name { font-size:15px; font-weight:700; }
+    .sc-status { font-size:11px; display:flex; align-items:center; gap:5px; margin-top:2px; }
+    .sc-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .sc-dot.online { background:#22c55e; box-shadow:0 0 6px rgba(34,197,94,.4); }
+    .sc-dot.away { background:#f59e0b; }
+    .sc-dot.offline { background:#d1d5db; }
+    .sc-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .sc-stat { background:var(--surface2); border-radius:8px; padding:8px 10px; text-align:center; }
+    .sc-stat .val { font-size:20px; font-weight:800; color:var(--primary); }
+    .sc-stat .lbl { font-size:10px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.3px; margin-top:2px; }
+
+    .filter-bar { display:flex; gap:10px; margin-bottom:16px; align-items:center; flex-wrap:wrap; }
+    .filter-bar select, .filter-bar input { padding:8px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; }
+
+    .timeline { position:relative; }
+    .tl-item { display:flex; gap:14px; padding:12px 0; border-bottom:1px solid var(--border); align-items:flex-start; }
+    .tl-item:last-child { border-bottom:none; }
+    .tl-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; background:var(--surface2); }
+    .tl-body { flex:1; min-width:0; }
+    .tl-title { font-size:13px; font-weight:600; }
+    .tl-meta { font-size:11px; color:var(--text-muted); margin-top:2px; }
+    .tl-time { font-size:11px; color:var(--text-muted); white-space:nowrap; flex-shrink:0; text-align:right; }
+
+    .load-more { text-align:center; padding:16px; }
+    .load-more button { background:var(--surface2); border:1.5px solid var(--border); border-radius:8px; padding:8px 24px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .load-more button:hover { border-color:var(--primary); }
+
+    @media(max-width:600px) {
+      .staff-grid { grid-template-columns:1fr; }
+      .filter-bar { flex-direction:column; }
+      .filter-bar select, .filter-bar input { width:100%; }
+    }
+  </style>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <meta name="theme-color" content="#0f1628">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Attività Staff</div>
+        <div class="topbar-subtitle">Monitora l'attività dei dipendenti</div>
+      </div>
+    </div>
+    <div class="page-content" id="page-content">
+      <div style="text-align:center;padding:60px"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/notify.js"></script>
+<script>
+const PAGE_ICONS = {
+  'index':'◈ Dashboard','tasks':'✓ Task','clients':'◉ Clienti','documents':'📁 Documenti',
+  'statements':'◎ Estratti','payments':'◆ Abbonamenti','bilanci':'📒 Bilanci','ferie':'🏖 Ferie',
+  'vat':'◇ VAT','corp-tax':'◈ Corp Tax','affinitas':'◉ Affinitas','onboarding':'✦ Onboarding',
+  'reports':'📊 Report','news':'📰 News','search':'🔍 Ricerca','users':'👥 Utenti',
+  'zoho-setup':'Setup Zoho','zoho-vat':'Monitor VAT','notifiche':'🔔 Notifiche',
+  'client-detail':'Cliente','attivita':'📋 Attività',
+};
+
+function pageLabel(page) { return PAGE_ICONS[page] || page || '—'; }
+function pageIcon(page) {
+  const icons = {
+    'index':'◈','tasks':'✓','clients':'◉','documents':'📁','statements':'◎',
+    'payments':'◆','bilanci':'📒','ferie':'🏖','vat':'◇','corp-tax':'◈',
+    'affinitas':'◉','onboarding':'✦','reports':'📊','news':'📰','search':'🔍',
+    'users':'👥','zoho-setup':'⚙','zoho-vat':'📊','notifiche':'🔔','client-detail':'◉','attivita':'📋',
+  };
+  return icons[page] || '·';
+}
+
+function initials(name) {
+  return (name||'').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return 'mai';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - d;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'adesso';
+  if (mins < 60) return mins + ' min fa';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + ' or' + (hrs>1?'e':'a') + ' fa';
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'ieri';
+  if (days < 7) return days + ' giorni fa';
+  return d.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+function statusInfo(lastSeen) {
+  if (!lastSeen) return { cls:'offline', label:'Mai vista' };
+  const mins = (Date.now() - new Date(lastSeen).getTime()) / 60000;
+  if (mins < 10) return { cls:'online', label:'Online' };
+  if (mins < 60) return { cls:'away', label:Math.floor(mins) + ' min fa' };
+  return { cls:'offline', label:timeAgo(lastSeen) };
+}
+
+function fmtTime(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+let allLogs = [], profiles = [], filterUser = '', filterDate = '';
+let loadedCount = 0;
+const PAGE_SIZE = 50;
+
+async function loadData() {
+  const profile = sb.getCurrentProfile();
+  if (profile?.role !== 'admin') {
+    document.getElementById('page-content').innerHTML =
+      '<div class="alert alert-danger" style="margin:20px">Accesso riservato agli amministratori.</div>';
+    return;
+  }
+
+  try {
+    profiles = await sb.db.select('profiles', { columns:'id,full_name,role', filter:'role=neq.client' }) || [];
+
+    const staffIds = profiles.map(p => p.id);
+
+    allLogs = await sb.db.select('activity_log', {
+      columns: 'id,user_id,action,details,created_at',
+      order: 'created_at.desc',
+      limit: 500,
+    }) || [];
+
+    allLogs = allLogs.filter(l => staffIds.includes(l.user_id));
+
+    render();
+  } catch(e) {
+    document.getElementById('page-content').innerHTML =
+      `<div class="alert alert-danger" style="margin:20px">${e.message}</div>`;
+  }
+}
+
+function getFilteredLogs() {
+  let logs = allLogs;
+  if (filterUser) logs = logs.filter(l => l.user_id === filterUser);
+  if (filterDate) {
+    logs = logs.filter(l => l.created_at?.startsWith(filterDate));
+  }
+  return logs;
+}
+
+function render() {
+  const staffProfiles = profiles.filter(p => p.role !== 'client');
+
+  // Per-user last seen
+  const lastSeen = {};
+  const todayCounts = {};
+  const today = new Date().toISOString().split('T')[0];
+  allLogs.forEach(l => {
+    if (!lastSeen[l.user_id] || l.created_at > lastSeen[l.user_id]) {
+      lastSeen[l.user_id] = l.created_at;
+    }
+    if (l.created_at?.startsWith(today)) {
+      todayCounts[l.user_id] = (todayCounts[l.user_id] || 0) + 1;
+    }
+  });
+
+  // Staff cards
+  let cardsHtml = '<div class="staff-grid">';
+  staffProfiles.forEach(p => {
+    const st = statusInfo(lastSeen[p.id]);
+    const todayCount = todayCounts[p.id] || 0;
+    const lastPage = allLogs.find(l => l.user_id === p.id && l.action === 'page_view');
+    const lastPageLabel = lastPage?.details?.page ? pageLabel(lastPage.details.page) : '—';
+
+    cardsHtml += `
+      <div class="staff-card">
+        <div class="sc-header">
+          <div class="sc-avatar">${initials(p.full_name)}</div>
+          <div>
+            <div class="sc-name">${ui.escapeHtml(p.full_name || '—')}</div>
+            <div class="sc-status">
+              <span class="sc-dot ${st.cls}"></span>
+              ${st.label}
+            </div>
+          </div>
+        </div>
+        <div class="sc-stats">
+          <div class="sc-stat"><div class="val">${todayCount}</div><div class="lbl">Azioni oggi</div></div>
+          <div class="sc-stat"><div class="val" style="font-size:12px;line-height:1.4">${lastPageLabel}</div><div class="lbl">Ultima pagina</div></div>
+        </div>
+      </div>`;
+  });
+  cardsHtml += '</div>';
+
+  // Filters
+  const filterHtml = `
+    <div class="filter-bar">
+      <select id="filter-user" onchange="filterUser=this.value;renderTimeline()">
+        <option value="">Tutti i dipendenti</option>
+        ${staffProfiles.map(p => `<option value="${p.id}" ${filterUser===p.id?'selected':''}>${ui.escapeHtml(p.full_name)}</option>`).join('')}
+      </select>
+      <input type="date" id="filter-date" value="${filterDate}" onchange="filterDate=this.value;renderTimeline()">
+      <button class="btn btn-ghost" onclick="filterUser='';filterDate='';document.getElementById('filter-user').value='';document.getElementById('filter-date').value='';renderTimeline()">Reset</button>
+    </div>`;
+
+  document.getElementById('page-content').innerHTML =
+    cardsHtml +
+    '<div class="section-title" style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin:20px 0 10px">Timeline Attività</div>' +
+    filterHtml +
+    '<div class="card" style="padding:16px 20px" id="timeline-container"></div>';
+
+  loadedCount = 0;
+  renderTimeline();
+}
+
+function renderTimeline() {
+  const logs = getFilteredLogs();
+  loadedCount = Math.min(PAGE_SIZE, logs.length);
+  const container = document.getElementById('timeline-container');
+  if (!container) return;
+  container.innerHTML = buildTimelineHtml(logs, loadedCount);
+}
+
+function loadMoreTimeline() {
+  const logs = getFilteredLogs();
+  loadedCount = Math.min(loadedCount + PAGE_SIZE, logs.length);
+  const container = document.getElementById('timeline-container');
+  if (!container) return;
+  container.innerHTML = buildTimelineHtml(logs, loadedCount);
+}
+
+function buildTimelineHtml(logs, count) {
+  if (!logs.length) {
+    return '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px">Nessuna attività registrata</div>';
+  }
+
+  const visible = logs.slice(0, count);
+  let lastDate = '';
+  let html = '<div class="timeline">';
+
+  visible.forEach(l => {
+    const p = profiles.find(x => x.id === l.user_id);
+    const name = p?.full_name?.split(' ')[0] || '—';
+    const d = new Date(l.created_at);
+    const dateStr = d.toLocaleDateString('it-IT', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    const time = fmtTime(l.created_at);
+
+    if (dateStr !== lastDate) {
+      lastDate = dateStr;
+      html += `<div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;padding:16px 0 6px;border-top:${lastDate?'1px solid var(--border)':'none'}">${dateStr}</div>`;
+    }
+
+    const page = l.details?.page || '';
+    const icon = l.action === 'page_view' ? pageIcon(page) : '⚡';
+    const desc = l.action === 'page_view' ? `ha aperto <strong>${pageLabel(page)}</strong>` : `${l.action}`;
+
+    html += `
+      <div class="tl-item">
+        <div class="tl-icon">${icon}</div>
+        <div class="tl-body">
+          <div class="tl-title"><strong>${ui.escapeHtml(name)}</strong> ${desc}</div>
+          <div class="tl-meta">${timeAgo(l.created_at)}</div>
+        </div>
+        <div class="tl-time">${time}</div>
+      </div>`;
+  });
+
+  html += '</div>';
+
+  if (count < logs.length) {
+    html += `<div class="load-more"><button onclick="loadMoreTimeline()">Carica altri (${logs.length - count} rimanenti)</button></div>`;
+  }
+
+  return html;
+}
+
+loadData();
+setInterval(loadData, 60000);
+</script>
+</body>
+</html>

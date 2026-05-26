@@ -46,7 +46,10 @@
     { id: 'reports',    icon: '📊', label: 'Report',         href: '/reports.html',    section: 'ANALYTICS' },
     { id: 'news',       icon: '📰', label: 'UAE News',       href: '/news.html' },
     { id: 'search',     icon: '🔍', label: 'Ricerca',        href: '/search.html' },
-    ...(role === 'admin' ? [{ id: 'users', icon: '👥', label: 'Utenti', href: '/users.html', section: 'ADMIN' }] : []),
+    ...(role === 'admin' ? [
+      { id: 'attivita', icon: '📋', label: 'Attività Staff', href: '/attivita.html', section: 'ADMIN' },
+      { id: 'users',    icon: '👥', label: 'Utenti',         href: '/users.html' },
+    ] : []),
   ];
 
   const navItems = allowed ? allNavItems.filter(i => allowed.includes(i.id)) : allNavItems;
@@ -312,7 +315,7 @@
     'payments': 'Abbonamenti', 'statements': 'Estratti', 'onboarding': 'Onboarding',
     'reports': 'Report', 'news': 'UAE News', 'search': 'Ricerca', 'users': 'Utenti', 'notifiche': 'Notifiche',
     'affinitas': 'Affinitas', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
-    'client-detail': 'Cliente',
+    'client-detail': 'Cliente', 'attivita': 'Attività Staff',
   };
   const pageLabel = PAGE_LABELS[currentPage] || 'InDubai';
 
@@ -505,6 +508,9 @@
       }
     }
   };
+
+  // ── ACTIVITY TRACKING ───────────────────────────────────────
+  sb.db.log('page_view', null, { page: currentPage });
 
   // ── ONESIGNAL PUSH (staff) ──────────────────────────────────
   (function initStaffPush() {
