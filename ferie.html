@@ -801,7 +801,7 @@ async function confirmReview() {
         updated_at: new Date().toISOString()
       })
     });
-    if (!patchRes.ok) { const e = await patchRes.json(); throw new Error(e.error || 'Errore aggiornamento'); }
+    if (!patchRes.ok) { const e = await patchRes.json(); throw new Error(e.error + (e.role != null ? ' (role=' + e.role + ')' : '') || 'Errore aggiornamento'); }
     document.getElementById('modal-note').classList.remove('open');
     ui.showToast(reviewAction==='approved' ? 'Approvata ✓' : 'Rifiutata', 'success');
     // Aggiorna subito i totali, poi invia notifiche in background
