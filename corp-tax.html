@@ -20,47 +20,298 @@
 <div class="app-layout">
   <div class="main-content">
     <div class="topbar">
-      <div class="topbar-title">Corporate Tax</div>
+      <div>
+        <div class="topbar-title">Corporate Tax</div>
+        <div class="topbar-subtitle">Scadenze e stato registrazioni Corporate Tax</div>
+      </div>
+      <div class="toolbar">
+        <select class="form-control" id="filter-partner" style="width:auto">
+          <option value="">Tutti i partner</option>
+          <option value="noi">Noi</option>
+          <option value="vat_consultant">VAT Consultant</option>
+          <option value="affinitas">Affinitas</option>
+        </select>
+        <select class="form-control" id="filter-status" style="width:auto">
+          <option value="">Tutti gli stati</option>
+          <option value="overdue">Scadute</option>
+          <option value="soon">Prossimi 30 gg</option>
+          <option value="future">Oltre 30 gg</option>
+          <option value="no_deadline">Senza scadenza</option>
+        </select>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="form-control" id="search" placeholder="Cerca..." style="min-width:200px">
+        </div>
+      </div>
     </div>
+
     <div class="page-content">
       <div class="card">
-        <div class="card-header"><div class="card-title">Corporate Tax Tracker</div></div>
-        <div id="table-wrap"><div class="loading-overlay"><div class="spinner"></div></div></div>
+        <div class="card-header">
+          <div class="card-title">Corporate Tax Tracker</div>
+          <div class="card-subtitle" id="ct-summary">Caricamento...</div>
+        </div>
+        <div class="table-wrap" id="table-wrap">
+          <div class="loading-overlay"><div class="spinner"></div></div>
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Edit CT modal -->
+<div class="modal-overlay" id="modal-ct" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-ct-title">Corporate Tax</div>
+        <div style="font-size:12px;color:var(--text-muted)" id="modal-ct-company"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Scadenza CT (licenza + 89 gg)</label>
+        <input type="date" class="form-control" id="ct-deadline" style="background:var(--surface2)" readonly>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Calcolata automaticamente dalla Trade License Date del cliente</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Data Application</label>
+          <input type="date" class="form-control" id="ct-application">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data Approval</label>
+          <input type="date" class="form-control" id="ct-approval">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note</label>
+        <textarea class="form-control" id="ct-notes" rows="3" placeholder="Note aggiuntive..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-accent" id="btn-save-ct">Salva</button>
+    </div>
+  </div>
+</div>
+
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/notify.js"></script>
 <script>
-async function load() {
+let ctRows = [];
+let activeCTId = null;
+
+// ── Auto-sync: crea righe mancanti per clienti attivi ────────
+async function syncMissingCTRows() {
   try {
-    const rows = await sb.db.select('corporate_tax', {
-      columns: 'id,client_id,deadline,application_submitted,approval_date,month_group,notes,clients(company_name,contact_name)',
-      order: 'application_submitted.desc'
-    });
-    if (!rows?.length) {
-      document.getElementById('table-wrap').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><h3>Nessun dato</h3></div>';
-      return;
+    const allClients = await sb.db.select('clients', { filter: 'is_active=eq.true', columns: 'id,trade_license_date' });
+    const existing = await sb.db.select('corporate_tax', { columns: 'client_id' });
+    const existingIds = new Set((existing || []).map(r => r.client_id));
+    const missing = (allClients || []).filter(c => !existingIds.has(c.id));
+    for (const c of missing) {
+      let deadline = null;
+      if (c.trade_license_date) {
+        const d = new Date(c.trade_license_date);
+        d.setDate(d.getDate() + 89);
+        deadline = d.toISOString().split('T')[0];
+      }
+      try { await sb.db.insert('corporate_tax', { client_id: c.id, deadline }); } catch(_) {}
     }
-    document.getElementById('table-wrap').innerHTML = `
-      <table>
-        <thead><tr><th>Cliente</th><th>Deadline</th><th>Application</th><th>Approval</th><th>Note</th></tr></thead>
-        <tbody>
-          ${rows.map(r => `<tr>
-            <td><div class="td-company">${ui.escapeHtml(r.clients?.company_name)}</div></td>
-            <td>${ui.escapeHtml(r.deadline) || '—'}</td>
-            <td style="font-size:12px">${r.application_submitted ? '<span class="badge badge-ok">' + ui.formatDate(r.application_submitted) + '</span>' : '<span class="badge badge-pending">Pending</span>'}</td>
-            <td style="font-size:12px">${r.approval_date ? '<span class="badge badge-ok">' + ui.formatDate(r.approval_date) + '</span>' : '—'}</td>
-            <td style="font-size:12px;color:var(--text-muted)">${ui.escapeHtml(r.notes) || ''}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
+    if (missing.length) console.log(`[CT] Auto-creati ${missing.length} record mancanti`);
+  } catch(e) { console.error('[CT] sync error:', e.message); }
+}
+
+// ── Load ─────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    await syncMissingCTRows();
+    ctRows = await sb.db.select('corporate_tax', {
+      columns: 'id,client_id,deadline,application_submitted,approval_date,notes,clients(id,company_name,contact_name,is_active,trade_license_date,accounting_partner)'
+    });
+    ctRows = (ctRows || []).filter(r => r.clients?.is_active);
+
+    // Ricalcola deadline da trade_license_date + 89 gg
+    ctRows.forEach(r => {
+      if (r.clients?.trade_license_date) {
+        const d = new Date(r.clients.trade_license_date);
+        d.setDate(d.getDate() + 89);
+        r._computed_deadline = d.toISOString().split('T')[0];
+      } else {
+        r._computed_deadline = null;
+      }
+    });
+
+    // Ordina per scadenza piu vicina
+    ctRows.sort((a, b) => {
+      const da = a._computed_deadline || '9999';
+      const db = b._computed_deadline || '9999';
+      return da.localeCompare(db);
+    });
+
+    renderTable();
   } catch(e) {
-    document.getElementById('table-wrap').innerHTML = '<div class="alert alert-danger" style="margin:16px">' + e.message + '</div>';
+    document.getElementById('table-wrap').innerHTML =
+      `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
   }
 }
-load();
+
+// ── Helpers ──────────────────────────────────────────────────
+function deadlineDays(dateStr) {
+  if (!dateStr) return null;
+  return Math.ceil((new Date(dateStr) - new Date()) / 86400000);
+}
+
+function deadlineStatus(dateStr) {
+  const days = deadlineDays(dateStr);
+  if (days === null) return 'none';
+  if (days < 0) return 'overdue';
+  if (days <= 30) return 'soon';
+  return 'future';
+}
+
+function statusBadge(row) {
+  if (row.approval_date) return '<span class="badge badge-ok">Approvato</span>';
+  if (row.application_submitted) return '<span class="badge" style="background:#dbeafe;color:#1d4ed8">In attesa</span>';
+  return '<span class="badge badge-pending">Da fare</span>';
+}
+
+// ── Filter ───────────────────────────────────────────────────
+function getFiltered() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const partner = document.getElementById('filter-partner').value;
+  const status = document.getElementById('filter-status').value;
+
+  return ctRows.filter(r => {
+    if (search && !(r.clients?.company_name || '').toLowerCase().includes(search)) return false;
+    if (partner && r.clients?.accounting_partner !== partner) return false;
+    if (status) {
+      const st = deadlineStatus(r._computed_deadline);
+      if (status === 'no_deadline') { if (r._computed_deadline) return false; }
+      else if (st !== status) return false;
+    }
+    return true;
+  });
+}
+
+// ── Render ───────────────────────────────────────────────────
+function renderTable() {
+  const filtered = getFiltered();
+
+  const total = filtered.length;
+  const done = filtered.filter(r => r.approval_date).length;
+  const pending = filtered.filter(r => r.application_submitted && !r.approval_date).length;
+  const overdue = filtered.filter(r => deadlineStatus(r._computed_deadline) === 'overdue' && !r.approval_date).length;
+
+  document.getElementById('ct-summary').textContent =
+    `${total} clienti · ${done} approvati · ${pending} in attesa` + (overdue ? ` · ${overdue} scaduti` : '');
+
+  if (!filtered.length) {
+    document.getElementById('table-wrap').innerHTML =
+      `<div class="empty-state"><div class="empty-icon">📋</div><h3>Nessun risultato</h3></div>`;
+    return;
+  }
+
+  document.getElementById('table-wrap').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th style="min-width:200px">Cliente</th>
+          <th>Partner</th>
+          <th>Scadenza CT</th>
+          <th>License Date</th>
+          <th>Application</th>
+          <th>Approval</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(r => {
+          const dl = r._computed_deadline;
+          const days = deadlineDays(dl);
+          const dlClass = dl ? ui.deadlineClass(dl) : '';
+          let daysLabel = '';
+          if (days !== null) {
+            if (days < 0) daysLabel = `<div style="font-size:10px;color:#dc2626">${Math.abs(days)} gg fa</div>`;
+            else if (days === 0) daysLabel = '<div style="font-size:10px;color:#dc2626">Oggi!</div>';
+            else if (days <= 30) daysLabel = `<div style="font-size:10px;color:#f59e0b">tra ${days} gg</div>`;
+            else daysLabel = `<div style="font-size:10px;color:var(--text-muted)">tra ${days} gg</div>`;
+          }
+
+          return `<tr>
+            <td>
+              <div class="td-company">${ui.escapeHtml(r.clients?.company_name)}</div>
+              <div class="td-contact">${ui.escapeHtml(r.clients?.contact_name) || ''}</div>
+            </td>
+            <td>${ui.partnerLabel(r.clients?.accounting_partner)}</td>
+            <td>
+              ${dl ? `<strong class="${dlClass}">${ui.formatDate(dl)}</strong>` : '<span style="color:var(--text-muted);font-size:12px">—</span>'}
+              ${daysLabel}
+            </td>
+            <td style="font-size:12px;color:var(--text-muted)">${r.clients?.trade_license_date ? ui.formatDate(r.clients.trade_license_date) : '—'}</td>
+            <td style="font-size:12px">${r.application_submitted ? `<span class="badge badge-ok">${ui.formatDate(r.application_submitted)}</span>` : '<span class="badge badge-pending">Non fatto</span>'}</td>
+            <td style="font-size:12px">${r.approval_date ? `<span class="badge badge-ok">${ui.formatDate(r.approval_date)}</span>` : '—'}</td>
+            <td>${statusBadge(r)}</td>
+            <td><button class="btn btn-ghost btn-sm" onclick="openEdit('${r.id}')">✎ Modifica</button></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ── Edit modal ───────────────────────────────────────────────
+function openEdit(ctId) {
+  const row = ctRows.find(r => r.id === ctId);
+  if (!row) return;
+  activeCTId = ctId;
+  document.getElementById('modal-ct-title').textContent = 'Corporate Tax';
+  document.getElementById('modal-ct-company').textContent = row.clients?.company_name || '';
+  document.getElementById('ct-deadline').value = row._computed_deadline || '';
+  document.getElementById('ct-application').value = row.application_submitted || '';
+  document.getElementById('ct-approval').value = row.approval_date || '';
+  document.getElementById('ct-notes').value = row.notes || '';
+  document.getElementById('modal-ct').style.display = 'flex';
+}
+
+function closeModal() { document.getElementById('modal-ct').style.display = 'none'; }
+
+document.getElementById('modal-ct').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-ct')) closeModal();
+});
+
+document.getElementById('btn-save-ct').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-ct');
+  btn.textContent = 'Salvataggio...'; btn.disabled = true;
+  try {
+    const updates = {
+      application_submitted: document.getElementById('ct-application').value || null,
+      approval_date: document.getElementById('ct-approval').value || null,
+      notes: document.getElementById('ct-notes').value || null,
+    };
+    await sb.db.update('corporate_tax', `id=eq.${activeCTId}`, updates);
+    // Update local
+    const idx = ctRows.findIndex(r => r.id === activeCTId);
+    if (idx >= 0) ctRows[idx] = { ...ctRows[idx], ...updates };
+    ui.showToast('Corporate Tax aggiornato', 'success');
+    closeModal();
+    renderTable();
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  } finally {
+    btn.textContent = 'Salva'; btn.disabled = false;
+  }
+});
+
+// ── Events ───────────────────────────────────────────────────
+['search', 'filter-partner', 'filter-status'].forEach(id => {
+  document.getElementById(id).addEventListener('change', renderTable);
+  if (id === 'search') document.getElementById(id).addEventListener('input', renderTable);
+});
+
+loadData();
 </script>
 </body>
 </html>

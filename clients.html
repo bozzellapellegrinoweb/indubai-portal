@@ -277,14 +277,18 @@ document.getElementById('btn-save-client').addEventListener('click', async () =>
     const newId = result[0]?.id;
     await sb.db.log('client_created', newId, { company });
 
-    // Auto-crea riga vat_register per il nuovo cliente
+    // Auto-crea righe vat_register e corporate_tax per il nuovo cliente
     if (newId) {
-      try {
-        await sb.db.insert('vat_register', {
-          client_id: newId,
-          accounting_partner: document.getElementById('f-partner').value || null
-        });
-      } catch(_) { /* ignora se già esiste */ }
+      const partner = document.getElementById('f-partner').value || null;
+      const startDate = document.getElementById('f-start').value || null;
+      let ctDeadline = null;
+      if (startDate) {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + 89);
+        ctDeadline = d.toISOString().split('T')[0];
+      }
+      try { await sb.db.insert('vat_register', { client_id: newId, accounting_partner: partner }); } catch(_) {}
+      try { await sb.db.insert('corporate_tax', { client_id: newId, deadline: ctDeadline }); } catch(_) {}
     }
 
     ui.showToast(`Cliente "${company}" creato!`, 'success');
