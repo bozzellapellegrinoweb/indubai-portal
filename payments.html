@@ -143,12 +143,12 @@ let partnerFilter = '';
 let currentPage   = 1;
 let activePicker  = null;
 
-// Restituisce l'ultimo mese COMPLETATO per l'anno visualizzato.
+// Restituisce il mese corrente di lavoro per l'anno visualizzato.
 function lastDoneMonth() {
   const { month: tm, year: ty } = ui.currentYearMonth();
   if (currentYear < ty) return 12;
   if (currentYear > ty) return 0;
-  return tm - 1;
+  return tm;
 }
 
 // ── load ─────────────────────────────────────────────────────
