@@ -274,7 +274,19 @@ document.getElementById('btn-save-client').addEventListener('click', async () =>
       in_bilancio: true,
     });
 
-    await sb.db.log('client_created', result[0]?.id, { company });
+    const newId = result[0]?.id;
+    await sb.db.log('client_created', newId, { company });
+
+    // Auto-crea riga vat_register per il nuovo cliente
+    if (newId) {
+      try {
+        await sb.db.insert('vat_register', {
+          client_id: newId,
+          accounting_partner: document.getElementById('f-partner').value || null
+        });
+      } catch(_) { /* ignora se già esiste */ }
+    }
+
     ui.showToast(`Cliente "${company}" creato!`, 'success');
     closeModal();
     loadClients();

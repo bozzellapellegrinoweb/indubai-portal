@@ -122,8 +122,24 @@
 let vatRows = [];
 let activeVatId = null;
 
+async function syncMissingVatRows() {
+  try {
+    const allClients = await sb.db.select('clients', { filter: 'is_active=eq.true', columns: 'id,accounting_partner' });
+    const existing = await sb.db.select('vat_register', { columns: 'client_id' });
+    const existingIds = new Set((existing || []).map(r => r.client_id));
+    const missing = (allClients || []).filter(c => !existingIds.has(c.id));
+    for (const c of missing) {
+      try {
+        await sb.db.insert('vat_register', { client_id: c.id, accounting_partner: c.accounting_partner || null });
+      } catch(_) {}
+    }
+    if (missing.length) console.log(`[VAT] Auto-creati ${missing.length} record mancanti`);
+  } catch(e) { console.error('[VAT] sync error:', e.message); }
+}
+
 async function loadData() {
   try {
+    await syncMissingVatRows();
     vatRows = await sb.db.select('vat_register', {
       columns: 'id,client_id,accounting_partner,application_date,approval_date,return_deadline_1,return_deadline_2,return_deadline_3,return_deadline_4,payment_to_studio,payment_vat,clients(id,company_name,contact_name,is_active)'
     });
