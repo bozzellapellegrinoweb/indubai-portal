@@ -294,6 +294,31 @@ document.getElementById('btn-save-client').addEventListener('click', async () =>
     ui.showToast(`Cliente "${company}" creato!`, 'success');
     closeModal();
     loadClients();
+
+    // Notifica email + push a tutto lo staff
+    const contactName = document.getElementById('f-contact').value.trim() || '';
+    const partnerLabel = document.getElementById('f-partner').selectedOptions[0]?.text || '';
+    const costVal = document.getElementById('f-cost').value || '—';
+    emailNotifyStaff({
+      subject: `🆕 Nuovo cliente: ${company}`,
+      html: `<h2 style="margin:0 0 16px;color:#1a2744;font-size:20px">🆕 Nuovo cliente creato</h2>
+             <p style="color:#374151;font-size:15px">Un nuovo cliente è stato aggiunto al portale.</p>
+             <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:16px">
+               <tr><td style="padding:8px;color:#6b7280">Azienda</td><td style="padding:8px;font-weight:600">${company}</td></tr>
+               ${contactName ? `<tr style="background:#f9f9f9"><td style="padding:8px;color:#6b7280">Contatto</td><td style="padding:8px">${contactName}</td></tr>` : ''}
+               <tr><td style="padding:8px;color:#6b7280">Partner</td><td style="padding:8px">${partnerLabel}</td></tr>
+               <tr style="background:#f9f9f9"><td style="padding:8px;color:#6b7280">Costo</td><td style="padding:8px">AED ${costVal}</td></tr>
+             </table>
+             <p style="text-align:center;margin-top:28px"><a href="https://portal.indubai.it/clients.html" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri Clienti</a></p>`,
+      event_type: 'client_created',
+      entity_id: newId,
+      entity_type: 'client',
+    });
+    pushNotifyStaff({
+      title: '🆕 Nuovo cliente',
+      message: company + (contactName ? ' — ' + contactName : ''),
+      url: 'https://portal.indubai.it/clients.html'
+    });
   } catch(e) {
     ui.showToast('Errore: ' + e.message, 'error');
   } finally {

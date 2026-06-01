@@ -296,6 +296,32 @@ document.getElementById('btn-save-ct').addEventListener('click', async () => {
     const idx = ctRows.findIndex(r => r.id === activeCTId);
     if (idx >= 0) ctRows[idx] = { ...ctRows[idx], ...updates };
     ui.showToast('Corporate Tax aggiornato', 'success');
+
+    // Notifica se la scadenza CT è imminente (entro 30gg) e non è ancora approvata
+    const row = ctRows[idx];
+    if (row && !updates.approval_date && row._computed_deadline) {
+      const days = deadlineDays(row._computed_deadline);
+      if (days !== null && days >= 0 && days <= 30) {
+        const companyName = row.clients?.company_name || 'Cliente';
+        const dlFormatted = new Date(row._computed_deadline).toLocaleDateString('it-IT', {day:'2-digit', month:'long', year:'numeric'});
+        emailNotifyStaff({
+          subject: `⚠️ Scadenza Corporate Tax: ${companyName} tra ${days} giorni`,
+          html: `<h2 style="margin:0 0 16px;color:#1a2744;font-size:20px">⚠️ Scadenza Corporate Tax imminente</h2>
+                 <p style="color:#374151;font-size:15px">La registrazione Corporate Tax di un cliente è in scadenza.</p>
+                 <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:16px">
+                   <tr><td style="padding:8px;color:#6b7280">Cliente</td><td style="padding:8px;font-weight:600">${companyName}</td></tr>
+                   <tr style="background:#f9f9f9"><td style="padding:8px;color:#6b7280">Scadenza</td><td style="padding:8px;font-weight:600;color:#dc2626">${dlFormatted}</td></tr>
+                   <tr><td style="padding:8px;color:#6b7280">Giorni rimanenti</td><td style="padding:8px;font-weight:600">${days}</td></tr>
+                   <tr style="background:#f9f9f9"><td style="padding:8px;color:#6b7280">Application</td><td style="padding:8px">${updates.application_submitted ? 'Fatta' : 'Non fatta'}</td></tr>
+                 </table>
+                 <p style="text-align:center;margin-top:28px"><a href="https://portal.indubai.it/corp-tax.html" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri Corporate Tax</a></p>`,
+          event_type: 'ct_deadline',
+          entity_id: activeCTId,
+          entity_type: 'corporate_tax',
+        });
+      }
+    }
+
     closeModal();
     renderTable();
   } catch(e) {

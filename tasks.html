@@ -56,6 +56,14 @@
     .td-input { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
     .cmt-inp { flex: 1; padding: 9px 13px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; resize: none; outline: none; transition: border .15s; }
     .cmt-inp:focus { border-color: var(--primary); }
+    .att-list { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .att-item { display:flex; align-items:center; gap:6px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12px; text-decoration:none; color:var(--text-primary); transition:border .15s; }
+    .att-item:hover { border-color:var(--primary); }
+    .att-item img { max-width:120px; max-height:80px; border-radius:4px; }
+    .att-thumb { width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+    .upload-btn { display:inline-flex; align-items:center; gap:5px; padding:8px 12px; border:1.5px dashed var(--border); border-radius:8px; background:transparent; cursor:pointer; font-size:12px; font-weight:600; color:var(--text-muted); transition:all .15s; font-family:inherit; }
+    .upload-btn:hover { border-color:var(--primary); color:var(--primary); }
+    .upload-progress { font-size:11px; color:var(--primary); margin-top:4px; }
     .t-empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
     .t-empty .ei { font-size: 36px; margin-bottom: 12px; }
     .status-sel { padding: 5px 10px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 12px; font-weight: 600; outline: none; cursor: pointer; }
@@ -257,6 +265,45 @@
 <script src="/js/notify.js"></script>
 <script>
 let allTasks = [], currentFilter = 'all', selectedId = null, myId = null, profiles = [];
+let pendingFiles = []; // File in attesa di upload
+
+function isImageUrl(url) { return /\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(url); }
+
+function renderCommentContent(content) {
+  // Rileva URL allegati [FILE:url|nome] e li mostra come thumbnail/link
+  return ui.escapeHtml(content).replace(/\[FILE:(.*?)\|(.*?)\]/g, (_, url, name) => {
+    if (isImageUrl(url)) {
+      return `<div class="att-list" style="margin-top:6px"><a href="${url}" target="_blank" class="att-item"><img src="${url}" alt="${name}"></a></div>`;
+    }
+    return `<div class="att-list" style="margin-top:6px"><a href="${url}" target="_blank" class="att-item"><span class="att-thumb">📄</span>${name}</a></div>`;
+  });
+}
+
+function handleFileSelect(files) {
+  if (!files.length) return;
+  pendingFiles = [...pendingFiles, ...Array.from(files)];
+  renderUploadPreview();
+}
+
+function renderUploadPreview() {
+  const el = document.getElementById('upload-preview');
+  if (!el) return;
+  if (!pendingFiles.length) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = pendingFiles.map((f, i) => {
+    const isImg = f.type.startsWith('image/');
+    return `<div class="att-item">
+      <span class="att-thumb">${isImg ? '🖼' : '📄'}</span>
+      <span>${ui.escapeHtml(f.name.length > 20 ? f.name.substring(0,18) + '...' : f.name)}</span>
+      <button style="border:none;background:none;cursor:pointer;font-size:14px;color:#dc2626" onclick="removePendingFile(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function removePendingFile(i) {
+  pendingFiles.splice(i, 1);
+  renderUploadPreview();
+}
 
 async function init() {
   await sb.requireAuth();
@@ -435,23 +482,48 @@ async function openTask(id) {
             <div class="cmt-bubble">
               <span class="cmt-author">${ui.escapeHtml(c.author?.full_name||'?')}</span>
               <span class="cmt-time">${ui.formatDate(c.created_at)}</span>
-              <div class="cmt-text">${ui.escapeHtml(c.content)}</div>
+              <div class="cmt-text">${renderCommentContent(c.content)}</div>
             </div>
           </div>`).join('') : '<p style="font-size:13px;color:var(--text-muted)">Nessun commento.</p>'}
       </div>
     </div>
+    <div style="padding:0 20px 8px">
+      <div id="upload-preview" style="display:none" class="att-list"></div>
+      <div id="upload-progress" class="upload-progress" style="display:none"></div>
+    </div>
     <div class="td-input">
       <textarea class="cmt-inp" id="cmt-text" rows="2" placeholder="Scrivi un commento... (Invio per inviare)"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addComment('${id}')}"></textarea>
+      <input type="file" id="file-input" style="display:none" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip" multiple onchange="handleFileSelect(this.files)">
+      <button class="upload-btn" onclick="document.getElementById('file-input').click()" title="Allega file">📎</button>
       <button class="btn btn-accent" onclick="addComment('${id}')">Invia</button>
     </div>`;
 }
 
 async function addComment(taskId) {
   const inp = document.getElementById('cmt-text');
-  const content = inp.value.trim();
-  if (!content) return;
+  let content = inp.value.trim();
+  if (!content && !pendingFiles.length) return;
   inp.value = '';
+
+  // Upload pending files
+  if (pendingFiles.length) {
+    const prog = document.getElementById('upload-progress');
+    if (prog) { prog.style.display = 'block'; prog.textContent = 'Caricamento file...'; }
+    for (const f of pendingFiles) {
+      try {
+        if (prog) prog.textContent = `Caricamento: ${f.name}...`;
+        const result = await sb.db.uploadFile(f);
+        content += `\n[FILE:${result.url}|${f.name}]`;
+      } catch(e) {
+        ui.showToast('Errore upload: ' + e.message, 'error');
+      }
+    }
+    pendingFiles = [];
+    renderUploadPreview();
+    if (prog) prog.style.display = 'none';
+    if (!content.trim()) return;
+  }
   try {
     await sb.db.insert('task_comments', {task_id:taskId, author_id:myId, content});
     const task = allTasks.find(t => t.id === taskId);

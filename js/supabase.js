@@ -248,6 +248,28 @@ const db = {
     );
   },
 
+  async uploadFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64 = reader.result.split(',')[1];
+          const tok = getSession()?.access_token;
+          const r = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+            body: JSON.stringify({ fileName: file.name, fileBase64: base64, contentType: file.type }),
+          });
+          const data = await r.json();
+          if (!r.ok) throw new Error(data.error || 'Upload failed');
+          resolve(data);
+        } catch(e) { reject(e); }
+      };
+      reader.onerror = () => reject(new Error('File read failed'));
+      reader.readAsDataURL(file);
+    });
+  },
+
   async log(action, clientId = null, details = null) {
     const user = getCurrentUser();
     return this.insert('activity_log', {
