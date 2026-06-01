@@ -92,9 +92,9 @@
             <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;pointer-events:none">🔍</span>
             <input type="text" id="search" placeholder="Cerca cliente..." style="padding-left:30px;min-width:180px">
           </div>
-          <!-- Status chips per ultimo mese completato -->
+          <!-- Month selector + status chips -->
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-            <span id="filter-month-label" style="font-size:11px;color:var(--text-muted);font-weight:600">Ultimo mese:</span>
+            <select id="filter-month" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;font-family:inherit"></select>
             <div class="filter-chip on" data-status="all">Tutti</div>
             <div class="filter-chip chip-ok" data-status="ok">✓ OK</div>
             <div class="filter-chip chip-failed" data-status="failed">✕ Failed</div>
@@ -138,17 +138,37 @@
 const PAGE_SIZE = 50;
 let allClients = [], payments = {};
 let currentYear   = 2026;
+let selectedMonth = 0; // 0 = auto (mese corrente)
 let statusFilter  = 'all';
 let partnerFilter = '';
 let currentPage   = 1;
 let activePicker  = null;
 
-// Restituisce il mese corrente di lavoro per l'anno visualizzato.
-function lastDoneMonth() {
+// Mese massimo navigabile per l'anno visualizzato.
+function maxMonth() {
   const { month: tm, year: ty } = ui.currentYearMonth();
   if (currentYear < ty) return 12;
   if (currentYear > ty) return 0;
   return tm;
+}
+
+// Mese attivo per KPI e filtri (selezionato dall'utente o default corrente).
+function activeMonth() {
+  const m = maxMonth();
+  if (selectedMonth > 0 && selectedMonth <= m) return selectedMonth;
+  return m;
+}
+
+// Popola il dropdown mesi.
+function populateMonthSelector() {
+  const sel = document.getElementById('filter-month');
+  const m = maxMonth();
+  let html = '';
+  for (let i = m; i >= 1; i--) {
+    const isDefault = (selectedMonth === 0 && i === m) || (selectedMonth === i);
+    html += `<option value="${i}" ${isDefault ? 'selected' : ''}>${ui.MONTHS[i-1]}</option>`;
+  }
+  sel.innerHTML = html;
 }
 
 // ── load ─────────────────────────────────────────────────────
@@ -174,9 +194,9 @@ async function loadData() {
 
 // ── summary KPIs ──────────────────────────────────────────────
 function renderSummary() {
-  const m = lastDoneMonth();
+  populateMonthSelector();
+  const m = activeMonth();
   const label = m > 0 ? ui.MONTHS[m-1] : '—';
-  document.getElementById('filter-month-label').textContent = `${label}:`;
   if (m === 0) {
     document.getElementById('summary-cards').innerHTML = '';
     return;
@@ -212,7 +232,7 @@ function renderSummary() {
 // ── filter ────────────────────────────────────────────────────
 function getFiltered() {
   const q = document.getElementById('search').value.toLowerCase();
-  const m = lastDoneMonth();
+  const m = activeMonth();
   return allClients.filter(c => {
     if (q && !(c.company_name||'').toLowerCase().includes(q)) return false;
     if (partnerFilter && c.accounting_partner !== partnerFilter) return false;
@@ -374,8 +394,12 @@ document.addEventListener('click', e => {
 
 document.getElementById('search').addEventListener('input', ()=>{ currentPage=1; renderGrid(); });
 
+document.getElementById('filter-month').addEventListener('change', e=>{
+  selectedMonth=parseInt(e.target.value); currentPage=1; renderSummary(); renderGrid();
+});
+
 document.getElementById('filter-year').addEventListener('change', e=>{
-  currentYear=parseInt(e.target.value); loadData();
+  currentYear=parseInt(e.target.value); selectedMonth=0; loadData();
 });
 
 document.getElementById('filter-partner').addEventListener('change', e=>{
@@ -395,7 +419,7 @@ document.getElementById('btn-reset').addEventListener('click',()=>{
   document.getElementById('filter-partner').value='';
   document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('on'));
   document.querySelector('.filter-chip[data-status="all"]').classList.add('on');
-  statusFilter='all'; partnerFilter=''; currentPage=1; renderGrid();
+  statusFilter='all'; partnerFilter=''; selectedMonth=0; currentPage=1; renderSummary(); renderGrid();
 });
 
 loadData();
