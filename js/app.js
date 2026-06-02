@@ -32,8 +32,9 @@
 
   function _getAllowed(r) {
     if (r === 'admin') return null;
-    if (_dynPerms && _dynPerms[r] !== undefined) return _dynPerms[r];
-    return ROLE_PAGES_DEFAULT[r] ?? ['index','tasks','notifiche'];
+    if (_dynPerms && r in _dynPerms) return _dynPerms[r];
+    if (r in ROLE_PAGES_DEFAULT) return ROLE_PAGES_DEFAULT[r];
+    return ['index','tasks','notifiche']; // ruolo sconosciuto = accesso minimo
   }
   const allowed = _getAllowed(role);
 
