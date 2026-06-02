@@ -62,6 +62,10 @@
             </tbody>
           </table>
         </div>
+        <div class="pagination" id="pagination" style="display:none">
+          <div class="page-info" id="page-info"></div>
+          <div class="page-btns" id="page-btns"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -154,6 +158,8 @@
 <script src="/js/app.js"></script>
 <script>
 let allClients = [];
+const PAGE_SIZE = 25;
+let currentPage = 1;
 
 function licenseCell(date) {
   if (!date) return '—';
@@ -187,14 +193,22 @@ async function loadClients() {
 }
 
 function renderClients(clients) {
-  document.getElementById('clients-count').textContent = `${clients.length} clienti`;
-  if (!clients.length) {
+  const total = clients.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page = clients.slice(start, start + PAGE_SIZE);
+
+  document.getElementById('clients-count').textContent = `${total} clienti`;
+
+  if (!total) {
     document.getElementById('clients-tbody').innerHTML =
       `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">👥</div><h3>Nessun cliente trovato</h3></div></td></tr>`;
+    document.getElementById('pagination').style.display = 'none';
     return;
   }
 
-  document.getElementById('clients-tbody').innerHTML = clients.map(c => `
+  document.getElementById('clients-tbody').innerHTML = page.map(c => `
     <tr>
       <td>
         <div class="td-company">${ui.escapeHtml(c.company_name)}</div>
@@ -218,10 +232,41 @@ function renderClients(clients) {
       </td>
     </tr>
   `).join('');
+
+  renderPagination(total, totalPages);
+}
+
+function renderPagination(total, totalPages) {
+  const pg = document.getElementById('pagination');
+  if (totalPages <= 1) { pg.style.display = 'none'; return; }
+  pg.style.display = 'flex';
+  document.getElementById('page-info').textContent = `Pagina ${currentPage} di ${totalPages} · ${total} clienti`;
+  let btns = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  getPageRange(currentPage, totalPages).forEach(p => {
+    if (p === '…') btns += `<span style="padding:0 4px;line-height:34px;color:var(--text-muted)">…</span>`;
+    else btns += `<button class="page-btn${p===currentPage?' on':''}" onclick="goPage(${p})">${p}</button>`;
+  });
+  btns += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  document.getElementById('page-btns').innerHTML = btns;
+}
+
+function getPageRange(cur, tot) {
+  if (tot <= 7) return Array.from({length:tot}, (_,i) => i+1);
+  if (cur <= 4) return [1,2,3,4,5,'…',tot];
+  if (cur >= tot-3) return [1,'…',tot-4,tot-3,tot-2,tot-1,tot];
+  return [1,'…',cur-1,cur,cur+1,'…',tot];
+}
+
+function goPage(p) {
+  const tot = Math.ceil(getFilteredClients().length / PAGE_SIZE);
+  if (p < 1 || p > tot) return;
+  currentPage = p;
+  renderClients(getFilteredClients());
+  document.querySelector('.card').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 // Search & filter
-function applyFilters() {
+function getFilteredClients() {
   const q = document.getElementById('search').value.toLowerCase();
   const partner = document.getElementById('filter-partner').value;
   let filtered = allClients;
@@ -230,7 +275,12 @@ function applyFilters() {
     (c.contact_name || '').toLowerCase().includes(q)
   );
   if (partner) filtered = filtered.filter(c => c.accounting_partner === partner);
-  renderClients(filtered);
+  return filtered;
+}
+
+function applyFilters() {
+  currentPage = 1;
+  renderClients(getFilteredClients());
 }
 
 document.getElementById('search').addEventListener('input', applyFilters);
