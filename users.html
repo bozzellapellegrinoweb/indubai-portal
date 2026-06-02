@@ -18,6 +18,16 @@
     .rb-senior { background:#dbeafe; color:#1d4ed8; }
     .rb-junior { background:#f3f4f6; color:#6b7280; }
     .rb-staff { background:#f3f4f6; color:#9ca3af; }
+    .rb-collaborator { background:#dcfce7; color:#166534; }
+    /* Permissions Matrix */
+    .perm-matrix { width:100%; border-collapse:collapse; font-size:13px; }
+    .perm-matrix th { text-align:left; padding:10px 12px; font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; border-bottom:2px solid var(--border); }
+    .perm-matrix td { padding:8px 12px; border-bottom:1px solid var(--border); }
+    .perm-matrix tr:hover { background:#f8fafc; }
+    .perm-matrix .page-name { font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:8px; }
+    .perm-matrix .page-icon { font-size:15px; width:20px; text-align:center; }
+    .perm-check { width:18px; height:18px; cursor:pointer; accent-color:var(--primary); }
+    .perm-section-row td { background:#f0f4f8; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--text-muted); padding:6px 12px !important; }
   </style>
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <link rel="manifest" href="/manifest-admin.json">
@@ -37,7 +47,7 @@
       </div>
     </div>
     <div class="page-content">
-      <div style="max-width:680px">
+      <div style="max-width:900px">
         <div class="card" style="margin-bottom:20px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
           <div>
             <div style="font-size:14px;font-weight:700">🔐 Cambia la mia password</div>
@@ -45,7 +55,27 @@
           </div>
           <button class="btn btn-ghost" onclick="openChangePwd()">Cambia Password</button>
         </div>
-        <div id="users-list"><div class="loading-overlay"><div class="spinner"></div></div></div>
+        <div id="users-list" style="max-width:680px"><div class="loading-overlay"><div class="spinner"></div></div></div>
+
+        <!-- Permissions Management -->
+        <div class="card" style="margin-top:24px;padding:20px 24px" id="perms-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+            <div>
+              <div style="font-size:16px;font-weight:800;color:var(--text-primary)">🔐 Permessi per Ruolo</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Gestisci quali sezioni può vedere ogni ruolo. Admin vede sempre tutto.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="resetPermissions()">↩ Reset predefiniti</button>
+              <button class="btn btn-accent btn-sm" id="btn-save-perms" onclick="savePermissions()">Salva Permessi</button>
+            </div>
+          </div>
+          <div id="perms-grid"><div class="loading-overlay" style="min-height:100px"><div class="spinner"></div></div></div>
+          <div id="perms-setup" style="display:none;margin-top:16px;padding:14px 18px;background:#fef9ec;border-radius:10px;border:1.5px solid #fcd34d">
+            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px">⚙ Setup richiesto</div>
+            <div style="font-size:12px;color:#78350f;margin-bottom:12px">Per attivare la gestione permessi dinamica, esegui questo SQL nel SQL Editor di Supabase:</div>
+            <button class="btn btn-accent btn-sm" onclick="copyPermSetupSQL()">📋 Copia SQL e apri Editor →</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -74,6 +104,7 @@
       <div class="form-group">
         <label class="form-label">Ruolo</label>
         <select class="form-control" id="u-role">
+          <option value="collaborator">Collaboratore</option>
           <option value="junior">Contabilità Junior</option>
           <option value="senior">Contabilità Senior</option>
           <option value="mini_admin">Mini Admin</option>
@@ -120,8 +151,8 @@
 <script src="/js/app.js"></script>
 <script>
 let editingId = null;
-const ROLE_LABELS = {admin:'Admin', mini_admin:'Mini Admin', senior:'Contabilità Senior', junior:'Contabilità Junior', staff:'Staff'};
-const ROLE_COLORS = {admin:'#1a3a5c', mini_admin:'#c9a84c', senior:'#2563a8', junior:'#6b7280', staff:'#9ca3af'};
+const ROLE_LABELS = {admin:'Admin', mini_admin:'Mini Admin', senior:'Contabilità Senior', junior:'Contabilità Junior', collaborator:'Collaboratore', staff:'Staff'};
+const ROLE_COLORS = {admin:'#1a3a5c', mini_admin:'#c9a84c', senior:'#2563a8', junior:'#6b7280', collaborator:'#059669', staff:'#9ca3af'};
 
 async function init() {
   await sb.requireAuth();
@@ -311,7 +342,210 @@ async function changePassword() {
   finally { btn.disabled = false; btn.textContent = 'Salva Password'; }
 }
 
+// ── Permissions Management ────────────────────────────────────
+const MANAGEABLE_ROLES = ['senior','junior','mini_admin','collaborator'];
+const ALL_PAGES = [
+  { section:'OVERVIEW', pages: [
+    { id:'index',      icon:'◈', label:'Dashboard' },
+    { id:'tasks',      icon:'✓', label:'Task' },
+    { id:'notifiche',  icon:'🔔', label:'Notifiche' },
+  ]},
+  { section:'GESTIONE', pages: [
+    { id:'clients',    icon:'◉', label:'Clienti' },
+    { id:'zoho-setup', icon:'↳', label:'Setup Zoho' },
+    { id:'zoho-vat',   icon:'↳', label:'Monitor VAT' },
+    { id:'documents',  icon:'📁', label:'Documenti' },
+    { id:'onboarding', icon:'✦', label:'Onboarding' },
+    { id:'statements', icon:'◎', label:'Estratti Conto' },
+    { id:'payments',   icon:'◆', label:'Abbonamenti' },
+    { id:'bilanci',    icon:'📒', label:'Bilanci' },
+    { id:'ferie',      icon:'🏖', label:'Ferie & Permessi' },
+  ]},
+  { section:'COMPLIANCE', pages: [
+    { id:'vat',        icon:'◇', label:'VAT Register' },
+    { id:'corp-tax',   icon:'◈', label:'Corporate Tax' },
+    { id:'affinitas',  icon:'◉', label:'Affinitas' },
+  ]},
+  { section:'ANALYTICS', pages: [
+    { id:'reports',    icon:'📊', label:'Report' },
+    { id:'news',       icon:'📰', label:'UAE News' },
+    { id:'search',     icon:'🔍', label:'Ricerca' },
+  ]},
+];
+
+const DEFAULTS = {
+  senior:       null,
+  junior:       ['index','tasks','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','documents','search','news','notifiche','reports'],
+  mini_admin:   ['index','tasks','clients','documents','search','news','notifiche'],
+  collaborator: ['index','tasks','clients','documents','search','news','notifiche'],
+};
+
+let permData = {}; // role -> allowed_pages array (or null = all)
+let permTableExists = false;
+
+async function loadPermissions() {
+  const grid = document.getElementById('perms-grid');
+  const setup = document.getElementById('perms-setup');
+  try {
+    const rows = await sb.db.select('role_permissions', { columns: 'role,allowed_pages' });
+    permTableExists = true;
+    setup.style.display = 'none';
+    permData = {};
+    (rows || []).forEach(r => {
+      permData[r.role] = r.allowed_pages?.length ? r.allowed_pages : null;
+    });
+    // Ensure all manageable roles have an entry
+    MANAGEABLE_ROLES.forEach(r => {
+      if (permData[r] === undefined) permData[r] = DEFAULTS[r];
+    });
+    renderPermGrid();
+  } catch(e) {
+    // Table doesn't exist — show setup + use defaults
+    permTableExists = false;
+    MANAGEABLE_ROLES.forEach(r => { permData[r] = DEFAULTS[r]; });
+    renderPermGrid();
+    setup.style.display = 'block';
+  }
+}
+
+function renderPermGrid() {
+  const grid = document.getElementById('perms-grid');
+  const allPageIds = ALL_PAGES.flatMap(s => s.pages.map(p => p.id));
+
+  let html = `<div style="overflow-x:auto"><table class="perm-matrix">
+    <thead><tr>
+      <th style="min-width:180px">Sezione</th>
+      ${MANAGEABLE_ROLES.map(r => `<th style="text-align:center;min-width:100px">
+        <span class="role-badge rb-${r}">${ROLE_LABELS[r]}</span>
+      </th>`).join('')}
+    </tr></thead><tbody>`;
+
+  ALL_PAGES.forEach(section => {
+    html += `<tr class="perm-section-row"><td colspan="${MANAGEABLE_ROLES.length+1}">${section.section}</td></tr>`;
+    section.pages.forEach(page => {
+      html += `<tr>
+        <td><div class="page-name"><span class="page-icon">${page.icon}</span>${page.label}</div></td>
+        ${MANAGEABLE_ROLES.map(r => {
+          const hasAccess = permData[r] === null || (permData[r] && permData[r].includes(page.id));
+          const isAll = permData[r] === null;
+          return `<td style="text-align:center">
+            <input type="checkbox" class="perm-check" data-role="${r}" data-page="${page.id}"
+              ${hasAccess ? 'checked' : ''}>
+          </td>`;
+        }).join('')}
+      </tr>`;
+    });
+  });
+
+  html += '</tbody></table></div>';
+
+  // Toggle all row
+  html += `<div style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap">
+    ${MANAGEABLE_ROLES.map(r => {
+      const allChecked = permData[r] === null || (permData[r] && permData[r].length === allPageIds.length);
+      return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer">
+        <input type="checkbox" class="perm-check-all" data-role="${r}" ${allChecked ? 'checked' : ''}
+          onchange="toggleAll('${r}', this.checked)">
+        ${ROLE_LABELS[r]}: tutte le sezioni
+      </label>`;
+    }).join('')}
+  </div>`;
+
+  grid.innerHTML = html;
+
+  // Listen for individual checkbox changes
+  grid.querySelectorAll('.perm-check').forEach(cb => {
+    cb.addEventListener('change', () => updatePermFromGrid());
+  });
+}
+
+function updatePermFromGrid() {
+  const grid = document.getElementById('perms-grid');
+  const allPageIds = ALL_PAGES.flatMap(s => s.pages.map(p => p.id));
+  MANAGEABLE_ROLES.forEach(r => {
+    const checks = grid.querySelectorAll(`.perm-check[data-role="${r}"]`);
+    const selected = [];
+    checks.forEach(cb => { if (cb.checked) selected.push(cb.dataset.page); });
+    permData[r] = selected.length === allPageIds.length ? null : selected;
+    // Update "all" checkbox
+    const allCb = grid.querySelector(`.perm-check-all[data-role="${r}"]`);
+    if (allCb) allCb.checked = permData[r] === null;
+  });
+}
+
+function toggleAll(role, checked) {
+  const grid = document.getElementById('perms-grid');
+  grid.querySelectorAll(`.perm-check[data-role="${role}"]`).forEach(cb => { cb.checked = checked; });
+  updatePermFromGrid();
+}
+
+function resetPermissions() {
+  permData = {};
+  MANAGEABLE_ROLES.forEach(r => { permData[r] = DEFAULTS[r]; });
+  renderPermGrid();
+  ui.showToast('Permessi resettati ai valori predefiniti', 'default');
+}
+
+async function savePermissions() {
+  if (!permTableExists) {
+    ui.showToast('Esegui prima il setup SQL!', 'error');
+    return;
+  }
+  const btn = document.getElementById('btn-save-perms');
+  btn.disabled = true; btn.textContent = 'Salvataggio...';
+  try {
+    const allPageIds = ALL_PAGES.flatMap(s => s.pages.map(p => p.id));
+    for (const role of MANAGEABLE_ROLES) {
+      const pages = permData[role] === null ? [] : (permData[role] || []);
+      await sb.db.upsert('role_permissions', { role, allowed_pages: pages }, 'role');
+    }
+    // Also ensure admin row exists
+    await sb.db.upsert('role_permissions', { role: 'admin', allowed_pages: [] }, 'role');
+    // Clear cached perms so next page load fetches fresh
+    sessionStorage.removeItem('indubai_role_perms');
+    ui.showToast('Permessi salvati! Effetto al prossimo caricamento pagina.', 'success');
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Salva Permessi';
+  }
+}
+
+function copyPermSetupSQL() {
+  const sql = `-- Tabella permessi per ruolo
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role text PRIMARY KEY,
+  allowed_pages text[] NOT NULL DEFAULT '{}'
+);
+
+-- RLS: tutti leggono, solo admin modifica
+ALTER TABLE role_permissions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "read_role_permissions" ON role_permissions
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "admin_manage_role_permissions" ON role_permissions
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'))
+  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+
+-- Valori iniziali (array vuoto = tutte le pagine)
+INSERT INTO role_permissions (role, allowed_pages) VALUES
+  ('admin', '{}'),
+  ('senior', '{}'),
+  ('junior', '{index,tasks,clients,zoho-setup,zoho-vat,onboarding,statements,ferie,vat,corp-tax,affinitas,documents,search,news,notifiche,reports}'),
+  ('mini_admin', '{index,tasks,clients,documents,search,news,notifiche}'),
+  ('collaborator', '{index,tasks,clients,documents,search,news,notifiche}')
+ON CONFLICT (role) DO NOTHING;`;
+
+  navigator.clipboard.writeText(sql).then(() => {
+    window.open('https://supabase.com/dashboard/project/gvdoqcgkzbziqufahhxh/sql/new', '_blank');
+    ui.showToast('SQL copiato! Incollalo nel SQL Editor e clicca Run.', 'success');
+  });
+}
+
 init();
+loadPermissions();
 </script>
 
 <!-- SQL Copy Modal -->

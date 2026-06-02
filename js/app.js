@@ -18,22 +18,32 @@
     return;
   }
 
-  // Pages allowed per role
-  const ROLE_PAGES = {
-    admin:      null, // null = all pages
-    senior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','bilanci','ferie','vat','corp-tax','affinitas','documents','search','news'],
-    junior:     ['index','tasks','clients','zoho-setup','onboarding','statements','payments','bilanci','ferie','vat','corp-tax','affinitas','documents','search','news'],
-    mini_admin: ['tasks','clients','documents','search','news','notifiche','payments'],
+  // ── Role-based page permissions (dynamic from DB, cached in sessionStorage) ──
+  let _dynPerms = null;
+  try { _dynPerms = JSON.parse(sessionStorage.getItem('indubai_role_perms')); } catch(e) {}
+
+  const ROLE_PAGES_DEFAULT = {
+    admin:        null,   // null = all pages
+    senior:       null,   // all pages (admin section hidden by nav filter)
+    junior:       ['index','tasks','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','documents','search','news','notifiche','reports'],
+    mini_admin:   ['index','tasks','clients','documents','search','news','notifiche'],
+    collaborator: ['index','tasks','clients','documents','search','news','notifiche'],
   };
-  const allowed = ROLE_PAGES[role]; // null = no restriction
+
+  function _getAllowed(r) {
+    if (r === 'admin') return null;
+    if (_dynPerms && _dynPerms[r] !== undefined) return _dynPerms[r];
+    return ROLE_PAGES_DEFAULT[r] ?? ['index','tasks','notifiche'];
+  }
+  const allowed = _getAllowed(role);
 
   const allNavItems = [
     { id: 'index',      icon: '◈', label: 'Dashboard',     href: '/index.html',      section: 'OVERVIEW' },
     { id: 'tasks',      icon: '✓', label: 'Task',           href: '/tasks.html' },
     { id: 'notifiche',  icon: '🔔', label: 'Notifiche',     href: '/notifiche.html' },
     { id: 'clients',    icon: '◉', label: 'Clienti',        href: '/clients.html',    section: 'GESTIONE' },
-    { id: 'zoho-setup', icon: '',   label: '↳ Setup Zoho',     href: '/zoho-setup.html', roles: ['admin','senior','junior'] },
-    { id: 'zoho-vat',   icon: '',   label: '↳ Monitor VAT',    href: '/zoho-vat.html',   roles: ['admin','senior','junior'] },
+    { id: 'zoho-setup', icon: '',   label: '↳ Setup Zoho',     href: '/zoho-setup.html' },
+    { id: 'zoho-vat',   icon: '',   label: '↳ Monitor VAT',    href: '/zoho-vat.html' },
     { id: 'documents',  icon: '📁', label: 'Documenti',     href: '/documents.html' },
     { id: 'onboarding', icon: '✦', label: 'Onboarding',     href: '/onboarding.html' },
     { id: 'statements', icon: '◎', label: 'Estratti Conto', href: '/statements.html' },
@@ -56,8 +66,7 @@
 
   // Redirect if current page not allowed
   if (allowed && !allowed.includes(currentPage) && currentPage !== 'login' && currentPage !== 'client-detail') {
-    // Redirect mini_admin to tasks, others to index
-    window.location.href = role === 'mini_admin' ? '/tasks.html' : '/index.html';
+    window.location.href = allowed.includes('index') ? '/index.html' : `/${allowed[0] || 'index'}.html`;
     return;
   }
 
@@ -87,7 +96,7 @@
           <div class="avatar">${initials}</div>
           <div class="user-info">
             <div class="user-name">${escapeHtml(profile?.full_name || 'Utente')}</div>
-            <div class="user-role">${profile?.role === 'admin' ? 'Amministratore' : 'Staff'}</div>
+            <div class="user-role">${{admin:'Amministratore',senior:'Senior',junior:'Junior',mini_admin:'Mini Admin',collaborator:'Collaboratore'}[profile?.role] || 'Staff'}</div>
           </div>
           <button class="btn-logout" title="Logout" onclick="sb.signOut()">⏻</button>
         </div>
@@ -508,6 +517,18 @@
       }
     }
   };
+
+  // ── SYNC ROLE PERMISSIONS FROM DB ────────────────────────────
+  (async function syncRolePerms() {
+    try {
+      const rows = await sb.db.select('role_permissions', { columns: 'role,allowed_pages' });
+      if (rows?.length) {
+        const perms = {};
+        rows.forEach(r => { perms[r.role] = r.allowed_pages?.length ? r.allowed_pages : null; });
+        sessionStorage.setItem('indubai_role_perms', JSON.stringify(perms));
+      }
+    } catch(e) { /* table might not exist yet — use defaults */ }
+  })();
 
   // ── ACTIVITY TRACKING ───────────────────────────────────────
   sb.db.log('page_view', null, { page: currentPage });
