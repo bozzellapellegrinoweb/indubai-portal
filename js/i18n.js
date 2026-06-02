@@ -87,6 +87,7 @@
 
     // Task statuses
     'Aperta': 'Open',
+    'Aperte': 'Open',
     'In corso': 'In Progress',
     'Completata': 'Completed',
     'Completate': 'Completed',
@@ -200,6 +201,15 @@
     'ANALYTICS': 'ANALYTICS',
     'ADMIN': 'ADMIN',
 
+    // Task page sections
+    'VISTA': 'VIEW',
+    'STATO': 'STATUS',
+    'CATEGORIA': 'CATEGORY',
+    'Clicca su una task per vedere i dettagli': 'Click on a task to see details',
+    'task attive': 'active tasks',
+    'Pagamenti': 'Payments',
+    'Estratti': 'Statements',
+
     // Documents
     'Carica documento': 'Upload document',
     'Nessun documento': 'No documents',
@@ -290,13 +300,6 @@
     'Tutto': 'All',
     'Altro': 'Other',
     'Sì': 'Yes',
-    'No': 'No',
-    'o': 'or',
-    'di': 'of',
-    'da': 'from',
-    'per': 'for',
-    'con': 'with',
-    'senza': 'without',
 
     // Bilanci
     'Anno fiscale': 'Fiscal Year',
@@ -388,7 +391,7 @@
     // Partial match for longer text containing translatable phrases
     let changed = original;
     for (const key of keys) {
-      if (key.length < 3) continue; // Skip very short words to avoid false positives
+      if (key.length < 6) continue; // Skip short words to avoid false matches inside other words
       if (changed.includes(key)) {
         changed = changed.split(key).join(dictionary[key]);
       }
