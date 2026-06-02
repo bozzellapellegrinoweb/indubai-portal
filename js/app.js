@@ -99,6 +99,7 @@
             <div class="user-name">${escapeHtml(profile?.full_name || 'Utente')}</div>
             <div class="user-role">${{admin:'Amministratore',senior:'Senior',junior:'Junior',mini_admin:'Mini Admin',collaborator:'Collaboratore'}[profile?.role] || 'Staff'}</div>
           </div>
+          <button id="lang-toggle-btn" class="btn-lang-toggle" title="${(localStorage.getItem('indubai_lang')||'it')==='en'?'Switch to Italian':'Switch to English'}" onclick="i18n.toggleLang()">${(localStorage.getItem('indubai_lang')||'it')==='en'?'🇬🇧':'🇮🇹'}</button>
           <button class="btn-logout" title="Logout" onclick="sb.signOut()">⏻</button>
         </div>
       </div>

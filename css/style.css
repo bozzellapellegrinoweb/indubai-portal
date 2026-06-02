@@ -164,6 +164,12 @@ body {
   transition: color var(--transition);
 }
 .btn-logout:hover { color: var(--danger); }
+.btn-lang-toggle {
+  background: none; border: 1px solid rgba(255,255,255,0.15); color: white;
+  cursor: pointer; padding: 2px 4px; font-size: 15px; border-radius: 6px;
+  transition: all var(--transition); line-height: 1; flex-shrink: 0;
+}
+.btn-lang-toggle:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
 
 /* ── MAIN CONTENT ── */
 .main-content {
