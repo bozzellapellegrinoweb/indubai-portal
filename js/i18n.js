@@ -463,6 +463,7 @@
       if (pendingMutation) cancelAnimationFrame(pendingMutation);
       pendingMutation = requestAnimationFrame(() => {
         mutations.forEach(m => {
+          // Handle new nodes added to the DOM
           m.addedNodes.forEach(node => {
             if (node.nodeType === 1 && !shouldSkip(node)) {
               translateElement(node, sortedKeys, dict);
@@ -470,6 +471,10 @@
               translateTextNode(node, sortedKeys, dict);
             }
           });
+          // Handle text content changes
+          if (m.type === 'characterData' && m.target.nodeType === 3) {
+            translateTextNode(m.target, sortedKeys, dict);
+          }
         });
       });
     });
@@ -477,6 +482,7 @@
     observer.observe(document.body, {
       childList: true,
       subtree: true,
+      characterData: true,
     });
   }
 
