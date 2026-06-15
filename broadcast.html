@@ -145,16 +145,22 @@ const TEMPLATES = [
     icon: '🏖',
     name: 'Public Holiday',
     desc: 'Comunicazione chiusura per festività',
-    subject: '🏖 Public Holiday Notice — InDubai Office Closure',
+    subject: '🏖 Public Holiday / Festività — InDubai Office Closure',
     body: `Dear {{company}},
 
 We would like to inform you that our office will be closed on [DATE] in observance of [HOLIDAY NAME].
-
 During this period, our team will not be available. We will resume normal operations on [RETURN DATE].
-
 If you have any urgent matters, please contact us at info@indubai.it.
 
-Best regards,
+---
+
+Gentile {{company}},
+
+Vi informiamo che il nostro ufficio resterà chiuso il giorno [DATA] in occasione di [NOME FESTIVITÀ].
+Durante questo periodo il nostro team non sarà disponibile. Riprenderemo le normali attività il [DATA RIENTRO].
+Per eventuali urgenze potete contattarci a info@indubai.it.
+
+Best regards / Cordiali saluti,
 InDubai Team`
   },
   {
@@ -162,7 +168,7 @@ InDubai Team`
     icon: '📄',
     name: 'Richiesta documenti mensile',
     desc: 'Estratti conto e fatture del mese',
-    subject: '📄 Monthly Documents Request — Bank Statements & Invoices',
+    subject: '📄 Monthly Documents Request / Richiesta Documenti Mensile',
     body: `Dear {{company}},
 
 We kindly request you to submit the following documents for the month of [MONTH]:
@@ -173,12 +179,23 @@ We kindly request you to submit the following documents for the month of [MONTH]
 4. Any other financial documents (receipts, contracts, etc.)
 
 Please upload them directly to your Client Portal or send them to this email.
-
 Deadline: [DEADLINE DATE]
 
-Thank you for your prompt cooperation.
+---
 
-Best regards,
+Gentile {{company}},
+
+Vi chiediamo cortesemente di inviarci i seguenti documenti relativi al mese di [MESE]:
+
+1. Estratti conto bancari — tutti i conti aziendali
+2. Fatture di vendita emesse nel mese
+3. Fatture di acquisto ricevute nel mese
+4. Eventuali altri documenti contabili (ricevute, contratti, ecc.)
+
+Potete caricarli direttamente sul vostro Portale Clienti oppure inviarli a questa email.
+Scadenza: [DATA SCADENZA]
+
+Thank you / Grazie per la collaborazione,
 InDubai Team`
   },
   {
@@ -186,29 +203,41 @@ InDubai Team`
     icon: '📊',
     name: 'VAT Reminder',
     desc: 'Promemoria scadenza dichiarazione VAT',
-    subject: '⚠️ VAT Return Deadline Reminder',
+    subject: '⚠️ VAT Return Deadline / Scadenza Dichiarazione IVA',
     body: `Dear {{company}},
 
 This is a friendly reminder that your VAT Return for the period [PERIOD] is due on [DEADLINE].
-
 Please ensure all invoices and documents are submitted to us at least 5 working days before the deadline.
-
 If you have already submitted all documents, please disregard this message.
 
-Best regards,
+---
+
+Gentile {{company}},
+
+Vi ricordiamo che la Dichiarazione IVA per il periodo [PERIODO] è in scadenza il [SCADENZA].
+Vi preghiamo di inviarci tutte le fatture e i documenti almeno 5 giorni lavorativi prima della scadenza.
+Se avete già inviato tutto il necessario, ignorate questo messaggio.
+
+Best regards / Cordiali saluti,
 InDubai Team`
   },
   {
     id: 'general',
     icon: '📢',
     name: 'Comunicazione generica',
-    desc: 'Messaggio personalizzato',
+    desc: 'Messaggio personalizzato bilingue',
     subject: '',
     body: `Dear {{company}},
 
-[Your message here]
+[Your message in English here]
 
-Best regards,
+---
+
+Gentile {{company}},
+
+[Il vostro messaggio in italiano qui]
+
+Best regards / Cordiali saluti,
 InDubai Team`
   },
   {
@@ -216,17 +245,28 @@ InDubai Team`
     icon: '🌙',
     name: 'Ramadan / Eid',
     desc: 'Auguri e orari ridotti',
-    subject: '🌙 Ramadan Kareem — Updated Office Hours',
+    subject: '🌙 Ramadan Kareem — Updated Office Hours / Orari Aggiornati',
     body: `Dear {{company}},
 
 As the holy month of Ramadan begins, we would like to wish you Ramadan Kareem!
 
 Please note our updated office hours during this period:
-- Working hours: 9:00 AM – 3:00 PM (Sunday to Thursday)
+• Working hours: 9:00 AM – 3:00 PM (Sunday to Thursday)
 
 Normal office hours will resume after Eid Al Fitr.
 
-Warm regards,
+---
+
+Gentile {{company}},
+
+In occasione del mese sacro del Ramadan, vi auguriamo Ramadan Kareem!
+
+Vi comunichiamo i nostri orari aggiornati per questo periodo:
+• Orario di lavoro: 9:00 – 15:00 (da Domenica a Giovedì)
+
+Gli orari normali riprenderanno dopo Eid Al Fitr.
+
+Warm regards / Cordiali saluti,
 InDubai Team`
   },
   {
@@ -234,7 +274,7 @@ InDubai Team`
     icon: '🏛',
     name: 'Corporate Tax Reminder',
     desc: 'Promemoria scadenza Corporate Tax',
-    subject: '🏛 Corporate Tax Filing Reminder',
+    subject: '🏛 Corporate Tax Filing Reminder / Promemoria Corporate Tax',
     body: `Dear {{company}},
 
 This is a reminder that your Corporate Tax return for the tax period [PERIOD] is approaching.
@@ -244,9 +284,22 @@ Please ensure the following are ready:
 2. All supporting documents
 3. Transfer pricing documentation (if applicable)
 
-We recommend submitting all documents at least 2 weeks before the deadline to ensure timely filing.
+We recommend submitting all documents at least 2 weeks before the deadline.
 
-Best regards,
+---
+
+Gentile {{company}},
+
+Vi ricordiamo che la scadenza per la dichiarazione Corporate Tax relativa al periodo [PERIODO] è in avvicinamento.
+
+Vi preghiamo di preparare:
+1. Bilancio completo
+2. Tutta la documentazione di supporto
+3. Documentazione sui prezzi di trasferimento (se applicabile)
+
+Vi consigliamo di inviarci tutti i documenti almeno 2 settimane prima della scadenza.
+
+Best regards / Cordiali saluti,
 InDubai Team`
   }
 ];
