@@ -42,6 +42,7 @@
     { id: 'index',      icon: '◈', label: 'Dashboard',     href: '/index.html',      section: 'OVERVIEW' },
     { id: 'tasks',      icon: '✓', label: 'Task',           href: '/tasks.html' },
     { id: 'notifiche',  icon: '🔔', label: 'Notifiche',     href: '/notifiche.html' },
+    { id: 'broadcast', icon: '📢', label: 'Broadcast',     href: '/broadcast.html' },
     { id: 'clients',    icon: '◉', label: 'Clienti',        href: '/clients.html',    section: 'GESTIONE' },
     { id: 'zoho-setup', icon: '',   label: '↳ Setup Zoho',     href: '/zoho-setup.html' },
     { id: 'zoho-vat',   icon: '',   label: '↳ Monitor VAT',    href: '/zoho-vat.html' },
@@ -60,7 +61,6 @@
     ...(role === 'admin' ? [
       { id: 'attivita', icon: '📋', label: 'Attività Staff', href: '/attivita.html', section: 'ADMIN' },
       { id: 'users',    icon: '👥', label: 'Utenti',         href: '/users.html' },
-      { id: 'broadcast', icon: '📢', label: 'Broadcast',     href: '/broadcast.html' },
     ] : []),
   ];
 
