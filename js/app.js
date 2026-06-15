@@ -60,6 +60,7 @@
     ...(role === 'admin' ? [
       { id: 'attivita', icon: '📋', label: 'Attività Staff', href: '/attivita.html', section: 'ADMIN' },
       { id: 'users',    icon: '👥', label: 'Utenti',         href: '/users.html' },
+      { id: 'broadcast', icon: '📢', label: 'Broadcast',     href: '/broadcast.html' },
     ] : []),
   ];
 
@@ -326,7 +327,7 @@
     'payments': 'Abbonamenti', 'statements': 'Estratti', 'onboarding': 'Onboarding',
     'reports': 'Report', 'news': 'UAE News', 'search': 'Ricerca', 'users': 'Utenti', 'notifiche': 'Notifiche',
     'affinitas': 'Affinitas', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
-    'client-detail': 'Cliente', 'attivita': 'Attività Staff',
+    'client-detail': 'Cliente', 'attivita': 'Attività Staff', 'broadcast': 'Broadcast',
   };
   const pageLabel = PAGE_LABELS[currentPage] || 'InDubai';
 

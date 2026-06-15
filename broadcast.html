@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Broadcast — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <style>
+    .bc-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    .bc-card { background:white; border:1.5px solid var(--border); border-radius:12px; padding:24px; }
+    .bc-card h3 { font-size:16px; font-weight:800; color:var(--text-primary); margin:0 0 16px; }
+    .bc-templates { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+    .bc-tpl { padding:14px 16px; border:1.5px solid var(--border); border-radius:10px; cursor:pointer; transition:all .15s; text-align:left; background:white; }
+    .bc-tpl:hover { border-color:var(--primary); background:#f0f6ff; }
+    .bc-tpl.active { border-color:var(--primary); background:#e8f0fe; }
+    .bc-tpl-icon { font-size:22px; margin-bottom:6px; }
+    .bc-tpl-name { font-size:13px; font-weight:700; color:var(--text-primary); }
+    .bc-tpl-desc { font-size:11px; color:var(--text-muted); margin-top:2px; }
+    .bc-subject { width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; font-weight:600; outline:none; transition:border .15s; }
+    .bc-subject:focus { border-color:var(--primary); }
+    .bc-body { width:100%; min-height:200px; padding:12px 14px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none; resize:vertical; transition:border .15s; line-height:1.7; }
+    .bc-body:focus { border-color:var(--primary); }
+    .bc-recipients { max-height:400px; overflow-y:auto; }
+    .bc-client-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; transition:background .1s; }
+    .bc-client-row:hover { background:var(--surface2); }
+    .bc-client-row label { flex:1; font-size:13px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:8px; }
+    .bc-client-row .bc-email { font-size:11px; color:var(--text-muted); }
+    .bc-client-row .bc-no-email { font-size:11px; color:#dc2626; font-style:italic; }
+    .bc-check { width:18px; height:18px; accent-color:var(--primary); cursor:pointer; }
+    .bc-toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+    .bc-toolbar .btn-sm { padding:5px 12px; font-size:12px; border-radius:6px; border:1px solid var(--border); background:white; cursor:pointer; font-weight:600; transition:all .12s; }
+    .bc-toolbar .btn-sm:hover { border-color:var(--primary); color:var(--primary); }
+    .bc-toolbar .btn-sm.active { background:var(--primary); color:white; border-color:var(--primary); }
+    .bc-search { padding:6px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:12px; font-family:inherit; outline:none; flex:1; min-width:150px; }
+    .bc-search:focus { border-color:var(--primary); }
+    .bc-stats { font-size:12px; color:var(--text-muted); font-weight:600; }
+    .bc-preview { background:#f8fafc; border:1.5px solid var(--border); border-radius:10px; padding:20px; margin-top:16px; }
+    .bc-preview-header { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
+    .bc-send-bar { display:flex; gap:12px; align-items:center; margin-top:20px; }
+    .bc-progress { display:none; margin-top:16px; }
+    .bc-progress-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+    .bc-progress-fill { height:100%; background:var(--primary); border-radius:3px; transition:width .3s; width:0%; }
+    .bc-progress-text { font-size:12px; color:var(--text-muted); margin-top:6px; text-align:center; }
+    .bc-log { margin-top:16px; max-height:200px; overflow-y:auto; font-size:12px; }
+    .bc-log-item { padding:4px 0; border-bottom:1px solid var(--border); display:flex; gap:8px; }
+    .bc-log-ok { color:#059669; }
+    .bc-log-err { color:#dc2626; }
+    @media(max-width:900px) { .bc-grid { grid-template-columns:1fr; } .bc-templates { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<div class="main-content">
+  <div class="topbar">
+    <div>
+      <h1 style="font-size:22px;font-weight:800;margin:0">📢 Broadcast Email</h1>
+      <div style="font-size:13px;color:var(--text-muted)">Invia comunicazioni ai clienti del portale</div>
+    </div>
+  </div>
+
+  <div class="content-body" style="padding:24px">
+
+    <!-- Templates -->
+    <div class="bc-card" style="margin-bottom:20px">
+      <h3>📋 Template rapidi</h3>
+      <div class="bc-templates" id="bc-templates"></div>
+    </div>
+
+    <div class="bc-grid">
+      <!-- LEFT: Compose -->
+      <div class="bc-card">
+        <h3>✉️ Componi messaggio</h3>
+        <div style="margin-bottom:12px">
+          <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px">OGGETTO</label>
+          <input type="text" class="bc-subject" id="bc-subject" placeholder="Oggetto dell'email...">
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px">MESSAGGIO</label>
+          <textarea class="bc-body" id="bc-body" placeholder="Scrivi il messaggio qui...&#10;&#10;Puoi usare queste variabili:&#10;{{company}} = nome azienda&#10;{{name}} = nome referente"></textarea>
+        </div>
+
+        <!-- Preview -->
+        <div class="bc-preview" id="bc-preview" style="display:none">
+          <div class="bc-preview-header">👁 Anteprima email</div>
+          <div id="bc-preview-content"></div>
+        </div>
+
+        <!-- Send bar -->
+        <div class="bc-send-bar">
+          <button class="btn btn-ghost" onclick="togglePreview()">👁 Anteprima</button>
+          <button class="btn btn-accent" id="bc-send-btn" onclick="sendBroadcast()" style="margin-left:auto">
+            📤 Invia a <span id="bc-send-count">0</span> clienti
+          </button>
+        </div>
+
+        <!-- Progress -->
+        <div class="bc-progress" id="bc-progress">
+          <div class="bc-progress-bar"><div class="bc-progress-fill" id="bc-progress-fill"></div></div>
+          <div class="bc-progress-text" id="bc-progress-text">Invio in corso...</div>
+        </div>
+
+        <!-- Log -->
+        <div class="bc-log" id="bc-log" style="display:none"></div>
+      </div>
+
+      <!-- RIGHT: Recipients -->
+      <div class="bc-card">
+        <h3>👥 Destinatari</h3>
+        <div class="bc-toolbar">
+          <button class="btn-sm active" onclick="filterClients('all',this)">Tutti</button>
+          <button class="btn-sm" onclick="filterClients('bilancio',this)">In bilancio</button>
+          <button class="btn-sm" onclick="filterClients('no-bilancio',this)">Non in bilancio</button>
+          <input type="text" class="bc-search" id="bc-search" placeholder="🔍 Cerca cliente..." oninput="renderClients()">
+        </div>
+        <div class="bc-toolbar" style="margin-bottom:8px">
+          <button class="btn-sm" onclick="selectAll(true)">✅ Seleziona tutti</button>
+          <button class="btn-sm" onclick="selectAll(false)">❌ Deseleziona tutti</button>
+          <div class="bc-stats" id="bc-stats">0 / 0 selezionati</div>
+        </div>
+        <div class="bc-recipients" id="bc-recipients">
+          <div style="text-align:center;padding:20px;color:var(--text-muted)">Caricamento clienti...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/notify.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/i18n.js"></script>
+<script>
+// ── DATA ──
+let allClients = [];
+let clientFilter = 'all';
+let selected = new Set();
+
+// ── TEMPLATES ──
+const TEMPLATES = [
+  {
+    id: 'public-holiday',
+    icon: '🏖',
+    name: 'Public Holiday',
+    desc: 'Comunicazione chiusura per festività',
+    subject: '🏖 Public Holiday Notice — InDubai Office Closure',
+    body: `Dear {{company}},
+
+We would like to inform you that our office will be closed on [DATE] in observance of [HOLIDAY NAME].
+
+During this period, our team will not be available. We will resume normal operations on [RETURN DATE].
+
+If you have any urgent matters, please contact us at info@indubai.it.
+
+Best regards,
+InDubai Team`
+  },
+  {
+    id: 'monthly-docs',
+    icon: '📄',
+    name: 'Richiesta documenti mensile',
+    desc: 'Estratti conto e fatture del mese',
+    subject: '📄 Monthly Documents Request — Bank Statements & Invoices',
+    body: `Dear {{company}},
+
+We kindly request you to submit the following documents for the month of [MONTH]:
+
+1. Bank Statement(s) — all company bank accounts
+2. Sales Invoices issued during the month
+3. Purchase Invoices received during the month
+4. Any other financial documents (receipts, contracts, etc.)
+
+Please upload them directly to your Client Portal or send them to this email.
+
+Deadline: [DEADLINE DATE]
+
+Thank you for your prompt cooperation.
+
+Best regards,
+InDubai Team`
+  },
+  {
+    id: 'vat-reminder',
+    icon: '📊',
+    name: 'VAT Reminder',
+    desc: 'Promemoria scadenza dichiarazione VAT',
+    subject: '⚠️ VAT Return Deadline Reminder',
+    body: `Dear {{company}},
+
+This is a friendly reminder that your VAT Return for the period [PERIOD] is due on [DEADLINE].
+
+Please ensure all invoices and documents are submitted to us at least 5 working days before the deadline.
+
+If you have already submitted all documents, please disregard this message.
+
+Best regards,
+InDubai Team`
+  },
+  {
+    id: 'general',
+    icon: '📢',
+    name: 'Comunicazione generica',
+    desc: 'Messaggio personalizzato',
+    subject: '',
+    body: `Dear {{company}},
+
+[Your message here]
+
+Best regards,
+InDubai Team`
+  },
+  {
+    id: 'ramadan',
+    icon: '🌙',
+    name: 'Ramadan / Eid',
+    desc: 'Auguri e orari ridotti',
+    subject: '🌙 Ramadan Kareem — Updated Office Hours',
+    body: `Dear {{company}},
+
+As the holy month of Ramadan begins, we would like to wish you Ramadan Kareem!
+
+Please note our updated office hours during this period:
+- Working hours: 9:00 AM – 3:00 PM (Sunday to Thursday)
+
+Normal office hours will resume after Eid Al Fitr.
+
+Warm regards,
+InDubai Team`
+  },
+  {
+    id: 'ct-reminder',
+    icon: '🏛',
+    name: 'Corporate Tax Reminder',
+    desc: 'Promemoria scadenza Corporate Tax',
+    subject: '🏛 Corporate Tax Filing Reminder',
+    body: `Dear {{company}},
+
+This is a reminder that your Corporate Tax return for the tax period [PERIOD] is approaching.
+
+Please ensure the following are ready:
+1. Complete financial statements
+2. All supporting documents
+3. Transfer pricing documentation (if applicable)
+
+We recommend submitting all documents at least 2 weeks before the deadline to ensure timely filing.
+
+Best regards,
+InDubai Team`
+  }
+];
+
+// ── INIT ──
+(async function init() {
+  renderTemplates();
+  await loadClients();
+})();
+
+function renderTemplates() {
+  const el = document.getElementById('bc-templates');
+  el.innerHTML = TEMPLATES.map(t => `
+    <button class="bc-tpl" data-tpl="${t.id}" onclick="applyTemplate('${t.id}')">
+      <div class="bc-tpl-icon">${t.icon}</div>
+      <div class="bc-tpl-name">${t.name}</div>
+      <div class="bc-tpl-desc">${t.desc}</div>
+    </button>
+  `).join('');
+}
+
+function applyTemplate(id) {
+  const t = TEMPLATES.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('bc-subject').value = t.subject;
+  document.getElementById('bc-body').value = t.body;
+  // Highlight selected template
+  document.querySelectorAll('.bc-tpl').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.bc-tpl[data-tpl="${id}"]`)?.classList.add('active');
+  updatePreview();
+}
+
+// ── CLIENTS ──
+async function loadClients() {
+  try {
+    const rows = await sb.db.select('clients', {
+      columns: 'id,company_name,general_manager,contact_name,email,is_active,in_bilancio,accounting_partner',
+      order: 'company_name.asc'
+    });
+    allClients = (rows || []).filter(c => c.is_active);
+    // Pre-select all with email
+    allClients.forEach(c => { if (c.email) selected.add(c.id); });
+    renderClients();
+  } catch(e) {
+    console.error('Load clients error:', e);
+    document.getElementById('bc-recipients').innerHTML = '<div style="padding:20px;text-align:center;color:#dc2626">Errore caricamento clienti</div>';
+  }
+}
+
+function filterClients(filter, btn) {
+  clientFilter = filter;
+  document.querySelectorAll('.bc-toolbar .btn-sm').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderClients();
+}
+
+function renderClients() {
+  const search = (document.getElementById('bc-search')?.value || '').toLowerCase();
+  let list = allClients;
+
+  if (clientFilter === 'bilancio') list = list.filter(c => c.in_bilancio);
+  else if (clientFilter === 'no-bilancio') list = list.filter(c => !c.in_bilancio);
+
+  if (search) list = list.filter(c =>
+    (c.company_name||'').toLowerCase().includes(search) ||
+    (c.email||'').toLowerCase().includes(search) ||
+    (c.general_manager||'').toLowerCase().includes(search)
+  );
+
+  const el = document.getElementById('bc-recipients');
+  if (!list.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">Nessun cliente trovato</div>';
+    updateStats();
+    return;
+  }
+
+  el.innerHTML = list.map(c => {
+    const checked = selected.has(c.id) ? 'checked' : '';
+    const disabled = !c.email ? 'disabled' : '';
+    const name = c.general_manager || c.contact_name || '';
+    return `<div class="bc-client-row">
+      <input type="checkbox" class="bc-check" data-id="${c.id}" ${checked} ${disabled} onchange="toggleClient('${c.id}', this.checked)">
+      <label onclick="this.previousElementSibling.click()">
+        <span style="font-weight:600">${escapeHtml(c.company_name)}</span>
+        ${name ? '<span style="color:var(--text-muted);font-size:11px">(' + escapeHtml(name) + ')</span>' : ''}
+      </label>
+      ${c.email ? '<span class="bc-email">' + escapeHtml(c.email) + '</span>' : '<span class="bc-no-email">No email</span>'}
+    </div>`;
+  }).join('');
+  updateStats();
+}
+
+function toggleClient(id, checked) {
+  if (checked) selected.add(id);
+  else selected.delete(id);
+  updateStats();
+}
+
+function selectAll(val) {
+  const search = (document.getElementById('bc-search')?.value || '').toLowerCase();
+  let list = allClients;
+  if (clientFilter === 'bilancio') list = list.filter(c => c.in_bilancio);
+  else if (clientFilter === 'no-bilancio') list = list.filter(c => !c.in_bilancio);
+  if (search) list = list.filter(c =>
+    (c.company_name||'').toLowerCase().includes(search) ||
+    (c.email||'').toLowerCase().includes(search)
+  );
+
+  list.forEach(c => {
+    if (!c.email) return; // Skip clients without email
+    if (val) selected.add(c.id);
+    else selected.delete(c.id);
+  });
+  renderClients();
+}
+
+function updateStats() {
+  const withEmail = allClients.filter(c => c.email).length;
+  const selCount = [...selected].filter(id => allClients.find(c => c.id === id && c.email)).length;
+  document.getElementById('bc-stats').textContent = `${selCount} / ${withEmail} selezionati`;
+  document.getElementById('bc-send-count').textContent = selCount;
+}
+
+// ── PREVIEW ──
+function togglePreview() {
+  const el = document.getElementById('bc-preview');
+  const isVisible = el.style.display !== 'none';
+  el.style.display = isVisible ? 'none' : 'block';
+  if (!isVisible) updatePreview();
+}
+
+function updatePreview() {
+  const subject = document.getElementById('bc-subject').value;
+  const body = document.getElementById('bc-body').value;
+  const sampleCompany = allClients[0]?.company_name || 'SAMPLE COMPANY FZCO';
+  const sampleName = allClients[0]?.general_manager || allClients[0]?.contact_name || 'John';
+
+  const htmlBody = body
+    .replace(/\{\{company\}\}/g, sampleCompany)
+    .replace(/\{\{name\}\}/g, sampleName)
+    .replace(/\n/g, '<br>');
+
+  document.getElementById('bc-preview-content').innerHTML = `
+    <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-width:600px">
+      <div style="background:#1a2744;color:white;padding:20px 24px;text-align:center">
+        <div style="font-size:22px;font-weight:800;letter-spacing:1px">InDubai</div>
+        <div style="font-size:11px;opacity:.6;margin-top:2px">Business Consultancy</div>
+      </div>
+      <div style="padding:24px;font-size:14px;line-height:1.7;color:#333">
+        <div style="font-size:12px;color:#6b7a95;margin-bottom:8px"><strong>Oggetto:</strong> ${escapeHtml(subject)}</div>
+        <div>${htmlBody}</div>
+      </div>
+      <div style="background:#f8fafc;padding:16px 24px;text-align:center;font-size:11px;color:#999;border-top:1px solid #eee">
+        InDubai Business Consultancy &bull; Dubai, UAE
+      </div>
+    </div>`;
+}
+
+// ── SEND ──
+async function sendBroadcast() {
+  const subject = document.getElementById('bc-subject').value.trim();
+  const body = document.getElementById('bc-body').value.trim();
+
+  if (!subject) { alert('Inserisci un oggetto per l\'email'); return; }
+  if (!body) { alert('Inserisci il corpo del messaggio'); return; }
+
+  const recipients = allClients.filter(c => selected.has(c.id) && c.email);
+  if (!recipients.length) { alert('Nessun destinatario selezionato con email valida'); return; }
+
+  if (!confirm(`Stai per inviare l'email a ${recipients.length} clienti.\n\nOggetto: ${subject}\n\nConfermi l'invio?`)) return;
+
+  const btn = document.getElementById('bc-send-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Invio in corso...';
+
+  const progress = document.getElementById('bc-progress');
+  const progressFill = document.getElementById('bc-progress-fill');
+  const progressText = document.getElementById('bc-progress-text');
+  const log = document.getElementById('bc-log');
+  progress.style.display = 'block';
+  log.style.display = 'block';
+  log.innerHTML = '';
+
+  let sent = 0, failed = 0;
+
+  for (let i = 0; i < recipients.length; i++) {
+    const c = recipients[i];
+    const name = c.general_manager || c.contact_name || '';
+    const personalBody = body
+      .replace(/\{\{company\}\}/g, c.company_name || '')
+      .replace(/\{\{name\}\}/g, name)
+      .replace(/\n/g, '<br>');
+
+    const htmlEmail = `
+      <div style="font-size:14px;line-height:1.7;color:#333">
+        ${personalBody}
+      </div>`;
+
+    try {
+      const result = await emailNotify({
+        to: c.email,
+        subject: subject,
+        html: htmlEmail,
+        event_type: 'broadcast',
+        entity_type: 'broadcast'
+      });
+
+      if (result?.ok) {
+        sent++;
+        log.innerHTML += `<div class="bc-log-item"><span class="bc-log-ok">✅</span> ${escapeHtml(c.company_name)} — ${c.email}</div>`;
+      } else {
+        failed++;
+        log.innerHTML += `<div class="bc-log-item"><span class="bc-log-err">❌</span> ${escapeHtml(c.company_name)} — ${result?.error || 'Errore'}</div>`;
+      }
+    } catch(e) {
+      failed++;
+      log.innerHTML += `<div class="bc-log-item"><span class="bc-log-err">❌</span> ${escapeHtml(c.company_name)} — ${e.message}</div>`;
+    }
+
+    const pct = Math.round(((i + 1) / recipients.length) * 100);
+    progressFill.style.width = pct + '%';
+    progressText.textContent = `${i + 1} / ${recipients.length} — ${sent} inviate, ${failed} errori`;
+    log.scrollTop = log.scrollHeight;
+
+    // Small delay to avoid rate limiting
+    if (i < recipients.length - 1) await new Promise(r => setTimeout(r, 200));
+  }
+
+  progressText.textContent = `✅ Completato: ${sent} inviate, ${failed} errori su ${recipients.length} totali`;
+  progressFill.style.background = failed > 0 ? '#f59e0b' : '#059669';
+  btn.disabled = false;
+  btn.innerHTML = `📤 Invia a <span id="bc-send-count">${[...selected].filter(id => allClients.find(c => c.id === id && c.email)).length}</span> clienti`;
+}
+
+// ── UTILS ──
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+</script>
+</body>
+</html>

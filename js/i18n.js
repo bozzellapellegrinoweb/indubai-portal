@@ -31,6 +31,7 @@
     'Ricerca': 'Search',
     'Utenti': 'Users',
     'Attività Staff': 'Staff Activity',
+    'Broadcast': 'Broadcast',
 
     // Sidebar footer
     'Amministratore': 'Administrator',
