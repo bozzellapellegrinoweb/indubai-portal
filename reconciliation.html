@@ -94,6 +94,21 @@
     .rec-period select { padding:6px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; font-weight:600; }
     /* Actions bar */
     .rec-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+    /* Upload loader */
+    .rec-loader { padding:40px 30px; text-align:center; }
+    .rec-loader-spinner { width:48px; height:48px; border:4px solid #e5e7eb; border-top-color:var(--primary); border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 20px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .rec-loader-title { font-size:15px; font-weight:700; color:var(--text-primary); margin-bottom:6px; }
+    .rec-loader-step { font-size:12px; color:var(--text-muted); font-weight:500; margin-bottom:16px; min-height:18px; }
+    .rec-loader-bar { height:6px; background:#e5e7eb; border-radius:3px; overflow:hidden; max-width:320px; margin:0 auto 12px; }
+    .rec-loader-fill { height:100%; background:linear-gradient(90deg,var(--primary),#60a5fa); border-radius:3px; transition:width .4s ease; width:0%; }
+    .rec-loader-steps { display:flex; flex-direction:column; gap:6px; max-width:320px; margin:0 auto; text-align:left; }
+    .rec-loader-steps .step { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:#9ca3af; transition:color .3s; }
+    .rec-loader-steps .step.active { color:var(--primary); }
+    .rec-loader-steps .step.done { color:#059669; }
+    .rec-loader-steps .step .dot { width:8px; height:8px; border-radius:50%; background:#e5e7eb; flex-shrink:0; transition:background .3s; }
+    .rec-loader-steps .step.active .dot { background:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.2); }
+    .rec-loader-steps .step.done .dot { background:#059669; }
     @media(max-width:900px) {
       .rec-grid { grid-template-columns:1fr; }
       .rec-sidebar { max-height:200px; border-right:none; border-bottom:1.5px solid var(--border); }
@@ -104,7 +119,7 @@
 <div class="main-content">
   <div class="topbar">
     <div>
-      <h1 style="font-size:22px;font-weight:800;margin:0">🔄 Riconciliazione</h1>
+      <h1 style="font-size:22px;font-weight:800;margin:0">📊 Riconciliazione</h1>
       <div style="font-size:13px;color:var(--text-muted)">Upload, parsing e matching automatico dei bank statement</div>
     </div>
   </div>
@@ -513,27 +528,69 @@ function renderTransactions(txs) {
   `;
 }
 
+// ── Loader helper ──────────────────────────────────────────
+
+function showUploadLoader(fileName, fileSize, steps) {
+  const uploadZone = document.getElementById('upload-zone');
+  if (!uploadZone) return { setStep: () => {}, finish: () => {} };
+  uploadZone.style.pointerEvents = 'none';
+  uploadZone.style.border = 'none';
+  uploadZone.innerHTML = `
+    <div class="rec-loader">
+      <div class="rec-loader-spinner"></div>
+      <div class="rec-loader-title">${esc(fileName)}</div>
+      <div class="rec-loader-step" id="loader-step-text">${(fileSize / 1024).toFixed(0)} KB — Preparazione...</div>
+      <div class="rec-loader-bar"><div class="rec-loader-fill" id="loader-fill"></div></div>
+      <div class="rec-loader-steps" id="loader-steps">
+        ${steps.map((s, i) => `<div class="step${i === 0 ? ' active' : ''}" id="loader-s-${i}"><span class="dot"></span>${esc(s)}</div>`).join('')}
+      </div>
+    </div>`;
+  let current = 0;
+  return {
+    setStep(idx, text) {
+      current = idx;
+      const fill = document.getElementById('loader-fill');
+      const stepText = document.getElementById('loader-step-text');
+      if (fill) fill.style.width = Math.round(((idx + 1) / steps.length) * 100) + '%';
+      if (stepText) stepText.textContent = text || steps[idx] || '';
+      for (let i = 0; i < steps.length; i++) {
+        const el = document.getElementById('loader-s-' + i);
+        if (!el) continue;
+        el.className = 'step' + (i < idx ? ' done' : i === idx ? ' active' : '');
+      }
+    },
+    finish(msg) {
+      const fill = document.getElementById('loader-fill');
+      const stepText = document.getElementById('loader-step-text');
+      if (fill) { fill.style.width = '100%'; fill.style.background = '#059669'; }
+      if (stepText) stepText.innerHTML = `<span style="color:#059669;font-weight:700">${esc(msg)}</span>`;
+      for (let i = 0; i < steps.length; i++) {
+        const el = document.getElementById('loader-s-' + i);
+        if (el) el.className = 'step done';
+      }
+    }
+  };
+}
+
 // ── File upload & parsing ───────────────────────────────────
 
 async function handleFileSelect(files) {
   if (!files || !files.length) return;
-  if (!selectedClient) { alert('Seleziona prima un cliente'); return; }
+  if (!selectedClient) { showToast('Seleziona prima un cliente', 'error'); return; }
 
   const file = files[0];
   const ext = file.name.split('.').pop().toLowerCase();
 
   if (!['csv','xlsx','xls','pdf'].includes(ext)) {
-    alert('Formato non supportato. Usa CSV, Excel (.xlsx) o PDF.');
+    showToast('Formato non supportato. Usa CSV, Excel (.xlsx) o PDF.', 'error');
     return;
   }
 
-  // Show loading
-  const main = document.getElementById('rec-main');
-  const uploadZone = document.getElementById('upload-zone');
-  if (uploadZone) {
-    uploadZone.innerHTML = `<div class="rec-upload-icon">⏳</div><div class="rec-upload-text">Analisi in corso...</div><div class="rec-upload-hint">${esc(file.name)} (${(file.size/1024).toFixed(0)} KB)</div>`;
-    uploadZone.style.pointerEvents = 'none';
-  }
+  const isPdf = ext === 'pdf';
+  const steps = isPdf
+    ? ['Lettura file', 'Analisi AI del PDF', 'Upload su storage', 'Salvataggio transazioni', 'Aggiornamento registro']
+    : ['Lettura file', 'Riconoscimento banca', 'Parsing transazioni', 'Upload su storage', 'Salvataggio nel database'];
+  const loader = showUploadLoader(file.name, file.size, steps);
 
   try {
     let transactions = [];
@@ -541,9 +598,10 @@ async function handleFileSelect(files) {
 
     if (ext === 'pdf') {
       // PDF → Claude Vision via bright-service Edge Function
+      loader.setStep(0, 'Lettura file PDF...');
       const pdfBase64 = await readFileAsync(file, 'base64');
 
-      if (uploadZone) uploadZone.innerHTML = `<div class="rec-upload-icon">🤖</div><div class="rec-upload-text">AI sta analizzando il PDF...</div><div class="rec-upload-hint">Claude Vision sta estraendo le transazioni da ${esc(file.name)}</div>`;
+      loader.setStep(1, 'Analisi AI in corso — potrebbe richiedere 20-30 secondi...');
 
       const fnUrl = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/bright-service';
       const res = await fetch(fnUrl, {
@@ -566,7 +624,7 @@ async function handleFileSelect(files) {
         currency: pdfData.currency || 'AED'
       })).filter(tx => tx.tx_date);
 
-      // Upload the file to storage
+      loader.setStep(2, `${transactions.length} transazioni trovate — upload file...`);
       const uploadRes2 = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (sb.getSession?.()?.access_token || window.ENV_SUPABASE_ANON_KEY) },
@@ -575,7 +633,7 @@ async function handleFileSelect(files) {
       const uploadData2 = await uploadRes2.json();
       if (!uploadData2.ok) throw new Error(uploadData2.error || 'Upload fallito');
 
-      // Save upload record
+      loader.setStep(3, 'Salvataggio transazioni nel database...');
       const uploadRecord2 = await sb.db.insert('statement_uploads', [{
         client_id: selectedClient.id,
         year: currentYear,
@@ -594,7 +652,6 @@ async function handleFileSelect(files) {
       const uploadId2 = uploadRecord2?.[0]?.id;
       if (!uploadId2) throw new Error('Errore creazione record upload');
 
-      // Save transactions
       const txRows2 = transactions.map(tx => ({
         upload_id: uploadId2,
         client_id: selectedClient.id,
@@ -605,21 +662,22 @@ async function handleFileSelect(files) {
         await sb.db.insert('parsed_transactions', txRows2.slice(i, i + 50));
       }
 
-      // Update bank_statements
+      loader.setStep(4, 'Aggiornamento registro...');
       try {
         await sb.db.upsertBankStatement(selectedClient.id, currentYear, currentMonth, { received: true });
       } catch(e) { console.warn('bank_statements upsert:', e); }
 
-      showToast(`✅ ${detectedBank}: ${transactions.length} transazioni estratte dal PDF`, 'success');
-      selectedUpload = null;
-      await loadClientView();
+      loader.finish(`${detectedBank}: ${transactions.length} transazioni estratte`);
+      showToast(`${detectedBank}: ${transactions.length} transazioni estratte dal PDF`, 'success');
+      setTimeout(async () => { selectedUpload = null; await loadClientView(); }, 1200);
       return;
     }
 
-    // Read file
+    // CSV/Excel path
+    loader.setStep(0, 'Lettura file...');
     const data = await readFileAsync(file, ext === 'csv' ? 'text' : 'arraybuffer');
 
-    // Parse
+    loader.setStep(1, 'Riconoscimento formato banca...');
     let parsed;
     if (ext === 'csv') {
       parsed = parseCSVData(data);
@@ -627,21 +685,20 @@ async function handleFileSelect(files) {
       parsed = parseExcelData(data);
     }
 
-    // Auto-detect bank
     detectedBank = detectBank(parsed.headers);
     const bankLabel = detectedBank ? BANK_SIGNATURES[detectedBank].label : 'Formato generico';
     const bankSource = detectedBank ? BANK_SIGNATURES[detectedBank].source : 'bank';
 
-    // Map transactions
+    loader.setStep(2, `Banca riconosciuta: ${bankLabel} — parsing transazioni...`);
     transactions = mapTransactions(parsed.rows, detectedBank || 'generic', parsed.headers);
 
     if (!transactions.length) {
-      alert('Nessuna transazione trovata nel file. Controlla il formato.');
+      showToast('Nessuna transazione trovata nel file. Controlla il formato.', 'error');
       await loadClientView();
       return;
     }
 
-    // Upload file to storage
+    loader.setStep(3, `${transactions.length} transazioni trovate — upload file...`);
     const fileBase64 = await readFileAsync(file, 'base64');
     const uploadRes = await fetch('/api/upload', {
       method: 'POST',
@@ -651,7 +708,7 @@ async function handleFileSelect(files) {
     const uploadData = await uploadRes.json();
     if (!uploadData.ok) throw new Error(uploadData.error || 'Upload fallito');
 
-    // Save upload record
+    loader.setStep(4, 'Salvataggio nel database...');
     const uploadRecord = await sb.db.insert('statement_uploads', [{
       client_id: selectedClient.id,
       year: currentYear,
@@ -670,7 +727,6 @@ async function handleFileSelect(files) {
     const uploadId = uploadRecord?.[0]?.id;
     if (!uploadId) throw new Error('Errore creazione record upload');
 
-    // Save transactions
     const txRows = transactions.map(tx => ({
       upload_id: uploadId,
       client_id: selectedClient.id,
@@ -678,28 +734,23 @@ async function handleFileSelect(files) {
       match_status: 'pending'
     }));
 
-    // Batch insert (max 50 at a time for PostgREST)
     for (let i = 0; i < txRows.length; i += 50) {
       await sb.db.insert('parsed_transactions', txRows.slice(i, i + 50));
     }
 
-    // Update bank_statements tracking
     try {
       await sb.db.upsertBankStatement(selectedClient.id, currentYear, currentMonth, {
         received: true
       });
     } catch(e) { console.warn('bank_statements upsert:', e); }
 
-    // Show success
-    showToast(`✅ ${bankLabel}: ${transactions.length} transazioni estratte`, 'success');
-
-    // Reload view
-    selectedUpload = null;
-    await loadClientView();
+    loader.finish(`${bankLabel}: ${transactions.length} transazioni estratte`);
+    showToast(`${bankLabel}: ${transactions.length} transazioni estratte`, 'success');
+    setTimeout(async () => { selectedUpload = null; await loadClientView(); }, 1200);
 
   } catch(e) {
     console.error('Parse error:', e);
-    alert('Errore: ' + e.message);
+    showToast('Errore: ' + e.message, 'error');
     await loadClientView();
   }
 }
