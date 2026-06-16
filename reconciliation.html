@@ -506,7 +506,7 @@ function renderTransactions(txs) {
     <div class="rec-actions">
       <button class="btn btn-accent" onclick="startMatching()" ${selectedClient?.zoho_org_id ? '' : 'disabled title="Cliente senza Zoho Org ID"'}>🔄 Avvia Matching</button>
       <button class="btn btn-accent" onclick="approveAllHigh()" style="background:#059669">✅ Approva tutti &gt;90%</button>
-      <button class="btn btn-ghost" onclick="alert('Fase 3: Report transazioni non identificate — Coming soon')" disabled>📄 Genera Report</button>
+      <button class="btn btn-ghost" onclick="generateReport()">📄 Genera Report</button>
     </div>
   `;
 }
@@ -1025,6 +1025,191 @@ async function approveAllHigh() {
   }
   showToast(`${unreviewed.length} transazioni approvate`, 'success');
   await viewUpload(selectedUpload.id);
+}
+
+// ============================================================
+// Phase 3: Generate Report (unmatched transactions)
+// ============================================================
+
+async function generateReport() {
+  if (!selectedClient || !selectedUpload) { alert('Seleziona un cliente e un upload'); return; }
+
+  const txs = await sb.db.select('parsed_transactions', {
+    filter: `upload_id=eq.${selectedUpload.id}`,
+    order: 'tx_date.asc'
+  });
+  const unmatched = (txs || []).filter(t => t.match_status === 'unmatched' || t.match_status === 'pending');
+  if (!unmatched.length) { showToast('Nessuna transazione non identificata da inserire nel report', 'success'); return; }
+
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const mesiIt = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  const period = `${monthNames[currentMonth - 1]} ${currentYear}`;
+  const periodoIt = `${mesiIt[currentMonth - 1]} ${currentYear}`;
+  const bankName = selectedUpload.bank_name || 'Bank Statement';
+  const today = new Date().toLocaleDateString('en-GB');
+
+  const totalDebit = unmatched.reduce((s, t) => s + (parseFloat(t.debit) || 0), 0);
+  const totalCredit = unmatched.reduce((s, t) => s + (parseFloat(t.credit) || 0), 0);
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Reconciliation Report — ${esc(selectedClient.company_name)}</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; font-size: 11px; line-height: 1.5; }
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 24px 30px; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .header .subtitle { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+  .header .logo { font-size: 24px; font-weight: 900; color: #4fc3f7; }
+  .info-bar { display: flex; gap: 20px; padding: 14px 30px; background: #f0f4ff; border-bottom: 2px solid #e0e7ff; font-size: 11px; }
+  .info-item { display: flex; gap: 6px; }
+  .info-label { font-weight: 700; color: #64748b; }
+  .info-value { font-weight: 600; }
+  .section { padding: 20px 30px; }
+  .section-title { font-size: 13px; font-weight: 800; color: #1a1a2e; margin-bottom: 4px; }
+  .section-desc { font-size: 10px; color: #64748b; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  th { background: #1a1a2e; color: white; padding: 8px 10px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  th.right { text-align: right; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e5e7eb; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .amount { text-align: right; font-weight: 600; font-family: 'Courier New', monospace; }
+  .debit { color: #dc2626; }
+  .credit { color: #059669; }
+  .totals-row { background: #f0f4ff !important; font-weight: 800; }
+  .totals-row td { border-top: 2px solid #1a1a2e; border-bottom: 2px solid #1a1a2e; }
+  .footer { margin-top: 30px; padding: 20px 30px; border-top: 2px solid #e5e7eb; }
+  .footer-note { font-size: 10px; color: #64748b; line-height: 1.6; }
+  .footer-note strong { color: #1a1a2e; }
+  .notes-box { margin-top: 16px; border: 1.5px dashed #cbd5e1; border-radius: 8px; padding: 14px; min-height: 80px; }
+  .notes-title { font-size: 10px; font-weight: 700; color: #64748b; margin-bottom: 6px; }
+  .contact { margin-top: 20px; font-size: 9px; color: #94a3b8; text-align: center; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+  .summary-cards { display: flex; gap: 12px; margin-bottom: 16px; }
+  .summary-card { flex: 1; background: white; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; text-align: center; }
+  .summary-card .value { font-size: 18px; font-weight: 800; }
+  .summary-card .label { font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; }
+  .badge-red { background: #fee2e2; color: #dc2626; }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Reconciliation Report / Report di Riconciliazione</h1>
+    <div class="subtitle">Unidentified Transactions / Transazioni Non Identificate</div>
+  </div>
+  <div class="logo">InDubai</div>
+</div>
+
+<div class="info-bar">
+  <div class="info-item"><span class="info-label">Client / Cliente:</span> <span class="info-value">${esc(selectedClient.company_name)}</span></div>
+  <div class="info-item"><span class="info-label">Period / Periodo:</span> <span class="info-value">${period} / ${periodoIt}</span></div>
+  <div class="info-item"><span class="info-label">Source / Fonte:</span> <span class="info-value">${esc(bankName)}</span></div>
+  <div class="info-item"><span class="info-label">Date / Data:</span> <span class="info-value">${today}</span></div>
+</div>
+
+<div class="section">
+  <div class="summary-cards">
+    <div class="summary-card">
+      <div class="value">${unmatched.length}</div>
+      <div class="label">Unidentified / Non Identificate</div>
+    </div>
+    <div class="summary-card">
+      <div class="value debit">AED ${totalDebit.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+      <div class="label">Total Debits / Totale Debiti</div>
+    </div>
+    <div class="summary-card">
+      <div class="value credit">AED ${totalCredit.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+      <div class="label">Total Credits / Totale Crediti</div>
+    </div>
+    <div class="summary-card">
+      <div class="value">${(txs || []).length}</div>
+      <div class="label">Total Transactions / Totale Transazioni</div>
+    </div>
+  </div>
+
+  <div class="section-title">Unidentified Transactions / Transazioni Non Identificate</div>
+  <div class="section-desc">
+    The following transactions could not be automatically matched with invoices or expenses in our records.
+    Please help us identify them. / Le seguenti transazioni non sono state riconciliate automaticamente.
+    Vi preghiamo di aiutarci a identificarle.
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:30px">#</th>
+        <th>Date / Data</th>
+        <th>Description / Descrizione</th>
+        <th class="right">Debit / Debito</th>
+        <th class="right">Credit / Credito</th>
+        <th>Your Notes / Note</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${unmatched.map((t, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td style="white-space:nowrap">${new Date(t.tx_date).toLocaleDateString('en-GB')}</td>
+        <td>${esc(t.description)}</td>
+        <td class="amount${parseFloat(t.debit) > 0 ? ' debit' : ''}">${parseFloat(t.debit) > 0 ? parseFloat(t.debit).toLocaleString('en-US', {minimumFractionDigits: 2}) : ''}</td>
+        <td class="amount${parseFloat(t.credit) > 0 ? ' credit' : ''}">${parseFloat(t.credit) > 0 ? parseFloat(t.credit).toLocaleString('en-US', {minimumFractionDigits: 2}) : ''}</td>
+        <td style="min-width:120px;border-bottom:1px dotted #cbd5e1"></td>
+      </tr>`).join('')}
+      <tr class="totals-row">
+        <td colspan="3" style="text-align:right;font-weight:800">TOTAL / TOTALE</td>
+        <td class="amount debit">${totalDebit > 0 ? 'AED ' + totalDebit.toLocaleString('en-US', {minimumFractionDigits: 2}) : ''}</td>
+        <td class="amount credit">${totalCredit > 0 ? 'AED ' + totalCredit.toLocaleString('en-US', {minimumFractionDigits: 2}) : ''}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <div class="footer-note">
+    <strong>Dear Client / Gentile Cliente,</strong><br><br>
+    We kindly ask you to review the above transactions and provide a brief description or supporting document for each.
+    This will help us complete the reconciliation of your accounts for ${period}.<br><br>
+    Vi chiediamo gentilmente di revisionare le transazioni sopra elencate e fornire una breve descrizione o documento giustificativo per ciascuna.
+    Questo ci aiuterà a completare la riconciliazione dei vostri conti per ${periodoIt}.
+  </div>
+
+  <div class="notes-box">
+    <div class="notes-title">Additional Notes / Note Aggiuntive:</div>
+  </div>
+
+  <div class="contact">
+    InDubai Business Services &bull; info@indubai.it &bull; +971 4 XXX XXXX<br>
+    This document was automatically generated on ${today}. / Documento generato automaticamente il ${today}.
+  </div>
+</div>
+
+<div class="no-print" style="position:fixed;bottom:20px;right:20px;display:flex;gap:10px;z-index:9999">
+  <button onclick="window.print()" style="padding:12px 24px;background:#1a1a2e;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">
+    📥 Download PDF / Scarica PDF
+  </button>
+  <button onclick="window.close()" style="padding:12px 24px;background:#64748b;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">
+    ✕ Close / Chiudi
+  </button>
+</div>
+
+</body>
+</html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('Popup bloccato. Abilita i popup per questo sito.'); return; }
+  w.document.write(html);
+  w.document.close();
+  showToast(`Report generato: ${unmatched.length} transazioni non identificate`, 'success');
 }
 
 // ── Toast ──────────────────────────────────────────────────
