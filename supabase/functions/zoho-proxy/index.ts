@@ -225,6 +225,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
           "x-api-key": ANTHROPIC_KEY,
           "anthropic-version": "2023-06-01",
+          "anthropic-beta": "pdfs-2024-09-25",
         },
         body: JSON.stringify({
           model: "claude-haiku-4-5-20251001",
@@ -266,8 +267,22 @@ Rules:
           }]
         }),
       });
+
+      if (!r.ok) {
+        const errBody = await r.text();
+        return new Response(JSON.stringify({ error: "Anthropic API error: " + r.status, detail: errBody.substring(0, 300) }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
       const aiData = await r.json();
       const text = aiData?.content?.[0]?.text || "";
+
+      if (!text) {
+        return new Response(JSON.stringify({ error: "Empty AI response", aiResponse: JSON.stringify(aiData).substring(0, 500) }), {
+          status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
 
       // Extract JSON from response (handle potential markdown wrapping)
       let jsonStr = text;
