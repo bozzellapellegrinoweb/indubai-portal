@@ -67,6 +67,28 @@
     .txs-matched { background:#dcfce7; color:#166534; }
     .txs-probable { background:#fef3c7; color:#92400e; }
     .txs-unmatched { background:#fee2e2; color:#dc2626; }
+    .txs-ignored { background:#f3f4f6; color:#6b7280; }
+    /* Matching progress */
+    .rec-matching-progress { background:white; border:1.5px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; }
+    .rec-progress-bar { height:8px; background:#e5e7eb; border-radius:4px; overflow:hidden; margin:10px 0; }
+    .rec-progress-fill { height:100%; background:var(--primary); border-radius:4px; transition:width .3s; }
+    /* Match detail */
+    .tx-match-info { font-size:11px; color:var(--text-muted); margin-top:2px; }
+    .tx-confidence { display:inline-block; width:36px; text-align:center; font-size:10px; font-weight:800; padding:2px 0; border-radius:4px; }
+    .conf-high { background:#dcfce7; color:#166534; }
+    .conf-med { background:#fef3c7; color:#92400e; }
+    .conf-low { background:#fee2e2; color:#dc2626; }
+    /* Match action buttons */
+    .tx-action-btn { font-size:11px; padding:3px 8px; border-radius:6px; border:1px solid var(--border); cursor:pointer; background:white; font-weight:600; }
+    .tx-action-btn:hover { background:var(--surface2); }
+    .tx-action-btn.approve { border-color:#059669; color:#059669; }
+    .tx-action-btn.reject { border-color:#dc2626; color:#dc2626; }
+    .tx-action-btn.ignore { border-color:#6b7280; color:#6b7280; }
+    /* Summary cards */
+    .rec-summary { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:16px; }
+    .rec-summary-card { background:white; border:1.5px solid var(--border); border-radius:10px; padding:12px 16px; text-align:center; }
+    .rec-summary-value { font-size:22px; font-weight:800; }
+    .rec-summary-label { font-size:11px; color:var(--text-muted); font-weight:600; margin-top:2px; }
     /* Month/Year selector */
     .rec-period { display:flex; gap:10px; align-items:center; margin-bottom:16px; }
     .rec-period select { padding:6px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; font-weight:600; }
@@ -448,26 +470,42 @@ function renderTransactions(txs) {
               <th style="text-align:right">Credito</th>
               <th style="text-align:right">Saldo</th>
               <th>Stato</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            ${txs.map(t => `
+            ${txs.map(t => {
+              const conf = parseFloat(t.match_confidence) || 0;
+              const confClass = conf >= 0.8 ? 'conf-high' : conf >= 0.5 ? 'conf-med' : 'conf-low';
+              const confPct = Math.round(conf * 100);
+              return `
               <tr>
                 <td style="white-space:nowrap">${new Date(t.tx_date).toLocaleDateString('it-IT')}</td>
-                <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis" title="${esc(t.description)}">${esc(t.description)}</td>
+                <td style="max-width:260px">
+                  <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.description)}">${esc(t.description)}</div>
+                  ${t.matched_description ? `<div class="tx-match-info">→ ${esc(t.matched_description)}</div>` : ''}
+                </td>
                 <td style="text-align:right" class="${parseFloat(t.debit) > 0 ? 'tx-debit' : ''}">${parseFloat(t.debit) > 0 ? parseFloat(t.debit).toLocaleString('it-IT',{minimumFractionDigits:2}) : ''}</td>
                 <td style="text-align:right" class="${parseFloat(t.credit) > 0 ? 'tx-credit' : ''}">${parseFloat(t.credit) > 0 ? parseFloat(t.credit).toLocaleString('it-IT',{minimumFractionDigits:2}) : ''}</td>
-                <td style="text-align:right">${t.balance !== null ? parseFloat(t.balance).toLocaleString('it-IT',{minimumFractionDigits:2}) : '—'}</td>
-                <td><span class="tx-status txs-${t.match_status}">${{pending:'⏳',matched:'✅',probable:'⚠️',unmatched:'❓',ignored:'➖'}[t.match_status]||'⏳'} ${t.match_status}</span></td>
-              </tr>
-            `).join('')}
+                <td style="text-align:right">${t.balance !== null && t.balance !== undefined ? parseFloat(t.balance).toLocaleString('it-IT',{minimumFractionDigits:2}) : '—'}</td>
+                <td>
+                  <span class="tx-status txs-${t.match_status}">${{pending:'⏳',matched:'✅',probable:'⚠️',unmatched:'❓',ignored:'➖'}[t.match_status]||'⏳'} ${t.match_status}</span>
+                  ${conf > 0 ? `<span class="tx-confidence ${confClass}">${confPct}%</span>` : ''}
+                </td>
+                <td>
+                  ${t.match_status === 'probable' ? `<button class="tx-action-btn approve" onclick="approveTx('${t.id}')">✓</button>` : ''}
+                  ${t.match_status !== 'ignored' && t.match_status !== 'matched' ? `<button class="tx-action-btn ignore" onclick="ignoreTx('${t.id}')">—</button>` : ''}
+                </td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>
     </div>
 
     <div class="rec-actions">
-      <button class="btn btn-accent" onclick="alert('Fase 2: Matching con Zoho Books — Coming soon')" disabled>🔄 Avvia Matching</button>
+      <button class="btn btn-accent" onclick="startMatching()" ${selectedClient?.zoho_org_id ? '' : 'disabled title="Cliente senza Zoho Org ID"'}>🔄 Avvia Matching</button>
+      <button class="btn btn-accent" onclick="approveAllHigh()" style="background:#059669">✅ Approva tutti &gt;90%</button>
       <button class="btn btn-ghost" onclick="alert('Fase 3: Report transazioni non identificate — Coming soon')" disabled>📄 Genera Report</button>
     </div>
   `;
@@ -713,6 +751,283 @@ async function deleteUpload(uploadId) {
 function esc(s) {
   return String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 }
+
+// ============================================================
+// Phase 2: Matching with Zoho Books
+// ============================================================
+
+const EDGE_FN = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/bright-service';
+
+function edgeHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + (sb.getSession?.()?.access_token || window.ENV_SUPABASE_ANON_KEY)
+  };
+}
+
+async function startMatching() {
+  if (!selectedClient || !selectedUpload) { alert('Seleziona un cliente e un upload'); return; }
+  if (!selectedClient.zoho_org_id) { alert('Questo cliente non ha un Zoho Organization ID. Configuralo in Setup Zoho.'); return; }
+
+  const txSection = document.getElementById('tx-section');
+  const actionsDiv = txSection?.querySelector('.rec-actions');
+
+  // Show progress
+  const progressId = 'match-progress-' + Date.now();
+  if (actionsDiv) {
+    actionsDiv.insertAdjacentHTML('afterend', `
+      <div class="rec-matching-progress" id="${progressId}">
+        <div style="font-weight:700;font-size:14px">🔄 Matching in corso...</div>
+        <div id="${progressId}-status" style="font-size:12px;color:var(--text-muted);margin-top:4px">Recupero dati da Zoho Books...</div>
+        <div class="rec-progress-bar"><div class="rec-progress-fill" id="${progressId}-bar" style="width:5%"></div></div>
+      </div>
+    `);
+  }
+
+  const setProgress = (pct, msg) => {
+    const bar = document.getElementById(progressId + '-bar');
+    const status = document.getElementById(progressId + '-status');
+    if (bar) bar.style.width = pct + '%';
+    if (status) status.textContent = msg;
+  };
+
+  try {
+    // 1. Load pending transactions
+    const txs = await sb.db.select('parsed_transactions', {
+      filter: `upload_id=eq.${selectedUpload.id}`,
+      order: 'tx_date.asc'
+    });
+    const pendingTxs = (txs || []).filter(t => t.match_status === 'pending' || t.match_status === 'unmatched');
+    if (!pendingTxs.length) { alert('Nessuna transazione da matchare (tutte già processate)'); document.getElementById(progressId)?.remove(); return; }
+
+    setProgress(10, `${pendingTxs.length} transazioni da analizzare. Scarico fatture e spese da Zoho...`);
+
+    // 2. Get date range with ±15 days buffer
+    const dates = txs.map(t => t.tx_date).sort();
+    const dateStart = shiftDate(dates[0], -15);
+    const dateEnd = shiftDate(dates[dates.length - 1], 15);
+
+    // 3. Fetch invoices + expenses from Zoho in parallel
+    const [invRes, expRes] = await Promise.all([
+      fetch(EDGE_FN, { method: 'POST', headers: edgeHeaders(), body: JSON.stringify({ action: 'get_invoices', org_id: selectedClient.zoho_org_id, date_start: dateStart, date_end: dateEnd }) }).then(r => r.json()),
+      fetch(EDGE_FN, { method: 'POST', headers: edgeHeaders(), body: JSON.stringify({ action: 'get_expenses', org_id: selectedClient.zoho_org_id, date_start: dateStart, date_end: dateEnd }) }).then(r => r.json())
+    ]);
+
+    const invoices = invRes.invoices || [];
+    const expenses = expRes.expenses || [];
+
+    setProgress(30, `Trovate ${invoices.length} fatture e ${expenses.length} spese. Avvio matching deterministico...`);
+
+    // 4. Match each transaction
+    let matched = 0, probable = 0, unmatched = 0;
+    const SB = window.ENV_SUPABASE_URL;
+    const AK = window.ENV_SUPABASE_ANON_KEY;
+    const tok = sb.getSession?.()?.access_token || AK;
+
+    for (let i = 0; i < pendingTxs.length; i++) {
+      const tx = pendingTxs[i];
+      const result = matchTransaction(tx, invoices, expenses);
+
+      // Update in DB via direct PATCH
+      await fetch(`${SB}/rest/v1/parsed_transactions?id=eq.${tx.id}`, {
+        method: 'PATCH',
+        headers: { apikey: AK, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify(result)
+      });
+
+      if (result.match_status === 'matched') matched++;
+      else if (result.match_status === 'probable') probable++;
+      else unmatched++;
+
+      const pct = 30 + Math.round((i + 1) / pendingTxs.length * 65);
+      setProgress(pct, `Processata ${i + 1}/${pendingTxs.length}: ${matched} match, ${probable} probabili, ${unmatched} non trovate`);
+    }
+
+    // 5. Update upload status
+    await fetch(`${SB}/rest/v1/statement_uploads?id=eq.${selectedUpload.id}`, {
+      method: 'PATCH',
+      headers: { apikey: AK, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: 'reconciled' })
+    });
+
+    setProgress(100, `Completato! ✅ ${matched} match, ⚠️ ${probable} probabili, ❓ ${unmatched} non trovate`);
+    showToast(`Matching completato: ${matched} match, ${probable} probabili, ${unmatched} non trovate`, 'success');
+
+    // 6. Reload after short delay
+    setTimeout(async () => {
+      document.getElementById(progressId)?.remove();
+      selectedUpload = null;
+      await loadClientView();
+    }, 2000);
+
+  } catch (e) {
+    console.error('Matching error:', e);
+    setProgress(0, 'Errore: ' + e.message);
+    document.getElementById(progressId)?.querySelector('.rec-progress-fill')?.style && (document.getElementById(progressId).querySelector('.rec-progress-fill').style.background = '#dc2626');
+    showToast('Errore matching: ' + e.message, 'error');
+  }
+}
+
+function matchTransaction(tx, invoices, expenses) {
+  const debitAmt = parseFloat(tx.debit) || 0;
+  const creditAmt = parseFloat(tx.credit) || 0;
+  const txDate = new Date(tx.tx_date);
+  const desc = (tx.description || '').toLowerCase();
+
+  let bestMatch = null;
+  let bestConfidence = 0;
+
+  // Credits → match against invoice payments
+  if (creditAmt > 0) {
+    for (const inv of invoices) {
+      const invTotal = parseFloat(inv.total) || 0;
+      const invBalance = parseFloat(inv.balance) || 0;
+      const invDate = new Date(inv.date);
+      const daysDiff = Math.abs((txDate - invDate) / 86400000);
+      let confidence = 0;
+
+      // Amount match (exact or close to total/balance)
+      if (Math.abs(creditAmt - invTotal) < 0.01 || Math.abs(creditAmt - invBalance) < 0.01) confidence += 0.50;
+      else if (invTotal > 0 && Math.abs(creditAmt - invTotal) / invTotal < 0.02) confidence += 0.30;
+
+      // Date proximity
+      if (daysDiff <= 3) confidence += 0.25;
+      else if (daysDiff <= 7) confidence += 0.15;
+      else if (daysDiff <= 14) confidence += 0.05;
+
+      // Reference in description
+      if (inv.invoice_number && desc.includes(inv.invoice_number.toLowerCase())) confidence += 0.20;
+
+      // Customer name in description
+      if (inv.customer_name && inv.customer_name.length > 3 && desc.includes(inv.customer_name.toLowerCase().substring(0, 8))) confidence += 0.10;
+
+      if (confidence > bestConfidence) {
+        bestConfidence = confidence;
+        bestMatch = { type: 'invoice', id: inv.invoice_id, desc: `Fattura ${inv.invoice_number || ''} — ${inv.customer_name || ''} (${invTotal.toFixed(2)})` };
+      }
+    }
+  }
+
+  // Debits → match against expenses
+  if (debitAmt > 0) {
+    for (const exp of expenses) {
+      const expTotal = parseFloat(exp.total) || 0;
+      const expDate = new Date(exp.date);
+      const daysDiff = Math.abs((txDate - expDate) / 86400000);
+      let confidence = 0;
+
+      if (Math.abs(debitAmt - expTotal) < 0.01) confidence += 0.50;
+      else if (expTotal > 0 && Math.abs(debitAmt - expTotal) / expTotal < 0.02) confidence += 0.30;
+
+      if (daysDiff <= 3) confidence += 0.25;
+      else if (daysDiff <= 7) confidence += 0.15;
+      else if (daysDiff <= 14) confidence += 0.05;
+
+      if (exp.reference_number && desc.includes(exp.reference_number.toLowerCase())) confidence += 0.20;
+      const vendorName = exp.vendor_name || exp.merchant_name || '';
+      if (vendorName.length > 3 && desc.includes(vendorName.toLowerCase().substring(0, 8))) confidence += 0.10;
+
+      if (confidence > bestConfidence) {
+        bestConfidence = confidence;
+        bestMatch = { type: 'expense', id: exp.expense_id, desc: `Spesa: ${vendorName || exp.description || ''} (${expTotal.toFixed(2)})` };
+      }
+    }
+  }
+
+  // Known bank patterns (transfers, fees, etc.)
+  if (bestConfidence < 0.3) {
+    const bankPatterns = [
+      { pattern: /bank\s*charge|service\s*fee|account\s*fee|maint.*fee/i, cat: 'Bank Charges', conf: 0.70 },
+      { pattern: /transfer.*own|internal.*transfer|own\s*account/i, cat: 'Internal Transfer', conf: 0.65 },
+      { pattern: /salary|payroll|wps/i, cat: 'Salary / WPS', conf: 0.60 },
+      { pattern: /vat|tax.*payment|fta/i, cat: 'VAT / Tax Payment', conf: 0.60 },
+      { pattern: /rent|ejari|lease/i, cat: 'Rent', conf: 0.55 },
+      { pattern: /dewa|etisalat|du\s|salik|rta/i, cat: 'Utilities', conf: 0.55 },
+    ];
+    for (const bp of bankPatterns) {
+      if (bp.pattern.test(tx.description || '')) {
+        if (bp.conf > bestConfidence) {
+          bestConfidence = bp.conf;
+          bestMatch = { type: 'category', id: null, desc: bp.cat };
+        }
+        break;
+      }
+    }
+  }
+
+  let status = 'unmatched';
+  if (bestConfidence >= 0.75) status = 'matched';
+  else if (bestConfidence >= 0.45) status = 'probable';
+
+  return {
+    match_status: status,
+    match_confidence: Math.round(bestConfidence * 100) / 100,
+    matched_entity_type: bestMatch?.type || null,
+    matched_entity_id: bestMatch?.id || null,
+    matched_description: bestMatch?.desc || null
+  };
+}
+
+function shiftDate(dateStr, days) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+// ── Approve / Ignore individual transactions ────────────────
+
+async function approveTx(txId) {
+  const SB = window.ENV_SUPABASE_URL;
+  const AK = window.ENV_SUPABASE_ANON_KEY;
+  const tok = sb.getSession?.()?.access_token || AK;
+  await fetch(`${SB}/rest/v1/parsed_transactions?id=eq.${txId}`, {
+    method: 'PATCH',
+    headers: { apikey: AK, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ match_status: 'matched', reviewed_by: sb.getCurrentUser()?.id || null, reviewed_at: new Date().toISOString() })
+  });
+  showToast('Transazione approvata', 'success');
+  await viewUpload(selectedUpload.id);
+}
+
+async function ignoreTx(txId) {
+  const SB = window.ENV_SUPABASE_URL;
+  const AK = window.ENV_SUPABASE_ANON_KEY;
+  const tok = sb.getSession?.()?.access_token || AK;
+  await fetch(`${SB}/rest/v1/parsed_transactions?id=eq.${txId}`, {
+    method: 'PATCH',
+    headers: { apikey: AK, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ match_status: 'ignored', reviewed_by: sb.getCurrentUser()?.id || null, reviewed_at: new Date().toISOString() })
+  });
+  showToast('Transazione ignorata', 'success');
+  await viewUpload(selectedUpload.id);
+}
+
+async function approveAllHigh() {
+  if (!selectedUpload) return;
+  const txs = await sb.db.select('parsed_transactions', {
+    filter: `upload_id=eq.${selectedUpload.id}&match_status=eq.matched`
+  });
+  const unreviewed = (txs || []).filter(t => !t.reviewed_by && parseFloat(t.match_confidence) >= 0.8);
+  if (!unreviewed.length) { showToast('Nessuna transazione ad alta confidenza da approvare', 'info'); return; }
+
+  const SB = window.ENV_SUPABASE_URL;
+  const AK = window.ENV_SUPABASE_ANON_KEY;
+  const tok = sb.getSession?.()?.access_token || AK;
+  const userId = sb.getCurrentUser()?.id || null;
+  const now = new Date().toISOString();
+
+  for (const tx of unreviewed) {
+    await fetch(`${SB}/rest/v1/parsed_transactions?id=eq.${tx.id}`, {
+      method: 'PATCH',
+      headers: { apikey: AK, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ reviewed_by: userId, reviewed_at: now })
+    });
+  }
+  showToast(`${unreviewed.length} transazioni approvate`, 'success');
+  await viewUpload(selectedUpload.id);
+}
+
+// ── Toast ──────────────────────────────────────────────────
 
 function showToast(msg, type) {
   // Use portal's toast system if available

@@ -214,6 +214,42 @@ serve(async (req) => {
       });
     }
 
+    // ── Get invoices for reconciliation ──────────────────────────
+    if (action === "get_invoices" && org_id) {
+      const dateStart = body.date_start || "2024-01-01";
+      const dateEnd = body.date_end || new Date().toISOString().split("T")[0];
+      const invoices = await fetchAllInvoices(org_id, dateStart, dateEnd, token);
+      return new Response(JSON.stringify({ invoices }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Get expenses for reconciliation ───────────────────────────
+    if (action === "get_expenses" && org_id) {
+      const dateStart = body.date_start || "2024-01-01";
+      const dateEnd = body.date_end || new Date().toISOString().split("T")[0];
+      let page = 1;
+      let all: any[] = [];
+      while (true) {
+        const path = "/expenses?organization_id=" + org_id + "&date_start=" + dateStart + "&date_end=" + dateEnd + "&per_page=200&page=" + page;
+        const res = await zohoGet(path, token);
+        all = all.concat(res.expenses || []);
+        if (!res.page_context || !res.page_context.has_more_page) break;
+        page++;
+      }
+      return new Response(JSON.stringify({ expenses: all }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Get bank accounts for reconciliation ──────────────────────
+    if (action === "get_bank_accounts" && org_id) {
+      const data = await zohoGet("/bankaccounts?organization_id=" + org_id, token);
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ── Parse PDF bank statement via Claude Vision ──────────────
     if (action === "parse_pdf" && body.pdf_base64) {
       const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY");
