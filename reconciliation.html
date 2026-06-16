@@ -1033,8 +1033,8 @@ async function approveAllHigh() {
 // ============================================================
 
 async function pushToZoho() {
-  if (!selectedClient || !selectedUpload) { alert('Seleziona un cliente e un upload'); return; }
-  if (!selectedClient.zoho_org_id) { alert('Cliente senza Zoho Org ID'); return; }
+  if (!selectedClient || !selectedUpload) { showToast('Seleziona un cliente e un upload', 'error'); return; }
+  if (!selectedClient.zoho_org_id) { showToast('Cliente senza Zoho Org ID', 'error'); return; }
 
   const txs = await sb.db.select('parsed_transactions', {
     filter: `upload_id=eq.${selectedUpload.id}`,
@@ -1043,75 +1043,84 @@ async function pushToZoho() {
   const unmatched = (txs || []).filter(t => t.match_status === 'unmatched' || t.match_status === 'pending');
   if (!unmatched.length) { showToast('Nessuna transazione da importare', 'info'); return; }
 
-  // 1. Get bank accounts from Zoho
-  showToast('Recupero conti bancari da Zoho...', 'info');
-  const accRes = await fetch(EDGE_FN, {
-    method: 'POST', headers: edgeHeaders(),
-    body: JSON.stringify({ action: 'get_bank_accounts', org_id: selectedClient.zoho_org_id })
-  }).then(r => r.json());
-
-  const accounts = (accRes.bankaccounts || []).filter(a => a.account_type === 'bank' || a.account_type === 'credit_card');
-  if (!accounts.length) { alert('Nessun conto bancario trovato in Zoho per questo cliente.'); return; }
-
-  // 2. Show account selection modal
+  // Show confirmation modal
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
   overlay.innerHTML = `
     <div style="background:white;border-radius:14px;padding:28px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
       <h3 style="margin:0 0 6px;font-size:16px;font-weight:800">📤 Importa in Zoho Books</h3>
       <p style="margin:0 0 16px;font-size:13px;color:var(--text-muted)">
-        ${unmatched.length} transazioni non riconciliate verranno importate come movimenti da categorizzare in Zoho Books.
+        <strong>${unmatched.length}</strong> transazioni non riconciliate verranno create come spese da categorizzare in Zoho Books.
       </p>
-      <label style="font-size:12px;font-weight:700;color:var(--text-muted)">Seleziona il conto bancario Zoho:</label>
-      <select id="zoho-account-select" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin:8px 0 20px;font-weight:600">
-        ${accounts.map(a => `<option value="${a.account_id}">${esc(a.account_name)} (${a.currency_code || 'AED'})</option>`).join('')}
-      </select>
+      <p style="margin:0 0 20px;font-size:12px;color:var(--text-muted);background:#fef3c7;padding:10px 14px;border-radius:8px">
+        ⚠️ Le transazioni verranno create come spese "Uncategorized". Il commercialista potrà poi categorizzarle direttamente in Zoho Books.
+      </p>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button onclick="this.closest('div[style*=fixed]').remove()" style="padding:10px 20px;border:1.5px solid var(--border);border-radius:8px;background:white;font-size:13px;font-weight:700;cursor:pointer">Annulla</button>
         <button id="zoho-import-btn" style="padding:10px 20px;border:none;border-radius:8px;background:#1a73e8;color:white;font-size:13px;font-weight:700;cursor:pointer">Importa ${unmatched.length} transazioni</button>
       </div>
-      <div id="zoho-import-status" style="margin-top:12px;font-size:12px;color:var(--text-muted);display:none"></div>
+      <div id="zoho-import-progress" style="margin-top:14px;display:none">
+        <div style="background:#e5e7eb;border-radius:6px;height:8px;overflow:hidden;margin-bottom:6px">
+          <div id="zoho-import-bar" style="height:100%;background:#1a73e8;width:0%;transition:width .3s"></div>
+        </div>
+        <div id="zoho-import-status" style="font-size:12px;color:var(--text-muted)"></div>
+      </div>
     </div>
   `;
   document.body.appendChild(overlay);
 
   document.getElementById('zoho-import-btn').onclick = async function() {
-    const accountId = document.getElementById('zoho-account-select').value;
     const statusEl = document.getElementById('zoho-import-status');
+    const barEl = document.getElementById('zoho-import-bar');
+    const progressEl = document.getElementById('zoho-import-progress');
     const btn = this;
     btn.disabled = true;
-    btn.textContent = 'Importazione...';
-    statusEl.style.display = 'block';
-    statusEl.textContent = 'Invio transazioni a Zoho Books...';
+    btn.textContent = 'Importazione in corso...';
+    progressEl.style.display = 'block';
 
     try {
+      const BATCH = 10;
       const txData = unmatched.map(t => ({
         date: t.tx_date,
         description: t.description || '',
         debit: parseFloat(t.debit) || 0,
-        credit: parseFloat(t.credit) || 0
+        credit: parseFloat(t.credit) || 0,
+        reference: t.reference || ''
       }));
 
-      const res = await fetch(EDGE_FN, {
-        method: 'POST', headers: edgeHeaders(),
-        body: JSON.stringify({
-          action: 'import_bank_statement',
-          org_id: selectedClient.zoho_org_id,
-          account_id: accountId,
-          transactions: txData
-        })
-      }).then(r => r.json());
+      let totalOk = 0, totalFail = 0;
+      for (let i = 0; i < txData.length; i += BATCH) {
+        const batch = txData.slice(i, i + BATCH);
+        const pct = Math.round(((i + batch.length) / txData.length) * 100);
+        barEl.style.width = pct + '%';
+        statusEl.textContent = `Invio batch ${Math.floor(i / BATCH) + 1}/${Math.ceil(txData.length / BATCH)} (${i + batch.length}/${txData.length})...`;
 
-      if (res.code === 0 || res.message === 'success' || res.bank_statement) {
-        const imported = res.bank_statement?.transaction_count || unmatched.length;
-        statusEl.innerHTML = `<span style="color:#059669;font-weight:700">✅ ${imported} transazioni importate in Zoho Books!</span><br>Ora le troverete nella sezione Banking di Zoho da categorizzare.`;
-        showToast(`${imported} transazioni importate in Zoho Books`, 'success');
+        const res = await fetch(EDGE_FN, {
+          method: 'POST', headers: edgeHeaders(),
+          body: JSON.stringify({
+            action: 'create_expenses',
+            org_id: selectedClient.zoho_org_id,
+            transactions: batch
+          })
+        }).then(r => r.json());
+
+        if (res.results) {
+          totalOk += res.results.filter(r => r.ok).length;
+          totalFail += res.results.filter(r => !r.ok).length;
+        }
+      }
+
+      barEl.style.width = '100%';
+      if (totalOk > 0) {
+        barEl.style.background = '#059669';
+        statusEl.innerHTML = `<span style="color:#059669;font-weight:700">✅ ${totalOk} spese create in Zoho Books!</span>${totalFail > 0 ? `<br><span style="color:#dc2626">${totalFail} errori</span>` : ''}<br>Ora le troverete nella sezione Spese di Zoho da categorizzare.`;
+        showToast(`${totalOk} spese importate in Zoho Books`, 'success');
         btn.textContent = 'Fatto!';
         btn.style.background = '#059669';
-        setTimeout(() => overlay.remove(), 3000);
+        setTimeout(() => overlay.remove(), 4000);
       } else {
-        const errMsg = res.message || res.error || JSON.stringify(res).substring(0, 200);
-        statusEl.innerHTML = `<span style="color:#dc2626;font-weight:700">Errore: ${esc(errMsg)}</span>`;
+        barEl.style.background = '#dc2626';
+        statusEl.innerHTML = `<span style="color:#dc2626;font-weight:700">Errore: nessuna spesa creata (${totalFail} errori)</span>`;
         btn.disabled = false;
         btn.textContent = 'Riprova';
       }

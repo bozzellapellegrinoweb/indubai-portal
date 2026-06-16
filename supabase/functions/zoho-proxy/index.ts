@@ -242,40 +242,39 @@ serve(async (req) => {
       });
     }
 
-    // ── Get bank accounts for reconciliation ──────────────────────
-    if (action === "get_bank_accounts" && org_id) {
-      const data = await zohoGet("/bankaccounts?organization_id=" + org_id, token);
-      return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // ── Import bank statement into Zoho Books ───────────────────
-    if (action === "import_bank_statement" && org_id) {
-      const accountId = body.account_id;
+    // ── Create expenses in Zoho Books (batch) ─────────────────────
+    if (action === "create_expenses" && org_id) {
       const transactions = body.transactions;
-      if (!accountId || !transactions?.length) throw new Error("account_id and transactions required");
+      if (!transactions?.length) throw new Error("transactions array required");
 
-      let csv = "Date,Payee,Description,Withdrawal,Deposit\n";
+      const results: any[] = [];
       for (const tx of transactions) {
-        const parts = (tx.date || "").split("-");
-        const fmtDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : tx.date;
-        const desc = (tx.description || "").replace(/"/g, '""');
-        const debit = tx.debit > 0 ? Number(tx.debit).toFixed(2) : "";
-        const credit = tx.credit > 0 ? Number(tx.credit).toFixed(2) : "";
-        csv += `${fmtDate},"${desc}","${desc}",${debit},${credit}\n`;
+        const expenseDate = tx.date; // YYYY-MM-DD
+        const amount = tx.debit > 0 ? tx.debit : tx.credit;
+        const expenseBody = {
+          date: expenseDate,
+          amount: Number(amount),
+          description: tx.description || "Uncategorized bank transaction",
+          reference_number: tx.reference || "",
+          is_billable: false,
+        };
+        try {
+          const r = await fetch(
+            `${ZOHO_API_BASE}/expenses?organization_id=${org_id}`,
+            {
+              method: "POST",
+              headers: { Authorization: "Zoho-oauthtoken " + token, "Content-Type": "application/json" },
+              body: JSON.stringify(expenseBody),
+            }
+          );
+          const data = await r.json();
+          results.push({ ok: data.code === 0, id: data.expense?.expense_id, description: tx.description, error: data.code !== 0 ? data.message : undefined });
+        } catch (e: any) {
+          results.push({ ok: false, description: tx.description, error: e.message });
+        }
       }
-
-      const blob = new Blob([csv], { type: "text/csv" });
-      const form = new FormData();
-      form.append("statement", blob, "bank_statement.csv");
-
-      const r = await fetch(
-        `${ZOHO_API_BASE}/bankstatements?organization_id=${org_id}&account_id=${accountId}`,
-        { method: "POST", headers: { Authorization: "Zoho-oauthtoken " + token }, body: form }
-      );
-      const data = await r.json();
-      return new Response(JSON.stringify(data), {
+      const successCount = results.filter(r => r.ok).length;
+      return new Response(JSON.stringify({ code: 0, message: `${successCount}/${transactions.length} expenses created`, results }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
