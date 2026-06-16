@@ -50,6 +50,7 @@
     { id: 'onboarding', icon: '✦', label: 'Onboarding',     href: '/onboarding.html' },
     { id: 'statements', icon: '◎', label: 'Estratti Conto', href: '/statements.html' },
     { id: 'payments',   icon: '◆', label: 'Abbonamenti',    href: '/payments.html' },
+    { id: 'reconciliation', icon: '🔄', label: 'Riconciliazione', href: '/reconciliation.html' },
     { id: 'bilanci',    icon: '📒', label: 'Bilanci',        href: '/bilanci.html' },
     { id: 'ferie',      icon: '🏖', label: 'Ferie & Permessi', href: '/ferie.html' },
     { id: 'vat',        icon: '◇', label: 'VAT Register',   href: '/vat.html',        section: 'COMPLIANCE' },
@@ -328,6 +329,7 @@
     'reports': 'Report', 'news': 'UAE News', 'search': 'Ricerca', 'users': 'Utenti', 'notifiche': 'Notifiche',
     'affinitas': 'Affinitas', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
     'client-detail': 'Cliente', 'attivita': 'Attività Staff', 'broadcast': 'Broadcast',
+    'reconciliation': 'Riconciliazione',
   };
   const pageLabel = PAGE_LABELS[currentPage] || 'InDubai';
 
