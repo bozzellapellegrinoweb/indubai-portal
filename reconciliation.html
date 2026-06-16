@@ -529,7 +529,7 @@ async function handleFileSelect(files) {
       // Upload the file to storage
       const uploadRes2 = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (sb.getSession?.()?.access_token || window.ENV_SUPABASE_ANON_KEY) },
         body: JSON.stringify({ fileName: file.name, fileBase64: pdfBase64, contentType: 'application/pdf' })
       });
       const uploadData2 = await uploadRes2.json();
@@ -605,7 +605,7 @@ async function handleFileSelect(files) {
     const fileBase64 = await readFileAsync(file, 'base64');
     const uploadRes = await fetch('/api/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (sb.getSession?.()?.access_token || window.ENV_SUPABASE_ANON_KEY) },
       body: JSON.stringify({ fileName: file.name, fileBase64, contentType: file.type || 'application/octet-stream' })
     });
     const uploadData = await uploadRes.json();
