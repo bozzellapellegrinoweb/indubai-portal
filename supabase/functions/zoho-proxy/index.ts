@@ -250,6 +250,36 @@ serve(async (req) => {
       });
     }
 
+    // ── Import bank statement into Zoho Books ───────────────────
+    if (action === "import_bank_statement" && org_id) {
+      const accountId = body.account_id;
+      const transactions = body.transactions;
+      if (!accountId || !transactions?.length) throw new Error("account_id and transactions required");
+
+      let csv = "Date,Payee,Description,Withdrawal,Deposit\n";
+      for (const tx of transactions) {
+        const parts = (tx.date || "").split("-");
+        const fmtDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : tx.date;
+        const desc = (tx.description || "").replace(/"/g, '""');
+        const debit = tx.debit > 0 ? Number(tx.debit).toFixed(2) : "";
+        const credit = tx.credit > 0 ? Number(tx.credit).toFixed(2) : "";
+        csv += `${fmtDate},"${desc}","${desc}",${debit},${credit}\n`;
+      }
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const form = new FormData();
+      form.append("statement", blob, "bank_statement.csv");
+
+      const r = await fetch(
+        `${ZOHO_API_BASE}/bankstatements?organization_id=${org_id}&account_id=${accountId}`,
+        { method: "POST", headers: { Authorization: "Zoho-oauthtoken " + token }, body: form }
+      );
+      const data = await r.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ── Parse PDF bank statement via Claude Vision ──────────────
     if (action === "parse_pdf" && body.pdf_base64) {
       const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY");
