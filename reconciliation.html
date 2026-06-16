@@ -495,6 +495,7 @@ function renderTransactions(txs) {
                 <td>
                   ${t.match_status === 'probable' ? `<button class="tx-action-btn approve" onclick="approveTx('${t.id}')">✓</button>` : ''}
                   ${t.match_status !== 'ignored' && t.match_status !== 'matched' ? `<button class="tx-action-btn ignore" onclick="ignoreTx('${t.id}')">—</button>` : ''}
+                  ${t.match_status === 'ignored' ? `<button class="tx-action-btn" onclick="restoreTx('${t.id}')" style="border-color:#2563eb;color:#2563eb" title="Ripristina">↩</button>` : ''}
                 </td>
               </tr>`;
             }).join('')}
@@ -1000,6 +1001,19 @@ async function ignoreTx(txId) {
     body: JSON.stringify({ match_status: 'ignored', reviewed_by: sb.getCurrentUser()?.id || null, reviewed_at: new Date().toISOString() })
   });
   showToast('Transazione ignorata', 'success');
+  await viewUpload(selectedUpload.id);
+}
+
+async function restoreTx(txId) {
+  const SB = window.ENV_SUPABASE_URL;
+  const AK = window.ENV_SUPABASE_ANON_KEY;
+  const tok = sb.getSession?.()?.access_token || AK;
+  await fetch(`${SB}/rest/v1/parsed_transactions?id=eq.${txId}`, {
+    method: 'PATCH',
+    headers: { apikey: AK, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ match_status: 'unmatched', reviewed_by: null, reviewed_at: null })
+  });
+  showToast('Transazione ripristinata', 'success');
   await viewUpload(selectedUpload.id);
 }
 
