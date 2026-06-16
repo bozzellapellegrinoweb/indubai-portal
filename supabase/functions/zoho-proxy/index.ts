@@ -214,6 +214,76 @@ serve(async (req) => {
       });
     }
 
+    // ── Parse PDF bank statement via Claude Vision ──────────────
+    if (action === "parse_pdf" && body.pdf_base64) {
+      const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!ANTHROPIC_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
+
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ANTHROPIC_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 8000,
+          messages: [{
+            role: "user",
+            content: [
+              {
+                type: "document",
+                source: { type: "base64", media_type: "application/pdf", data: body.pdf_base64 },
+              },
+              {
+                type: "text",
+                text: `Extract ALL transactions from this bank statement PDF. Return ONLY a JSON object with this exact structure, no other text:
+{
+  "bank_name": "detected bank name",
+  "currency": "AED or other",
+  "account_number": "if visible",
+  "period": "statement period",
+  "transactions": [
+    {
+      "date": "YYYY-MM-DD",
+      "description": "transaction description",
+      "reference": "reference number if any",
+      "debit": 0.00,
+      "credit": 0.00,
+      "balance": 0.00
+    }
+  ]
+}
+
+Rules:
+- date MUST be in YYYY-MM-DD format
+- debit and credit are numbers (0 if not applicable)
+- Include ALL transactions, do not skip any
+- Return valid JSON only, no markdown, no explanation`
+              }
+            ]
+          }]
+        }),
+      });
+      const aiData = await r.json();
+      const text = aiData?.content?.[0]?.text || "";
+
+      // Extract JSON from response (handle potential markdown wrapping)
+      let jsonStr = text;
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) jsonStr = jsonMatch[0];
+
+      try {
+        const parsed = JSON.parse(jsonStr);
+        return new Response(JSON.stringify(parsed), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (pe) {
+        return new Response(JSON.stringify({ error: "Failed to parse AI response", raw: text.substring(0, 500) }), {
+          status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (e: any) {

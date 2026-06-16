@@ -500,9 +500,78 @@ async function handleFileSelect(files) {
     let detectedBank = null;
 
     if (ext === 'pdf') {
-      // Phase 1: PDF → Claude Vision (requires Edge Function)
-      // For now, show message
-      alert('Il parsing PDF sarà disponibile nella prossima fase.\nPer ora, esporta lo statement come CSV dalla tua banca online.');
+      // PDF → Claude Vision via bright-service Edge Function
+      const pdfBase64 = await readFileAsync(file, 'base64');
+
+      if (uploadZone) uploadZone.innerHTML = `<div class="rec-upload-icon">🤖</div><div class="rec-upload-text">AI sta analizzando il PDF...</div><div class="rec-upload-hint">Claude Vision sta estraendo le transazioni da ${esc(file.name)}</div>`;
+
+      const fnUrl = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/bright-service';
+      const res = await fetch(fnUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + window.ENV_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'parse_pdf', pdf_base64: pdfBase64 })
+      });
+      const pdfData = await res.json();
+      if (pdfData.error) throw new Error(pdfData.error);
+      if (!pdfData.transactions || !pdfData.transactions.length) throw new Error('Nessuna transazione trovata nel PDF');
+
+      detectedBank = pdfData.bank_name || 'PDF Statement';
+      transactions = pdfData.transactions.map(tx => ({
+        tx_date: tx.date,
+        description: tx.description || '',
+        reference: tx.reference || '',
+        debit: Math.abs(parseFloat(tx.debit) || 0),
+        credit: Math.abs(parseFloat(tx.credit) || 0),
+        balance: tx.balance !== undefined ? parseFloat(tx.balance) : null,
+        currency: pdfData.currency || 'AED'
+      })).filter(tx => tx.tx_date);
+
+      // Upload the file to storage
+      const uploadRes2 = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, fileBase64: pdfBase64, contentType: 'application/pdf' })
+      });
+      const uploadData2 = await uploadRes2.json();
+      if (!uploadData2.ok) throw new Error(uploadData2.error || 'Upload fallito');
+
+      // Save upload record
+      const uploadRecord2 = await sb.db.insert('statement_uploads', [{
+        client_id: selectedClient.id,
+        year: currentYear,
+        month: currentMonth,
+        source: 'bank',
+        bank_name: detectedBank,
+        file_name: file.name,
+        storage_path: uploadData2.path,
+        file_size: file.size,
+        mime_type: 'application/pdf',
+        status: 'parsed',
+        transaction_count: transactions.length,
+        uploaded_by: sb.getCurrentUser()?.id || null
+      }], { returning: true });
+
+      const uploadId2 = uploadRecord2?.[0]?.id;
+      if (!uploadId2) throw new Error('Errore creazione record upload');
+
+      // Save transactions
+      const txRows2 = transactions.map(tx => ({
+        upload_id: uploadId2,
+        client_id: selectedClient.id,
+        ...tx,
+        match_status: 'pending'
+      }));
+      for (let i = 0; i < txRows2.length; i += 50) {
+        await sb.db.insert('parsed_transactions', txRows2.slice(i, i + 50));
+      }
+
+      // Update bank_statements
+      try {
+        await sb.db.upsertBankStatement(selectedClient.id, currentYear, currentMonth, { received: true });
+      } catch(e) { console.warn('bank_statements upsert:', e); }
+
+      showToast(`✅ ${detectedBank}: ${transactions.length} transazioni estratte dal PDF`, 'success');
+      selectedUpload = null;
       await loadClientView();
       return;
     }
