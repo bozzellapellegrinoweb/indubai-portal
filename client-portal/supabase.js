@@ -28,7 +28,7 @@ const SUPABASE_ANON_KEY = window.ENV_SUPABASE_ANON_KEY;
 // ── Low-level fetch wrapper ──────────────────────────────────
 
 async function sbFetch(path, options = {}) {
-  const token = getSessionToken() || SUPABASE_ANON_KEY;
+  const token = await getValidToken();
   const res = await fetch(`${SUPABASE_URL}${path}`, {
     ...options,
     headers: {
@@ -62,6 +62,36 @@ function setSession(data) { localStorage.setItem(AUTH_KEY, JSON.stringify(data))
 function clearSession() { localStorage.removeItem(AUTH_KEY); }
 function getSessionToken() { return getSession()?.access_token || null; }
 function getCurrentUser() { return getSession()?.user || null; }
+
+async function refreshSession() {
+  const session = getSession();
+  if (!session?.refresh_token) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: session.refresh_token }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.access_token) {
+      setSession({ ...session, ...data });
+      return data.access_token;
+    }
+  } catch {}
+  return null;
+}
+
+async function getValidToken() {
+  const session = getSession();
+  if (!session) return SUPABASE_ANON_KEY;
+  const expiresAt = session.expires_at || 0;
+  if (expiresAt - Math.floor(Date.now() / 1000) < 60) {
+    const newToken = await refreshSession();
+    return newToken || session.access_token || SUPABASE_ANON_KEY;
+  }
+  return session.access_token || SUPABASE_ANON_KEY;
+}
 
 async function signIn(email, password) {
   const data = await sbFetch('/auth/v1/token?grant_type=password', {
@@ -148,7 +178,7 @@ const db = {
   async upsert(table, rows, onConflict = '') {
     let path = `/rest/v1/${table}`;
     if (onConflict) path += `?on_conflict=${onConflict}`;
-    const token = getSessionToken() || SUPABASE_ANON_KEY;
+    const token = await getValidToken();
     // Headers via Headers object — append multipli per Prefer
     const headers = new Headers();
     headers.set('apikey', SUPABASE_ANON_KEY);
@@ -334,5 +364,5 @@ function monthBadge(status) {
 }
 
 // ── Export globals ───────────────────────────────────────────
-window.sb = { db, signIn, signOut, requireAuth, getCurrentUser, getCurrentProfile, isAdmin, getSession };
+window.sb = { db, signIn, signOut, requireAuth, getCurrentUser, getCurrentProfile, isAdmin, getSession, getValidToken };
 window.ui = { showToast, MONTHS, MONTHS_FULL, currentYearMonth, formatDate, formatAED, deadlineClass, escapeHtml, partnerLabel, statusBadge, monthBadge };
