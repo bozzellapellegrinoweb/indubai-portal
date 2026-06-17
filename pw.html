@@ -32,7 +32,7 @@ async function load() {
   try {
     const rows = await sb.db.select('clients', {
       filter: 'accounting_partner=eq.p_w&is_active=eq.true',
-      columns: 'id,company_name,contact_name,email,phone_uae,vat_number,created_at',
+      columns: 'id,company_name,contact_name,email,phone_uae,service_cost,start_date,created_at',
       order: 'company_name.asc',
     });
 
@@ -54,7 +54,7 @@ async function load() {
             <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Referente</th>
             <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Email</th>
             <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Telefono</th>
-            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">P.IVA UAE</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Abbonamento</th>
             <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Dal</th>
           </tr>
         </thead>
@@ -67,7 +67,7 @@ async function load() {
             <td style="padding:10px 14px;color:var(--text-secondary)">${ui.escapeHtml(r.contact_name || '—')}</td>
             <td style="padding:10px 14px;color:var(--text-muted);font-size:12px">${r.email ? `<a href="mailto:${ui.escapeHtml(r.email)}" style="color:var(--primary);text-decoration:none">${ui.escapeHtml(r.email)}</a>` : '—'}</td>
             <td style="padding:10px 14px;color:var(--text-muted);font-size:12px">${ui.escapeHtml(r.phone_uae || '—')}</td>
-            <td style="padding:10px 14px;font-size:12px;font-family:monospace">${ui.escapeHtml(r.vat_number || '—')}</td>
+            <td style="padding:10px 14px;font-size:12px;font-size:12px">${r.service_cost ? ui.formatAED(r.service_cost) : '—'}</td>
             <td style="padding:10px 14px;color:var(--text-muted);font-size:12px">${ui.formatDate(r.created_at)}</td>
           </tr>`).join('')}
         </tbody>
