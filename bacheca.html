@@ -66,7 +66,7 @@
     .bkd-reply-ctx { display:flex; align-items:center; gap:8px; background:#eff6ff; border-radius:8px; padding:7px 12px; margin-bottom:8px; font-size:12px; color:var(--primary); font-weight:600; }
     .bkd-reply-ctx button { margin-left:auto; background:none; border:none; cursor:pointer; font-size:14px; color:var(--primary); padding:0; line-height:1; }
     .cmt-input-row { display:flex; gap:8px; align-items:flex-end; position:relative; }
-    .cmt-inp { flex:1; padding:10px 14px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; resize:none; outline:none; transition:border .15s; line-height:1.5; min-height:42px; max-height:120px; overflow-y:auto; }
+    .cmt-inp { flex:1; padding:10px 14px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; resize:vertical; outline:none; transition:border .15s; line-height:1.5; min-height:42px; overflow-y:auto; }
     .cmt-inp:focus { border-color:var(--primary); }
     .cmt-send { padding:10px 16px; background:var(--primary); color:white; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; transition:opacity .15s; white-space:nowrap; flex-shrink:0; }
     .cmt-send:hover { opacity:.88; }
@@ -835,7 +835,7 @@ function avatarColor(id) {
 
 function autoResizeTextarea(el) {
   el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  el.style.height = Math.min(el.scrollHeight, 400) + 'px';
 }
 
 // ── Mobile sheet ───────────────────────────────────────────────────────────
