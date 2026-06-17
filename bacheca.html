@@ -187,11 +187,20 @@
               <span id="bkd-reply-label"></span>
               <button onclick="clearReply()">✕</button>
             </div>
+            <!-- File allegato commento -->
+            <div id="cmt-file-preview" style="display:none;align-items:center;gap:8px;background:#eff6ff;border-radius:8px;padding:7px 12px;margin-bottom:8px;font-size:12px;color:var(--primary);font-weight:600">
+              📎 <span id="cmt-file-name"></span>
+              <button onclick="clearCmtFile()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:14px;color:var(--primary);padding:0;line-height:1">✕</button>
+            </div>
             <div class="cmt-input-row">
               <div class="mention-dropdown" id="mention-dropdown" style="display:none"></div>
               <textarea class="cmt-inp" id="cmt-inp" placeholder="Scrivi un commento… usa @ per taggare" rows="1"
                 oninput="onCmtInput(event)" onkeydown="onCmtKeydown(event)"></textarea>
-              <button class="cmt-send" onclick="submitComment()">Invia</button>
+              <button type="button" title="Allega file" onclick="document.getElementById('cmt-file-input').click()"
+                style="padding:10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:16px;flex-shrink:0;transition:border .15s"
+                onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">📎</button>
+              <input type="file" id="cmt-file-input" style="display:none" onchange="onCmtFileChosen(this)">
+              <button class="cmt-send" id="cmt-send-btn" onclick="submitComment()">Invia</button>
             </div>
           </div>
         </div>
@@ -212,6 +221,7 @@ let posts      = [];
 let allUsers   = [];
 let currentPost = null;
 let replyTo    = null;   // { id, author }
+let cmtFile    = null;   // file allegato al commento
 let mentionQuery = '';
 let mentionStart = -1;
 let mentionFocusIdx = 0;
@@ -361,7 +371,7 @@ async function loadComments() {
 
   try {
     const rows = await sb.db.select('board_comments', {
-      columns: 'id,body,created_at,author_id,reply_to,profiles(full_name)',
+      columns: 'id,body,file_url,file_name,created_at,author_id,reply_to,profiles(full_name)',
       filter: `post_id=eq.${currentPost.id}`,
       order: 'created_at.asc',
     });
@@ -407,32 +417,67 @@ function renderComment(c, isReply = false) {
         <span class="cmt-time">${relativeTime(c.created_at)}</span>
         ${canDel ? `<button class="cmt-del" onclick="deleteComment('${c.id}')">🗑</button>` : ''}
       </div>
-      <div class="cmt-text">${formatMentions(ui.escapeHtml(c.body))}</div>
+      ${c.body ? `<div class="cmt-text">${formatMentions(ui.escapeHtml(c.body))}</div>` : ''}
+      ${c.file_url ? `<a class="bkd-attachment" href="${c.file_url}" target="_blank" rel="noopener" style="margin-top:8px;font-size:12px;padding:6px 10px">📎 ${ui.escapeHtml(c.file_name || 'allegato')}</a>` : ''}
       ${!isReply ? `<button class="cmt-reply-btn" onclick="setReply('${c.id}','${ui.escapeHtml(c.profiles?.full_name || 'Utente')}')">↩ Rispondi</button>` : ''}
     </div>
   </div>`;
 }
 
 // ── Submit comment ─────────────────────────────────────────────────────────
+function onCmtFileChosen(input) {
+  cmtFile = input.files[0] || null;
+  const preview = document.getElementById('cmt-file-preview');
+  if (cmtFile) {
+    document.getElementById('cmt-file-name').textContent = cmtFile.name;
+    preview.style.display = 'flex';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+function clearCmtFile() {
+  cmtFile = null;
+  document.getElementById('cmt-file-input').value = '';
+  document.getElementById('cmt-file-preview').style.display = 'none';
+}
+
 async function submitComment() {
   const inp = document.getElementById('cmt-inp');
   const body = inp.value.trim();
-  if (!body) return;
+  if (!body && !cmtFile) return;
 
-  const btn = document.querySelector('.cmt-send');
+  const btn = document.getElementById('cmt-send-btn');
   btn.disabled = true;
   btn.textContent = '...';
+
+  let file_url = null, file_name = null;
+  if (cmtFile) {
+    btn.textContent = '📎...';
+    try {
+      const uploaded = await sb.db.uploadFile(cmtFile);
+      file_url  = uploaded.url;
+      file_name = cmtFile.name;
+    } catch(e) {
+      ui.showToast('Errore upload: ' + e.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Invia';
+      return;
+    }
+  }
 
   try {
     const row = {
       post_id:   currentPost.id,
       author_id: currentUser.id,
-      body,
+      body:      body || null,
       reply_to:  replyTo?.id || null,
+      file_url, file_name,
     };
     const [inserted] = await sb.db.insert('board_comments', row);
     inp.value = '';
     clearReply();
+    clearCmtFile();
     await loadComments();
     document.getElementById('bkd-body').scrollTop = 9999;
 
@@ -447,6 +492,7 @@ async function submitComment() {
     btn.textContent = 'Invia';
   }
 }
+
 
 // ── Reply ──────────────────────────────────────────────────────────────────
 function setReply(commentId, authorName) {
