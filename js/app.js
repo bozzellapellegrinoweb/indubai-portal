@@ -26,8 +26,8 @@
     admin:        null,   // null = all pages
     senior:       null,   // all pages (admin section hidden by nav filter)
     junior:       ['index','tasks','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports'],
-    mini_admin:   ['index','tasks','clients','documents','search','news','notifiche','broadcast','bacheca'],
-    collaborator: ['index','tasks','clients','documents','search','news','notifiche','broadcast','bacheca'],
+    mini_admin:   ['index','tasks','clients','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
+    collaborator: ['index','tasks','clients','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
   };
 
   function _getAllowed(r) {
