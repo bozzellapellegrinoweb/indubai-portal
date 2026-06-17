@@ -216,7 +216,7 @@ let mentionQuery = '';
 let mentionStart = -1;
 let mentionFocusIdx = 0;
 let currentUser = null;
-let isAdmin = false;
+let isBkAdmin = false;
 let npFile = null;
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!session) return;
   currentUser = sb.getCurrentUser();
   const profile = sb.getCurrentProfile();
-  isAdmin = profile?.role === 'admin';
+  isBkAdmin = profile?.role === 'admin';
 
   initApp('bacheca');
   await Promise.all([loadUsers(), loadPosts()]);
@@ -323,7 +323,7 @@ function renderDetailHeader() {
   const p = currentPost;
   const initials = avatarInitials(p.profiles?.full_name || '?');
   const color = avatarColor(p.author_id);
-  const canAdmin = isAdmin || p.author_id === currentUser?.id;
+  const canAdmin = isBkAdmin || p.author_id === currentUser?.id;
 
   document.getElementById('bkd-header').innerHTML = `
     <div class="bkd-title">${ui.escapeHtml(p.title)}</div>
@@ -334,7 +334,7 @@ function renderDetailHeader() {
       <span>${ui.formatDate(p.created_at)}</span>
     </div>
     <div class="bkd-actions">
-      ${isAdmin ? `
+      ${isBkAdmin ? `
         <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px" onclick="togglePin('${p.id}',${p.pinned})">
           ${p.pinned ? '📌 Rimuovi pin' : '📌 Fissa'}
         </button>` : ''}
@@ -398,7 +398,7 @@ async function loadComments() {
 function renderComment(c, isReply = false) {
   const initials = avatarInitials(c.profiles?.full_name || '?');
   const color = avatarColor(c.author_id);
-  const canDel = isAdmin || c.author_id === currentUser?.id;
+  const canDel = isBkAdmin || c.author_id === currentUser?.id;
   return `
   <div class="cmt ${isReply ? 'reply' : ''}" id="cmt-${c.id}">
     <div class="cmt-av ${isReply ? 'reply-av' : ''}" style="background:${color}">${initials}</div>
