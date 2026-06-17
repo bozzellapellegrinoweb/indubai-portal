@@ -43,6 +43,7 @@
     { id: 'tasks',      icon: '✓', label: 'Task',           href: '/tasks.html' },
     { id: 'notifiche',  icon: '🔔', label: 'Notifiche',     href: '/notifiche.html' },
     { id: 'broadcast', icon: '📢', label: 'Broadcast',     href: '/broadcast.html' },
+    { id: 'bacheca',   icon: '',   label: '↳ Bacheca',      href: '/bacheca.html' },
     { id: 'clients',    icon: '◉', label: 'Clienti',        href: '/clients.html',    section: 'GESTIONE' },
     { id: 'zoho-setup', icon: '',   label: '↳ Setup Zoho',     href: '/zoho-setup.html' },
     { id: 'zoho-vat',   icon: '',   label: '↳ Monitor VAT',    href: '/zoho-vat.html' },
@@ -328,7 +329,7 @@
     'payments': 'Abbonamenti', 'statements': 'Estratti', 'onboarding': 'Onboarding',
     'reports': 'Report', 'news': 'UAE News', 'search': 'Ricerca', 'users': 'Utenti', 'notifiche': 'Notifiche',
     'affinitas': 'Affinitas', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
-    'client-detail': 'Cliente', 'attivita': 'Attività Staff', 'broadcast': 'Broadcast',
+    'client-detail': 'Cliente', 'attivita': 'Attività Staff', 'broadcast': 'Broadcast', 'bacheca': 'Bacheca',
     'reconciliation': 'Riconciliazione',
   };
   const pageLabel = PAGE_LABELS[currentPage] || 'InDubai';
