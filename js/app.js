@@ -76,17 +76,61 @@
     return;
   }
 
-  const navHTML = navItems.filter(item => !item.roles || item.roles.includes(role)).map(item => {
-    const sectionHeader = item.section ? `<div class="nav-section">${item.section}</div>` : '';
+  // Sezioni collassabili — aperta di default solo quella che contiene la pagina attiva
+  const COLLAPSIBLE_SECTIONS = ['GESTIONE', 'COMPLIANCE', 'ANALYTICS', 'ADMIN'];
+
+  // Raggruppa items per sezione
+  const groups = []; // [{section, collapsible, items[]}]
+  let currentGroup = { section: null, collapsible: false, items: [] };
+  navItems.filter(item => !item.roles || item.roles.includes(role)).forEach(item => {
+    if (item.section) {
+      groups.push(currentGroup);
+      const collapsible = COLLAPSIBLE_SECTIONS.includes(item.section);
+      currentGroup = { section: item.section, collapsible, items: [] };
+    }
+    currentGroup.items.push(item);
+  });
+  groups.push(currentGroup);
+
+  function renderItem(item) {
     const active = (currentPage === item.id || (currentPage === '' && item.id === 'index')) ? 'active' : '';
     const subStyle = item.sub ? 'padding-left:32px;font-size:12px;opacity:.85;' : '';
-    return `${sectionHeader}
-      <a href="${item.href}" class="nav-item ${active}" style="${subStyle}">
-        ${item.icon ? `<span class="nav-icon">${item.icon}</span>` : ''}
-        ${item.label}
-        <span class="nav-badge ${item.id||''}" style="display:none">0</span>
-      </a>`;
+    return `<a href="${item.href}" class="nav-item ${active}" style="${subStyle}">
+      ${item.icon ? `<span class="nav-icon">${item.icon}</span>` : ''}
+      ${item.label}
+      <span class="nav-badge ${item.id||''}" style="display:none">0</span>
+    </a>`;
+  }
+
+  const navHTML = groups.filter(g => g.items.length).map(g => {
+    const itemsHTML = g.items.map(renderItem).join('');
+    if (!g.section) return itemsHTML;
+    if (!g.collapsible) return `<div class="nav-section" style="cursor:default;pointer-events:none">${g.section}</div>${itemsHTML}`;
+
+    // Aperta se contiene la pagina corrente
+    const hasActive = g.items.some(i => i.id === currentPage);
+    const openClass = hasActive ? 'open' : '';
+    const sectionId = 'nav-sec-' + g.section.toLowerCase().replace(/\s+/g, '-');
+    return `
+      <div class="nav-section ${openClass}" id="${sectionId}" onclick="toggleNavSection('${sectionId}')">
+        ${g.section} <span class="nav-section-arrow">▶</span>
+      </div>
+      <div class="nav-group-items ${openClass}" id="${sectionId}-items">
+        ${itemsHTML}
+      </div>`;
   }).join('');
+
+  window.toggleNavSection = function(id) {
+    const hdr = document.getElementById(id);
+    const items = document.getElementById(id + '-items');
+    if (!hdr || !items) return;
+    hdr.classList.toggle('open');
+    items.classList.toggle('open');
+    // Salva stato in sessionStorage
+    const state = JSON.parse(sessionStorage.getItem('nav_sections') || '{}');
+    state[id] = hdr.classList.contains('open');
+    sessionStorage.setItem('nav_sections', JSON.stringify(state));
+  };
 
   const initials = (profile?.full_name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 

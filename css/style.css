@@ -85,13 +85,32 @@ body {
 }
 
 .nav-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 8px 16px 4px;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 1.2px;
   color: rgba(255,255,255,0.35);
   font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: color .15s;
 }
+.nav-section:hover { color: rgba(255,255,255,.6); }
+.nav-section-arrow {
+  font-size: 9px;
+  transition: transform .2s;
+  opacity: .6;
+}
+.nav-section.open .nav-section-arrow { transform: rotate(90deg); }
+.nav-group-items {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height .25s ease;
+}
+.nav-group-items.open { max-height: 600px; }
 
 .nav-item {
   display: flex;
