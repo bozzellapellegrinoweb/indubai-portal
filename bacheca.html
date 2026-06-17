@@ -227,7 +227,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const profile = sb.getCurrentProfile();
   isBkAdmin = profile?.role === 'admin';
 
-  initApp('bacheca');
   await Promise.all([loadUsers(), loadPosts()]);
 });
 
