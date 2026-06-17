@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <link rel="manifest" href="/manifest-admin.json">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>P&amp;W — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+</head>
+<body>
+<div class="main-content">
+  <div class="topbar">
+    <div>
+      <h1 style="font-size:22px;font-weight:800;margin:0">◉ P&amp;W</h1>
+      <div style="font-size:13px;color:var(--text-muted)">Clienti gestiti dal partner P&amp;W</div>
+    </div>
+    <div style="font-size:13px;color:var(--text-muted)" id="top-count"></div>
+  </div>
+  <div class="content-body" style="padding:24px">
+    <div id="table-wrap">
+      <div class="loading-overlay"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script>
+async function load() {
+  try {
+    const rows = await sb.db.select('clients', {
+      filter: 'accounting_partner=eq.p_w&is_active=eq.true',
+      columns: 'id,company_name,contact_name,email,phone,vat_number,created_at',
+      order: 'company_name.asc',
+    });
+
+    const count = rows?.length || 0;
+    document.getElementById('top-count').textContent = count + ' client' + (count === 1 ? 'e' : 'i');
+
+    if (!count) {
+      document.getElementById('table-wrap').innerHTML =
+        '<div class="empty-state" style="padding:60px;text-align:center;color:var(--text-muted)"><div style="font-size:36px;margin-bottom:12px">◉</div><p style="font-size:14px;font-weight:500">Nessun cliente assegnato a P&amp;W</p></div>';
+      return;
+    }
+
+    document.getElementById('table-wrap').innerHTML = `
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:var(--surface2)">
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Azienda</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Referente</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Email</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Telefono</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">P.IVA UAE</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Dal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+          <tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s"
+              onclick="window.location='/client-detail.html?id=${r.id}'"
+              onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+            <td style="padding:10px 14px;font-weight:700;color:var(--text-primary)">${ui.escapeHtml(r.company_name)}</td>
+            <td style="padding:10px 14px;color:var(--text-secondary)">${ui.escapeHtml(r.contact_name || '—')}</td>
+            <td style="padding:10px 14px;color:var(--text-muted);font-size:12px">${r.email ? `<a href="mailto:${ui.escapeHtml(r.email)}" style="color:var(--primary);text-decoration:none">${ui.escapeHtml(r.email)}</a>` : '—'}</td>
+            <td style="padding:10px 14px;color:var(--text-muted);font-size:12px">${ui.escapeHtml(r.phone || '—')}</td>
+            <td style="padding:10px 14px;font-size:12px;font-family:monospace">${ui.escapeHtml(r.vat_number || '—')}</td>
+            <td style="padding:10px 14px;color:var(--text-muted);font-size:12px">${ui.formatDate(r.created_at)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      </div>`;
+  } catch(e) {
+    document.getElementById('table-wrap').innerHTML =
+      `<div style="color:#dc2626;padding:24px;font-size:13px">Errore: ${ui.escapeHtml(e.message)}</div>`;
+  }
+}
+load();
+</script>
+</body>
+</html>

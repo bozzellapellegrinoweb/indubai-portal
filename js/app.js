@@ -25,7 +25,7 @@
   const ROLE_PAGES_DEFAULT = {
     admin:        null,   // null = all pages
     senior:       null,   // all pages (admin section hidden by nav filter)
-    junior:       ['index','tasks','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','documents','search','news','notifiche','reports'],
+    junior:       ['index','tasks','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports'],
     mini_admin:   ['index','tasks','clients','documents','search','news','notifiche'],
     collaborator: ['index','tasks','clients','documents','search','news','notifiche'],
   };
@@ -57,6 +57,8 @@
     { id: 'vat',        icon: '◇', label: 'VAT Register',   href: '/vat.html',        section: 'COMPLIANCE' },
     { id: 'corp-tax',   icon: '◈', label: 'Corporate Tax',  href: '/corp-tax.html' },
     { id: 'affinitas',  icon: '◉', label: 'Affinitas',      href: '/affinitas.html' },
+    { id: 'vat-partner', icon: '', label: '↳ VAT Consultant', href: '/vat-partner.html' },
+    { id: 'pw',         icon: '', label: '↳ P&W',            href: '/pw.html' },
     { id: 'reports',    icon: '📊', label: 'Report',         href: '/reports.html',    section: 'ANALYTICS' },
     { id: 'news',       icon: '📰', label: 'UAE News',       href: '/news.html' },
     { id: 'search',     icon: '🔍', label: 'Ricerca',        href: '/search.html' },
@@ -328,7 +330,7 @@
     'documents': 'Documenti', 'vat': 'VAT Register', 'corp-tax': 'Corporate Tax',
     'payments': 'Abbonamenti', 'statements': 'Estratti', 'onboarding': 'Onboarding',
     'reports': 'Report', 'news': 'UAE News', 'search': 'Ricerca', 'users': 'Utenti', 'notifiche': 'Notifiche',
-    'affinitas': 'Affinitas', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
+    'affinitas': 'Affinitas', 'vat-partner': 'VAT Consultant', 'pw': 'P&W', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
     'client-detail': 'Cliente', 'attivita': 'Attività Staff', 'broadcast': 'Broadcast', 'bacheca': 'Bacheca',
     'reconciliation': 'Riconciliazione',
   };

@@ -342,7 +342,7 @@ function escapeHtml(str) {
 }
 
 function partnerLabel(p) {
-  const map = { noi: 'Noi', vat_consultant: 'VAT Consultant', affinitas: 'Affinitas', in_sospeso: 'In Sospeso', altro: 'Altro' };
+  const map = { noi: 'Noi', vat_consultant: 'VAT Consultant', affinitas: 'Affinitas', p_w: 'P&W', in_sospeso: 'In Sospeso', altro: 'Altro' };
   return map[p] || p || '—';
 }
 
