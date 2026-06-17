@@ -31,7 +31,7 @@
   };
 
   function _getAllowed(r) {
-    if (r === 'admin') return null;
+    if (r === 'admin' || r === 'senior') return null; // sempre tutte le pagine
     if (_dynPerms && r in _dynPerms) return _dynPerms[r];
     if (r in ROLE_PAGES_DEFAULT) return ROLE_PAGES_DEFAULT[r];
     return ['index','tasks','notifiche']; // ruolo sconosciuto = accesso minimo
