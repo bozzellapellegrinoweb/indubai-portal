@@ -211,7 +211,7 @@ function renderTable() {
 
   if (!filtered.length) {
     document.getElementById('table-wrap').innerHTML =
-      `<div class="empty-state"><div class="empty-icon">📋</div><h3>Nessun risultato</h3></div>`;
+      `<div class="empty-state"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div><h3>Nessun risultato</h3></div>`;
     return;
   }
 
@@ -256,7 +256,7 @@ function renderTable() {
             <td style="font-size:12px">${r.application_submitted ? `<span class="badge badge-ok">${ui.formatDate(r.application_submitted)}</span>` : '<span class="badge badge-pending">Non fatto</span>'}</td>
             <td style="font-size:12px">${r.approval_date ? `<span class="badge badge-ok">${ui.formatDate(r.approval_date)}</span>` : '—'}</td>
             <td>${statusBadge(r)}</td>
-            <td><button class="btn btn-ghost btn-sm" onclick="openEdit('${r.id}')">✎ Modifica</button></td>
+            <td><button class="btn btn-ghost btn-sm" onclick="openEdit('${r.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Modifica</button></td>
           </tr>`;
         }).join('')}
       </tbody>

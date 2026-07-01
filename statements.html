@@ -84,7 +84,7 @@
             <option value="2024">2024</option>
           </select>
           <div style="position:relative">
-            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;pointer-events:none">🔍</span>
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text-muted)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
             <input type="text" id="search" placeholder="Cerca cliente..." style="padding-left:30px;min-width:200px">
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
@@ -293,7 +293,7 @@ function renderGrid() {
       </thead>
       <tbody>${rows}</tbody>
     </table>` :
-    `<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><h3>Nessun risultato</h3><p>Prova a cambiare i filtri</p></div>`;
+    `<div class="empty-state" style="padding:40px"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><h3>Nessun risultato</h3><p>Prova a cambiare i filtri</p></div>`;
 
   renderPagination(filtered.length, totalPages);
 }

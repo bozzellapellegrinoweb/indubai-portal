@@ -95,7 +95,7 @@
         <div class="kpi-card success"><div class="kpi-label">Completati e pagati</div><div class="kpi-value" id="kpi-done">—</div><div class="kpi-sub">Bilancio ✓ + Pagato ✓</div><div class="kpi-icon">✓</div></div>
         <div class="kpi-card danger"><div class="kpi-label">Da fare</div><div class="kpi-value" id="kpi-todo">—</div><div class="kpi-sub">Bilancio non ancora fatto</div><div class="kpi-icon">✕</div></div>
         <div class="kpi-card warn"><div class="kpi-label">Da incassare</div><div class="kpi-value" id="kpi-unpaid">—</div><div class="kpi-sub">Bilancio fatto, non pagato</div><div class="kpi-icon">€</div></div>
-        <div class="kpi-card" style="border-color:#fbcfe8;background:#fdf2f8"><div class="kpi-label">Da non fare</div><div class="kpi-value" id="kpi-non-fare" style="color:#9d174d">—</div><div class="kpi-sub">Esclusi dal bilancio</div><div class="kpi-icon">🚫</div></div>
+        <div class="kpi-card" style="border-color:#fbcfe8;background:#fdf2f8"><div class="kpi-label">Da non fare</div><div class="kpi-value" id="kpi-non-fare" style="color:#9d174d">—</div><div class="kpi-sub">Esclusi dal bilancio</div><div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div></div>
       </div>
 
       <!-- Toolbar -->
@@ -105,13 +105,13 @@
             <option value="2026">2026</option>
             <option value="2025">2025</option>
           </select>
-          <input type="text" id="search" class="form-control" placeholder="🔍 Cerca cliente..." style="max-width:260px">
+          <input type="text" id="search" class="form-control" placeholder="Cerca cliente..." style="max-width:260px">
           <span style="font-size:12px;color:var(--text-muted);margin-left:auto" id="count-label">—</span>
           <div class="filter-chip on"  data-f="all"      onclick="setFilter('all',this)">Tutti</div>
           <div class="filter-chip chip-ok"   data-f="done"     onclick="setFilter('done',this)">✓ Completati</div>
           <div class="filter-chip chip-warn" data-f="unpaid"   onclick="setFilter('unpaid',this)">€ Da incassare</div>
           <div class="filter-chip chip-red"  data-f="todo"     onclick="setFilter('todo',this)">✕ Da fare</div>
-          <div class="filter-chip" data-f="non_fare" onclick="setFilter('non_fare',this)" style="--on-bg:#9d174d">🚫 Da non fare</div>
+          <div class="filter-chip" data-f="non_fare" onclick="setFilter('non_fare',this)" style="--on-bg:#9d174d"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Da non fare</div>
         </div>
       </div>
 
@@ -144,10 +144,10 @@
 <!-- Fatto da picker -->
 <div id="fatto-picker">
   <button class="fp-opt" data-val="">— Nessuno</button>
-  <button class="fp-opt" data-val="noi">🔵 Noi</button>
-  <button class="fp-opt" data-val="vat">🟡 VAT Consultant</button>
-  <button class="fp-opt" data-val="affinitas">🟣 Affinitas</button>
-  <button class="fp-opt" data-val="non_fare">🚫 Da non fare</button>
+  <button class="fp-opt" data-val="noi"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#3b82f6"></span> Noi</button>
+  <button class="fp-opt" data-val="vat"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#eab308"></span> VAT Consultant</button>
+  <button class="fp-opt" data-val="affinitas"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#a855f7"></span> Affinitas</button>
+  <button class="fp-opt" data-val="non_fare"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Da non fare</button>
 </div>
 
 <script src="/js/supabase.js"></script>
@@ -169,7 +169,7 @@ function rowStatus(b) {
 
 function fattoBadge(val) {
   if (!val) return '<span class="fatto-badge fb-none">—</span>';
-  const map = { noi:'🔵 Noi', vat:'🟡 VAT', affinitas:'🟣 Affinitas', non_fare:'🚫 Da non fare' };
+  const map = { noi:'<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#3b82f6"></span> Noi', vat:'<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#eab308"></span> VAT', affinitas:'<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#a855f7"></span> Affinitas', non_fare:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Da non fare' };
   const cls  = { noi:'fb-noi', vat:'fb-vat', affinitas:'fb-affinitas', non_fare:'fb-non_fare' };
   return `<span class="fatto-badge ${cls[val]||'fb-none'}">${map[val]||val}</span>`;
 }
@@ -369,7 +369,7 @@ async function saveField(clientId, data) {
     await sb.db.insert('bilanci', { client_id: clientId, year: currentYear, ...data });
     bilanci[clientId] = { client_id: clientId, year: currentYear };
   }
-  ui.showToast('Salvato ✓', 'success');
+  ui.showToast('Salvato', 'success');
 }
 
 // ── events ─────────────────────────────────────────────────────
