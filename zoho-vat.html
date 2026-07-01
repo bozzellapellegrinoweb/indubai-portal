@@ -33,17 +33,17 @@
       <!-- KPI cards -->
       <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
         <div class="kpi-card danger" style="background:linear-gradient(135deg,#7f1d1d,#dc2626);border:none" onclick="setFilter('exceeded')" >
-          <div class="kpi-label" style="color:rgba(255,255,255,.65)">🚨 Soglia Superata</div>
+          <div class="kpi-label" style="color:rgba(255,255,255,.65);display:flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Soglia Superata</div>
           <div class="kpi-value" id="cnt-exceeded" style="color:white">—</div>
           <div class="kpi-sub" style="color:rgba(255,255,255,.6)">VAT obbligatoria oltre AED 375k</div>
         </div>
         <div class="kpi-card" style="background:linear-gradient(135deg,#78350f,#d97706);border:none" onclick="setFilter('warning')">
-          <div class="kpi-label" style="color:rgba(255,255,255,.65)">⚠️ In Avvicinamento</div>
+          <div class="kpi-label" style="color:rgba(255,255,255,.65);display:flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> In Avvicinamento</div>
           <div class="kpi-value" id="cnt-warning" style="color:white">—</div>
           <div class="kpi-sub" style="color:rgba(255,255,255,.6)">Oltre AED 300.000</div>
         </div>
         <div class="kpi-card success" onclick="setFilter('all')">
-          <div class="kpi-label">✓ Sotto Soglia</div>
+          <div class="kpi-label" style="display:flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Sotto Soglia</div>
           <div class="kpi-value" id="cnt-ok">—</div>
           <div class="kpi-sub">Sotto AED 300.000</div>
         </div>
@@ -56,8 +56,8 @@
           <input type="text" class="form-control" id="search-vat" placeholder="Cerca cliente..." style="min-width:220px" oninput="renderTable()">
         </div>
         <button class="btn btn-primary btn-sm" id="f-all"      onclick="setFilter('all')">Tutti</button>
-        <button class="btn btn-sm"             id="f-exceeded" onclick="setFilter('exceeded')" style="color:#dc2626;border-color:#dc2626">🚨 Soglia superata</button>
-        <button class="btn btn-sm"             id="f-warning"  onclick="setFilter('warning')"  style="color:#d97706;border-color:#d97706">⚠️ In avvicinamento</button>
+        <button class="btn btn-sm"             id="f-exceeded" onclick="setFilter('exceeded')" style="color:#dc2626;border-color:#dc2626;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Soglia superata</button>
+        <button class="btn btn-sm"             id="f-warning"  onclick="setFilter('warning')"  style="color:#d97706;border-color:#d97706;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> In avvicinamento</button>
         <span style="margin-left:auto;font-size:12px;color:var(--text-muted)" id="last-update"></span>
       </div>
 
@@ -164,17 +164,17 @@ function renderTable() {
     const color = r.vat_registered ? 'var(--success)' : r.vat_status==='exceeded' ? 'var(--danger)' : r.vat_status==='warning' ? '#d97706' : r.rolling12===null ? 'var(--text-muted)' : 'var(--success)';
     
     const statusBadge = r.vat_registered
-      ? '<span class="badge success">✓ Registrata</span>'
+      ? '<span class="badge success"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Registrata</span>'
       : r.vat_status==='exceeded'
-      ? '<span class="badge danger">🚨 Superata</span>'
+      ? '<span class="badge danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Superata</span>'
       : r.vat_status==='warning'
-      ? '<span class="badge warning">⚠️ Vicino</span>'
+      ? '<span class="badge warning"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Vicino</span>'
       : r.rolling12===null
       ? '<span class="badge">Non sincronizzato</span>'
-      : '<span class="badge success">✓ OK</span>';
+      : '<span class="badge success"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK</span>';
 
     const vatBadge = r.vat_registered
-      ? '<span class="badge success">✓ Registrata</span>'
+      ? '<span class="badge success"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Registrata</span>'
       : r.vat_status === 'ok'
       ? '<span style="color:var(--text-muted)">—</span>'
       : `<button onclick="event.stopPropagation();markVATDone('${r.id}')" class="btn btn-sm" style="color:#d97706;border-color:#d97706">Registra</button>`;
@@ -218,10 +218,10 @@ async function syncNow() {
     });
     const d = await res.json();
     if (d.error) throw new Error(d.error);
-    document.getElementById('sync-status').textContent = `✅ Sincronizzati ${d.synced} clienti`;
+    document.getElementById('sync-status').textContent = `Sincronizzati ${d.synced} clienti`;
     await load();
   } catch(e) {
-    document.getElementById('sync-status').textContent = '❌ ' + e.message;
+    document.getElementById('sync-status').textContent = e.message;
   }
   btn.disabled = false; btn.textContent = '⟳ Aggiorna ora';
 }
