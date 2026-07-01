@@ -121,7 +121,7 @@
 <div class="main-content">
   <div class="topbar">
     <div>
-      <h1 style="font-size:22px;font-weight:800;margin:0">📌 Bacheca</h1>
+      <h1 style="font-size:22px;font-weight:800;margin:0;display:flex;align-items:center;gap:10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24z"/></svg> Bacheca</h1>
       <div style="font-size:13px;color:var(--text-muted)">Note e aggiornamenti condivisi tra il team</div>
     </div>
     <div style="display:flex;gap:10px;align-items:center">
@@ -134,7 +134,7 @@
     <!-- New post form (collapsed by default) -->
     <div id="new-post-form" style="display:none">
       <div class="bk-new-card">
-        <h3>✏️ Nuovo post</h3>
+        <h3 style="display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Nuovo post</h3>
         <div class="form-field">
           <label>Titolo *</label>
           <input type="text" class="form-inp" id="np-title" placeholder="Di cosa vuoi parlare?">
@@ -146,7 +146,7 @@
         <div class="form-field">
           <label>Allegato</label>
           <button type="button" class="upload-zone" onclick="document.getElementById('np-file-input').click()">
-            <span style="font-size:18px">📎</span>
+            <span style="display:inline-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></span>
             <span class="upload-zone-label" id="np-file-label">Clicca per allegare un file</span>
           </button>
           <input type="file" id="np-file-input" style="display:none" onchange="onFileChosen(this)">
@@ -165,7 +165,7 @@
       <!-- Left: post list -->
       <div>
         <div class="bk-list" id="bk-list">
-          <div class="bk-empty"><div class="ei">📌</div><p>Caricamento...</p></div>
+          <div class="bk-empty"><div class="ei"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24z"/></svg></div><p>Caricamento...</p></div>
         </div>
       </div>
 
@@ -173,7 +173,7 @@
       <div class="bk-detail" id="bk-detail">
         <div class="bkd-drag"></div>
         <div class="bk-no-select" id="bk-no-select">
-          <div class="ei">👈</div>
+          <div class="ei"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></div>
           <p>Seleziona un post per leggere e commentare</p>
         </div>
         <div id="bk-detail-content" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden">
@@ -185,12 +185,12 @@
           <div class="bkd-input">
             <div class="bkd-reply-ctx" id="bkd-reply-ctx" style="display:none">
               <span id="bkd-reply-label"></span>
-              <button onclick="clearReply()">✕</button>
+              <button onclick="clearReply()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <!-- File allegato commento -->
             <div id="cmt-file-preview" style="display:none;align-items:center;gap:8px;background:#eff6ff;border-radius:8px;padding:7px 12px;margin-bottom:8px;font-size:12px;color:var(--primary);font-weight:600">
-              📎 <span id="cmt-file-name"></span>
-              <button onclick="clearCmtFile()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:14px;color:var(--primary);padding:0;line-height:1">✕</button>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg> <span id="cmt-file-name"></span>
+              <button onclick="clearCmtFile()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--primary);padding:0;line-height:1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div class="cmt-input-row">
               <div class="mention-dropdown" id="mention-dropdown" style="display:none"></div>
@@ -198,7 +198,7 @@
                 oninput="onCmtInput(event)" onkeydown="onCmtKeydown(event)"></textarea>
               <button type="button" title="Allega file" onclick="document.getElementById('cmt-file-input').click()"
                 style="padding:10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:16px;flex-shrink:0;transition:border .15s"
-                onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">📎</button>
+                onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>
               <input type="file" id="cmt-file-input" style="display:none" onchange="onCmtFileChosen(this)">
               <button class="cmt-send" id="cmt-send-btn" onclick="submitComment()">Invia</button>
             </div>
@@ -272,7 +272,7 @@ async function loadPosts() {
     renderList();
   } catch(e) {
     document.getElementById('bk-list').innerHTML =
-      `<div class="bk-empty"><div class="ei">⚠️</div><p>Errore caricamento: ${ui.escapeHtml(e.message)}</p></div>`;
+      `<div class="bk-empty"><div class="ei"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><p>Errore caricamento: ${ui.escapeHtml(e.message)}</p></div>`;
   }
 }
 
@@ -280,7 +280,7 @@ async function loadPosts() {
 function renderList() {
   const el = document.getElementById('bk-list');
   if (!posts.length) {
-    el.innerHTML = `<div class="bk-empty"><div class="ei">📌</div><p>Nessun post ancora.<br>Sii il primo a scrivere qualcosa!</p></div>`;
+    el.innerHTML = `<div class="bk-empty"><div class="ei"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24z"/></svg></div><p>Nessun post ancora.<br>Sii il primo a scrivere qualcosa!</p></div>`;
     return;
   }
   el.innerHTML = posts.map(p => {
@@ -291,7 +291,7 @@ function renderList() {
     return `
     <div class="bk-post${p.pinned ? ' pinned' : ''}${isSelected ? ' selected' : ''}" onclick="selectPost('${p.id}')">
       <div class="bk-post-head">
-        ${p.pinned ? `<div class="bk-pin-bar">📌 Fissato</div>` : ''}
+        ${p.pinned ? `<div class="bk-pin-bar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24z"/></svg> Fissato</div>` : ''}
         <div class="bk-title">${ui.escapeHtml(p.title)}</div>
         ${bodyPreview ? `<div class="bk-body-preview">${bodyPreview}</div>` : ''}
         <div class="bk-meta">
@@ -301,8 +301,8 @@ function renderList() {
         </div>
       </div>
       <div class="bk-counts">
-        <span class="bk-count ${p.commentCount ? 'has' : ''}">💬 ${p.commentCount} commenti</span>
-        ${p.file_url ? `<span class="bk-att-chip">📎 ${ui.escapeHtml(p.file_name || 'allegato')}</span>` : ''}
+        <span class="bk-count ${p.commentCount ? 'has' : ''}" style="display:inline-flex;align-items:center;gap:5px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> ${p.commentCount} commenti</span>
+        ${p.file_url ? `<span class="bk-att-chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg> ${ui.escapeHtml(p.file_name || 'allegato')}</span>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -345,11 +345,11 @@ function renderDetailHeader() {
     <div class="bkd-actions">
       ${isBkAdmin ? `
         <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px" onclick="togglePin('${p.id}',${p.pinned})">
-          ${p.pinned ? '📌 Rimuovi pin' : '📌 Fissa'}
+          ${p.pinned ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24z"/></svg> Rimuovi pin' : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24z"/></svg> Fissa'}
         </button>` : ''}
       ${canAdmin ? `
         <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;color:#dc2626;border-color:#fca5a5" onclick="deletePost('${p.id}')">
-          🗑 Elimina
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Elimina
         </button>` : ''}
     </div>`;
 }
@@ -361,7 +361,7 @@ async function loadComments() {
 
   if (currentPost.file_url) {
     body.innerHTML += `<a class="bkd-attachment" href="${currentPost.file_url}" target="_blank" rel="noopener">
-      📎 <span>${ui.escapeHtml(currentPost.file_name || 'Allegato')}</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg> <span>${ui.escapeHtml(currentPost.file_name || 'Allegato')}</span>
     </a>`;
   }
 
@@ -415,11 +415,11 @@ function renderComment(c, isReply = false) {
       <div class="cmt-top">
         <span class="cmt-author">${ui.escapeHtml(c.profiles?.full_name || 'Utente')}</span>
         <span class="cmt-time">${relativeTime(c.created_at)}</span>
-        ${canDel ? `<button class="cmt-del" onclick="deleteComment('${c.id}')">🗑</button>` : ''}
+        ${canDel ? `<button class="cmt-del" onclick="deleteComment('${c.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>` : ''}
       </div>
       ${c.body ? `<div class="cmt-text">${formatMentions(ui.escapeHtml(c.body))}</div>` : ''}
-      ${c.file_url ? `<a class="bkd-attachment" href="${c.file_url}" target="_blank" rel="noopener" style="margin-top:8px;font-size:12px;padding:6px 10px">📎 ${ui.escapeHtml(c.file_name || 'allegato')}</a>` : ''}
-      ${!isReply ? `<button class="cmt-reply-btn" onclick="setReply('${c.id}','${ui.escapeHtml(c.profiles?.full_name || 'Utente')}')">↩ Rispondi</button>` : ''}
+      ${c.file_url ? `<a class="bkd-attachment" href="${c.file_url}" target="_blank" rel="noopener" style="margin-top:8px;font-size:12px;padding:6px 10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg> ${ui.escapeHtml(c.file_name || 'allegato')}</a>` : ''}
+      ${!isReply ? `<button class="cmt-reply-btn" onclick="setReply('${c.id}','${ui.escapeHtml(c.profiles?.full_name || 'Utente')}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 00-4-4H4"/></svg> Rispondi</button>` : ''}
     </div>
   </div>`;
 }
@@ -453,7 +453,7 @@ async function submitComment() {
 
   let file_url = null, file_name = null;
   if (cmtFile) {
-    btn.textContent = '📎...';
+    btn.textContent = '...';
     try {
       const uploaded = await sb.db.uploadFile(cmtFile);
       file_url  = uploaded.url;
@@ -498,7 +498,7 @@ async function submitComment() {
 function setReply(commentId, authorName) {
   replyTo = { id: commentId, author: authorName };
   document.getElementById('bkd-reply-ctx').style.display = 'flex';
-  document.getElementById('bkd-reply-label').textContent = `↩ Risposta a ${authorName}`;
+  document.getElementById('bkd-reply-label').textContent = `Risposta a ${authorName}`;
   document.getElementById('cmt-inp').focus();
 }
 
@@ -523,14 +523,14 @@ function toggleNewPost() {
   const btn = document.getElementById('btn-new-post');
   const visible = f.style.display !== 'none';
   f.style.display = visible ? 'none' : 'block';
-  btn.textContent = visible ? '+ Nuovo post' : '✕ Annulla';
+  btn.textContent = visible ? '+ Nuovo post' : 'Annulla';
   if (!visible) document.getElementById('np-title').focus();
 }
 
 function onFileChosen(input) {
   npFile = input.files[0] || null;
   document.getElementById('np-file-label').textContent =
-    npFile ? `📎 ${npFile.name}` : 'Clicca per allegare un file';
+    npFile ? `${npFile.name}` : 'Clicca per allegare un file';
   document.getElementById('np-file-label').className =
     npFile ? 'file-chosen' : 'upload-zone-label';
 }
