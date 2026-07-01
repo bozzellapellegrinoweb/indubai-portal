@@ -25,7 +25,7 @@
     .perm-matrix td { padding:8px 12px; border-bottom:1px solid var(--border); }
     .perm-matrix tr:hover { background:#f8fafc; }
     .perm-matrix .page-name { font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:8px; }
-    .perm-matrix .page-icon { font-size:15px; width:20px; text-align:center; }
+    .perm-matrix .page-icon { width:20px; display:inline-flex; align-items:center; justify-content:center; color: var(--text-muted); }
     .perm-check { width:18px; height:18px; cursor:pointer; accent-color:var(--primary); }
     .perm-section-row td { background:#f0f4f8; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--text-muted); padding:6px 12px !important; }
   </style>
@@ -50,7 +50,7 @@
       <div style="max-width:900px">
         <div class="card" style="margin-bottom:20px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
           <div>
-            <div style="font-size:14px;font-weight:700">🔐 Cambia la mia password</div>
+            <div style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Cambia la mia password</div>
             <div style="font-size:12px;color:var(--text-muted)">Aggiorna la password di accesso</div>
           </div>
           <button class="btn btn-ghost" onclick="openChangePwd()">Cambia Password</button>
@@ -61,19 +61,19 @@
         <div class="card" style="margin-top:24px;padding:20px 24px" id="perms-section">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
             <div>
-              <div style="font-size:16px;font-weight:800;color:var(--text-primary)">🔐 Permessi per Ruolo</div>
+              <div style="font-size:16px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Permessi per Ruolo</div>
               <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Gestisci quali sezioni può vedere ogni ruolo. Admin vede sempre tutto.</div>
             </div>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-ghost btn-sm" onclick="resetPermissions()">↩ Reset predefiniti</button>
+              <button class="btn btn-ghost btn-sm" onclick="resetPermissions()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Reset predefiniti</button>
               <button class="btn btn-accent btn-sm" id="btn-save-perms" onclick="savePermissions()">Salva Permessi</button>
             </div>
           </div>
           <div id="perms-grid"><div class="loading-overlay" style="min-height:100px"><div class="spinner"></div></div></div>
           <div id="perms-setup" style="display:none;margin-top:16px;padding:14px 18px;background:#fef9ec;border-radius:10px;border:1.5px solid #fcd34d">
-            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px">⚙ Setup richiesto</div>
+            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px;display:flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Setup richiesto</div>
             <div style="font-size:12px;color:#78350f;margin-bottom:12px">Per attivare la gestione permessi dinamica, esegui questo SQL nel SQL Editor di Supabase:</div>
-            <button class="btn btn-accent btn-sm" onclick="copyPermSetupSQL()">📋 Copia SQL e apri Editor →</button>
+            <button class="btn btn-accent btn-sm" onclick="copyPermSetupSQL()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copia SQL e apri Editor</button>
           </div>
         </div>
       </div>
@@ -127,7 +127,7 @@
 <div class="modal-overlay" id="modal-pwd" style="display:none">
   <div class="modal" style="max-width:400px">
     <div class="modal-header">
-      <div class="modal-title">🔐 Cambia Password</div>
+      <div class="modal-title">Cambia Password</div>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-pwd').style.display='none'">✕</button>
     </div>
     <div class="modal-body">
@@ -176,8 +176,8 @@ async function loadUsers() {
           <div style="font-size:12px;color:var(--text-muted)">Creato ${ui.formatDate(p.created_at)}</div>
         </div>
         <span class="role-badge rb-${p.role}">${ROLE_LABELS[p.role]||p.role}</span>
-        <button class="btn btn-ghost btn-sm" onclick="openEdit('${p.id}','${ui.escapeHtml(p.full_name)}','${p.role}')">✎ Modifica</button>
-        ${p.id !== myId ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteUser('${p.id}','${ui.escapeHtml(p.full_name)}')">🗑</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="openEdit('${p.id}','${ui.escapeHtml(p.full_name)}','${p.role}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Modifica</button>
+        ${p.id !== myId ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteUser('${p.id}','${ui.escapeHtml(p.full_name)}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>` : ''}
       </div>`).join('');
   } catch(e) {
     document.getElementById('users-list').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
@@ -200,7 +200,7 @@ function openNew() {
 
 function openEdit(id, name, role) {
   editingId = id;
-  document.getElementById('modal-title').textContent = '✎ Modifica Utente';
+  document.getElementById('modal-title').textContent = 'Modifica Utente';
   document.getElementById('u-name').value = name;
   document.getElementById('u-role').value = role;
   document.getElementById('email-group').style.display = 'none';
@@ -231,7 +231,7 @@ async function saveUser() {
         showPwdSQL(editingId, newPwd);
         return;
       }
-      ui.showToast('Utente aggiornato ✓', 'success');
+      ui.showToast('Utente aggiornato', 'success');
       closeModal();
       await loadUsers();
     } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
@@ -337,7 +337,7 @@ async function changePassword() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Errore');
     document.getElementById('modal-pwd').style.display = 'none';
-    ui.showToast('Password cambiata ✓ — effettua il login di nuovo', 'success');
+    ui.showToast('Password cambiata — effettua il login di nuovo', 'success');
     setTimeout(() => sb.signOut(), 2000);
   } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
   finally { btn.disabled = false; btn.textContent = 'Salva Password'; }
@@ -347,31 +347,31 @@ async function changePassword() {
 const MANAGEABLE_ROLES = ['senior','junior','mini_admin','collaborator'];
 const ALL_PAGES = [
   { section:'OVERVIEW', pages: [
-    { id:'index',      icon:'◈', label:'Dashboard' },
-    { id:'tasks',      icon:'✓', label:'Task' },
-    { id:'notifiche',  icon:'🔔', label:'Notifiche' },
-    { id:'broadcast',  icon:'📢', label:'Broadcast' },
+    { id:'index',      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>', label:'Dashboard' },
+    { id:'tasks',      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>', label:'Task' },
+    { id:'notifiche',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>', label:'Notifiche' },
+    { id:'broadcast',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>', label:'Broadcast' },
   ]},
   { section:'GESTIONE', pages: [
-    { id:'clients',    icon:'◉', label:'Clienti' },
-    { id:'zoho-setup', icon:'↳', label:'Setup Zoho' },
-    { id:'zoho-vat',   icon:'↳', label:'Monitor VAT' },
-    { id:'documents',  icon:'📁', label:'Documenti' },
-    { id:'onboarding', icon:'✦', label:'Onboarding' },
-    { id:'statements', icon:'◎', label:'Estratti Conto' },
-    { id:'payments',   icon:'◆', label:'Abbonamenti' },
-    { id:'bilanci',    icon:'📒', label:'Bilanci' },
-    { id:'ferie',      icon:'🏖', label:'Ferie & Permessi' },
+    { id:'clients',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label:'Clienti' },
+    { id:'zoho-setup', icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 01-4 4H4"/></svg>', label:'Setup Zoho' },
+    { id:'zoho-vat',   icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 01-4 4H4"/></svg>', label:'Monitor VAT' },
+    { id:'documents',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>', label:'Documenti' },
+    { id:'onboarding', icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>', label:'Onboarding' },
+    { id:'statements', icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', label:'Estratti Conto' },
+    { id:'payments',   icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', label:'Abbonamenti' },
+    { id:'bilanci',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label:'Bilanci' },
+    { id:'ferie',      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>', label:'Ferie & Permessi' },
   ]},
   { section:'COMPLIANCE', pages: [
-    { id:'vat',        icon:'◇', label:'VAT Register' },
-    { id:'corp-tax',   icon:'◈', label:'Corporate Tax' },
-    { id:'affinitas',  icon:'◉', label:'Affinitas' },
+    { id:'vat',        icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>', label:'VAT Register' },
+    { id:'corp-tax',   icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>', label:'Corporate Tax' },
+    { id:'affinitas',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label:'Affinitas' },
   ]},
   { section:'ANALYTICS', pages: [
-    { id:'reports',    icon:'📊', label:'Report' },
-    { id:'news',       icon:'📰', label:'UAE News' },
-    { id:'search',     icon:'🔍', label:'Ricerca' },
+    { id:'reports',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label:'Report' },
+    { id:'news',       icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>', label:'UAE News' },
+    { id:'search',     icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>', label:'Ricerca' },
   ]},
 ];
 
@@ -554,7 +554,7 @@ loadPermissions();
 <div class="modal-overlay" id="modal-sql" style="display:none">
   <div class="modal" style="max-width:600px">
     <div class="modal-header">
-      <div class="modal-title">📋 Esegui nel SQL Editor</div>
+      <div class="modal-title">Esegui nel SQL Editor</div>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-sql').style.display='none'">✕</button>
     </div>
     <div class="modal-body">
@@ -565,7 +565,7 @@ loadPermissions();
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-sql').style.display='none'">Annulla</button>
-      <button class="btn btn-accent" onclick="copyAndOpenSQL()">📋 Copia SQL e apri Editor →</button>
+      <button class="btn btn-accent" onclick="copyAndOpenSQL()">Copia SQL e apri Editor</button>
     </div>
   </div>
 </div>
