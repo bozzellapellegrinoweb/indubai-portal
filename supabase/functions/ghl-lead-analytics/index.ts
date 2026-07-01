@@ -114,69 +114,109 @@ function topEntries(map: Record<string, number>, limit: number) {
     .map(([label, count]) => ({ label, count }));
 }
 
+function aggregate(contacts: GhlContact[], dayGranularity: boolean) {
+  const bySource: Record<string, number> = {};
+  const byLandingPage: Record<string, number> = {};
+  const byTag: Record<string, number> = {};
+  const trend: Record<string, Record<string, number>> = {}; // period -> source -> count
+
+  for (const c of contacts) {
+    const source = normalizeSource(c);
+    bump(bySource, source);
+
+    const landing = (c.source || "Non specificato").trim();
+    bump(byLandingPage, landing || "Non specificato");
+
+    for (const t of c.tags || []) bump(byTag, t);
+
+    const dateAdded = c.dateAdded || "";
+    if (dateAdded) {
+      const period = dayGranularity ? dateAdded.slice(0, 10) : dateAdded.slice(0, 7);
+      if (!trend[period]) trend[period] = {};
+      bump(trend[period], source);
+    }
+  }
+
+  const totalInRange = contacts.length;
+  const bySourceSorted = Object.entries(bySource)
+    .sort((a, b) => b[1] - a[1])
+    .map(([source, count]) => ({
+      source,
+      count,
+      pct: totalInRange ? Math.round((count / totalInRange) * 1000) / 10 : 0,
+    }));
+
+  const trendSorted = Object.entries(trend)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([period, sources]) => ({ period, sources }));
+
+  return {
+    totalInRange,
+    bySource: bySourceSorted,
+    trend: trendSorted,
+    topLandingPages: topEntries(byLandingPage, 10),
+    topTags: topEntries(byTag, 10),
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
     const url = new URL(req.url);
     const allTime = url.searchParams.get("all") === "1";
-    const days = allTime ? null : (parseInt(url.searchParams.get("days") || "90", 10) || 90);
+    const customStart = url.searchParams.get("start"); // YYYY-MM-DD
+    const customEnd = url.searchParams.get("end"); // YYYY-MM-DD
+    const wantCompare = url.searchParams.get("compare") === "1";
 
-    const end = Date.now();
-    const start = days ? end - days * 86400000 : null;
+    let start: number | null;
+    let end: number;
+    let days: number | null;
+
+    if (customStart && customEnd) {
+      start = new Date(customStart + "T00:00:00.000Z").getTime();
+      end = new Date(customEnd + "T23:59:59.999Z").getTime();
+      days = Math.max(1, Math.round((end - start) / 86400000));
+    } else if (allTime) {
+      start = null;
+      end = Date.now();
+      days = null;
+    } else {
+      days = parseInt(url.searchParams.get("days") || "90", 10) || 90;
+      end = Date.now();
+      start = end - days * 86400000;
+    }
+
+    const dayGranularity = days !== null && days <= 45;
 
     const [{ contacts, total }, allTimeTotalResp] = await Promise.all([
-      fetchAllContacts(start, days ? end : null),
+      fetchAllContacts(start, start ? end : null),
       allTime ? Promise.resolve(null) : ghlSearchContacts({ locationId: LOCATION_ID, pageLimit: 1 }),
     ]);
 
     const totalAllTime = allTime ? total : (allTimeTotalResp?.total ?? total);
+    const current = aggregate(contacts, dayGranularity);
 
-    const bySource: Record<string, number> = {};
-    const byLandingPage: Record<string, number> = {};
-    const byTag: Record<string, number> = {};
-    const trend: Record<string, Record<string, number>> = {}; // period -> source -> count
-    const dayGranularity = days !== null && days <= 45;
-
-    for (const c of contacts) {
-      const source = normalizeSource(c);
-      bump(bySource, source);
-
-      const landing = (c.source || "Non specificato").trim();
-      bump(byLandingPage, landing || "Non specificato");
-
-      for (const t of c.tags || []) bump(byTag, t);
-
-      const dateAdded = c.dateAdded || "";
-      if (dateAdded) {
-        const period = dayGranularity ? dateAdded.slice(0, 10) : dateAdded.slice(0, 7);
-        if (!trend[period]) trend[period] = {};
-        bump(trend[period], source);
-      }
+    let previousPeriod = null;
+    if (wantCompare && start) {
+      const duration = end - start;
+      const prevEnd = start - 1;
+      const prevStart = prevEnd - duration;
+      const { contacts: prevContacts } = await fetchAllContacts(prevStart, prevEnd);
+      const prevAgg = aggregate(prevContacts, dayGranularity);
+      previousPeriod = {
+        range: { start: new Date(prevStart).toISOString(), end: new Date(prevEnd).toISOString() },
+        totalInRange: prevAgg.totalInRange,
+        bySource: prevAgg.bySource,
+      };
     }
-
-    const trendSorted = Object.entries(trend)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([period, sources]) => ({ period, sources }));
-
-    const totalInRange = contacts.length;
-    const bySourceSorted = Object.entries(bySource)
-      .sort((a, b) => b[1] - a[1])
-      .map(([source, count]) => ({
-        source,
-        count,
-        pct: totalInRange ? Math.round((count / totalInRange) * 1000) / 10 : 0,
-      }));
 
     return new Response(
       JSON.stringify({
         range: { days, start: start ? new Date(start).toISOString() : null, end: new Date(end).toISOString() },
-        totalInRange,
         totalAllTime,
-        bySource: bySourceSorted,
-        trend: trendSorted,
-        topLandingPages: topEntries(byLandingPage, 10),
-        topTags: topEntries(byTag, 10),
+        previousPeriod,
+        ...current,
       }),
       { headers: cors },
     );

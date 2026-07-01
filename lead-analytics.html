@@ -9,19 +9,32 @@
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/config.js"></script>
   <style>
-    .la-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .la-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
     .la-range-btn { background: white; border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer; color: var(--text-muted); }
     .la-range-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
     .la-refresh-btn { margin-left: auto; background: #f0f4f8; border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
     .la-refresh-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+    .la-custom-range { display: flex; align-items: center; gap: 6px; background: white; border: 1.5px solid var(--border); border-radius: 8px; padding: 5px 8px; }
+    .la-custom-range input[type=date] { border: none; font-size: 12px; font-family: inherit; color: var(--text); outline: none; }
+    .la-custom-range span { font-size: 11px; color: var(--text-muted); }
+    .la-custom-apply { background: var(--accent); border: none; border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; color: #1e2d42; }
     .la-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
     .la-kpi { background: white; border: 1.5px solid var(--border); border-radius: 14px; padding: 18px 20px; }
     .la-kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-bottom: 8px; }
     .la-kpi-val { font-size: 26px; font-weight: 800; color: var(--primary); }
+    .la-kpi-delta { font-size: 12px; font-weight: 700; margin-top: 6px; }
+    .la-kpi-delta.up { color: var(--success); }
+    .la-kpi-delta.down { color: var(--danger); }
+    .la-kpi-delta.flat { color: var(--text-muted); }
     .la-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; margin-bottom: 20px; }
     @media (max-width: 900px) { .la-grid { grid-template-columns: 1fr; } }
     .la-card { background: white; border: 1.5px solid var(--border); border-radius: 14px; padding: 22px; }
-    .la-card-title { font-size: 14px; font-weight: 800; margin-bottom: 16px; }
+    .la-card-title { font-size: 14px; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .la-card-hint { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+    .la-source-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .la-source-chip { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 20px; border: 1.5px solid var(--border); font-size: 11px; font-weight: 700; cursor: pointer; user-select: none; background: white; color: var(--text); transition: all .12s; }
+    .la-source-chip.off { opacity: .4; }
+    .la-source-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .la-source-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; }
     .la-source-label { flex: 0 0 150px; font-size: 12px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .la-bar-track { flex: 1; height: 10px; border-radius: 6px; background: var(--surface2); overflow: hidden; }
@@ -60,6 +73,12 @@
         <button class="la-range-btn" data-days="180" onclick="setRange(180)">6 mesi</button>
         <button class="la-range-btn" data-days="365" onclick="setRange(365)">12 mesi</button>
         <button class="la-range-btn" data-days="all" onclick="setRange('all')">Da sempre</button>
+        <div class="la-custom-range">
+          <input type="date" id="la-start" />
+          <span>→</span>
+          <input type="date" id="la-end" />
+          <button class="la-custom-apply" onclick="applyCustomRange()">Applica</button>
+        </div>
         <button class="la-refresh-btn" onclick="loadAnalytics()">↻ Aggiorna</button>
       </div>
 
@@ -77,6 +96,9 @@
 <script>
 const FN_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/ghl-lead-analytics';
 let currentRange = 90;
+let customRange = null; // {start, end}
+let lastData = null;
+let activeSources = new Set();
 
 const SOURCE_COLORS = {
   'Facebook': '#1877f2', 'Instagram': '#e1306c', 'Google Ads': '#fbbc05',
@@ -88,7 +110,20 @@ function colorFor(source) { return SOURCE_COLORS[source] || '#94a3b8'; }
 
 function setRange(days) {
   currentRange = days;
+  customRange = null;
+  document.getElementById('la-start').value = '';
+  document.getElementById('la-end').value = '';
   document.querySelectorAll('.la-range-btn').forEach(b => b.classList.toggle('active', String(b.dataset.days) === String(days)));
+  loadAnalytics();
+}
+
+function applyCustomRange() {
+  const start = document.getElementById('la-start').value;
+  const end = document.getElementById('la-end').value;
+  if (!start || !end) { alert('Seleziona entrambe le date'); return; }
+  if (start > end) { alert('La data di inizio deve precedere quella di fine'); return; }
+  customRange = { start, end };
+  document.querySelectorAll('.la-range-btn').forEach(b => b.classList.remove('active'));
   loadAnalytics();
 }
 
@@ -96,46 +131,85 @@ async function loadAnalytics() {
   const body = document.getElementById('la-body');
   body.innerHTML = '<div style="text-align:center;padding:60px"><div class="spinner"></div></div>';
   try {
-    const qs = currentRange === 'all' ? 'all=1' : `days=${currentRange}`;
+    let qs;
+    if (customRange) qs = `start=${customRange.start}&end=${customRange.end}&compare=1`;
+    else if (currentRange === 'all') qs = 'all=1';
+    else qs = `days=${currentRange}&compare=1`;
+
     const res = await fetch(`${FN_URL}?${qs}`, {
       headers: { Authorization: 'Bearer ' + (sb.getSession()?.access_token || window.ENV_SUPABASE_ANON_KEY) },
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+    lastData = data;
+    activeSources = new Set((data.bySource || []).map(s => s.source));
     render(data);
   } catch (e) {
     body.innerHTML = `<div class="alert alert-danger">Errore nel caricamento dati GHL: ${ui.escapeHtml(e.message)}</div>`;
   }
 }
 
+function toggleSource(source) {
+  if (activeSources.has(source)) activeSources.delete(source); else activeSources.add(source);
+  if (lastData) render(lastData);
+}
+
 function render(data) {
   const body = document.getElementById('la-body');
   const totalRange = data.totalInRange || 0;
 
+  // Delta vs periodo precedente
+  let deltaHTML = '';
+  if (data.previousPeriod) {
+    const prevTotal = data.previousPeriod.totalInRange || 0;
+    if (prevTotal > 0) {
+      const deltaPct = Math.round(((totalRange - prevTotal) / prevTotal) * 1000) / 10;
+      const cls = deltaPct > 0 ? 'up' : deltaPct < 0 ? 'down' : 'flat';
+      const arrow = deltaPct > 0 ? '▲' : deltaPct < 0 ? '▼' : '—';
+      deltaHTML = `<div class="la-kpi-delta ${cls}">${arrow} ${Math.abs(deltaPct)}% vs periodo precedente (${prevTotal})</div>`;
+    } else if (totalRange > 0) {
+      deltaHTML = `<div class="la-kpi-delta up">▲ nuovo rispetto a periodo precedente (0 lead)</div>`;
+    }
+  }
+
   const kpis = `
     <div class="la-kpis">
-      <div class="la-kpi"><div class="la-kpi-label">Lead nel periodo</div><div class="la-kpi-val">${totalRange.toLocaleString('it-IT')}</div></div>
+      <div class="la-kpi"><div class="la-kpi-label">Lead nel periodo</div><div class="la-kpi-val">${totalRange.toLocaleString('it-IT')}</div>${deltaHTML}</div>
       <div class="la-kpi"><div class="la-kpi-label">Lead totali (da sempre)</div><div class="la-kpi-val">${(data.totalAllTime||0).toLocaleString('it-IT')}</div></div>
       <div class="la-kpi"><div class="la-kpi-label">Fonte principale</div><div class="la-kpi-val" style="font-size:18px">${ui.escapeHtml(data.bySource?.[0]?.source || '—')}</div></div>
       <div class="la-kpi"><div class="la-kpi-label">Fonti tracciate</div><div class="la-kpi-val">${data.bySource?.length || 0}</div></div>
     </div>`;
 
-  const bySourceRows = (data.bySource || []).map(s => `
+  // Filtro fonte (chip togglabili) — condiviso tra distribuzione e trend
+  const filterChips = (data.bySource || []).map(s => {
+    const off = activeSources.has(s.source) ? '' : 'off';
+    return `<div class="la-source-chip ${off}" onclick="toggleSource('${s.source.replace(/'/g,"\\'")}')">
+      <span class="dot" style="background:${colorFor(s.source)}"></span>${ui.escapeHtml(s.source)}
+    </div>`;
+  }).join('');
+
+  // Distribuzione filtrata
+  const visibleSources = (data.bySource || []).filter(s => activeSources.has(s.source));
+  const visibleTotal = visibleSources.reduce((a, s) => a + s.count, 0);
+  const bySourceRows = visibleSources.map(s => {
+    const pct = visibleTotal ? Math.round((s.count / visibleTotal) * 1000) / 10 : 0;
+    return `
     <div class="la-source-row">
       <div class="la-source-label"><span class="la-legend-dot" style="background:${colorFor(s.source)}"></span>${ui.escapeHtml(s.source)}</div>
-      <div class="la-bar-track"><div class="la-bar-fill" style="width:${s.pct}%;background:${colorFor(s.source)}"></div></div>
-      <div class="la-source-count">${s.count} (${s.pct}%)</div>
-    </div>`).join('') || '<div style="text-align:center;padding:20px;color:var(--text-muted)">Nessun lead nel periodo selezionato</div>';
+      <div class="la-bar-track"><div class="la-bar-fill" style="width:${pct}%;background:${colorFor(s.source)}"></div></div>
+      <div class="la-source-count">${s.count} (${pct}%)</div>
+    </div>`;
+  }).join('') || '<div style="text-align:center;padding:20px;color:var(--text-muted)">Nessuna fonte selezionata</div>';
 
-  // Trend stacked bars
+  // Trend stacked bars (solo fonti attive)
   const periods = data.trend || [];
-  const sourcesInTrend = data.bySource?.map(s => s.source) || [];
-  const maxTotal = Math.max(1, ...periods.map(p => Object.values(p.sources).reduce((a,b)=>a+b,0)));
+  const maxTotal = Math.max(1, ...periods.map(p => Object.entries(p.sources).filter(([s]) => activeSources.has(s)).reduce((a,[,c])=>a+c,0)));
   const trendCols = periods.map(p => {
-    const total = Object.values(p.sources).reduce((a,b)=>a+b,0);
-    const segs = sourcesInTrend.filter(s => p.sources[s]).map(s => {
-      const h = (p.sources[s] / maxTotal) * 100;
-      return `<div class="la-trend-seg" style="height:${h}%;background:${colorFor(s)}" title="${ui.escapeHtml(s)}: ${p.sources[s]}"></div>`;
+    const entries = Object.entries(p.sources).filter(([s]) => activeSources.has(s));
+    const total = entries.reduce((a,[,c])=>a+c,0);
+    const segs = entries.map(([s,c]) => {
+      const h = (c / maxTotal) * 100;
+      return `<div class="la-trend-seg" style="height:${h}%;background:${colorFor(s)}" title="${ui.escapeHtml(s)}: ${c}"></div>`;
     }).join('');
     return `<div class="la-trend-col" style="height:${Math.max(4,(total/maxTotal)*100)}%" title="${p.period}: ${total} lead">${segs}</div>`;
   }).join('');
@@ -151,13 +225,14 @@ function render(data) {
 
   body.innerHTML = `
     ${kpis}
+    <div class="la-source-filters">${filterChips}</div>
     <div class="la-grid">
       <div class="la-card">
-        <div class="la-card-title">Distribuzione per fonte</div>
+        <div class="la-card-title"><span>Distribuzione per fonte</span><span class="la-card-hint">${visibleTotal} lead mostrati</span></div>
         ${bySourceRows}
       </div>
       <div class="la-card">
-        <div class="la-card-title">Andamento lead nel tempo</div>
+        <div class="la-card-title"><span>Andamento lead nel tempo</span></div>
         <div class="la-trend-wrap">${trendCols || ''}</div>
         <div class="la-trend-labels">${trendLabels}</div>
       </div>
