@@ -10,11 +10,11 @@
   <script src="/js/config.js"></script>
   <style>
     .user-card { background:white; border:1.5px solid var(--border); border-radius:12px; padding:18px 24px; display:flex; align-items:center; gap:16px; margin-bottom:10px; transition:all .15s; }
-    .user-card:hover { border-color:var(--primary); box-shadow:0 2px 8px rgba(26,58,92,.08); }
+    .user-card:hover { border-color:var(--primary); box-shadow:0 2px 8px rgba(20,22,26,.08); }
     .u-av { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:800; color:white; flex-shrink:0; }
     .role-badge { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
-    .rb-admin { background:#1a3a5c; color:white; }
-    .rb-mini_admin { background:#c9a84c; color:#1a3a5c; }
+    .rb-admin { background:#14161a; color:white; }
+    .rb-mini_admin { background:#47ee74; color:#14161a; }
     .rb-senior { background:#dbeafe; color:#1d4ed8; }
     .rb-junior { background:#f3f4f6; color:#6b7280; }
     .rb-staff { background:#f3f4f6; color:#9ca3af; }
@@ -153,7 +153,7 @@
 <script>
 let editingId = null;
 const ROLE_LABELS = {admin:'Admin', mini_admin:'Mini Admin', senior:'Contabilità Senior', junior:'Contabilità Junior', collaborator:'Collaboratore', staff:'Staff'};
-const ROLE_COLORS = {admin:'#1a3a5c', mini_admin:'#c9a84c', senior:'#2563a8', junior:'#6b7280', collaborator:'#059669', staff:'#9ca3af'};
+const ROLE_COLORS = {admin:'#14161a', mini_admin:'#47ee74', senior:'#2563a8', junior:'#6b7280', collaborator:'#059669', staff:'#9ca3af'};
 
 async function init() {
   await sb.requireAuth();

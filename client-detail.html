@@ -333,11 +333,11 @@ async function loadNotificheTab() {
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:12px">Destinatario</div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1.5px solid var(--border);background:white">
-            <input type="radio" name="notif-target" value="user" checked style="accent-color:#1a3a5c"> 
+            <input type="radio" name="notif-target" value="user" checked style="accent-color:#14161a"> 
             <span style="font-size:13px;font-weight:600">Solo <strong>${companyName}</strong></span>
           </label>
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1.5px solid var(--border);background:white">
-            <input type="radio" name="notif-target" value="all" style="accent-color:#1a3a5c">
+            <input type="radio" name="notif-target" value="all" style="accent-color:#14161a">
             <span style="font-size:13px;font-weight:600">Tutti i clienti</span>
           </label>
         </div>
@@ -347,23 +347,23 @@ async function loadNotificheTab() {
         <div>
           <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);display:block;margin-bottom:6px">Titolo</label>
           <input id="notif-title" type="text" placeholder="es. Pratica aggiornata" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none" 
-            onfocus="this.style.borderColor='#1a3a5c'" onblur="this.style.borderColor='var(--border)'">
+            onfocus="this.style.borderColor='#14161a'" onblur="this.style.borderColor='var(--border)'">
         </div>
         <div>
           <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);display:block;margin-bottom:6px">Messaggio</label>
           <textarea id="notif-message" rows="3" placeholder="es. Il tuo Golden Visa è stato approvato. Accedi al portale per i dettagli." style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;outline:none"
-            onfocus="this.style.borderColor='#1a3a5c'" onblur="this.style.borderColor='var(--border)'"></textarea>
+            onfocus="this.style.borderColor='#14161a'" onblur="this.style.borderColor='var(--border)'"></textarea>
         </div>
         <div>
           <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);display:block;margin-bottom:6px">URL (opzionale)</label>
           <input id="notif-url" type="text" placeholder="https://portal.indubai.it/client-portal/dashboard.html" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none"
-            onfocus="this.style.borderColor='#1a3a5c'" onblur="this.style.borderColor='var(--border)'">
+            onfocus="this.style.borderColor='#14161a'" onblur="this.style.borderColor='var(--border)'">
         </div>
       </div>
 
       <div style="display:flex;gap:10px;align-items:center">
         <button onclick="sendNotification('${userId}','${companyName}')" 
-          style="background:#1a3a5c;color:white;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px">
+          style="background:#14161a;color:white;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> Invia Push
         </button>
         <div id="notif-status" style="font-size:13px"></div>
@@ -766,7 +766,7 @@ async function loadZohoTab() {
 
         <!-- KPI row -->
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
-          <div style="background:linear-gradient(135deg,#1a3a5c,#2563a8);border-radius:14px;padding:20px 24px;color:white">
+          <div style="background:linear-gradient(135deg,#14161a,#2b2e35);border-radius:14px;padding:20px 24px;color:white">
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.65);margin-bottom:8px">Fatturato Totale ${d.year}</div>
             <div style="font-size:22px;font-weight:800;letter-spacing:-.5px">${cur} ${fmt(d.totalBilled)}</div>
             ${isMulti ? `<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">≈ AED ${fmt(d.totalBilledAED)}</div>` : ''}

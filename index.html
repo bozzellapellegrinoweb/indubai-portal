@@ -284,7 +284,7 @@ async function loadKPIs() {
 }
 
 // ── SVG chart helpers (no external deps) ──────────────────────
-const P = ['#1a3a5c','#2563a8','#c9a84c','#0891b2','#7c3aed','#059669','#dc2626','#d97706','#6b7280'];
+const P = ['#14161a','#2563a8','#16a34a','#0891b2','#7c3aed','#059669','#dc2626','#d97706','#6b7280'];
 
 function donut(id, labels, vals, colors) {
   const canvas = document.getElementById(id);
@@ -305,7 +305,7 @@ function donut(id, labels, vals, colors) {
     paths += `<path d="M${ix1},${iy1} L${x1},${y1} A${r},${r},0,${large},1,${x2},${y2} L${ix2},${iy2} A${ir},${ir},0,${large},0,${ix1},${iy1} Z" fill="${pal[i%pal.length]}" stroke="white" stroke-width="2"><title>${labels[i]}: ${v}</title></path>`;
     startAngle = endAngle;
   });
-  const svg = `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${paths}<text x="${cx}" y="${cy}" text-anchor="middle" dy=".35em" font-size="22" font-weight="900" fill="#1a3a5c">${total}</text></svg>`;
+  const svg = `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${paths}<text x="${cx}" y="${cy}" text-anchor="middle" dy=".35em" font-size="22" font-weight="900" fill="#14161a">${total}</text></svg>`;
   // Replace canvas with svg container
   const wrap = canvas.parentElement;
   canvas.style.display = 'none';
