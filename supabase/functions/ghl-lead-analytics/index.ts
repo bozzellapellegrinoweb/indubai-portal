@@ -20,6 +20,7 @@ const PAGE_LIMIT = 100;
 const MAX_PAGES = 100; // safety cap ~10k contatti
 
 type GhlContact = {
+  id?: string;
   dateAdded?: string;
   source?: string;
   tags?: string[];
@@ -71,6 +72,15 @@ async function ghlSearchContacts(body: Record<string, unknown>) {
   return r.json();
 }
 
+async function ghlGet(path: string) {
+  const r = await fetch(`${GHL_BASE}${path}`, { headers: GHL_HEADERS });
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`GHL GET ${path} failed (${r.status}): ${text.substring(0, 300)}`);
+  }
+  return r.json();
+}
+
 async function fetchAllContacts(startMs: number | null, endMs: number | null) {
   const filters = startMs && endMs
     ? [{ field: "dateAdded", operator: "range", value: { gte: startMs, lte: endMs } }]
@@ -101,6 +111,34 @@ async function fetchAllContacts(startMs: number | null, endMs: number | null) {
   }
 
   return { contacts, total };
+}
+
+type GhlOpportunity = {
+  id: string;
+  contactId: string;
+  monetaryValue?: number;
+  status: string;
+  lastStatusChangeAt?: string;
+  pipelineId?: string;
+};
+
+async function fetchAllWonOpportunities(): Promise<GhlOpportunity[]> {
+  const opps: GhlOpportunity[] = [];
+  let startAfter: number | undefined;
+  let startAfterId: string | undefined;
+
+  for (let page = 0; page < 50; page++) {
+    const params = new URLSearchParams({ location_id: LOCATION_ID, status: "won", limit: "100" });
+    if (startAfter) params.set("startAfter", String(startAfter));
+    if (startAfterId) params.set("startAfterId", startAfterId);
+    const data = await ghlGet(`/opportunities/search?${params.toString()}`);
+    const batch: GhlOpportunity[] = data.opportunities || [];
+    opps.push(...batch);
+    if (!data.meta?.nextPageUrl || batch.length < 100) break;
+    startAfter = data.meta.startAfter;
+    startAfterId = data.meta.startAfterId;
+  }
+  return opps;
 }
 
 function bump(map: Record<string, number>, key: string) {
@@ -159,6 +197,53 @@ function aggregate(contacts: GhlContact[], dayGranularity: boolean) {
   };
 }
 
+async function aggregateWon(
+  opps: GhlOpportunity[],
+  startMs: number | null,
+  endMs: number,
+  contactsById: Map<string, GhlContact>,
+) {
+  const inRange = opps.filter((o) => {
+    if (!startMs) return true; // "da sempre"
+    const t = o.lastStatusChangeAt ? Date.parse(o.lastStatusChangeAt) : NaN;
+    return !isNaN(t) && t >= startMs && t <= endMs;
+  });
+
+  // Recupera i contatti mancanti (non già presenti nel lotto lead già scaricato)
+  const missingIds = [...new Set(inRange.map((o) => o.contactId))].filter((id) => id && !contactsById.has(id));
+  const fetched = await Promise.all(
+    missingIds.map(async (id) => {
+      try {
+        const data = await ghlGet(`/contacts/${id}`);
+        return data.contact as GhlContact;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  for (const c of fetched) {
+    if (c?.id) contactsById.set(c.id, c);
+  }
+
+  const bySource: Record<string, { count: number; value: number }> = {};
+  let totalValue = 0;
+  for (const o of inRange) {
+    const contact = contactsById.get(o.contactId);
+    const source = contact ? normalizeSource(contact) : "Non specificato";
+    const value = o.monetaryValue || 0;
+    if (!bySource[source]) bySource[source] = { count: 0, value: 0 };
+    bySource[source].count += 1;
+    bySource[source].value += value;
+    totalValue += value;
+  }
+
+  const bySourceSorted = Object.entries(bySource)
+    .sort((a, b) => b[1].value - a[1].value)
+    .map(([source, v]) => ({ source, count: v.count, value: v.value }));
+
+  return { total: inRange.length, totalValue, bySource: bySourceSorted };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
@@ -189,13 +274,17 @@ serve(async (req) => {
 
     const dayGranularity = days !== null && days <= 45;
 
-    const [{ contacts, total }, allTimeTotalResp] = await Promise.all([
+    const [{ contacts, total }, allTimeTotalResp, wonOpps] = await Promise.all([
       fetchAllContacts(start, start ? end : null),
       allTime ? Promise.resolve(null) : ghlSearchContacts({ locationId: LOCATION_ID, pageLimit: 1 }),
+      fetchAllWonOpportunities(),
     ]);
 
     const totalAllTime = allTime ? total : (allTimeTotalResp?.total ?? total);
     const current = aggregate(contacts, dayGranularity);
+
+    const contactsById = new Map<string, GhlContact>(contacts.filter((c) => c.id).map((c) => [c.id as string, c]));
+    const won = await aggregateWon(wonOpps, start, end, contactsById);
 
     let previousPeriod = null;
     if (wantCompare && start) {
@@ -216,6 +305,7 @@ serve(async (req) => {
         range: { days, start: start ? new Date(start).toISOString() : null, end: new Date(end).toISOString() },
         totalAllTime,
         previousPeriod,
+        won,
         ...current,
       }),
       { headers: cors },

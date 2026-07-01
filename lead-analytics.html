@@ -49,6 +49,11 @@
     .la-trend-seg { width: 100%; }
     .la-trend-labels { display: flex; gap: 6px; margin-top: 6px; overflow-x: auto; }
     .la-trend-label { min-width: 22px; font-size: 9px; color: var(--text-muted); text-align: center; white-space: nowrap; transform: rotate(-45deg); transform-origin: top left; }
+    .la-won-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .la-won-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); padding: 8px 10px; border-bottom: 2px solid var(--border); }
+    .la-won-table td { padding: 10px; border-bottom: 1px solid var(--border); }
+    .la-won-table tr:last-child td { border-bottom: none; }
+    .la-won-table td.num { text-align: right; font-weight: 700; }
   </style>
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <link rel="manifest" href="/manifest-admin.json">
@@ -172,10 +177,15 @@ function render(data) {
     }
   }
 
+  const won = data.won || { total: 0, totalValue: 0, bySource: [] };
+  const convRate = totalRange ? Math.round((won.total / totalRange) * 1000) / 10 : 0;
+
   const kpis = `
     <div class="la-kpis">
       <div class="la-kpi"><div class="la-kpi-label">Lead nel periodo</div><div class="la-kpi-val">${totalRange.toLocaleString('it-IT')}</div>${deltaHTML}</div>
       <div class="la-kpi"><div class="la-kpi-label">Lead totali (da sempre)</div><div class="la-kpi-val">${(data.totalAllTime||0).toLocaleString('it-IT')}</div></div>
+      <div class="la-kpi"><div class="la-kpi-label">Clienti vinti nel periodo</div><div class="la-kpi-val">${won.total}</div><div class="la-kpi-delta flat">${convRate}% conversione lead→vinto</div></div>
+      <div class="la-kpi"><div class="la-kpi-label">Valore vinto nel periodo</div><div class="la-kpi-val" style="font-size:20px">AED ${Math.round(won.totalValue).toLocaleString('it-IT')}</div></div>
       <div class="la-kpi"><div class="la-kpi-label">Fonte principale</div><div class="la-kpi-val" style="font-size:18px">${ui.escapeHtml(data.bySource?.[0]?.source || '—')}</div></div>
       <div class="la-kpi"><div class="la-kpi-label">Fonti tracciate</div><div class="la-kpi-val">${data.bySource?.length || 0}</div></div>
     </div>`;
@@ -223,6 +233,28 @@ function render(data) {
     <div class="la-simple-row"><span>${ui.escapeHtml(t.label)}</span><span class="la-simple-val">${t.count}</span></div>`).join('')
     || '<div style="text-align:center;padding:16px;color:var(--text-muted)">—</div>';
 
+  const leadBySource = Object.fromEntries((data.bySource || []).map(s => [s.source, s.count]));
+  const wonRows = (won.bySource || []).map(w => {
+    const leadCount = leadBySource[w.source] || 0;
+    const conv = leadCount ? Math.round((w.count / leadCount) * 1000) / 10 : null;
+    return `
+    <tr>
+      <td><span class="la-legend-dot" style="background:${colorFor(w.source)}"></span>${ui.escapeHtml(w.source)}</td>
+      <td class="num">${w.count}</td>
+      <td class="num">AED ${Math.round(w.value).toLocaleString('it-IT')}</td>
+      <td class="num">${conv !== null ? conv + '%' : '—'}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted)">Nessun cliente vinto nel periodo selezionato</td></tr>`;
+
+  const wonTable = `
+    <div class="la-card" style="margin-bottom:20px">
+      <div class="la-card-title"><span>Clienti vinti per fonte</span><span class="la-card-hint">in base alla data di chiusura (won) nel periodo</span></div>
+      <table class="la-won-table">
+        <thead><tr><th>Fonte</th><th style="text-align:right">Vinti</th><th style="text-align:right">Valore</th><th style="text-align:right">Conversione</th></tr></thead>
+        <tbody>${wonRows}</tbody>
+      </table>
+    </div>`;
+
   body.innerHTML = `
     ${kpis}
     <div class="la-source-filters">${filterChips}</div>
@@ -246,7 +278,8 @@ function render(data) {
         <div class="la-card-title">Top tag GHL</div>
         ${tagRows}
       </div>
-    </div>`;
+    </div>
+    ${wonTable}`;
 }
 
 loadAnalytics();
