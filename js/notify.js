@@ -102,7 +102,7 @@ async function emailNotify({ to, user_id, subject, html, event_type, entity_id, 
  * Invia email a tutti gli staff admin + senior.
  * Recupera user_id dei profili e li passa uno per uno (la Edge Function risolve le email).
  */
-async function emailNotifyStaff({ roles = ['admin', 'senior'], subject, html, event_type, entity_id, entity_type }) {
+async function emailNotifyStaff({ roles = ['admin', 'senior', 'mini_admin', 'junior', 'collaborator', 'staff'], subject, html, event_type, entity_id, entity_type }) {
   const ids = await getStaffUserIds(roles);
   await Promise.all(ids.map(uid =>
     emailNotify({ user_id: uid, subject, html, event_type, entity_id, entity_type })

@@ -113,7 +113,7 @@ async function alreadySent(
 }
 
 /** Recupera email di tutti gli staff con ruoli specificati */
-async function getStaffEmails(sb: ReturnType<typeof createClient>, roles = ['admin', 'senior']): Promise<{ id: string; email: string; full_name: string }[]> {
+async function getStaffEmails(sb: ReturnType<typeof createClient>, roles = ['admin', 'senior', 'mini_admin', 'junior', 'collaborator', 'staff']): Promise<{ id: string; email: string; full_name: string }[]> {
   const { data: profiles } = await sb
     .from('profiles')
     .select('id, full_name, role')
@@ -396,7 +396,7 @@ serve(async (req) => {
     });
 
     // Staff admin + senior per tutte le notifiche
-    const staffEmails = await getStaffEmails(sb, ['admin', 'senior']);
+    const staffEmails = await getStaffEmails(sb);
     console.log(`Staff trovati: ${staffEmails.length}`);
 
     const results = await Promise.all([
