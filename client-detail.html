@@ -59,7 +59,7 @@
   <div class="main-content">
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:12px">
-        <a href="/clients.html" class="btn btn-ghost btn-sm">← Clienti</a>
+        <a href="/clients.html" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Clienti</a>
         <div class="topbar-title" id="page-title">Cliente</div>
       </div>
     </div>
@@ -75,23 +75,23 @@
             <div class="client-meta" id="h-meta"></div>
           </div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:white;border:1px solid rgba(255,255,255,.3)" onclick="openEdit()">✎ Modifica</button>
+            <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:white;border:1px solid rgba(255,255,255,.3)" onclick="openEdit()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Modifica</button>
           </div>
         </div>
 
         <!-- Tabs -->
         <div class="tab-bar">
-          <button class="tab active" onclick="switchTab('info',this)">📋 Info</button>
-          <button class="tab" onclick="switchTab('onboarding',this)">✦ Onboarding</button>
+          <button class="tab active" onclick="switchTab('info',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Info</button>
+          <button class="tab" onclick="switchTab('onboarding',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Onboarding</button>
           <button class="tab" onclick="switchTab('payments',this)">◆ Pagamenti</button>
           <button class="tab" onclick="switchTab('statements',this)">◎ Estratti</button>
           <button class="tab" onclick="switchTab('tasks',this)">✓ Task</button>
-          <button class="tab" onclick="switchTab('documents',this)">📁 Documenti</button>
-          <button class="tab" onclick="switchTab('zoho',this)">📊 Zoho Books</button>
-          <button class="tab" onclick="switchTab('accesso',this)">🔑 Accesso Cliente</button>
-          <button class="tab" onclick="switchTab('visti',this)">✈️ Visti</button>
-          <button class="tab" onclick="switchTab('pratiche',this)">📋 Pratiche</button>
-          <button class="tab" onclick="switchTab('notifiche',this)">🔔 Notifiche</button>
+          <button class="tab" onclick="switchTab('documents',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> Documenti</button>
+          <button class="tab" onclick="switchTab('zoho',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Zoho Books</button>
+          <button class="tab" onclick="switchTab('accesso',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Accesso Cliente</button>
+          <button class="tab" onclick="switchTab('visti',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5L3.3 8c-.2.4-.1.8.2 1.1L9.7 14 6 17.6a3.5 3.5 0 00-1 3.4L2.1 22l.9-2.9a3.5 3.5 0 003.4-1L10 15.3l5.3 5.3c.3.3.7.4 1.1.2l1.3-.5c.4-.2.6-.6.5-1.1z"/></svg> Visti</button>
+          <button class="tab" onclick="switchTab('pratiche',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Pratiche</button>
+          <button class="tab" onclick="switchTab('notifiche',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> Notifiche</button>
         </div>
 
         <!-- Tab: Info -->
@@ -102,7 +102,7 @@
         <!-- Tab: Onboarding -->
         <div class="tab-panel" id="tab-onboarding">
           <div class="card">
-            <div class="card-header"><div class="card-title">✦ Checklist Onboarding</div></div>
+            <div class="card-header"><div class="card-title" style="display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Checklist Onboarding</div></div>
             <div id="onboarding-grid" style="padding:16px 20px"></div>
           </div>
         </div>
@@ -230,10 +230,10 @@ function renderClient() {
   document.title = c.company_name + ' — InDubai Portal';
 
   const meta = [];
-  if (c.contact_name) meta.push('👤 '+c.contact_name);
-  if (c.email) meta.push('✉ '+c.email);
-  if (c.phone_uae) meta.push('📱 '+c.phone_uae);
-  if (!c.is_active) meta.push('⚠ INATTIVO');
+  if (c.contact_name) meta.push('<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> '+c.contact_name);
+  if (c.email) meta.push('<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> '+c.email);
+  if (c.phone_uae) meta.push('<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> '+c.phone_uae);
+  if (!c.is_active) meta.push('INATTIVO');
   document.getElementById('h-meta').innerHTML = meta.join(' &nbsp;·&nbsp; ');
 
   // Info grid
@@ -261,7 +261,7 @@ function renderClient() {
   if ((c.fta_username || c.fta_password) && ['admin','senior'].includes(role)) {
     document.getElementById('info-grid').insertAdjacentHTML('beforeend', `
       <div class="info-card" style="grid-column:1/-1;background:#f0f9ff;border-color:#bae6fd">
-        <div class="info-label" style="color:#0369a1">🔐 Credenziali FTA</div>
+        <div class="info-label" style="color:#0369a1;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Credenziali FTA</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
           <div>
             <div style="font-size:11px;color:#0369a1;font-weight:600;margin-bottom:3px">Username</div>
@@ -320,13 +320,13 @@ async function loadNotificheTab() {
   } catch(e) { console.error('client_users error:', e); }
 
   if (!userId) {
-    el.innerHTML = '<div style="padding:20px;background:#fffbeb;border-radius:12px;color:#92400e;font-size:13px">⚠️ Nessun accesso portale attivo per questo cliente. Crea prima le credenziali nel tab <strong>Accesso Cliente</strong>.</div>';
+    el.innerHTML = '<div style="padding:20px;background:#fffbeb;border-radius:12px;color:#92400e;font-size:13px">Nessun accesso portale attivo per questo cliente. Crea prima le credenziali nel tab <strong>Accesso Cliente</strong>.</div>';
     return;
   }
 
   el.innerHTML = `
     <div style="max-width:560px">
-      <h3 style="font-size:16px;font-weight:700;margin-bottom:4px">🔔 Invia Notifica Push</h3>
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> Invia Notifica Push</h3>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px">La notifica arriva direttamente sul telefono del cliente se ha attivato i push.</p>
 
       <div style="background:var(--surface2);border-radius:12px;padding:20px;margin-bottom:16px">
@@ -364,7 +364,7 @@ async function loadNotificheTab() {
       <div style="display:flex;gap:10px;align-items:center">
         <button onclick="sendNotification('${userId}','${companyName}')" 
           style="background:#1a3a5c;color:white;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px">
-          🔔 Invia Push
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> Invia Push
         </button>
         <div id="notif-status" style="font-size:13px"></div>
       </div>
@@ -372,10 +372,10 @@ async function loadNotificheTab() {
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:10px">Notifiche rapide</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
-          <button onclick="quickNotif('${userId}','Pratica aggiornata','Il tuo consulente ha aggiornato una pratica. Accedi al portale per i dettagli.')" class="btn btn-ghost btn-sm">✏️ Pratica aggiornata</button>
-          <button onclick="quickNotif('${userId}','Documento caricato','Un nuovo documento è disponibile nella tua area personale.')" class="btn btn-ghost btn-sm">📄 Nuovo documento</button>
-          <button onclick="quickNotif('${userId}','Scadenza imminente','Hai una scadenza importante nei prossimi 30 giorni. Controlla le tue pratiche.')" class="btn btn-ghost btn-sm">⚠️ Scadenza</button>
-          <button onclick="quickNotif('${userId}','Nuova fattura','È disponibile una nuova fattura nel tuo portale Zoho Books.')" class="btn btn-ghost btn-sm">🧾 Nuova fattura</button>
+          <button onclick="quickNotif('${userId}','Pratica aggiornata','Il tuo consulente ha aggiornato una pratica. Accedi al portale per i dettagli.')" class="btn btn-ghost btn-sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Pratica aggiornata</button>
+          <button onclick="quickNotif('${userId}','Documento caricato','Un nuovo documento è disponibile nella tua area personale.')" class="btn btn-ghost btn-sm"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Nuovo documento</button>
+          <button onclick="quickNotif('${userId}','Scadenza imminente','Hai una scadenza importante nei prossimi 30 giorni. Controlla le tue pratiche.')" class="btn btn-ghost btn-sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Scadenza</button>
+          <button onclick="quickNotif('${userId}','Nuova fattura','È disponibile una nuova fattura nel tuo portale Zoho Books.')" class="btn btn-ghost btn-sm"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg> Nuova fattura</button>
         </div>
       </div>
     </div>`;
@@ -536,7 +536,7 @@ async function loadClientTasks() {
         <span class="pri-dot" style="background:${priColor[t.priority]||'#6b7a95'}"></span>
         <div style="flex:1">
           <div style="font-size:13px;font-weight:600">${ui.escapeHtml(t.title)}</div>
-          ${t.assigned_profile ? `<div style="font-size:11px;color:var(--text-muted)">👤 ${ui.escapeHtml(t.assigned_profile.full_name)}</div>` : ''}
+          ${t.assigned_profile ? `<div style="font-size:11px;color:var(--text-muted)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${ui.escapeHtml(t.assigned_profile.full_name)}</div>` : ''}
         </div>
         ${t.due_date ? `<span style="font-size:12px;font-weight:600" class="${ui.deadlineClass(t.due_date)}">${ui.formatDate(t.due_date)}</span>` : ''}
         <a href="/tasks.html" class="btn btn-ghost btn-sm">Apri</a>
@@ -621,11 +621,11 @@ async function loadZohoTab() {
   if (!orgId) {
     el.innerHTML = `
       <div style="padding:32px;text-align:center">
-        <div style="font-size:32px;margin-bottom:12px">📊</div>
+        <div style="margin-bottom:12px;opacity:.4"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
         <h3 style="margin:0 0 8px">Zoho Books non collegato</h3>
         <p style="color:var(--text-muted);font-size:13px;margin:0 0 20px">Aggiungi il Zoho Org ID nel profilo cliente per vedere i dati contabili.</p>
         <button class="btn btn-accent" onclick="document.getElementById('modal-edit').style.display='flex'; document.getElementById('e-zoho-org').focus()">
-          ✎ Aggiungi Org ID
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Aggiungi Org ID
         </button>
       </div>`;
     return;
@@ -676,11 +676,11 @@ async function loadZohoTab() {
       if (!lastAlert || Date.now() - Number(lastAlert) > COOLDOWN) {
         if (vatPct >= 100 && d.vatStatus === 'exceeded') {
           sessionStorage.setItem(vatAlertKey, Date.now());
-          pushNotifyStaff({ title: '🚨 Soglia VAT superata', message: (clientData?.company_name||'Cliente') + ' ha superato AED ' + d.vatThreshold.toLocaleString() + '. Registrazione obbligatoria.', url: 'https://portal.indubai.it/client-detail?id=' + cid });
-          getClientUserId(cid).then(uid => { if(uid) pushNotify({ action:'send_to_user', user_id:uid, title:'🚨 Soglia VAT superata', message:'Il tuo fatturato 12 mesi ha superato AED ' + d.vatThreshold.toLocaleString() + '. Contatta il tuo consulente.', url:'https://portal.indubai.it/client-portal/dashboard.html' }); });
+          pushNotifyStaff({ title: 'Soglia VAT superata', message: (clientData?.company_name||'Cliente') + ' ha superato AED ' + d.vatThreshold.toLocaleString() + '. Registrazione obbligatoria.', url: 'https://portal.indubai.it/client-detail?id=' + cid });
+          getClientUserId(cid).then(uid => { if(uid) pushNotify({ action:'send_to_user', user_id:uid, title:'Soglia VAT superata', message:'Il tuo fatturato 12 mesi ha superato AED ' + d.vatThreshold.toLocaleString() + '. Contatta il tuo consulente.', url:'https://portal.indubai.it/client-portal/dashboard.html' }); });
         } else if (vatPct >= 80 && d.vatStatus === 'warning') {
           sessionStorage.setItem(vatAlertKey, Date.now());
-          pushNotifyStaff({ title: '⚠️ Soglia VAT all\'80%', message: (clientData?.company_name||'Cliente') + ' è all\''+vatPct+'% della soglia VAT (AED ' + Math.round(d.rolling12AED).toLocaleString() + ' / ' + d.vatThreshold.toLocaleString() + ').', url: 'https://portal.indubai.it/client-detail?id=' + cid });
+          pushNotifyStaff({ title: 'Soglia VAT all\'80%', message: (clientData?.company_name||'Cliente') + ' è all\''+vatPct+'% della soglia VAT (AED ' + Math.round(d.rolling12AED).toLocaleString() + ' / ' + d.vatThreshold.toLocaleString() + ').', url: 'https://portal.indubai.it/client-detail?id=' + cid });
         }
       }
     }
@@ -688,8 +688,8 @@ async function loadZohoTab() {
     const vatBg    = vatRegistered ? '#f0fdf4' : d.vatStatus === 'exceeded' ? '#fef2f2' : d.vatStatus === 'warning' ? '#fffbeb' : '#f0fdf4';
     const vatBorder= vatRegistered ? '#86efac' : d.vatStatus === 'exceeded' ? '#fca5a5' : d.vatStatus === 'warning' ? '#fde68a' : '#86efac';
     const vatLabel = vatRegistered ? '✓ VAT Registrata'
-                   : d.vatStatus === 'exceeded' ? '🚨 Soglia VAT SUPERATA — registrazione obbligatoria' 
-                   : d.vatStatus === 'warning'  ? '⚠️ Attenzione: vicino alla soglia VAT (AED 375.000)' 
+                   : d.vatStatus === 'exceeded' ? 'Soglia VAT SUPERATA — registrazione obbligatoria' 
+                   : d.vatStatus === 'warning'  ? 'Attenzione: vicino alla soglia VAT (AED 375.000)' 
                    : '✓ Sotto soglia VAT';
 
     // CT tracker (from clientData)
@@ -704,9 +704,9 @@ async function loadZohoTab() {
       const ctPct     = Math.max(0, Math.min(100, Math.round((80 - daysLeft) / 80 * 100)));
       const ctColor   = daysLeft <= 0 ? '#dc2626' : daysLeft <= 15 ? '#d97706' : daysLeft <= 30 ? '#ca8a04' : '#059669';
       const ctBg      = daysLeft <= 0 ? '#fef2f2' : daysLeft <= 15 ? '#fffbeb' : '#f0fdf4';
-      const ctLabel   = daysLeft <= 0 ? '🚨 SCADUTO — Corporate Tax non registrata!' 
-                      : daysLeft <= 15 ? `🔴 Urgente: ${daysLeft} giorni alla scadenza CT`
-                      : daysLeft <= 30 ? `🟡 ${daysLeft} giorni alla scadenza CT`
+      const ctLabel   = daysLeft <= 0 ? 'SCADUTO — Corporate Tax non registrata!' 
+                      : daysLeft <= 15 ? `Urgente: ${daysLeft} giorni alla scadenza CT`
+                      : daysLeft <= 30 ? `${daysLeft} giorni alla scadenza CT`
                       : `✓ ${daysLeft} giorni alla scadenza CT`;
       ctTrackerHtml = `
         <div style="background:${ctBg};border:1.5px solid ${ctColor}40;border-radius:14px;padding:20px 24px;margin-bottom:20px">
@@ -740,7 +740,7 @@ async function loadZohoTab() {
         <div style="background:${vatBg};border:1.5px solid ${vatBorder};border-radius:14px;padding:20px 24px;margin-bottom:24px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <div>
-              <div style="font-size:13px;font-weight:700;color:${vatColor}">📊 Soglia VAT — Ultimi 12 mesi</div>
+              <div style="font-size:13px;font-weight:700;color:${vatColor};display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Soglia VAT — Ultimi 12 mesi</div>
               <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Da ${ui.formatDate(d.rolling12Start)} a oggi · sempre in AED</div>
             </div>
             <div style="text-align:right">
@@ -823,7 +823,7 @@ async function loadZohoTab() {
         <!-- Azioni -->
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn btn-ghost btn-sm" onclick="loadZohoTab()">↺ Aggiorna</button>
-          <a href="https://books.zoho.com/app#/invoices" target="_blank" class="btn btn-accent btn-sm">Apri Zoho Books ↗</a>
+          <a href="https://books.zoho.com/app#/invoices" target="_blank" class="btn btn-accent btn-sm">Apri Zoho Books</a>
         </div>
       </div>`;
 
@@ -879,12 +879,12 @@ async function loadAccessTab() {
               <input type="text" id="new-pwd-display" class="form-control" value="${generatePassword()}" style="font-family:monospace;font-size:14px;font-weight:700;letter-spacing:1px;flex:1">
               <button class="btn btn-ghost btn-sm" onclick="document.getElementById('new-pwd-display').value=generatePassword()" title="Genera nuova">↺</button>
             </div>
-            <button class="btn btn-accent" style="margin-top:10px;width:100%" onclick="resetClientPasswordWithValue()">🔑 Applica nuova password</button>
+            <button class="btn btn-accent" style="margin-top:10px;width:100%" onclick="resetClientPasswordWithValue()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Applica nuova password</button>
           </div>
 
           <div style="display:flex;gap:8px">
-            <button class="btn btn-ghost" onclick="navigator.clipboard.writeText('Email: ${clientData?.email || ''}\nLink: /client-portal/login.html').then(()=>ui.showToast('Copiato!','success'))">📋 Copia credenziali</button>
-            <button class="btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="revokeClientAccess('${existing.user_id}')">🗑 Revoca accesso</button>
+            <button class="btn btn-ghost" onclick="navigator.clipboard.writeText('Email: ${clientData?.email || ''}\nLink: /client-portal/login.html').then(()=>ui.showToast('Copiato!','success'))">Copia credenziali</button>
+            <button class="btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="revokeClientAccess('${existing.user_id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Revoca accesso</button>
           </div>
         </div>`;
     } else {
@@ -905,7 +905,7 @@ async function loadAccessTab() {
             </div>
             <div style="font-size:11px;color:#94a3b8;margin-top:4px">Il cliente potrà cambiarla dopo il primo accesso</div>
           </div>
-          <button class="btn btn-accent" onclick="createClientAccess()" id="btn-create-access">🔑 Crea accesso</button>
+          <button class="btn btn-accent" onclick="createClientAccess()" id="btn-create-access"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Crea accesso</button>
         </div>`;
     }
   } catch(e) {
@@ -944,17 +944,17 @@ async function createClientAccess() {
             <div style='margin-bottom:6px'><span style='color:#6b7a95'>Email:</span> <strong>${email}</strong></div>
             <div><span style='color:#6b7a95'>Password:</span> <strong>${pwd}</strong></div>
           </div>
-          <div style='font-size:12px;color:#6b7a95;margin-top:10px'>🔗 Link accesso: <strong>/client-portal/login.html</strong></div>
+          <div style='font-size:12px;color:#6b7a95;margin-top:10px;display:flex;align-items:center;gap:6px'><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg> Link accesso: <strong>/client-portal/login.html</strong></div>
         </div>
         <div style='display:flex;gap:12px'>
-          <button class='btn btn-ghost' onclick="navigator.clipboard.writeText('Email: ${email}\nPassword: ${pwd}\nLink: /client-portal/login.html').then(()=>ui.showToast('Copiato!','success'))">📋 Copia credenziali</button>
-          <button class='btn btn-ghost' onclick='resetClientPassword()'>🔑 Reset Password</button>
+          <button class='btn btn-ghost' onclick="navigator.clipboard.writeText('Email: ${email}\nPassword: ${pwd}\nLink: /client-portal/login.html').then(()=>ui.showToast('Copiato!','success'))">Copia credenziali</button>
+          <button class='btn btn-ghost' onclick='resetClientPassword()'><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Reset Password</button>
           <button class='btn' style='background:#fee2e2;color:#dc2626;border:1px solid #fca5a5' onclick='loadAccessTab()'>↺ Aggiorna</button>
         </div>
       </div>`;
   } catch(e) {
     ui.showToast('Errore: ' + e.message, 'error');
-    btn.disabled = false; btn.textContent = '🔑 Crea accesso';
+    btn.disabled = false; btn.textContent = 'Crea accesso';
   }
 }
 
@@ -994,7 +994,7 @@ async function resetClientPasswordWithValue() {
     if (!r.ok || data.error) { ui.showToast('Errore: ' + (data.error || r.status) + (data.role ? ' [role:'+data.role+']' : ''), 'error'); return; }
     ui.showToast('✅ Password aggiornata!', 'success');
     navigator.clipboard.writeText('Email: ' + (clientData?.email||'') + '\nPassword: ' + newPwd + '\nLink: /client-portal/login.html')
-      .then(() => ui.showToast('📋 Credenziali copiate negli appunti', 'success', 4000))
+      .then(() => ui.showToast('Credenziali copiate negli appunti', 'success', 4000))
       .catch(() => {});
   } catch(e) { ui.showToast('Errore reset password: ' + e.message, 'error'); }
 }
@@ -1027,8 +1027,8 @@ async function loadVistiTab() {
         <td>${fmtDate(v.expiry_date)} ${badgeVisa(v.expiry_date)}</td>
         <td style="color:var(--text-muted);font-size:12px">${v.notes||'—'}</td>
         <td>
-          <button class="btn btn-ghost btn-sm" data-vid="${v.id}" data-name="${ui.escapeHtml(v.holder_name)}" data-type="${ui.escapeHtml(v.visa_type||'Residenza')}" data-expiry="${v.expiry_date||''}" data-notes="${ui.escapeHtml(v.notes||'')}" onclick="editVisa(this.dataset.vid,this.dataset.name,this.dataset.type,this.dataset.expiry,this.dataset.notes)">✎</button>
-          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteVisa('${v.id}')">🗑</button>
+          <button class="btn btn-ghost btn-sm" data-vid="${v.id}" data-name="${ui.escapeHtml(v.holder_name)}" data-type="${ui.escapeHtml(v.visa_type||'Residenza')}" data-expiry="${v.expiry_date||''}" data-notes="${ui.escapeHtml(v.notes||'')}" onclick="editVisa(this.dataset.vid,this.dataset.name,this.dataset.type,this.dataset.expiry,this.dataset.notes)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg></button>
+          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteVisa('${v.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
         </td>
       </tr>`).join('');
 
@@ -1065,7 +1065,7 @@ async function loadVistiTab() {
         </div>
         <input type="hidden" id="v-id">
         <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="btn btn-accent btn-sm" onclick="saveVisa()">💾 Salva</button>
+          <button class="btn btn-accent btn-sm" onclick="saveVisa()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salva</button>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('visa-form').style.display='none'">Annulla</button>
         </div>
       </div>
@@ -1175,7 +1175,7 @@ async function loadPraticheTab() {
             <span style="font-size:11px;color:var(--text-muted);background:#f1f5f9;padding:2px 8px;border-radius:100px">${p.category||'Altro'}</span>
           </div>
           ${p.description ? `<div style="font-size:13px;color:var(--text-muted);margin-bottom:6px">${ui.escapeHtml(p.description)}</div>` : ''}
-          ${p.notes ? `<div style="font-size:12px;color:#7c3aed;background:#f5f3ff;border-radius:6px;padding:5px 10px;margin-top:6px">📝 ${ui.escapeHtml(p.notes)}</div>` : ''}
+          ${p.notes ? `<div style="font-size:12px;color:#7c3aed;background:#f5f3ff;border-radius:6px;padding:5px 10px;margin-top:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> ${ui.escapeHtml(p.notes)}</div>` : ''}
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px">
             Creata: ${fmtDate(p.created_at)}
             ${p.due_date ? ` · Scadenza: <strong>${fmtDate(p.due_date)}</strong>` : ''}
@@ -1183,8 +1183,8 @@ async function loadPraticheTab() {
           </div>
         </div>
         ${canEdit ? `<div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="btn btn-ghost btn-sm" onclick="editPratica('${p.id}')">✎</button>
-          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deletePratica('${p.id}')">🗑</button>
+          <button class="btn btn-ghost btn-sm" onclick="editPratica('${p.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg></button>
+          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deletePratica('${p.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
         </div>` : ''}
       </div>`).join('');
 
@@ -1227,7 +1227,7 @@ async function loadPraticheTab() {
         </div>
         <input type="hidden" id="p-id">
         <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="btn btn-accent btn-sm" onclick="savePratica()">💾 Salva</button>
+          <button class="btn btn-accent btn-sm" onclick="savePratica()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salva</button>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('pratica-form').style.display='none'">Annulla</button>
         </div>
       </div>
@@ -1284,7 +1284,7 @@ async function savePratica() {
       const statusLabels = { 'in_corso': 'in corso', 'completato': 'completata ✅', 'in_attesa': 'in attesa', 'sospeso': 'sospesa' };
       pushNotify({
         action: 'send_to_user', user_id: clientUserId,
-        title: id ? '📋 Pratica aggiornata' : '📋 Nuova pratica aperta',
+        title: id ? 'Pratica aggiornata' : 'Nuova pratica aperta',
         message: title + (statusLabels[status] ? ' · stato: ' + statusLabels[status] : ''),
         url: 'https://portal.indubai.it/client-portal/dashboard.html'
       });
@@ -1311,7 +1311,7 @@ init();
 <div class="modal-overlay" id="modal-edit" style="display:none">
   <div class="modal" style="max-width:640px">
     <div class="modal-header">
-      <div class="modal-title">✎ Modifica Cliente</div>
+      <div class="modal-title">Modifica Cliente</div>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-edit').style.display='none'">✕</button>
     </div>
     <div class="modal-body" style="max-height:70vh;overflow-y:auto">
@@ -1421,11 +1421,11 @@ init();
           <input type="text" class="form-control" id="e-bank-notes">
         </div>
         <div class="form-group">
-          <label class="form-label">🔗 Zoho Books Org ID</label>
+          <label class="form-label" style="display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg> Zoho Books Org ID</label>
           <input type="text" class="form-control" id="e-zoho-org" placeholder="es. 123456789">
         </div>
         <div class="form-group" style="grid-column:1/-1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px">
-          <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🔐 Credenziali FTA (solo admin/senior)</div>
+          <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Credenziali FTA (solo admin/senior)</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="form-group" style="margin:0">
               <label class="form-label">FTA Username</label>
@@ -1458,7 +1458,7 @@ init();
       </div>
     </div>
     <div class="modal-footer" style="justify-content:space-between">
-      <button class="btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteClient()">🗑 Elimina Cliente</button>
+      <button class="btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteClient()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Elimina Cliente</button>
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost" onclick="document.getElementById('modal-edit').style.display='none'">Annulla</button>
         <button class="btn btn-accent" id="btn-save-edit" onclick="saveEdit()">Salva Modifiche</button>
@@ -1563,18 +1563,18 @@ async function loadDocumentsPanel() {
 
     const eico = (m, n) => {
       const e = (n||'').split('.').pop().toLowerCase();
-      const mp = {pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',jpg:'🖼',jpeg:'🖼',png:'🖼',zip:'🗜',txt:'📃'};
-      return m?.includes('pdf') ? '📄' : m?.startsWith('image') ? '🖼' : mp[e] || '📎';
+      const mp = {pdf:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',doc:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>',docx:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>',xls:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',xlsx:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',jpg:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',jpeg:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',png:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',zip:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>',txt:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'};
+      return m?.includes('pdf') ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' : m?.startsWith('image') ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' : mp[e] || '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>';
     };
     const esz = b => !b ? '' : b < 1048576 ? (b/1024).toFixed(0)+' KB' : (b/1048576).toFixed(1)+' MB';
 
     let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
     html += `<div style="font-size:13px;color:var(--text-muted)">${visible.length} file${folders.size ? ' · ' + folders.size + ' cartelle' : ''}</div>`;
-    html += `<a href="/documents.html?client=${clientId}" class="btn btn-accent btn-sm" style="text-decoration:none">📁 Apri Drive →</a></div>`;
+    html += `<a href="/documents.html?client=${clientId}" class="btn btn-accent btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> Apri Drive</a></div>`;
 
     if (!visible.length) {
       html += `<div style="text-align:center;padding:40px;color:var(--text-muted)">
-        <div style="font-size:36px;margin-bottom:12px">📂</div>
+        <div style="margin-bottom:12px;opacity:.4"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div>
         <div style="font-weight:600;margin-bottom:12px">Nessun documento</div>
         <a href="/documents.html?client=${clientId}" class="btn btn-accent" style="text-decoration:none;display:inline-block">⬆ Carica documenti</a>
       </div>`;
@@ -1584,7 +1584,7 @@ async function loadDocumentsPanel() {
         folders.forEach(name => {
           const cnt = visible.filter(f => f.folder.startsWith('/'+name+'/')).length;
           html += `<div style="background:white;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="window.location.href='/documents.html?client=${clientId}'">
-            <span style="font-size:20px">📁</span>
+            <span style="display:inline-flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></span>
             <div><div style="font-size:13px;font-weight:600">${ui.escapeHtml(name)}</div>
             <div style="font-size:11px;color:var(--text-muted)">${cnt} file</div></div>
           </div>`;
@@ -1606,7 +1606,7 @@ async function loadDocumentsPanel() {
   } catch(e) {
     panel.innerHTML = `<div style="text-align:center;padding:30px">
       <div style="color:var(--danger);margin-bottom:12px;font-size:13px">Errore: ${e.message}</div>
-      <a href="/documents.html?client=${clientId}" class="btn btn-accent" style="text-decoration:none">📁 Apri Drive</a>
+      <a href="/documents.html?client=${clientId}" class="btn btn-accent" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> Apri Drive</a>
     </div>`;
   }
 }
