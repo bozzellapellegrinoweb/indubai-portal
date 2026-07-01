@@ -56,6 +56,7 @@ function normalizeSource(c: GhlContact): string {
   if (sess.includes("direct")) return "Diretto";
   if (src.includes("whatsapp") || hasTag("whatsapp")) return "WhatsApp";
   if (src.includes("referral") || hasTag("referral")) return "Referral";
+  if (med.includes("manual") || sess.includes("crm ui")) return "Inserito manualmente (CRM)";
   return "Non specificato";
 }
 
