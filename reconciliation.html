@@ -119,7 +119,7 @@
 <div class="main-content">
   <div class="topbar">
     <div>
-      <h1 style="font-size:22px;font-weight:800;margin:0">📊 Riconciliazione</h1>
+      <h1 style="font-size:22px;font-weight:800;margin:0;display:flex;align-items:center;gap:10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Riconciliazione</h1>
       <div style="font-size:13px;color:var(--text-muted)">Upload, parsing e matching automatico dei bank statement</div>
     </div>
   </div>
@@ -128,14 +128,14 @@
     <!-- Client sidebar -->
     <div class="rec-sidebar">
       <div class="rec-sidebar-title">Clienti</div>
-      <input type="text" class="rec-sidebar-search" id="client-search" placeholder="🔍 Cerca..." oninput="renderClientList()">
+      <input type="text" class="rec-sidebar-search" id="client-search" placeholder="Cerca..." oninput="renderClientList()">
       <div id="client-list"></div>
     </div>
 
     <!-- Main content -->
     <div class="rec-main" id="rec-main">
       <div class="rec-empty">
-        <div class="rec-empty-icon">📂</div>
+        <div class="rec-empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div>
         <div style="font-size:16px;font-weight:700;margin-bottom:6px">Seleziona un cliente</div>
         <div>Scegli un cliente dalla lista per iniziare la riconciliazione</div>
       </div>
@@ -378,7 +378,7 @@ async function loadClientView() {
          ondragleave="this.classList.remove('dragover')"
          ondrop="event.preventDefault();this.classList.remove('dragover');handleFileSelect(event.dataTransfer.files)"
          onclick="document.getElementById('file-input').click()">
-      <div class="rec-upload-icon">📄</div>
+      <div class="rec-upload-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
       <div class="rec-upload-text">Trascina qui il file o clicca per caricare</div>
       <div class="rec-upload-hint">CSV, Excel (.xlsx) o PDF • Il formato della banca viene riconosciuto automaticamente</div>
     </div>
@@ -411,18 +411,18 @@ async function loadUploads() {
 
   el.innerHTML = `
     <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">
-      📁 Statement caricati (${['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'][currentMonth-1]} ${currentYear})
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> Statement caricati (${['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'][currentMonth-1]} ${currentYear})
     </div>
     <div class="rec-uploads-list">
       ${clientUploads.map(u => `
         <div class="rec-upload-item ${selectedUpload?.id === u.id ? 'active' : ''}" onclick="viewUpload('${u.id}')">
-          <div style="font-size:20px">📊</div>
+          <div style="display:flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
           <div class="rec-upload-info">
             <div class="rec-upload-name">${esc(u.file_name)}</div>
             <div class="rec-upload-meta">${u.bank_name || u.source} • ${u.transaction_count} transazioni • ${new Date(u.created_at).toLocaleDateString('it-IT')}</div>
           </div>
           <span class="rec-upload-status rus-${u.status}">${u.status}</span>
-          <button onclick="event.stopPropagation();deleteUpload('${u.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;opacity:.4" title="Elimina">🗑</button>
+          <button onclick="event.stopPropagation();deleteUpload('${u.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;opacity:.4" title="Elimina"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
         </div>
       `).join('')}
     </div>
@@ -504,13 +504,13 @@ function renderTransactions(txs) {
                 <td style="text-align:right" class="${parseFloat(t.credit) > 0 ? 'tx-credit' : ''}">${parseFloat(t.credit) > 0 ? parseFloat(t.credit).toLocaleString('it-IT',{minimumFractionDigits:2}) : ''}</td>
                 <td style="text-align:right">${t.balance !== null && t.balance !== undefined ? parseFloat(t.balance).toLocaleString('it-IT',{minimumFractionDigits:2}) : '—'}</td>
                 <td>
-                  <span class="tx-status txs-${t.match_status}">${{pending:'⏳',matched:'✅',probable:'⚠️',unmatched:'❓',ignored:'➖'}[t.match_status]||'⏳'} ${t.match_status}</span>
+                  <span class="tx-status txs-${t.match_status}">${{pending:'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#94a3b8"></span>',matched:'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a"></span>',probable:'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#d97706"></span>',unmatched:'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626"></span>',ignored:'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#cbd5e1"></span>'}[t.match_status]||'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#94a3b8"></span>'} ${t.match_status}</span>
                   ${conf > 0 ? `<span class="tx-confidence ${confClass}">${confPct}%</span>` : ''}
                 </td>
                 <td>
                   ${t.match_status === 'probable' ? `<button class="tx-action-btn approve" onclick="approveTx('${t.id}')">✓</button>` : ''}
                   ${t.match_status !== 'ignored' && t.match_status !== 'matched' ? `<button class="tx-action-btn ignore" onclick="ignoreTx('${t.id}')">—</button>` : ''}
-                  ${t.match_status === 'ignored' ? `<button class="tx-action-btn" onclick="restoreTx('${t.id}')" style="border-color:#2563eb;color:#2563eb" title="Ripristina">↩</button>` : ''}
+                  ${t.match_status === 'ignored' ? `<button class="tx-action-btn" onclick="restoreTx('${t.id}')" style="border-color:#2563eb;color:#2563eb" title="Ripristina"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></button>` : ''}
                 </td>
               </tr>`;
             }).join('')}
@@ -520,10 +520,10 @@ function renderTransactions(txs) {
     </div>
 
     <div class="rec-actions">
-      <button class="btn btn-accent" onclick="startMatching()" ${selectedClient?.zoho_org_id ? '' : 'disabled title="Cliente senza Zoho Org ID"'}>🔄 Avvia Matching</button>
-      <button class="btn btn-accent" onclick="approveAllHigh()" style="background:#059669">✅ Approva tutti &gt;90%</button>
-      <button class="btn btn-ghost" onclick="generateReport()">📄 Genera Report</button>
-      <button class="btn btn-accent" onclick="pushToZoho()" style="background:#1a73e8">📥 Esporta CSV per Zoho</button>
+      <button class="btn btn-accent" onclick="startMatching()" ${selectedClient?.zoho_org_id ? '' : 'disabled title="Cliente senza Zoho Org ID"'}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Avvia Matching</button>
+      <button class="btn btn-accent" onclick="approveAllHigh()" style="background:#059669"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Approva tutti &gt;90%</button>
+      <button class="btn btn-ghost" onclick="generateReport()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Genera Report</button>
+      <button class="btn btn-accent" onclick="pushToZoho()" style="background:#1a73e8"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Esporta CSV per Zoho</button>
     </div>
   `;
 }
@@ -830,7 +830,7 @@ async function startMatching() {
   if (actionsDiv) {
     actionsDiv.insertAdjacentHTML('afterend', `
       <div class="rec-matching-progress" id="${progressId}">
-        <div style="font-weight:700;font-size:14px">🔄 Matching in corso...</div>
+        <div style="font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Matching in corso...</div>
         <div id="${progressId}-status" style="font-size:12px;color:var(--text-muted);margin-top:4px">Recupero dati da Zoho Books...</div>
         <div class="rec-progress-bar"><div class="rec-progress-fill" id="${progressId}-bar" style="width:5%"></div></div>
       </div>
@@ -903,7 +903,7 @@ async function startMatching() {
       body: JSON.stringify({ status: 'reconciled' })
     });
 
-    setProgress(100, `Completato! ✅ ${matched} match, ⚠️ ${probable} probabili, ❓ ${unmatched} non trovate`);
+    setProgress(100, `Completato! ${matched} match, ${probable} probabili, ${unmatched} non trovate`);
     showToast(`Matching completato: ${matched} match, ${probable} probabili, ${unmatched} non trovate`, 'success');
 
     // 6. Reload after short delay
@@ -1302,7 +1302,7 @@ async function generateReport() {
 
 <div class="no-print" style="position:fixed;bottom:20px;right:20px;display:flex;gap:10px;z-index:9999">
   <button onclick="window.print()" style="padding:12px 24px;background:#1a1a2e;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">
-    📥 Download PDF / Scarica PDF
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download PDF / Scarica PDF
   </button>
   <button onclick="window.close()" style="padding:12px 24px;background:#64748b;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">
     ✕ Close / Chiudi

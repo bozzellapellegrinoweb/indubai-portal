@@ -41,13 +41,13 @@
 <body>
 <div class="wrap">
   <h1>InDubai Portal</h1>
-  <div class="sub">⚙ Setup — 3 passi</div>
+  <div class="sub">Setup — 3 passi</div>
 
   <div class="card">
     <div class="ch"><div class="num" id="n1">1</div><div class="ctitle">Esegui Schema SQL</div></div>
     <div class="cb">
       <div class="desc">Clicca <strong>Copia</strong>, poi <strong>Apri SQL Editor</strong>, incolla Cmd+V e Run.</div>
-      <button class="copy-btn" id="cb1" onclick="copySql(1)">📋 Copia schema.sql</button>
+      <button class="copy-btn" id="cb1" onclick="copySql(1)">Copia schema.sql</button>
       <button class="open-btn" onclick="window.open('https://supabase.com/dashboard/project/gvdoqcgkzbziqufahhxh/sql/new','_blank')">→ SQL Editor</button>
       <div class="hint">⏱ 2-3 secondi</div>
       <br><button class="confirm-btn" onclick="markDone(1)">✓ Schema eseguito</button>
@@ -58,7 +58,7 @@
     <div class="ch"><div class="num" id="n2">2</div><div class="ctitle">Esegui Seed SQL (97 clienti)</div></div>
     <div class="cb">
       <div class="desc">Copia, nuova query nel SQL Editor, incolla, Run.</div>
-      <button class="copy-btn" id="cb2" onclick="copySql(2)">📋 Copia seed_data.sql</button>
+      <button class="copy-btn" id="cb2" onclick="copySql(2)">Copia seed_data.sql</button>
       <button class="open-btn" onclick="window.open('https://supabase.com/dashboard/project/gvdoqcgkzbziqufahhxh/sql/new','_blank')">→ SQL Editor</button>
       <div class="hint">⏱ 10-20 secondi</div>
       <br><button class="confirm-btn" onclick="markDone(2)">✓ Seed eseguito</button>
@@ -66,16 +66,16 @@
   </div>
 
   <div class="card">
-    <div class="ch"><div class="num auto" id="n3">3</div><div class="ctitle">Crea utenti admin ⚡ automatico</div></div>
+    <div class="ch"><div class="num auto" id="n3">3</div><div class="ctitle">Crea utenti admin — automatico</div></div>
     <div class="cb">
       <div class="desc">Crea <strong>pellegrino@indubai.it</strong> e <strong>giuseppe@indubai.it</strong>.</div>
-      <button class="auto-btn" id="abtn" onclick="createUsers()">⚡ Crea Utenti</button>
+      <button class="auto-btn" id="abtn" onclick="createUsers()">Crea Utenti</button>
       <div class="result" id="ares"></div>
     </div>
   </div>
 
   <div class="final" id="final">
-    <h2>✅ Setup completato!</h2>
+    <h2>Setup completato!</h2>
     <div class="cr"><span class="ck">Sito:</span><span class="cv">portal.indubai.it</span></div>
     <div class="cr"><span class="ck">Email:</span><span class="cv">pellegrino@indubai.it</span></div>
     <div class="cr"><span class="ck">Password:</span><span class="cv">InDubai2026!</span></div>
