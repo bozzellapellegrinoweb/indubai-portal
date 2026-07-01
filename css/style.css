@@ -1,38 +1,42 @@
 /* ============================================================
    InDubai Portal — Design System
+   Palette allineata al brand reale indubai.it (nero + verde accento)
    ============================================================ */
 
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
+
 :root {
-  --primary: #1a3a5c;
-  --primary-light: #2563a8;
-  --accent: #c9a84c;
-  --accent-light: #f0d080;
-  --bg: #f0f4f8;
+  --primary: #14161a;
+  --primary-light: #2b2e35;
+  --accent: #47ee74;
+  --accent-light: #a3f7ba;
+  --accent-dark: #16a34a;
+  --bg: #f7f6f2;
   --surface: #ffffff;
-  --surface2: #f7f9fc;
-  --border: #dde3ed;
-  --text: #1e2d42;
-  --text-muted: #6b7a95;
+  --surface2: #f1efe8;
+  --border: #e7e4dc;
+  --text: #14161a;
+  --text-muted: #6b6f76;
   --success: #16a34a;
-  --success-bg: #dcfce7;
+  --success-bg: #e5fbec;
   --danger: #dc2626;
   --danger-bg: #fee2e2;
   --warning: #d97706;
   --warning-bg: #fef3c7;
   --info: #0369a1;
   --info-bg: #e0f2fe;
-  --pending-bg: #f3f4f6;
+  --pending-bg: #f1efe8;
   --sidebar-w: 240px;
-  --radius: 10px;
-  --shadow: 0 2px 12px rgba(26,58,92,0.08);
-  --shadow-lg: 0 8px 32px rgba(26,58,92,0.14);
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(20,22,26,0.04), 0 8px 24px rgba(20,22,26,0.06);
+  --shadow-lg: 0 20px 60px rgba(20,22,26,0.18);
   --transition: 0.18s ease;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -67,7 +71,7 @@ body {
 .sidebar-logo .logo-mark {
   font-size: 22px;
   font-weight: 800;
-  color: var(--accent);
+  color: #ffffff;
   letter-spacing: -0.5px;
 }
 .sidebar-logo .logo-sub {
@@ -133,7 +137,7 @@ body {
 .nav-item:hover { color: white; background: rgba(255,255,255,0.07); }
 .nav-item.active {
   color: white;
-  background: rgba(201,168,76,0.18);
+  background: rgba(71,238,116,0.15);
 }
 .nav-item.active::before {
   content: '';
@@ -143,7 +147,8 @@ body {
   background: var(--accent);
   border-radius: 0 2px 2px 0;
 }
-.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-item .nav-icon { width: 20px; height: 18px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.nav-item .nav-icon svg { width: 18px; height: 18px; }
 .nav-badge {
   margin-left: auto;
   background: var(--danger);
@@ -388,7 +393,7 @@ td {
   transition: border-color var(--transition);
   outline: none;
 }
-.form-control:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(37,99,168,0.1); }
+.form-control:focus { border-color: var(--accent-dark); box-shadow: 0 0 0 3px rgba(71,238,116,0.18); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 
@@ -462,7 +467,7 @@ td {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--primary) 0%, #2563a8 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, #2b2e35 100%);
 }
 .login-card {
   background: white;
@@ -871,7 +876,7 @@ html, body {
   top: 0; left: 0; right: 0;
   height: 52px;
   z-index: 300;
-  background: rgba(15, 22, 40, 0.88);
+  background: rgba(20, 22, 26, 0.88);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid rgba(255,255,255,0.07);
@@ -887,7 +892,7 @@ html, body {
   color: white;
   letter-spacing: -0.3px;
 }
-.ios-admin-bar-logo span { color: #c9a84c; }
+.ios-admin-bar-logo span { color: white; }
 .ios-admin-bar-page {
   position: absolute;
   left: 50%; transform: translateX(-50%);
@@ -927,7 +932,7 @@ html, body {
   display: none;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid #0f1628;
+  border: 1.5px solid #14161a;
 }
 
 /* Bottom navigation */
@@ -936,7 +941,7 @@ html, body {
   position: fixed;
   bottom: 0; left: 0; right: 0;
   z-index: 300;
-  background: rgba(15, 22, 40, 0.92);
+  background: rgba(20, 22, 26, 0.92);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-top: 1px solid rgba(255,255,255,0.07);
@@ -963,8 +968,8 @@ html, body {
   transition: color .15s;
   position: relative;
 }
-.ios-bnav-item.active { color: #c9a84c; }
-.ios-bnav-item:active { color: rgba(201,168,76,0.7); }
+.ios-bnav-item.active { color: #47ee74; }
+.ios-bnav-item:active { color: rgba(71,238,116,0.7); }
 .ios-bnav-icon { font-size: 19px; line-height: 1; }
 .ios-bnav-label {
   font-size: 9.5px;
@@ -979,7 +984,7 @@ html, body {
   border-radius: 50%;
   background: #dc2626;
   display: none;
-  border: 1.5px solid #0f1628;
+  border: 1.5px solid #14161a;
 }
 
 /* iOS sheet drawer (same as client portal) */
@@ -999,7 +1004,7 @@ html, body {
   position: fixed;
   bottom: 0; left: 0; right: 0;
   z-index: 401;
-  background: #1c1c1e;
+  background: #14161a;
   border-radius: 20px 20px 0 0;
   padding-bottom: env(safe-area-inset-bottom, 20px);
   transform: translateY(100%);
@@ -1047,7 +1052,7 @@ html, body {
   transition: background .1s;
 }
 .ios-admin-sheet-link:active { background: rgba(255,255,255,0.06); }
-.ios-admin-sheet-link.active-page { color: #c9a84c; }
+.ios-admin-sheet-link.active-page { color: #47ee74; }
 .ios-admin-sheet-link .si-icon { font-size: 18px; width: 28px; text-align: center; }
 .ios-admin-sheet-link .si-chevron { margin-left: auto; color: rgba(255,255,255,0.2); font-size: 13px; }
 .ios-admin-sheet-logout {
@@ -1087,13 +1092,13 @@ html, body {
   gap: 7px;
   font-size: 12px;
   font-weight: 600;
-  color: #1a3a5c;
+  color: #14161a;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
 }
 .admin-ptr-spin {
   width: 13px; height: 13px;
   border: 2.5px solid #e2e8f0;
-  border-top-color: #1a3a5c;
+  border-top-color: #14161a;
   border-radius: 50%;
   animation: spin .7s linear infinite;
 }

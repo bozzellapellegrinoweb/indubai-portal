@@ -12,15 +12,16 @@
   <style>
     .kpi-strip { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:14px; margin-bottom:24px; }
     .kpi-card { background:white; border:1.5px solid var(--border); border-radius:14px; padding:18px 20px; position:relative; overflow:hidden; transition:box-shadow .15s,transform .15s; cursor:default; }
-    .kpi-card:hover { box-shadow:0 6px 24px rgba(26,58,92,.1); transform:translateY(-2px); }
-    .kpi-card.c-accent { background:linear-gradient(135deg,#1a3a5c,#2563a8); border-color:transparent; }
+    .kpi-card:hover { box-shadow:0 6px 24px rgba(20,22,26,.1); transform:translateY(-2px); }
+    .kpi-card.c-accent { background:linear-gradient(135deg,#14161a,#2b2e35); border-color:transparent; }
     .kpi-card.c-warn   { background:linear-gradient(135deg,#92400e,#d97706); border-color:transparent; }
     .kpi-card.c-danger { background:linear-gradient(135deg,#7f1d1d,#dc2626); border-color:transparent; }
     .kpi-card.c-teal   { background:linear-gradient(135deg,#164e63,#0891b2); border-color:transparent; }
     .kpi-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); margin-bottom:6px; }
     .kpi-value { font-size:30px; font-weight:900; color:var(--text); line-height:1; margin-bottom:4px; }
     .kpi-sub   { font-size:11px; color:var(--text-muted); }
-    .kpi-icon  { position:absolute; right:14px; top:14px; font-size:22px; opacity:.18; }
+    .kpi-icon  { position:absolute; right:14px; top:14px; opacity:.18; }
+    .kpi-icon svg { width: 22px; height: 22px; }
     .kpi-card[class*="c-"] .kpi-label { color:rgba(255,255,255,.65); }
     .kpi-card[class*="c-"] .kpi-value { color:white; }
     .kpi-card[class*="c-"] .kpi-sub   { color:rgba(255,255,255,.55); }
@@ -71,7 +72,7 @@
   </style>
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <link rel="manifest" href="/manifest-admin.json">
-  <meta name="theme-color" content="#0f1628">
+  <meta name="theme-color" content="#14161a">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -92,32 +93,32 @@
       <div class="kpi-strip" id="kpi-grid"><div class="kpi-card"><div class="spinner"></div></div></div>
 
       <div class="dash-tabs">
-        <div class="dtab on"  data-tab="overview">◈ Panoramica</div>
-        <div class="dtab" data-tab="tasks">✓ Task</div>
-        <div class="dtab" data-tab="payments">💳 Pagamenti</div>
-        <div class="dtab" data-tab="deadlines">⏰ Scadenze</div>
-        <div class="dtab" data-tab="clients">👥 Clienti</div>
+        <div class="dtab on"  data-tab="overview">Panoramica</div>
+        <div class="dtab" data-tab="tasks">Task</div>
+        <div class="dtab" data-tab="payments">Pagamenti</div>
+        <div class="dtab" data-tab="deadlines">Scadenze</div>
+        <div class="dtab" data-tab="clients">Clienti</div>
       </div>
 
       <!-- PANORAMICA -->
       <div class="dpanel on" id="panel-overview">
         <div class="d2">
           <div class="card">
-            <div class="chl"><div><div class="chl-t">👥 Clienti per Tipo</div><div class="chl-s">Distribuzione attivi</div></div><a href="/clients.html" class="go-btn">Clienti →</a></div>
+            <div class="chl"><div><div class="chl-t">Clienti per Tipo</div><div class="chl-s">Distribuzione attivi</div></div><a href="/clients.html" class="go-btn">Clienti →</a></div>
             <div class="chart-wrap"><canvas id="ch-ctype"></canvas><div class="clegend" id="lg-ctype"></div></div>
           </div>
           <div class="card">
-            <div class="chl"><div><div class="chl-t">💳 Abbonamenti Mese</div><div class="chl-s" id="pay-month-lbl"></div></div><a href="/payments.html" class="go-btn">Pagamenti →</a></div>
+            <div class="chl"><div><div class="chl-t">Abbonamenti Mese</div><div class="chl-s" id="pay-month-lbl"></div></div><a href="/payments.html" class="go-btn">Pagamenti →</a></div>
             <div class="chart-wrap"><canvas id="ch-pay"></canvas><div class="clegend" id="lg-pay"></div></div>
           </div>
         </div>
         <div class="d2">
           <div class="card">
-            <div class="chl"><div><div class="chl-t">📋 Estratti Conto</div><div class="chl-s">Copertura mese corrente</div></div><a href="/statements.html" class="go-btn">Estratti →</a></div>
+            <div class="chl"><div><div class="chl-t">Estratti Conto</div><div class="chl-s">Copertura mese corrente</div></div><a href="/statements.html" class="go-btn">Estratti →</a></div>
             <div id="ov-statements" style="padding:16px 20px"><div class="spinner"></div></div>
           </div>
           <div class="card">
-            <div class="chl"><div><div class="chl-t">✦ Onboarding</div><div class="chl-s">Stato completamento</div></div><a href="/onboarding.html" class="go-btn">Onboarding →</a></div>
+            <div class="chl"><div><div class="chl-t">Onboarding</div><div class="chl-s">Stato completamento</div></div><a href="/onboarding.html" class="go-btn">Onboarding →</a></div>
             <div id="ov-onboarding" style="padding:16px 20px"><div class="spinner"></div></div>
           </div>
         </div>
@@ -131,17 +132,17 @@
             <div id="my-tasks"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
           <div class="card">
-            <div class="chl"><div><div class="chl-t">🔥 Task Urgenti</div><div class="chl-s">Priorità urgente aperte</div></div><a href="/tasks.html" class="go-btn">Gestisci →</a></div>
+            <div class="chl"><div><div class="chl-t">Task Urgenti</div><div class="chl-s">Priorità urgente aperte</div></div><a href="/tasks.html" class="go-btn">Gestisci →</a></div>
             <div id="urgent-tasks"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
         </div>
         <div class="d2">
           <div class="card">
-            <div class="chl"><div><div class="chl-t">📊 Per Priorità</div></div></div>
+            <div class="chl"><div><div class="chl-t">Per Priorità</div></div></div>
             <div class="chart-wrap"><canvas id="ch-tpri"></canvas></div>
           </div>
           <div class="card">
-            <div class="chl"><div><div class="chl-t">📊 Per Stato</div></div></div>
+            <div class="chl"><div><div class="chl-t">Per Stato</div></div></div>
             <div class="chart-wrap"><canvas id="ch-tstat"></canvas></div>
           </div>
         </div>
@@ -151,11 +152,11 @@
       <div class="dpanel" id="panel-payments">
         <div class="d2">
           <div class="card">
-            <div class="chl"><div><div class="chl-t">⚡ Da Verificare</div><div class="chl-s">Problemi mese corrente</div></div><a href="/payments.html" class="go-btn">Pagamenti →</a></div>
+            <div class="chl"><div><div class="chl-t">Da Verificare</div><div class="chl-s">Problemi mese corrente</div></div><a href="/payments.html" class="go-btn">Pagamenti →</a></div>
             <div id="pay-issues"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
           <div class="card">
-            <div class="chl"><div><div class="chl-t">📊 Status Mese</div></div><a href="/payments.html" class="go-btn">Gestisci →</a></div>
+            <div class="chl"><div><div class="chl-t">Status Mese</div></div><a href="/payments.html" class="go-btn">Gestisci →</a></div>
             <div class="chart-wrap"><canvas id="ch-pstat"></canvas><div class="clegend" id="lg-pstat"></div></div>
           </div>
         </div>
@@ -165,11 +166,11 @@
       <div class="dpanel" id="panel-deadlines">
         <div class="d2">
           <div class="card">
-            <div class="chl"><div><div class="chl-t">⏰ Alert Prossimi 14gg</div><div class="chl-s">VAT, Trade License, Corp Tax</div></div></div>
+            <div class="chl"><div><div class="chl-t">Alert Prossimi 14gg</div><div class="chl-s">VAT, Trade License, Corp Tax</div></div></div>
             <div id="alerts14"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
           <div class="card">
-            <div class="chl"><div><div class="chl-t">📅 VAT Return — 30gg</div></div><a href="/vat.html" class="go-btn">VAT Register →</a></div>
+            <div class="chl"><div><div class="chl-t">VAT Return — 30gg</div></div><a href="/vat.html" class="go-btn">VAT Register →</a></div>
             <div id="vat30"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
         </div>
@@ -179,11 +180,11 @@
       <div class="dpanel" id="panel-clients">
         <div class="d2">
           <div class="card">
-            <div class="chl"><div><div class="chl-t">⚠ Estratti Mancanti</div><div class="chl-s">Mese corrente</div></div><a href="/statements.html" class="go-btn">Estratti →</a></div>
+            <div class="chl"><div><div class="chl-t">Estratti Mancanti</div><div class="chl-s">Mese corrente</div></div><a href="/statements.html" class="go-btn">Estratti →</a></div>
             <div id="missing-st"><div style="padding:30px;text-align:center"><div class="spinner"></div></div></div>
           </div>
           <div class="card">
-            <div class="chl"><div><div class="chl-t">👥 Clienti per Status</div></div><a href="/clients.html" class="go-btn">Clienti →</a></div>
+            <div class="chl"><div><div class="chl-t">Clienti per Status</div></div><a href="/clients.html" class="go-btn">Clienti →</a></div>
             <div class="chart-wrap"><canvas id="ch-czone"></canvas><div class="clegend" id="lg-czone"></div></div>
           </div>
         </div>
@@ -240,18 +241,26 @@ async function loadKPIs() {
       subsSub = `${issueRows} problemi · ${Math.max(0,missingCount)} senza record`;
     } catch(_) {}
 
+    const ICO = {
+      users: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+      file: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+      card: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
+      clipboard: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',
+      chart: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+      dollar: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
+    };
     let h = `
-      <div class="kpi-card"><div class="kpi-label">Clienti Attivi</div><div class="kpi-value">${kpis.total_active_clients??'—'}</div><div class="kpi-sub">${kpis.clients_in_bilancio??0} in bilancio</div><div class="kpi-icon">👥</div></div>
-      <div class="kpi-card c-danger"><div class="kpi-label">Estratti Mancanti</div><div class="kpi-value">${kpis.bank_statements_missing??'—'}</div><div class="kpi-sub">Mese corrente</div><div class="kpi-icon">📄</div></div>
-      <div class="kpi-card c-warn"><div class="kpi-label">Abbonamenti ⚠</div><div class="kpi-value">${subsIssue}</div><div class="kpi-sub">${subsSub}</div><div class="kpi-icon">💳</div></div>
-      <div class="kpi-card c-teal"><div class="kpi-label">VAT in Scadenza</div><div class="kpi-value">${kpis.vat_deadlines_next_30_days??'—'}</div><div class="kpi-sub">Prossimi 30 giorni</div><div class="kpi-icon">📋</div></div>
+      <div class="kpi-card"><div class="kpi-label">Clienti Attivi</div><div class="kpi-value">${kpis.total_active_clients??'—'}</div><div class="kpi-sub">${kpis.clients_in_bilancio??0} in bilancio</div><div class="kpi-icon">${ICO.users}</div></div>
+      <div class="kpi-card c-danger"><div class="kpi-label">Estratti Mancanti</div><div class="kpi-value">${kpis.bank_statements_missing??'—'}</div><div class="kpi-sub">Mese corrente</div><div class="kpi-icon">${ICO.file}</div></div>
+      <div class="kpi-card c-warn"><div class="kpi-label">Abbonamenti</div><div class="kpi-value">${subsIssue}</div><div class="kpi-sub">${subsSub}</div><div class="kpi-icon">${ICO.card}</div></div>
+      <div class="kpi-card c-teal"><div class="kpi-label">VAT in Scadenza</div><div class="kpi-value">${kpis.vat_deadlines_next_30_days??'—'}</div><div class="kpi-sub">Prossimi 30 giorni</div><div class="kpi-icon">${ICO.clipboard}</div></div>
       <div class="kpi-card c-danger" onclick="window.location='/zoho-vat.html'" style="cursor:pointer">
         <div class="kpi-label">Soglia VAT Zoho</div>
         <div class="kpi-value" id="kpi-vat-exceeded">—</div>
         <div class="kpi-sub" id="kpi-vat-sub">Caricamento...</div>
-        <div class="kpi-icon">📊</div>
+        <div class="kpi-icon">${ICO.chart}</div>
       </div>`;
-    if (adminUser) h += `<div class="kpi-card c-accent"><div class="kpi-label">Incassato Mese</div><div class="kpi-value" id="kpi-rev">—</div><div class="kpi-sub" id="kpi-rev-sub">Caricamento...</div><div class="kpi-icon">💰</div></div>`;
+    if (adminUser) h += `<div class="kpi-card c-accent"><div class="kpi-label">Incassato Mese</div><div class="kpi-value" id="kpi-rev">—</div><div class="kpi-sub" id="kpi-rev-sub">Caricamento...</div><div class="kpi-icon">${ICO.dollar}</div></div>`;
     el.innerHTML = h;
     if (adminUser) loadRevenue();
     // Load VAT soglia count from snapshots (AFTER innerHTML is set so elements exist)
@@ -410,7 +419,7 @@ async function loadMyTasks() {
   try {
     const p=sb.getCurrentProfile(); if(!p?.id){el.innerHTML='';return;}
     const tasks=await sb.db.select('tasks',{columns:'id,title,priority,due_date,clients(company_name)',filter:`assigned_to=eq.${p.id}&status=in.(open,in_progress)`,order:'due_date.asc.nullslast',limit:6});
-    if(!tasks?.length){el.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna task assegnata 🎉</div>';return;}
+    if(!tasks?.length){el.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna task assegnata</div>';return;}
     const pc={urgent:'#dc2626',high:'#d97706',normal:'#0369a1',low:'#6b7280'};
     el.innerHTML=tasks.map(t=>`<a href="/tasks.html" class="drow"><div class="drow-dot" style="background:${pc[t.priority]||'#6b7280'}"></div><div class="drow-main"><div class="drow-title">${ui.escapeHtml(t.title)}</div>${t.clients?`<div class="drow-sub">${ui.escapeHtml(t.clients.company_name)}</div>`:''}</div>${t.due_date?`<span class="drow-right ${ui.deadlineClass(t.due_date)}">${ui.formatDate(t.due_date)}</span>`:''}</a>`).join('');
   } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:12px">${e.message}</div>`;}
@@ -419,7 +428,7 @@ async function loadUrgentTasks() {
   const el=document.getElementById('urgent-tasks');
   try {
     const tasks=await sb.db.select('tasks',{columns:'id,title,due_date,clients(company_name)',filter:`priority=eq.urgent&status=in.(open,in_progress)`,order:'due_date.asc.nullslast',limit:6});
-    if(!tasks?.length){el.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna task urgente 🎉</div>';return;}
+    if(!tasks?.length){el.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna task urgente</div>';return;}
     el.innerHTML=tasks.map(t=>`<a href="/tasks.html" class="drow"><div class="drow-dot" style="background:#dc2626"></div><div class="drow-main"><div class="drow-title">${ui.escapeHtml(t.title)}</div>${t.clients?`<div class="drow-sub">${ui.escapeHtml(t.clients.company_name)}</div>`:''}</div>${t.due_date?`<span class="drow-right ${ui.deadlineClass(t.due_date)}">${ui.formatDate(t.due_date)}</span>`:''}</a>`).join('');
   } catch(e){el.innerHTML=`<div class="alert alert-danger" style="margin:12px">${e.message}</div>`;}
 }
@@ -491,7 +500,7 @@ async function loadAlerts14() {
         d.setDate(d.getDate() + 89);
         dl = d.toISOString().split('T')[0];
       }
-      if(dl&&dl>=t0&&dl<=t14) alerts.push({id:`ct_${r.client_id}`,date:dl,label:'◈ Corp. Tax',client:r.clients?.company_name,color:'#7c3aed'});
+      if(dl&&dl>=t0&&dl<=t14) alerts.push({id:`ct_${r.client_id}`,date:dl,label:'Corp. Tax',client:r.clients?.company_name,color:'#7c3aed'});
     });
     alerts.sort((a,b)=>a.date.localeCompare(b.date));
     if(!alerts.length){el.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--text-muted)">Nessuna scadenza nei prossimi 14 giorni ✓</div>';return;}

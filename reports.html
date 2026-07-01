@@ -12,19 +12,19 @@
     .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
     .report-card { background: white; border: 1.5px solid var(--border); border-radius: 14px; padding: 24px; cursor: pointer; transition: all .18s; }
     .report-card:hover { border-color: var(--primary); box-shadow: var(--shadow); transform: translateY(-1px); }
-    .report-icon { font-size: 28px; margin-bottom: 12px; }
+    .report-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--primary); margin-bottom: 14px; }
     .report-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
     .report-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
     .report-output { background: white; border: 1.5px solid var(--border); border-radius: 14px; padding: 24px; margin-top: 24px; display: none; }
     .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
     .stat-row:last-child { border-bottom: none; }
     .stat-val { font-weight: 700; color: var(--primary); }
-    .export-btn { background: #f0f4f8; border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .export-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
     .export-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
   </style>
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <link rel="manifest" href="/manifest-admin.json">
-  <meta name="theme-color" content="#0f1628">
+  <meta name="theme-color" content="#14161a">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -34,38 +34,38 @@
 <div class="app-layout">
   <div class="main-content">
     <div class="topbar">
-      <div class="topbar-title">📊 Report & Statistiche</div>
+      <div class="topbar-title">Report & Statistiche</div>
     </div>
     <div class="page-content">
 
       <div class="report-grid">
         <div class="report-card" onclick="runReport('revenue')">
-          <div class="report-icon">💰</div>
+          <div class="report-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
           <div class="report-title">Fatturato per Mese</div>
           <div class="report-desc">Totale incassato mese per mese nell'anno corrente, distinto per partner contabilità.</div>
         </div>
         <div class="report-card" onclick="runReport('clients_status')">
-          <div class="report-icon">👥</div>
+          <div class="report-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
           <div class="report-title">Stato Clienti</div>
           <div class="report-desc">Clienti attivi vs inattivi, in bilancio vs fuori bilancio, distribuzione per partner.</div>
         </div>
         <div class="report-card" onclick="runReport('payments_health')">
-          <div class="report-icon">💳</div>
+          <div class="report-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
           <div class="report-title">Salute Pagamenti</div>
           <div class="report-desc">Pagamenti ok, falliti, mancanti per il mese corrente. Chi non ha pagato.</div>
         </div>
         <div class="report-card" onclick="runReport('vat_deadlines')">
-          <div class="report-icon">📅</div>
+          <div class="report-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
           <div class="report-title">Scadenze VAT</div>
           <div class="report-desc">Tutte le scadenze VAT dei prossimi 60 giorni ordinate per data.</div>
         </div>
         <div class="report-card" onclick="runReport('statements_missing')">
-          <div class="report-icon">📂</div>
+          <div class="report-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div>
           <div class="report-title">Estratti Mancanti</div>
           <div class="report-desc">Clienti con estratti conto non ricevuti o non registrati per il mese corrente.</div>
         </div>
         <div class="report-card" onclick="runReport('onboarding_status')">
-          <div class="report-icon">✦</div>
+          <div class="report-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
           <div class="report-title">Stato Onboarding</div>
           <div class="report-desc">Clienti con onboarding incompleto. Quanti step mancano per completarlo.</div>
         </div>
@@ -101,7 +101,7 @@ async function runReport(type) {
   try {
     if (type === 'revenue') {
       currentReportName = 'Fatturato per Mese';
-      title.textContent = '💰 ' + currentReportName;
+      title.textContent = currentReportName;
       const year = new Date().getFullYear();
       const months = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
       const rows = [];
@@ -121,7 +121,7 @@ async function runReport(type) {
 
     } else if (type === 'clients_status') {
       currentReportName = 'Stato Clienti';
-      title.textContent = '👥 ' + currentReportName;
+      title.textContent = currentReportName;
       const clients = await sb.db.select('clients', { columns: 'is_active,in_bilancio,accounting_partner,vat_registered,corporate_tax_registered' }) || [];
       const active = clients.filter(c => c.is_active).length;
       const bilancio = clients.filter(c => c.in_bilancio).length;
@@ -145,7 +145,7 @@ async function runReport(type) {
 
     } else if (type === 'payments_health') {
       currentReportName = 'Salute Pagamenti';
-      title.textContent = '💳 ' + currentReportName;
+      title.textContent = currentReportName;
       const { year, month } = ui.currentYearMonth();
       const payments = await sb.db.select('subscription_payments', {
         columns: 'status,clients(company_name,is_active)',
@@ -164,7 +164,7 @@ async function runReport(type) {
 
     } else if (type === 'vat_deadlines') {
       currentReportName = 'Scadenze VAT';
-      title.textContent = '📅 ' + currentReportName;
+      title.textContent = currentReportName;
       const today = new Date();
       const in60 = new Date(today.getTime() + 60*24*60*60*1000);
       const vat = await sb.db.select('vat_register', { columns: 'return_deadline_1,return_deadline_2,return_deadline_3,return_deadline_4,clients(company_name)' }) || [];
@@ -184,7 +184,7 @@ async function runReport(type) {
 
     } else if (type === 'statements_missing') {
       currentReportName = 'Estratti Mancanti';
-      title.textContent = '📂 ' + currentReportName;
+      title.textContent = currentReportName;
       const { year, month } = ui.currentYearMonth();
       const missing = await sb.db.select('bank_statements', {
         columns: 'received,registered,clients(company_name,is_active)',
@@ -200,7 +200,7 @@ async function runReport(type) {
 
     } else if (type === 'onboarding_status') {
       currentReportName = 'Stato Onboarding';
-      title.textContent = '✦ ' + currentReportName;
+      title.textContent = currentReportName;
       const checks = await sb.db.select('onboarding_checklist', {
         columns: 'whatsapp_group,call_scheduled,docs_in_drive,eid_verified,uae_phone_verified,corporate_tax_check,fta_profile_created,ct_registration_done,payment_link_sent,bank_accounts_noted,clients(company_name,is_active)',
       }) || [];
