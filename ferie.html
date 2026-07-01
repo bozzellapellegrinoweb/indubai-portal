@@ -318,7 +318,14 @@ function calcCalendarDays(from, to) {
   if (!from || !to) return 0;
   const a = new Date(from), b = new Date(to);
   if (b < a) return 0;
-  return Math.round((b - a) / 86400000) + 1;
+  let count = 0;
+  const cur = new Date(a);
+  while (cur <= b) {
+    const dow = cur.getDay();
+    if (dow !== 0 && dow !== 6) count++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
 }
 function usedDays(empId, type = null, startDate = null) {
   return requests.filter(r =>
@@ -337,7 +344,7 @@ function calcDays() {
   const prev = document.getElementById('days-preview');
   if (!f || !t) { prev.textContent = 'Seleziona le date'; return; }
   if (d <= 0) { prev.innerHTML = '<span style="color:red">Data fine prima di data inizio</span>'; return; }
-  prev.innerHTML = `<strong>${d}</strong> giorno${d>1?'i':''} di calendario`;
+  prev.innerHTML = `<strong>${d}</strong> giorno${d>1?'i':''} lavorativo${d>1?'i':''}` ;
 }
 
 // ── calendar ─────────────────────────────────────────────────
