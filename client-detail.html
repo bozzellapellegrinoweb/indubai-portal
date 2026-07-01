@@ -592,7 +592,7 @@ async function markVATDone(clientId) {
     clientData.vat_registered = true;
     // Reload zoho tab
     switchTab('zoho', document.querySelector('.tab[onclick*="zoho"]'));
-    ui.showToast('✅ VAT segnata come registrata', 'success');
+    ui.showToast('VAT segnata come registrata', 'success');
   } catch(e) {
     alert('Errore: ' + e.message);
   }
@@ -607,7 +607,7 @@ async function markCTDone(clientId) {
     });
     clientData.license_issue_date = null;
     clientData.ct_tracker_done = true;
-    ui.showToast('✅ Corporate Tax segnata come completata', 'success');
+    ui.showToast('Corporate Tax segnata come completata', 'success');
     loadZohoTab();
   } catch(e) {
     ui.showToast('Errore: ' + e.message, 'error');
@@ -992,7 +992,7 @@ async function resetClientPasswordWithValue() {
     });
     const data = await r.json();
     if (!r.ok || data.error) { ui.showToast('Errore: ' + (data.error || r.status) + (data.role ? ' [role:'+data.role+']' : ''), 'error'); return; }
-    ui.showToast('✅ Password aggiornata!', 'success');
+    ui.showToast('Password aggiornata!', 'success');
     navigator.clipboard.writeText('Email: ' + (clientData?.email||'') + '\nPassword: ' + newPwd + '\nLink: /client-portal/login.html')
       .then(() => ui.showToast('Credenziali copiate negli appunti', 'success', 4000))
       .catch(() => {});
@@ -1281,7 +1281,7 @@ async function savePratica() {
     // Push al cliente su aggiornamento pratica
     const clientUserId = await getClientUserId(clientId);
     if (clientUserId) {
-      const statusLabels = { 'in_corso': 'in corso', 'completato': 'completata ✅', 'in_attesa': 'in attesa', 'sospeso': 'sospesa' };
+      const statusLabels = { 'in_corso': 'in corso', 'completato': 'completata', 'in_attesa': 'in attesa', 'sospeso': 'sospesa' };
       pushNotify({
         action: 'send_to_user', user_id: clientUserId,
         title: id ? 'Pratica aggiornata' : 'Nuova pratica aperta',
