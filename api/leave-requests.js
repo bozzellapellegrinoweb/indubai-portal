@@ -115,6 +115,44 @@ export default async function handler(req, res) {
     });
     const data = await r.json();
     if (!r.ok) return res.status(r.status).json(data);
+
+    // Invia email all'admin quando un dipendente crea una richiesta
+    if (!isAdmin) {
+      try {
+        const empRes = await fetch(`${SUPABASE_URL}/rest/v1/employees?id=eq.${body.employee_id}&select=id,profile:profiles(full_name)`, { headers });
+        const empRows = await empRes.json();
+        const empName = empRows?.[0]?.profile?.full_name || 'Dipendente';
+        const typeLabel = { ferie:'🏖 Ferie', permesso:'🕐 Permesso', malattia:'🤒 Malattia' }[body.type] || body.type;
+        const fmtDate = (d) => { const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; };
+        const row = Array.isArray(data) ? data[0] : data;
+        const html = `
+          <h3 style="margin:0 0 14px;color:#1a2744">🏖 Nuova richiesta — ${empName}</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
+            <tr><td style="padding:7px 0;color:#6b7280;width:120px">Dipendente</td><td style="font-weight:700">${empName}</td></tr>
+            <tr><td style="padding:7px 0;color:#6b7280">Tipo</td><td>${typeLabel}</td></tr>
+            <tr><td style="padding:7px 0;color:#6b7280">Dal</td><td><strong>${fmtDate(body.date_from)}</strong></td></tr>
+            <tr><td style="padding:7px 0;color:#6b7280">Al</td><td><strong>${fmtDate(body.date_to)}</strong></td></tr>
+            <tr><td style="padding:7px 0;color:#6b7280">Giorni</td><td><strong>${body.days}</strong></td></tr>
+            ${body.note_employee ? `<tr><td style="padding:7px 0;color:#6b7280">Nota</td><td>${body.note_employee}</td></tr>` : ''}
+          </table>
+          <p style="text-align:center;margin-top:24px">
+            <a href="https://portal.indubai.it/ferie.html" style="background:#1a2744;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">Approva o Rifiuta</a>
+          </p>`;
+        await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: 'bozzellapellegrino@gmail.com',
+            subject: `🏖 Nuova richiesta ${typeLabel} — ${empName}`,
+            html,
+            event_type: 'leave_request_new',
+            entity_id: row?.id || null,
+            entity_type: 'leave',
+          }),
+        });
+      } catch (e) { console.error('[leave-requests] email to admin failed:', e.message); }
+    }
+
     return res.status(201).json(data);
   }
 
@@ -131,6 +169,50 @@ export default async function handler(req, res) {
     });
     const data = await r.json();
     if (!r.ok) return res.status(r.status).json(data);
+
+    // Invia email al dipendente quando la richiesta viene approvata/rifiutata
+    if (updates.status === 'approved' || updates.status === 'rejected') {
+      try {
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row?.employee_id) {
+          const empRes = await fetch(`${SUPABASE_URL}/rest/v1/employees?id=eq.${row.employee_id}&select=profile_id,profile:profiles(full_name)`, { headers });
+          const empRows = await empRes.json();
+          const emp = empRows?.[0];
+          if (emp?.profile_id) {
+            const approved = updates.status === 'approved';
+            const icon = approved ? '✅' : '❌';
+            const label = approved ? 'approvata' : 'rifiutata';
+            const typeLabel = { ferie:'🏖 Ferie', permesso:'🕐 Permesso', malattia:'🤒 Malattia' }[row.type] || row.type;
+            const fmtDate = (d) => { const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; };
+            const html = `
+              <h3 style="margin:0 0 14px;color:#1a2744">${icon} Richiesta ${label}</h3>
+              <table style="width:100%;border-collapse:collapse;font-size:14px">
+                <tr><td style="padding:7px 0;color:#6b7280;width:120px">Tipo</td><td>${typeLabel}</td></tr>
+                <tr><td style="padding:7px 0;color:#6b7280">Dal</td><td><strong>${fmtDate(row.date_from)}</strong></td></tr>
+                <tr><td style="padding:7px 0;color:#6b7280">Al</td><td><strong>${fmtDate(row.date_to)}</strong></td></tr>
+                <tr><td style="padding:7px 0;color:#6b7280">Giorni</td><td><strong>${row.days}</strong></td></tr>
+                ${updates.note_admin ? `<tr><td style="padding:7px 0;color:#6b7280">Nota admin</td><td>${updates.note_admin}</td></tr>` : ''}
+              </table>
+              <p style="text-align:center;margin-top:24px">
+                <a href="https://portal.indubai.it/ferie.html" style="background:#1a2744;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">Vedi le tue ferie</a>
+              </p>`;
+            await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user_id: emp.profile_id,
+                subject: `${icon} Richiesta ${row.type} ${label} — ${fmtDate(row.date_from)} → ${fmtDate(row.date_to)}`,
+                html,
+                event_type: approved ? 'leave_request_approved' : 'leave_request_rejected',
+                entity_id: row.id,
+                entity_type: 'leave',
+              }),
+            });
+          }
+        }
+      } catch (e) { console.error('[leave-requests] email to employee failed:', e.message); }
+    }
+
     return res.status(200).json(data);
   }
 
