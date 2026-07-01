@@ -16,7 +16,7 @@
     .bc-tpl { padding:14px 16px; border:1.5px solid var(--border); border-radius:10px; cursor:pointer; transition:all .15s; text-align:left; background:white; }
     .bc-tpl:hover { border-color:var(--primary); background:#f0f6ff; }
     .bc-tpl.active { border-color:var(--primary); background:#e8f0fe; }
-    .bc-tpl-icon { font-size:22px; margin-bottom:6px; }
+    .bc-tpl-icon { margin-bottom:6px; color:var(--primary); }
     .bc-tpl-name { font-size:13px; font-weight:700; color:var(--text-primary); }
     .bc-tpl-desc { font-size:11px; color:var(--text-muted); margin-top:2px; }
     .bc-subject { width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; font-weight:600; outline:none; transition:border .15s; }
@@ -55,7 +55,7 @@
 <div class="main-content">
   <div class="topbar">
     <div>
-      <h1 style="font-size:22px;font-weight:800;margin:0">📢 Broadcast Email</h1>
+      <h1 style="font-size:22px;font-weight:800;margin:0;display:flex;align-items:center;gap:10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg> Broadcast Email</h1>
       <div style="font-size:13px;color:var(--text-muted)">Invia comunicazioni ai clienti del portale</div>
     </div>
   </div>
@@ -64,14 +64,14 @@
 
     <!-- Templates -->
     <div class="bc-card" style="margin-bottom:20px">
-      <h3>📋 Template rapidi</h3>
+      <h3 style="display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Template rapidi</h3>
       <div class="bc-templates" id="bc-templates"></div>
     </div>
 
     <div class="bc-grid">
       <!-- LEFT: Compose -->
       <div class="bc-card">
-        <h3>✉️ Componi messaggio</h3>
+        <h3 style="display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Componi messaggio</h3>
         <div style="margin-bottom:12px">
           <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px">OGGETTO</label>
           <input type="text" class="bc-subject" id="bc-subject" placeholder="Oggetto dell'email...">
@@ -83,15 +83,15 @@
 
         <!-- Preview -->
         <div class="bc-preview" id="bc-preview" style="display:none">
-          <div class="bc-preview-header">👁 Anteprima email</div>
+          <div class="bc-preview-header" style="display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Anteprima email</div>
           <div id="bc-preview-content"></div>
         </div>
 
         <!-- Send bar -->
         <div class="bc-send-bar">
-          <button class="btn btn-ghost" onclick="togglePreview()">👁 Anteprima</button>
+          <button class="btn btn-ghost" onclick="togglePreview()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Anteprima</button>
           <button class="btn btn-accent" id="bc-send-btn" onclick="sendBroadcast()" style="margin-left:auto">
-            📤 Invia a <span id="bc-send-count">0</span> clienti
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Invia a <span id="bc-send-count">0</span> clienti
           </button>
         </div>
 
@@ -107,16 +107,16 @@
 
       <!-- RIGHT: Recipients -->
       <div class="bc-card">
-        <h3>👥 Destinatari</h3>
+        <h3 style="display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> Destinatari</h3>
         <div class="bc-toolbar">
           <button class="btn-sm active" onclick="filterClients('all',this)">Tutti</button>
           <button class="btn-sm" onclick="filterClients('bilancio',this)">In bilancio</button>
           <button class="btn-sm" onclick="filterClients('no-bilancio',this)">Non in bilancio</button>
-          <input type="text" class="bc-search" id="bc-search" placeholder="🔍 Cerca cliente..." oninput="renderClients()">
+          <input type="text" class="bc-search" id="bc-search" placeholder="Cerca cliente..." oninput="renderClients()">
         </div>
         <div class="bc-toolbar" style="margin-bottom:8px">
-          <button class="btn-sm" onclick="selectAll(true)">✅ Seleziona tutti</button>
-          <button class="btn-sm" onclick="selectAll(false)">❌ Deseleziona tutti</button>
+          <button class="btn-sm" onclick="selectAll(true)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Seleziona tutti</button>
+          <button class="btn-sm" onclick="selectAll(false)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Deseleziona tutti</button>
           <div class="bc-stats" id="bc-stats">0 / 0 selezionati</div>
         </div>
         <div class="bc-recipients" id="bc-recipients">
@@ -142,7 +142,7 @@ let selected = new Set();
 const TEMPLATES = [
   {
     id: 'public-holiday',
-    icon: '🏖',
+    icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
     name: 'Public Holiday',
     desc: 'Comunicazione chiusura per festività',
     subject: '🏖 Public Holiday / Festività — InDubai Office Closure',
@@ -165,7 +165,7 @@ InDubai Team`
   },
   {
     id: 'monthly-docs',
-    icon: '📄',
+    icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
     name: 'Richiesta documenti mensile',
     desc: 'Estratti conto e fatture del mese',
     subject: '📄 Monthly Documents Request / Richiesta Documenti Mensile',
@@ -200,7 +200,7 @@ InDubai Team`
   },
   {
     id: 'vat-reminder',
-    icon: '📊',
+    icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     name: 'VAT Reminder',
     desc: 'Promemoria scadenza dichiarazione VAT',
     subject: '⚠️ VAT Return Deadline / Scadenza Dichiarazione IVA',
@@ -223,7 +223,7 @@ InDubai Team`
   },
   {
     id: 'general',
-    icon: '📢',
+    icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>',
     name: 'Comunicazione generica',
     desc: 'Messaggio personalizzato bilingue',
     subject: '',
@@ -242,7 +242,7 @@ InDubai Team`
   },
   {
     id: 'ramadan',
-    icon: '🌙',
+    icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
     name: 'Ramadan / Eid',
     desc: 'Auguri e orari ridotti',
     subject: '🌙 Ramadan Kareem — Updated Office Hours / Orari Aggiornati',
@@ -271,7 +271,7 @@ InDubai Team`
   },
   {
     id: 'ct-reminder',
-    icon: '🏛',
+    icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>',
     name: 'Corporate Tax Reminder',
     desc: 'Promemoria scadenza Corporate Tax',
     subject: '🏛 Corporate Tax Filing Reminder / Promemoria Corporate Tax',
@@ -509,14 +509,14 @@ async function sendBroadcast() {
 
       if (result?.ok) {
         sent++;
-        log.innerHTML += `<div class="bc-log-item"><span class="bc-log-ok">✅</span> ${escapeHtml(c.company_name)} — ${c.email}</div>`;
+        log.innerHTML += `<div class="bc-log-item"><span class="bc-log-ok"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> ${escapeHtml(c.company_name)} — ${c.email}</div>`;
       } else {
         failed++;
-        log.innerHTML += `<div class="bc-log-item"><span class="bc-log-err">❌</span> ${escapeHtml(c.company_name)} — ${result?.error || 'Errore'}</div>`;
+        log.innerHTML += `<div class="bc-log-item"><span class="bc-log-err"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> ${escapeHtml(c.company_name)} — ${result?.error || 'Errore'}</div>`;
       }
     } catch(e) {
       failed++;
-      log.innerHTML += `<div class="bc-log-item"><span class="bc-log-err">❌</span> ${escapeHtml(c.company_name)} — ${e.message}</div>`;
+      log.innerHTML += `<div class="bc-log-item"><span class="bc-log-err"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> ${escapeHtml(c.company_name)} — ${e.message}</div>`;
     }
 
     const pct = Math.round(((i + 1) / recipients.length) * 100);
@@ -528,10 +528,10 @@ async function sendBroadcast() {
     if (i < recipients.length - 1) await new Promise(r => setTimeout(r, 200));
   }
 
-  progressText.textContent = `✅ Completato: ${sent} inviate, ${failed} errori su ${recipients.length} totali`;
+  progressText.textContent = `Completato: ${sent} inviate, ${failed} errori su ${recipients.length} totali`;
   progressFill.style.background = failed > 0 ? '#f59e0b' : '#059669';
   btn.disabled = false;
-  btn.innerHTML = `📤 Invia a <span id="bc-send-count">${[...selected].filter(id => allClients.find(c => c.id === id && c.email)).length}</span> clienti`;
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Invia a <span id="bc-send-count">${[...selected].filter(id => allClients.find(c => c.id === id && c.email)).length}</span> clienti`;
 }
 
 // ── UTILS ──

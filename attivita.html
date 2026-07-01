@@ -73,22 +73,40 @@
 <script src="/js/i18n.js"></script>
 <script src="/js/notify.js"></script>
 <script>
-const PAGE_ICONS = {
-  'index':'◈ Dashboard','tasks':'✓ Task','clients':'◉ Clienti','documents':'📁 Documenti',
-  'statements':'◎ Estratti','payments':'◆ Abbonamenti','bilanci':'📒 Bilanci','ferie':'🏖 Ferie',
-  'vat':'◇ VAT','corp-tax':'◈ Corp Tax','affinitas':'◉ Affinitas','onboarding':'✦ Onboarding',
-  'reports':'📊 Report','news':'📰 News','search':'🔍 Ricerca','users':'👥 Utenti',
-  'zoho-setup':'Setup Zoho','zoho-vat':'Monitor VAT','notifiche':'🔔 Notifiche',
-  'client-detail':'Cliente','attivita':'📋 Attività',
+const PAGE_LABELS = {
+  'index':'Dashboard','tasks':'Task','clients':'Clienti','documents':'Documenti',
+  'statements':'Estratti','payments':'Abbonamenti','bilanci':'Bilanci','ferie':'Ferie',
+  'vat':'VAT','corp-tax':'Corp Tax','affinitas':'Affinitas','onboarding':'Onboarding',
+  'reports':'Report','news':'News','search':'Ricerca','users':'Utenti',
+  'zoho-setup':'Setup Zoho','zoho-vat':'Monitor VAT','notifiche':'Notifiche',
+  'client-detail':'Cliente','attivita':'Attività',
 };
 
-function pageLabel(page) { return PAGE_ICONS[page] || page || '—'; }
+function pageLabel(page) { return PAGE_LABELS[page] || page || '—'; }
 function pageIcon(page) {
+  const svg = p => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   const icons = {
-    'index':'◈','tasks':'✓','clients':'◉','documents':'📁','statements':'◎',
-    'payments':'◆','bilanci':'📒','ferie':'🏖','vat':'◇','corp-tax':'◈',
-    'affinitas':'◉','onboarding':'✦','reports':'📊','news':'📰','search':'🔍',
-    'users':'👥','zoho-setup':'⚙','zoho-vat':'📊','notifiche':'🔔','client-detail':'◉','attivita':'📋',
+    'index': svg('<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>'),
+    'tasks': svg('<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>'),
+    'clients': svg('<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>'),
+    'documents': svg('<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>'),
+    'statements': svg('<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>'),
+    'payments': svg('<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>'),
+    'bilanci': svg('<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'),
+    'ferie': svg('<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'),
+    'vat': svg('<line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>'),
+    'corp-tax': svg('<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>'),
+    'affinitas': svg('<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>'),
+    'onboarding': svg('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
+    'reports': svg('<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'),
+    'news': svg('<path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>'),
+    'search': svg('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'),
+    'users': svg('<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>'),
+    'zoho-setup': svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>'),
+    'zoho-vat': svg('<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'),
+    'notifiche': svg('<path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>'),
+    'client-detail': svg('<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>'),
+    'attivita': svg('<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>'),
   };
   return icons[page] || '·';
 }
@@ -277,7 +295,7 @@ function buildTimelineHtml(logs, count) {
     }
 
     const page = l.details?.page || '';
-    const icon = l.action === 'page_view' ? pageIcon(page) : '⚡';
+    const icon = l.action === 'page_view' ? pageIcon(page) : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
     const desc = l.action === 'page_view' ? `ha aperto <strong>${pageLabel(page)}</strong>` : `${l.action}`;
 
     html += `
