@@ -25,7 +25,7 @@
   const ROLE_PAGES_DEFAULT = {
     admin:        null,   // null = all pages
     senior:       null,   // all pages (admin section hidden by nav filter)
-    junior:       ['index','tasks','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports'],
+    junior:       ['index','tasks','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports','lead-analytics'],
     mini_admin:   ['index','tasks','clients','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
     collaborator: ['index','tasks','clients','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
   };
@@ -60,6 +60,7 @@
     { id: 'vat-partner', icon: '', label: '↳ VAT Consultant', href: '/vat-partner.html' },
     { id: 'pw',         icon: '', label: '↳ P&W',            href: '/pw.html' },
     { id: 'reports',    icon: '📊', label: 'Report',         href: '/reports.html',    section: 'ANALYTICS' },
+    { id: 'lead-analytics', icon: '🎯', label: 'Lead per Fonte', href: '/lead-analytics.html' },
     { id: 'news',       icon: '📰', label: 'UAE News',       href: '/news.html' },
     { id: 'search',     icon: '🔍', label: 'Ricerca',        href: '/search.html' },
     ...(role === 'admin' ? [
@@ -373,7 +374,7 @@
     'index': 'Dashboard', 'tasks': 'Task', 'clients': 'Clienti',
     'documents': 'Documenti', 'vat': 'VAT Register', 'corp-tax': 'Corporate Tax',
     'payments': 'Abbonamenti', 'statements': 'Estratti', 'onboarding': 'Onboarding',
-    'reports': 'Report', 'news': 'UAE News', 'search': 'Ricerca', 'users': 'Utenti', 'notifiche': 'Notifiche',
+    'reports': 'Report', 'lead-analytics': 'Lead per Fonte', 'news': 'UAE News', 'search': 'Ricerca', 'users': 'Utenti', 'notifiche': 'Notifiche',
     'affinitas': 'Affinitas', 'vat-partner': 'VAT Consultant', 'pw': 'P&W', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
     'client-detail': 'Cliente', 'attivita': 'Attività Staff', 'broadcast': 'Broadcast', 'bacheca': 'Bacheca',
     'reconciliation': 'Riconciliazione',

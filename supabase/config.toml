@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.lara-chat]
 verify_jwt = false
+
+[functions.ghl-lead-analytics]
+verify_jwt = false
