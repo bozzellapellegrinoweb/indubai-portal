@@ -135,7 +135,7 @@
 <!-- Modal: nuova richiesta -->
 <div class="modal" id="modal-request">
   <div class="modal-box">
-    <div class="modal-title">🏖 Nuova Richiesta</div>
+    <div class="modal-title">Nuova Richiesta</div>
     <div class="form-group">
       <label class="form-label">Tipo</label>
       <select class="form-control" id="req-type" onchange="calcDays()">
@@ -189,7 +189,7 @@
 <!-- Modal: impostazioni dipendente (admin) -->
 <div class="modal" id="modal-settings">
   <div class="modal-box">
-    <div class="modal-title">⚙️ Impostazioni Dipendenti</div>
+    <div class="modal-title">Impostazioni Dipendenti</div>
     <div id="settings-list"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:16px">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-settings').classList.remove('open')">Chiudi</button>
@@ -299,14 +299,14 @@ function empInitials(name) {
   return (name||'').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
 }
 function typeBadge(t) {
-  const map = { ferie:'🏖 Ferie', permesso:'🕐 Permesso', malattia:'🤒 Malattia' };
+  const map = { ferie:'Ferie', permesso:'Permesso', malattia:'Malattia' };
   const cls  = { ferie:'badge-ferie', permesso:'badge-permesso', malattia:'badge-malattia' };
   return `<span class="${cls[t]||''}">${map[t]||t}</span>`;
 }
 function statusBadge(s) {
   if (s==='pending')  return '<span class="badge-pending">⏳ In attesa</span>';
-  if (s==='approved') return '<span class="badge-approved">✓ Approvato</span>';
-  if (s==='rejected') return '<span class="badge-rejected">✕ Rifiutato</span>';
+  if (s==='approved') return '<span class="badge-approved"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Approvato</span>';
+  if (s==='rejected') return '<span class="badge-rejected"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Rifiutato</span>';
   return s;
 }
 function fmt(d) {
@@ -432,7 +432,7 @@ function renderAdmin() {
         <div class="kpi-label">Saldo ${ui.escapeHtml(name)}</div>
         <div class="kpi-value">${balance >= 0 ? balance : balance}</div>
         <div class="kpi-sub">maturati ${accrued} · usati ${used}${credits ? ' · festivi +' + credits : ''}</div>
-        <div class="kpi-icon">🏖</div>
+        <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></div>
       </div>`;
   });
 
@@ -448,7 +448,7 @@ function renderAdmin() {
         <div class="kpi-label">Approvate</div>
         <div class="kpi-value">${approved.length}</div>
         <div class="kpi-sub">Richieste totali ok</div>
-        <div class="kpi-icon">✓</div>
+        <div class="kpi-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
       </div>
       ${empKpiHtml}
     </div>`;
@@ -477,7 +477,7 @@ function renderAdmin() {
           <span class="emp-avatar">${empInitials(name)}</span>
           ${ui.escapeHtml(name)}
           <span style="margin-left:auto;font-size:11px;color:var(--text-muted);font-weight:500">Da: ${startStr} · ${cyLabel}</span>
-          <button class="btn btn-ghost btn-sm" onclick="openSettings()" style="font-size:11px;padding:3px 8px">⚙</button>
+          <button class="btn btn-ghost btn-sm" onclick="openSettings()" style="font-size:11px;padding:3px 8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
         </h3>
         <div class="emp-stats">
           <div class="emp-stat blue"><div class="val">${accrued}</div><div class="lbl">Maturati</div></div>
@@ -486,9 +486,9 @@ function renderAdmin() {
         </div>
         <div class="leave-bar" style="margin-top:10px"><div class="leave-bar-fill ${barCls}" style="width:${pct}%"></div></div>
         <div style="display:flex;gap:8px;margin-top:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap">
-          <span>🏖 Ferie: <b>${usedFerie}g</b></span>
-          <span>🕐 Permessi: <b>${usedPerm}g</b></span>
-          <span>🤒 Malattia: <b>${usedMal}g</b></span>
+          <span>Ferie: <b>${usedFerie}g</b></span>
+          <span>Permessi: <b>${usedPerm}g</b></span>
+          <span>Malattia: <b>${usedMal}g</b></span>
           <span style="margin-left:auto">~${accrualRate} g/mese</span>
         </div>
       </div>`;
@@ -498,7 +498,7 @@ function renderAdmin() {
   // Calendar
   const calHtml = `
     <div class="card" style="padding:20px;margin-bottom:20px">
-      <div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">📅 Calendario Assenze</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">Calendario Assenze</div>
       ${renderCalendar()}
     </div>`;
 
@@ -521,8 +521,8 @@ function renderAdmin() {
             <td style="color:var(--text-muted);font-size:12px">${r.note_employee||'—'}</td>
             <td style="color:var(--text-muted);font-size:12px">${fmt(r.created_at?.split('T')[0])}</td>
             <td>
-              <button class="btn-approve" onclick="reviewRequest('${r.id}','approved')">✓ Approva</button>
-              <button class="btn-reject"  onclick="reviewRequest('${r.id}','rejected')">✕ Rifiuta</button>
+              <button class="btn-approve" onclick="reviewRequest('${r.id}','approved')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Approva</button>
+              <button class="btn-reject"  onclick="reviewRequest('${r.id}','rejected')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Rifiuta</button>
             </td>
           </tr>`).join('')}
         </tbody>
@@ -533,7 +533,7 @@ function renderAdmin() {
   // All requests history
   const history = [...requests].sort((a,b) => b.created_at?.localeCompare(a.created_at));
   const historyHtml = `
-    <div class="section-title">📋 Storico Richieste</div>
+    <div class="section-title">Storico Richieste</div>
     <div class="card" style="padding:0">
       <div class="tbl-wrap"><table>
         <thead><tr>
@@ -549,7 +549,7 @@ function renderAdmin() {
             <td>${statusBadge(r.status)}</td>
             <td style="color:var(--text-muted);font-size:12px">${r.note_employee||'—'}</td>
             <td style="color:var(--text-muted);font-size:12px">${r.note_admin||'—'}</td>
-            <td><button onclick="deleteRequest('${r.id}')" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:2px 6px" title="Elimina">🗑</button></td>
+            <td><button onclick="deleteRequest('${r.id}')" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:2px 6px" title="Elimina"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button></td>
           </tr>`).join('') :
           '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted)">Nessuna richiesta</td></tr>'}
         </tbody>
@@ -568,7 +568,7 @@ function renderEmployee() {
     return;
   }
   const name   = currentUser.full_name?.split(' ')[0] || 'Dipendente';
-  document.getElementById('topbar-sub').textContent = `Ciao ${name} 👋`;
+  document.getElementById('topbar-sub').textContent = `Ciao ${name}`;
 
   const annualDays = myEmployee.annual_leave_days || 30;
   const accrued = computeAccrued(myEmployee.start_date, annualDays);
@@ -589,19 +589,19 @@ function renderEmployee() {
         <div class="kpi-label">Maturati ad oggi</div>
         <div class="kpi-value">${accrued}</div>
         <div class="kpi-sub">~${accrualRate} giorni/mese</div>
-        <div class="kpi-icon">📋</div>
+        <div class="kpi-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
       </div>
       <div class="kpi-card danger">
         <div class="kpi-label">Consumati</div>
         <div class="kpi-value">${used - credits}</div>
         <div class="kpi-sub">${credits ? 'Festivi restituiti: +' + credits : 'Approvati totali'}</div>
-        <div class="kpi-icon">✓</div>
+        <div class="kpi-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
       </div>
       <div class="kpi-card success">
         <div class="kpi-label">Saldo disponibile</div>
         <div class="kpi-value">${balance}</div>
         <div class="kpi-sub">Maturati - consumati${credits ? ' + festivi' : ''}</div>
-        <div class="kpi-icon">🏖</div>
+        <div class="kpi-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></div>
       </div>
       <div class="kpi-card warn">
         <div class="kpi-label">In attesa</div>
@@ -715,7 +715,7 @@ async function sendLeaveEmailToAdmin(empId, type, from, to, days, note, requestI
   const name = emp?.profile?.full_name || 'Dipendente';
   const typeLabel = { ferie:'🏖 Ferie', permesso:'🕐 Permesso', malattia:'🤒 Malattia' }[type] || type;
   const html = `
-    <h3 style="margin:0 0 14px;color:#1a2744">🏖 Nuova richiesta — ${ui.escapeHtml(name)}</h3>
+    <h3 style="margin:0 0 14px;color:#1a2744">Nuova richiesta — ${ui.escapeHtml(name)}</h3>
     <table style="width:100%;border-collapse:collapse;font-size:14px">
       <tr><td style="padding:7px 0;color:#6b7280;width:120px">Dipendente</td><td style="font-weight:700">${ui.escapeHtml(name)}</td></tr>
       <tr><td style="padding:7px 0;color:#6b7280">Tipo</td><td>${typeLabel}</td></tr>
@@ -787,7 +787,7 @@ let reviewAction = null, reviewId = null;
 function reviewRequest(id, action) {
   reviewId     = id;
   reviewAction = action;
-  const title  = action==='approved' ? '✓ Approva richiesta' : '✕ Rifiuta richiesta';
+  const title  = action==='approved' ? 'Approva richiesta' : 'Rifiuta richiesta';
   document.getElementById('note-title').textContent = title;
   document.getElementById('note-text').value = '';
   document.getElementById('note-confirm-btn').textContent = action==='approved' ? 'Approva' : 'Rifiuta';
