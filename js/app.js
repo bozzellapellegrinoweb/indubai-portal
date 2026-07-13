@@ -92,6 +92,9 @@
     { id: 'news',       icon: 'book-open',     label: 'UAE News',       href: '/news.html' },
     { id: 'search',     icon: 'search',        label: 'Ricerca',        href: '/search.html' },
     ...(role === 'admin' ? [
+      { id: 'smm', icon: 'megaphone', label: 'Social Manager', href: 'https://indubai-social-manager.vercel.app', external: true },
+    ] : []),
+    ...(role === 'admin' ? [
       { id: 'attivita', icon: 'clipboard',     label: 'Attività Staff', href: '/attivita.html', section: 'ADMIN' },
       { id: 'users',    icon: 'users',         label: 'Utenti',         href: '/users.html' },
     ] : []),
@@ -124,7 +127,8 @@
   function renderItem(item) {
     const active = (currentPage === item.id || (currentPage === '' && item.id === 'index')) ? 'active' : '';
     const subStyle = item.sub ? 'padding-left:32px;font-size:12px;opacity:.85;' : '';
-    return `<a href="${item.href}" class="nav-item ${active}" style="${subStyle}">
+    const extAttrs = item.external ? ' target="_blank" rel="noopener noreferrer"' : '';
+    return `<a href="${item.href}" class="nav-item ${active}" style="${subStyle}"${extAttrs}>
       ${item.icon ? `<span class="nav-icon">${navIcon(item.icon)}</span>` : ''}
       ${item.label}
       <span class="nav-badge ${item.id||''}" style="display:none">0</span>
