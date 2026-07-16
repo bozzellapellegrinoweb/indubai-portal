@@ -196,10 +196,17 @@
         </div>
         <div class="form-group">
           <label class="form-label">Cliente</label>
-          <select class="form-control" id="t-client">
+          <select class="form-control" id="t-client" onchange="toggleNotifyClient()">
             <option value="">— Nessuno —</option>
           </select>
         </div>
+      </div>
+      <div id="notify-client-wrap" style="display:none;margin-top:-4px;margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600">
+          <input type="checkbox" id="t-notify-client">
+          Notifica il cliente al completamento
+        </label>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Lascia deselezionato per le task interne (il cliente non riceverà nessuna email)</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div class="form-group">
@@ -338,7 +345,7 @@ async function loadTasks() {
   document.getElementById('t-list').innerHTML = '<div class="loading-overlay" style="min-height:120px"><div class="spinner"></div></div>';
   try {
     allTasks = await sb.db.select('tasks', {
-      columns: 'id,title,description,status,priority,category,due_date,created_at,client_id,created_by,assigned_to,clients(company_name),created_profile:profiles!tasks_created_by_fkey(full_name),assigned_profile:profiles!tasks_assigned_to_fkey(full_name)',
+      columns: 'id,title,description,status,priority,category,due_date,created_at,client_id,notify_client,created_by,assigned_to,clients(company_name),created_profile:profiles!tasks_created_by_fkey(full_name),assigned_profile:profiles!tasks_assigned_to_fkey(full_name)',
       order: 'created_at.desc'
     }) || [];
     updateCounts();
@@ -660,8 +667,8 @@ async function updateStatus(taskId, newStatus) {
           entity_type: 'task',
         });
       }
-      // ── Push + email al cliente ──
-      if (task.client_id) {
+      // ── Push + email al cliente (solo se la task è marcata come visibile al cliente) ──
+      if (task.client_id && task.notify_client) {
         const clientUserId = await getClientUserId(task.client_id);
         if (clientUserId) {
           pushNotify({
@@ -725,11 +732,17 @@ function closeSheet() {
   document.body.style.overflow = '';
 }
 
-function openNewTask() { document.getElementById('modal-task').style.display = 'flex'; }
+function openNewTask() { document.getElementById('modal-task').style.display = 'flex'; toggleNotifyClient(); }
 function closeModal() { document.getElementById('modal-task').style.display = 'none'; }
 
 function toggleRecurring(on) {
   document.getElementById('recurring-opts').style.display = on ? 'block' : 'none';
+}
+
+function toggleNotifyClient() {
+  const hasClient = !!document.getElementById('t-client').value;
+  document.getElementById('notify-client-wrap').style.display = hasClient ? 'block' : 'none';
+  if (!hasClient) document.getElementById('t-notify-client').checked = false;
 }
 
 async function saveTask() {
@@ -743,6 +756,7 @@ async function saveTask() {
       description: document.getElementById('t-desc').value.trim()||null,
       assigned_to: document.getElementById('t-assigned').value||null,
       client_id: document.getElementById('t-client').value||null,
+      notify_client: document.getElementById('t-notify-client').checked || false,
       priority: document.getElementById('t-priority').value,
       category: document.getElementById('t-category').value,
       due_date: document.getElementById('t-due').value||null,
@@ -795,6 +809,8 @@ async function saveTask() {
     document.getElementById('t-desc').value='';
     document.getElementById('t-recurring').checked=false;
     document.getElementById('recurring-opts').style.display='none';
+    document.getElementById('t-notify-client').checked=false;
+    document.getElementById('notify-client-wrap').style.display='none';
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
   finally { btn.disabled=false; btn.textContent='Crea Task'; }
 }
