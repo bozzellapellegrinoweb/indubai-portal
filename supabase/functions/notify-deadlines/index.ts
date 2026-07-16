@@ -114,11 +114,12 @@ async function alreadySent(
 
 /** Recupera email di tutti gli staff con ruoli specificati */
 async function getStaffEmails(sb: ReturnType<typeof createClient>, roles = ['admin', 'senior', 'mini_admin', 'junior', 'collaborator', 'staff']): Promise<{ id: string; email: string; full_name: string }[]> {
-  const { data: profiles } = await sb
+  const { data: profiles, error } = await sb
     .from('profiles')
     .select('id, full_name, role')
     .in('role', roles);
 
+  if (error) throw new Error(`getStaffEmails: ${error.message}`);
   if (!profiles?.length) return [];
 
   const results: { id: string; email: string; full_name: string }[] = [];
@@ -137,10 +138,12 @@ async function checkVatDeadlines(sb: ReturnType<typeof createClient>, staffEmail
   const todayStr = today.toISOString().split('T')[0];
   const limitStr = limit.toISOString().split('T')[0];
 
-  const { data: rows } = await sb
+  const { data: rows, error } = await sb
     .from('vat_register')
     .select('id, client_id, return_deadline_1, return_deadline_2, return_deadline_3, return_deadline_4, clients(company_name, is_active)')
     .filter('clients.is_active', 'eq', true);
+
+  if (error) throw new Error(`checkVatDeadlines: ${error.message}`);
 
   let sent = 0;
   for (const row of rows || []) {
@@ -180,12 +183,14 @@ async function checkTasksDue(sb: ReturnType<typeof createClient>, staffEmails: {
   const todayStr = today.toISOString().split('T')[0];
   const limitStr = limit.toISOString().split('T')[0];
 
-  const { data: tasks } = await sb
+  const { data: tasks, error } = await sb
     .from('tasks')
     .select('id, title, due_date, assigned_to, client_id, clients(company_name), assigned_profile:profiles!tasks_assigned_to_fkey(full_name)')
     .not('status', 'in', '("completed","cancelled")')
     .gte('due_date', todayStr)
     .lte('due_date', limitStr);
+
+  if (error) throw new Error(`checkTasksDue: ${error.message}`);
 
   let sent = 0;
   for (const task of tasks || []) {
@@ -221,12 +226,14 @@ async function checkPaymentsFailed(sb: ReturnType<typeof createClient>, staffEma
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
-  const { data: payments } = await sb
+  const { data: payments, error } = await sb
     .from('subscription_payments')
     .select('id, client_id, status, clients(company_name, is_active)')
     .in('status', ['failed', 'no_tentativo'])
     .eq('year', year)
     .eq('month', month);
+
+  if (error) throw new Error(`checkPaymentsFailed: ${error.message}`);
 
   const active = (payments || []).filter(p => p.clients?.is_active);
   if (!active.length) return 0;
@@ -268,7 +275,7 @@ async function checkStatementsMissing(sb: ReturnType<typeof createClient>, staff
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
-  const { data: missing } = await sb
+  const { data: missing, error } = await sb
     .from('bank_statements')
     .select('id, client_id, clients(company_name, is_active, in_bilancio)')
     .eq('year', year)
@@ -276,6 +283,8 @@ async function checkStatementsMissing(sb: ReturnType<typeof createClient>, staff
     .eq('received', false)
     .filter('clients.is_active', 'eq', true)
     .filter('clients.in_bilancio', 'eq', true);
+
+  if (error) throw new Error(`checkStatementsMissing: ${error.message}`);
 
   const active = (missing || []).filter(m => m.clients?.is_active && m.clients?.in_bilancio);
   if (!active.length) return 0;
@@ -310,12 +319,14 @@ async function checkBilanciTodo(sb: ReturnType<typeof createClient>, staffEmails
   if (![1, 2, 3].includes(month)) return 0; // Solo gen-mar
 
   const year = new Date().getFullYear();
-  const { data: todos } = await sb
+  const { data: todos, error } = await sb
     .from('bilanci')
     .select('id, client_id, clients(company_name, is_active)')
     .eq('year', year)
     .eq('bilancio', false)
     .filter('clients.is_active', 'eq', true);
+
+  if (error) throw new Error(`checkBilanciTodo: ${error.message}`);
 
   const active = (todos || []).filter(b => b.clients?.is_active);
   if (!active.length) return 0;
@@ -351,11 +362,13 @@ async function checkAffinitasDue(sb: ReturnType<typeof createClient>, staffEmail
   const todayStr = today.toISOString().split('T')[0];
   const limitStr = limit.toISOString().split('T')[0];
 
-  const { data: subs } = await sb
+  const { data: subs, error } = await sb
     .from('affinitas_subscriptions')
     .select('id, company_name, subscription_ref, package, next_payment')
     .gte('next_payment', todayStr)
     .lte('next_payment', limitStr);
+
+  if (error) throw new Error(`checkAffinitasDue: ${error.message}`);
 
   let sent = 0;
   for (const sub of subs || []) {
@@ -399,20 +412,41 @@ serve(async (req) => {
     const staffEmails = await getStaffEmails(sb);
     console.log(`Staff trovati: ${staffEmails.length}`);
 
-    const results = await Promise.all([
-      checkVatDeadlines(sb, staffEmails).then(n => ({ vat: n })),
-      checkTasksDue(sb, staffEmails).then(n => ({ tasks: n })),
-      checkPaymentsFailed(sb, staffEmails).then(n => ({ payments: n })),
-      checkStatementsMissing(sb, staffEmails).then(n => ({ statements: n })),
-      checkBilanciTodo(sb, staffEmails).then(n => ({ bilanci: n })),
-      checkAffinitasDue(sb, staffEmails).then(n => ({ affinitas: n })),
-    ]);
+    const checks: [string, () => Promise<number>][] = [
+      ['vat', () => checkVatDeadlines(sb, staffEmails)],
+      ['tasks', () => checkTasksDue(sb, staffEmails)],
+      ['payments', () => checkPaymentsFailed(sb, staffEmails)],
+      ['statements', () => checkStatementsMissing(sb, staffEmails)],
+      ['bilanci', () => checkBilanciTodo(sb, staffEmails)],
+      ['affinitas', () => checkAffinitasDue(sb, staffEmails)],
+    ];
 
-    const summary = Object.assign({}, ...results);
+    const settled = await Promise.allSettled(checks.map(([, fn]) => fn()));
+
+    const summary: Record<string, number> = {};
+    const errors: Record<string, string> = {};
+    settled.forEach((result, i) => {
+      const [key] = checks[i];
+      if (result.status === 'fulfilled') {
+        summary[key] = result.value;
+      } else {
+        summary[key] = 0;
+        errors[key] = result.reason?.message || String(result.reason);
+        console.error(`[notify-deadlines] ${key} fallito:`, errors[key]);
+      }
+    });
+
     const totalSent = Object.values(summary).reduce((a, b) => a + b, 0);
     console.log('Email inviate:', summary);
+    if (Object.keys(errors).length) console.error('Controlli falliti:', errors);
 
-    return new Response(JSON.stringify({ ok: true, sent: totalSent, summary, date: new Date().toISOString() }), { headers: CORS });
+    return new Response(JSON.stringify({
+      ok: Object.keys(errors).length === 0,
+      sent: totalSent,
+      summary,
+      ...(Object.keys(errors).length ? { errors } : {}),
+      date: new Date().toISOString(),
+    }), { headers: CORS });
   } catch (e: any) {
     console.error('notify-deadlines error:', e);
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: CORS });
