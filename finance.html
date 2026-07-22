@@ -7,7 +7,7 @@
   <title>Cashflow Gruppo — InDubai Portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
-  <!-- Chart.js lazy-loaded on demand -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
     .fin-kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:20px; }
     .fin-kpi { background:white; border-radius:var(--radius); padding:18px 20px; border:1.5px solid var(--border); position:relative; overflow:hidden; }
@@ -21,8 +21,7 @@
 
     .fin-charts { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
     @media(max-width:900px) { .fin-charts { grid-template-columns:1fr; } }
-    .fin-chart-card { background:white; border-radius:var(--radius); padding:20px; border:1.5px solid var(--border); max-height:340px; overflow:hidden; }
-    .fin-chart-wrap { position:relative; width:100%; height:260px; }
+    .fin-chart-card { background:white; border-radius:var(--radius); padding:20px; border:1.5px solid var(--border); }
     .fin-chart-title { font-size:13px; font-weight:700; margin-bottom:14px; }
 
     .headroom-panel { background:white; border-radius:var(--radius); padding:24px; border:1.5px solid var(--border); margin-bottom:20px; }
@@ -130,11 +129,11 @@
         <div class="fin-charts">
           <div class="fin-chart-card">
             <div class="fin-chart-title">Trend 12 mesi — Ricavi vs Uscite</div>
-            <div class="fin-chart-wrap"><canvas id="chart-trend"></canvas></div>
+            <canvas id="chart-trend"></canvas>
           </div>
           <div class="fin-chart-card">
             <div class="fin-chart-title">Composizione uscite — Mese corrente</div>
-            <div class="fin-chart-wrap"><canvas id="chart-composition"></canvas></div>
+            <canvas id="chart-composition"></canvas>
           </div>
         </div>
       </div>
@@ -299,20 +298,6 @@ const KPI_HELP = {
   cogs_pct: 'Percentuale dei ricavi spesa in costi diretti'
 };
 
-let _chartJsPromise = null;
-function loadChartJs() {
-  if (window.Chart) return Promise.resolve();
-  if (_chartJsPromise) return _chartJsPromise;
-  _chartJsPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
-    s.onload = () => resolve();
-    s.onerror = () => { _chartJsPromise = null; reject(new Error('Chart.js load failed')); };
-    document.head.appendChild(s);
-  });
-  return _chartJsPromise;
-}
-
 let accounts = [], rules = [], internalParties = [], settings = {};
 let monthlyData = [], allTransactions = [];
 let txnPage = 1;
@@ -398,7 +383,7 @@ async function loadDashboard() {
     renderKPIs(latest, prev);
     renderAlerts(latest);
     renderHeadroom(latest);
-    await renderCharts(monthlyData);
+    renderCharts(monthlyData);
   } finally {
     _dashboardLoading = false;
   }
@@ -495,87 +480,75 @@ function renderHeadroom(cur) {
 }
 
 let trendChart = null, compChart = null;
-let _chartsRendering = false;
 
-async function renderCharts(data) {
-  if (_chartsRendering) return;
-  _chartsRendering = true;
-  try {
-    await loadChartJs();
-    const last12 = data.slice(-12);
-    const labels = last12.map(d => {
-      const dt = new Date(d.month + '-01');
-      return dt.toLocaleDateString('it-IT', { month: 'short', year: '2-digit' });
-    });
+function renderCharts(data) {
+  const last12 = data.slice(-12);
+  const labels = last12.map(d => {
+    const dt = new Date(d.month + '-01');
+    return dt.toLocaleDateString('it-IT', { month: 'short', year: '2-digit' });
+  });
 
-    if (trendChart) { trendChart.destroy(); trendChart = null; }
-    if (compChart) { compChart.destroy(); compChart = null; }
+  if (trendChart) trendChart.destroy();
+  if (compChart) compChart.destroy();
 
-    const chartOpts = { animation: false, responsive: false };
-
-    // Trend chart
-    const c1 = document.getElementById('chart-trend');
-    const wrap1 = c1.parentElement;
-    c1.width = wrap1.clientWidth;
-    c1.height = 260;
-    trendChart = new Chart(c1, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          { label: 'Ricavi', data: last12.map(d => d.revenue || 0), backgroundColor: '#16a34a', borderRadius: 4, order: 2 },
-          { label: 'Uscite', data: last12.map(d => (d.cogs||0)+(d.salaries||0)+(d.debt||0)+(d.fees||0)+(d.other_costs||0)), backgroundColor: '#dc2626', borderRadius: 4, order: 2 },
-          { label: 'Net Flow', data: last12.map(d => d.net_flow || 0), type: 'line', borderColor: '#14161a', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#14161a', tension: 0.3, order: 1, fill: false },
-        ]
-      },
-      options: {
-        ...chartOpts,
-        plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 11 } } } },
-        scales: {
-          y: { ticks: { callback: v => fmtCompact(v), font: { size: 11 } }, grid: { color: '#f0f0f0' } },
-          x: { ticks: { font: { size: 10 } }, grid: { display: false } }
-        }
+  // Trend chart
+  trendChart = new Chart(document.getElementById('chart-trend'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Ricavi', data: last12.map(d => d.revenue || 0), backgroundColor: '#16a34a', borderRadius: 4, order: 2 },
+        { label: 'Uscite', data: last12.map(d => (d.cogs||0)+(d.salaries||0)+(d.debt||0)+(d.fees||0)+(d.other_costs||0)), backgroundColor: '#dc2626', borderRadius: 4, order: 2 },
+        { label: 'Net Flow', data: last12.map(d => d.net_flow || 0), type: 'line', borderColor: '#14161a', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#14161a', tension: 0.3, order: 1, fill: false },
+      ]
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 2,
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 11 } } } },
+      scales: {
+        y: { ticks: { callback: v => fmtCompact(v), font: { size: 11 } }, grid: { color: '#f0f0f0' } },
+        x: { ticks: { font: { size: 10 } }, grid: { display: false } }
       }
-    });
+    }
+  });
 
-    // Composition chart (latest month)
-    const cur = last12[last12.length - 1];
-    if (!cur) return;
-    const compData = [
-      { label: 'Costi diretti', value: cur.cogs || 0, color: '#2563eb' },
-      { label: 'Stipendi', value: cur.salaries || 0, color: '#d97706' },
-      { label: 'Rimborso credito', value: cur.debt || 0, color: '#6366f1' },
-      { label: 'Commissioni', value: cur.fees || 0, color: '#6b7280' },
-      { label: 'Altri', value: cur.other_costs || 0, color: '#dc2626' },
-    ].filter(d => d.value > 0);
+  // Composition chart (latest month)
+  const cur = last12[last12.length - 1];
+  if (!cur) return;
+  const compData = [
+    { label: 'Costi diretti', value: cur.cogs || 0, color: '#2563eb' },
+    { label: 'Stipendi', value: cur.salaries || 0, color: '#d97706' },
+    { label: 'Rimborso credito', value: cur.debt || 0, color: '#6366f1' },
+    { label: 'Commissioni', value: cur.fees || 0, color: '#6b7280' },
+    { label: 'Altri', value: cur.other_costs || 0, color: '#dc2626' },
+  ].filter(d => d.value > 0);
 
-    const c2 = document.getElementById('chart-composition');
-    const wrap2 = c2.parentElement;
-    c2.width = wrap2.clientWidth;
-    c2.height = 260;
-    compChart = new Chart(c2, {
-      type: 'bar',
-      data: {
-        labels: compData.map(d => d.label),
-        datasets: [{
-          data: compData.map(d => d.value),
-          backgroundColor: compData.map(d => d.color),
-          borderRadius: 6,
-        }]
-      },
-      options: {
-        ...chartOpts,
-        indexAxis: 'y',
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { callback: v => fmtCompact(v), font: { size: 11 } }, grid: { color: '#f0f0f0' } },
-          y: { ticks: { font: { size: 11, weight: 600 } }, grid: { display: false } }
-        }
+  compChart = new Chart(document.getElementById('chart-composition'), {
+    type: 'bar',
+    data: {
+      labels: compData.map(d => d.label),
+      datasets: [{
+        data: compData.map(d => d.value),
+        backgroundColor: compData.map(d => d.color),
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 2,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { callback: v => fmtCompact(v), font: { size: 11 } }, grid: { color: '#f0f0f0' } },
+        y: { ticks: { font: { size: 11, weight: 600 } }, grid: { display: false } }
       }
-    });
-  } finally {
-    _chartsRendering = false;
-  }
+    }
+  });
 }
 
 // ── Upload ────────────────────────────────────────────────────
