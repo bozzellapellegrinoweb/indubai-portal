@@ -174,7 +174,7 @@
 
   // ── Aggregation helpers ─────────────────────────────────────
   function aggregateMonthly(transactions, ownerBaseSalary) {
-    ownerBaseSalary = ownerBaseSalary || 30000;
+    ownerBaseSalary = ownerBaseSalary != null ? ownerBaseSalary : 30000;
     const months = {};
 
     transactions.filter(t => !t.is_internal).forEach(t => {
