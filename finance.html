@@ -7,7 +7,7 @@
   <title>Cashflow Gruppo — InDubai Portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <!-- Chart.js lazy-loaded on demand -->
   <style>
     .fin-kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:20px; }
     .fin-kpi { background:white; border-radius:var(--radius); padding:18px 20px; border:1.5px solid var(--border); position:relative; overflow:hidden; }
@@ -56,6 +56,15 @@
 
     .cat-select { padding:4px 8px; border:1.5px solid var(--border); border-radius:6px; font-size:11px; font-weight:600; font-family:inherit; cursor:pointer; background:white; }
     .cat-select:focus { border-color:var(--primary); outline:none; }
+
+    .fin-kpi-help { font-size:10px; color:var(--text-muted); margin-bottom:4px; font-weight:400; }
+    .fin-kpi { transition: transform 0.15s, box-shadow 0.15s; }
+    .fin-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .tab-bar { gap:0; background:white; border-radius:var(--radius) var(--radius) 0 0; padding: 0 8px; }
+    .tab-btn { padding:12px 20px; font-size:13px; }
+
+    .btn-auto-classify { padding:6px 14px; border:1.5px solid var(--accent); border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; background:var(--success-bg); color:var(--accent-dark); white-space:nowrap; transition:all .15s; }
+    .btn-auto-classify:hover { background:var(--accent); color:white; }
 
     .txn-row-other { background:#fff5f5 !important; }
 
@@ -168,15 +177,16 @@
             <select id="txn-filter-category" class="cat-select" style="padding:7px 12px;font-size:13px">
               <option value="">Tutte le categorie</option>
               <option value="revenue">Ricavi</option>
-              <option value="cogs">COGS</option>
+              <option value="cogs">Costi diretti</option>
               <option value="salary">Stipendi</option>
               <option value="owner_draw">Prelievo titolare</option>
               <option value="debt_repayment">Rimborso credito</option>
-              <option value="fees">Fees</option>
+              <option value="fees">Commissioni bancarie</option>
               <option value="other">Da classificare</option>
               <option value="round_trip">Partita di giro</option>
               <option value="fx_sweep">Giro valutario</option>
             </select>
+            <button id="btn-auto-classify" class="btn-auto-classify" title="Classifica automaticamente le transazioni 'Da classificare'">Auto-classifica</button>
             <span id="txn-count" style="font-size:12px;color:var(--text-muted);margin-left:auto"></span>
           </div>
           <div class="table-wrap" id="txn-table-wrap" style="border-radius:0">
@@ -257,10 +267,48 @@
 // ============================================================
 
 const CATEGORIES = {
-  revenue:'Ricavi', cogs:'COGS', salary:'Stipendi', owner_draw:'Prelievo titolare',
-  debt_repayment:'Rimborso credito', fees:'Fees', other:'Da classificare',
-  round_trip:'Partita di giro', fx_sweep:'Giro valutario'
+  revenue: 'Ricavi',
+  cogs: 'Costi diretti',
+  salary: 'Stipendi',
+  owner_draw: 'Prelievo titolare',
+  debt_repayment: 'Rimborso credito',
+  fees: 'Commissioni bancarie',
+  other: 'Da classificare',
+  round_trip: 'Partita di giro',
+  fx_sweep: 'Giro valutario'
 };
+
+const CAT_DESCRIPTIONS = {
+  revenue: 'Entrate da clienti e bonifici in arrivo',
+  cogs: 'Costi diretti per erogare i servizi (fornitori, freelancer, licenze)',
+  salary: 'Stipendi dipendenti',
+  owner_draw: 'Prelievi personali del titolare',
+  debt_repayment: 'Rate di finanziamenti e crediti',
+  fees: 'Commissioni e costi bancari',
+  other: 'Transazioni non ancora classificate',
+  round_trip: 'Trasferimenti interni tra conti (impatto netto zero)',
+  fx_sweep: 'Conversioni valutarie (impatto netto zero)'
+};
+
+const KPI_HELP = {
+  revenue: 'Totale entrate del mese',
+  operating_cash: 'Ricavi meno tutti i costi operativi',
+  real_surplus: 'Quanto resta dopo il salario base titolare',
+  buffer: 'Mesi di copertura costi con la cassa attuale',
+  cogs_pct: 'Percentuale dei ricavi spesa in costi diretti'
+};
+
+let chartJsLoaded = false;
+function loadChartJs() {
+  if (chartJsLoaded) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+    s.onload = () => { chartJsLoaded = true; resolve(); };
+    s.onerror = () => reject(new Error('Chart.js load failed'));
+    document.head.appendChild(s);
+  });
+}
 
 let accounts = [], rules = [], internalParties = [], settings = {};
 let monthlyData = [], allTransactions = [];
@@ -284,9 +332,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
   try {
-    const [accs, stg] = await Promise.all([
+    const [accs, stg, allDates] = await Promise.all([
       sb.db.select('finance_accounts', { order: 'label.asc' }),
       sb.db.select('finance_settings', { filter: 'id=eq.1' }),
+      sb.db.select('finance_transactions', { columns: 'txn_date', order: 'txn_date.desc' }),
     ]);
     accounts = accs || [];
     settings = (stg && stg[0]) || { owner_base_salary_aed: 30000, buffer_target_months: 3, cogs_alert_pct: 0.58 };
@@ -298,6 +347,17 @@ async function init() {
     accounts.forEach(a => {
       txnSel.insertAdjacentHTML('beforeend', `<option value="${a.id}">${ui.escapeHtml(a.label)}</option>`);
     });
+
+    // Pre-populate month filter from all dates
+    const months = new Set();
+    (allDates || []).forEach(t => { if (t.txn_date) months.add(t.txn_date.slice(0, 7)); });
+    const monthSel = document.getElementById('txn-filter-month');
+    monthSel.innerHTML = '<option value="">Tutti i mesi</option>' +
+      [...months].sort().reverse().map(m => {
+        const dt = new Date(m + '-01');
+        const label = dt.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+        return `<option value="${m}">${label}</option>`;
+      }).join('');
 
     await loadDashboard();
   } catch(e) {
@@ -332,7 +392,7 @@ async function loadDashboard() {
   renderKPIs(latest, prev);
   renderAlerts(latest);
   renderHeadroom(latest);
-  renderCharts(monthlyData);
+  await renderCharts(monthlyData);
 }
 
 function renderKPIs(cur, prev) {
@@ -356,25 +416,30 @@ function renderKPIs(cur, prev) {
   document.getElementById('kpi-grid').innerHTML = `
     <div class="fin-kpi">
       <div class="fin-kpi-label">Ricavi mese</div>
+      <div class="fin-kpi-help">${KPI_HELP.revenue}</div>
       <div class="fin-kpi-value">${fmtAED(cur.revenue)}</div>
       ${delta(cur.revenue, prev?.revenue)}
     </div>
     <div class="fin-kpi">
       <div class="fin-kpi-label">Cassa operativa</div>
+      <div class="fin-kpi-help">${KPI_HELP.operating_cash}</div>
       <div class="fin-kpi-value">${fmtAED(cur.operating_cash)}</div>
       ${delta(cur.operating_cash, prev?.operating_cash)}
     </div>
     <div class="fin-kpi">
       <div class="fin-kpi-label">Surplus reale</div>
+      <div class="fin-kpi-help">${KPI_HELP.real_surplus}</div>
       <div class="fin-kpi-value">${fmtAED(cur.real_surplus)}</div>
       ${delta(cur.real_surplus, prev?.real_surplus)}
     </div>
     <div class="fin-kpi${bufferWarn}">
       <div class="fin-kpi-label">Buffer (mesi)</div>
+      <div class="fin-kpi-help">${KPI_HELP.buffer}</div>
       <div class="fin-kpi-value">${bufferMonths}</div>
     </div>
     <div class="fin-kpi${cogsWarn}">
       <div class="fin-kpi-label">COGS%</div>
+      <div class="fin-kpi-help">${KPI_HELP.cogs_pct}</div>
       <div class="fin-kpi-value">${cogsPct}</div>
       ${prev?.cogs_pct != null ? delta(cur.cogs_pct, prev.cogs_pct) : ''}
     </div>`;
@@ -422,7 +487,8 @@ function renderHeadroom(cur) {
 
 let trendChart = null, compChart = null;
 
-function renderCharts(data) {
+async function renderCharts(data) {
+  await loadChartJs();
   const last12 = data.slice(-12);
   const labels = last12.map(d => {
     const dt = new Date(d.month + '-01');
@@ -705,20 +771,6 @@ async function loadTransactions() {
       columns: '*,finance_accounts(label)',
     }) || [];
 
-    // Populate month filter if empty
-    const monthSel = document.getElementById('txn-filter-month');
-    if (monthSel.children.length <= 1) {
-      const months = new Set();
-      const allTxns = await sb.db.select('finance_transactions', { columns: 'txn_date', order: 'txn_date.desc' }) || [];
-      allTxns.forEach(t => { if (t.txn_date) months.add(t.txn_date.slice(0, 7)); });
-      monthSel.innerHTML = '<option value="">Tutti i mesi</option>' +
-        [...months].sort().reverse().map(m => {
-          const dt = new Date(m + '-01');
-          const label = dt.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-          return `<option value="${m}">${label}</option>`;
-        }).join('');
-    }
-
     txnPage = 1;
     renderTransactions();
   } catch(e) {
@@ -767,7 +819,7 @@ function renderTransactions() {
           <td style="font-size:12px;text-align:right;${amtClass}">${fmtAED(t.amount_aed || t.amount)}</td>
           <td style="font-size:11px;color:var(--text-muted)">${ui.escapeHtml(t.finance_accounts?.label || '—')}</td>
           <td>
-            <select class="cat-select" onchange="updateCategory('${t.id}', this.value)" ${t.is_internal ? 'disabled' : ''}>
+            <select class="cat-select" onchange="updateCategory('${t.id}', this.value)" ${t.is_internal ? 'disabled' : ''} title="${CAT_DESCRIPTIONS[t.category] || ''}">
               ${catOptions.replace(`value="${t.category}"`, `value="${t.category}" selected`)}
             </select>
             ${t.category_locked ? '<span style="font-size:9px;color:var(--text-muted);margin-left:4px" title="Corretta a mano">🔒</span>' : ''}
@@ -816,6 +868,39 @@ window.updateCategory = async function(txnId, newCat) {
 // Txn filters
 ['txn-filter-month', 'txn-filter-account', 'txn-filter-category'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => { txnPage = 1; loadTransactions(); });
+});
+
+// Auto-classify button
+document.getElementById('btn-auto-classify').addEventListener('click', async () => {
+  const otherTxns = allTransactions.filter(t => t.category === 'other' && !t.category_locked);
+  if (!otherTxns.length) {
+    ui.showToast('Nessuna transazione da classificare', 'info');
+    return;
+  }
+
+  let updated = 0;
+  for (const txn of otherTxns) {
+    const suggestion = financeEngine.suggestCategory(txn);
+    if (suggestion && suggestion !== 'other') {
+      try {
+        await sb.db.update('finance_transactions', `id=eq.${txn.id}`, {
+          category: suggestion,
+          is_internal: suggestion === 'round_trip' || suggestion === 'fx_sweep',
+        });
+        txn.category = suggestion;
+        txn.is_internal = suggestion === 'round_trip' || suggestion === 'fx_sweep';
+        updated++;
+      } catch(e) { console.warn('Auto-classify error:', e); }
+    }
+  }
+
+  if (updated > 0) {
+    ui.showToast(`${updated} transazioni classificate automaticamente`, 'success');
+    renderTransactions();
+    loadDashboard();
+  } else {
+    ui.showToast('Nessuna classificazione suggerita — aggiungi regole nella tab Regole', 'info');
+  }
 });
 
 // ── Rules ─────────────────────────────────────────────────────
