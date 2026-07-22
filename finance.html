@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cashflow Gruppo — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    .fin-kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:20px; }
+    .fin-kpi { background:white; border-radius:var(--radius); padding:18px 20px; border:1.5px solid var(--border); position:relative; overflow:hidden; }
+    .fin-kpi-label { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+    .fin-kpi-value { font-size:26px; font-weight:800; color:var(--text); letter-spacing:-0.5px; }
+    .fin-kpi-delta { font-size:11px; font-weight:700; margin-top:4px; }
+    .fin-kpi-delta.up { color:var(--success); }
+    .fin-kpi-delta.down { color:var(--danger); }
+    .fin-kpi.warn { border-color:var(--warning); }
+    .fin-kpi.danger { border-color:var(--danger); }
+
+    .fin-charts { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+    @media(max-width:900px) { .fin-charts { grid-template-columns:1fr; } }
+    .fin-chart-card { background:white; border-radius:var(--radius); padding:20px; border:1.5px solid var(--border); }
+    .fin-chart-title { font-size:13px; font-weight:700; margin-bottom:14px; }
+
+    .headroom-panel { background:white; border-radius:var(--radius); padding:24px; border:1.5px solid var(--border); margin-bottom:20px; }
+    .headroom-value { font-size:36px; font-weight:900; color:var(--success); margin:8px 0; }
+    .headroom-bar { height:10px; background:var(--surface2); border-radius:5px; overflow:hidden; margin-top:12px; }
+    .headroom-bar-fill { height:100%; border-radius:5px; transition:width .4s; }
+
+    .alert-box { padding:12px 16px; border-radius:10px; margin-bottom:8px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; }
+    .alert-box.warning { background:var(--warning-bg); color:var(--warning); }
+    .alert-box.danger { background:var(--danger-bg); color:var(--danger); }
+    .alert-box.info { background:var(--info-bg); color:var(--info); }
+
+    .upload-zone { border:2px dashed var(--border); border-radius:var(--radius); padding:40px 20px; text-align:center; cursor:pointer; transition:all .15s; background:white; }
+    .upload-zone:hover, .upload-zone.dragover { border-color:var(--accent); background:var(--success-bg); }
+    .upload-zone input[type=file] { display:none; }
+
+    .cat-badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:700; white-space:nowrap; }
+    .cat-revenue { background:#dcfce7; color:#15803d; }
+    .cat-cogs { background:#dbeafe; color:#1d4ed8; }
+    .cat-salary { background:#fef3c7; color:#92400e; }
+    .cat-owner_draw { background:#fce7f3; color:#9d174d; }
+    .cat-debt_repayment { background:#e0e7ff; color:#3730a3; }
+    .cat-fees { background:#f3f4f6; color:#374151; }
+    .cat-other { background:#fee2e2; color:#b91c1c; }
+    .cat-round_trip { background:#f3f4f6; color:#6b7280; text-decoration:line-through; }
+    .cat-fx_sweep { background:#f3f4f6; color:#6b7280; text-decoration:line-through; }
+
+    .tab-bar { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; }
+    .tab-btn { padding:10px 20px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .12s; }
+    .tab-btn.active { color:var(--text); border-bottom-color:var(--primary); }
+    .tab-btn:hover { color:var(--text); }
+
+    .cat-select { padding:4px 8px; border:1.5px solid var(--border); border-radius:6px; font-size:11px; font-weight:600; font-family:inherit; cursor:pointer; background:white; }
+    .cat-select:focus { border-color:var(--primary); outline:none; }
+
+    .txn-row-other { background:#fff5f5 !important; }
+
+    .fin-section { margin-bottom:20px; }
+    .fin-section-title { font-size:15px; font-weight:700; margin-bottom:12px; }
+
+    .rules-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media(max-width:768px) { .rules-grid { grid-template-columns:1fr; } }
+    .rule-card { background:white; border:1.5px solid var(--border); border-radius:10px; padding:14px; font-size:12px; }
+    .rule-card.inactive { opacity:.5; }
+
+    .settings-form { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+    .settings-form label { font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px; }
+    .settings-form input { width:100%; padding:8px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; }
+  </style>
+  <script src="/js/config.js"></script>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <link rel="manifest" href="/manifest-admin.json">
+  <meta name="theme-color" content="#14161a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="InDubai">
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Cashflow Gruppo</div>
+        <div class="topbar-subtitle">Controllo cassa PB TAX / Full Digital</div>
+      </div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-btn" data-tab="upload">Upload</button>
+        <button class="tab-btn" data-tab="transactions">Transazioni</button>
+        <button class="tab-btn" data-tab="rules">Regole</button>
+        <button class="tab-btn" data-tab="settings">Impostazioni</button>
+      </div>
+
+      <!-- ═══════ TAB: Dashboard ═══════ -->
+      <div id="tab-dashboard" class="tab-panel">
+        <div id="alerts-container"></div>
+        <div class="fin-kpi-grid" id="kpi-grid">
+          <div style="grid-column:1/-1;padding:40px;text-align:center"><div class="spinner"></div></div>
+        </div>
+        <div class="headroom-panel" id="headroom-panel" style="display:none">
+          <div class="fin-kpi-label">Headroom Titolare — Questo mese</div>
+          <div id="headroom-text" style="font-size:13px;color:var(--text-muted);margin-top:4px"></div>
+          <div class="headroom-value" id="headroom-value">—</div>
+          <div class="headroom-bar"><div class="headroom-bar-fill" id="headroom-bar-fill" style="width:0%;background:var(--success)"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px">
+            <span>Base 30K</span>
+            <span id="headroom-bar-label">—</span>
+          </div>
+        </div>
+        <div class="fin-charts">
+          <div class="fin-chart-card">
+            <div class="fin-chart-title">Trend 12 mesi — Ricavi vs Uscite</div>
+            <canvas id="chart-trend" height="260"></canvas>
+          </div>
+          <div class="fin-chart-card">
+            <div class="fin-chart-title">Composizione uscite — Mese corrente</div>
+            <canvas id="chart-composition" height="260"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ TAB: Upload ═══════ -->
+      <div id="tab-upload" class="tab-panel" style="display:none">
+        <div class="card" style="padding:24px">
+          <div class="fin-section-title">Carica estratto conto</div>
+          <div style="margin-bottom:16px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Conto bancario</label>
+            <select id="upload-account" class="cat-select" style="padding:8px 14px;font-size:13px;width:100%;max-width:400px">
+              <option value="">Caricamento...</option>
+            </select>
+          </div>
+          <div class="upload-zone" id="upload-zone">
+            <div style="font-size:32px;margin-bottom:8px">📂</div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:4px">Trascina il file qui o clicca per selezionare</div>
+            <div style="font-size:12px;color:var(--text-muted)">CSV (Wio) o PDF (FAB) — Max 10MB</div>
+            <input type="file" id="upload-input" accept=".csv,.pdf">
+          </div>
+          <div id="upload-status" style="margin-top:16px"></div>
+          <div id="upload-preview" style="margin-top:16px"></div>
+        </div>
+
+        <div class="card" style="padding:24px;margin-top:16px">
+          <div class="fin-section-title">Upload recenti</div>
+          <div id="batches-list">
+            <div style="text-align:center;padding:20px"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ TAB: Transactions ═══════ -->
+      <div id="tab-transactions" class="tab-panel" style="display:none">
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="filter-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 20px;background:white;border-bottom:1.5px solid var(--border)">
+            <select id="txn-filter-month" class="cat-select" style="padding:7px 12px;font-size:13px"></select>
+            <select id="txn-filter-account" class="cat-select" style="padding:7px 12px;font-size:13px">
+              <option value="">Tutti i conti</option>
+            </select>
+            <select id="txn-filter-category" class="cat-select" style="padding:7px 12px;font-size:13px">
+              <option value="">Tutte le categorie</option>
+              <option value="revenue">Ricavi</option>
+              <option value="cogs">COGS</option>
+              <option value="salary">Stipendi</option>
+              <option value="owner_draw">Prelievo titolare</option>
+              <option value="debt_repayment">Rimborso credito</option>
+              <option value="fees">Fees</option>
+              <option value="other">Da classificare</option>
+              <option value="round_trip">Partita di giro</option>
+              <option value="fx_sweep">Giro valutario</option>
+            </select>
+            <span id="txn-count" style="font-size:12px;color:var(--text-muted);margin-left:auto"></span>
+          </div>
+          <div class="table-wrap" id="txn-table-wrap" style="border-radius:0">
+            <div style="padding:40px;text-align:center"><div class="spinner"></div></div>
+          </div>
+          <div class="pagination" id="txn-pagination" style="display:none">
+            <div class="page-info" id="txn-page-info"></div>
+            <div class="page-btns" id="txn-page-btns"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ TAB: Rules ═══════ -->
+      <div id="tab-rules" class="tab-panel" style="display:none">
+        <div class="card" style="padding:24px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div class="fin-section-title" style="margin-bottom:0">Regole di classificazione</div>
+            <button class="btn btn-sm" id="btn-add-rule" style="background:var(--primary);color:white;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">+ Nuova regola</button>
+          </div>
+          <div id="rules-container" class="rules-grid">
+            <div style="grid-column:1/-1;padding:20px;text-align:center"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:24px;margin-top:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div class="fin-section-title" style="margin-bottom:0">Controparti interne (partite di giro)</div>
+            <button class="btn btn-sm" id="btn-add-party" style="background:var(--primary);color:white;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">+ Aggiungi</button>
+          </div>
+          <div id="parties-container"></div>
+        </div>
+      </div>
+
+      <!-- ═══════ TAB: Settings ═══════ -->
+      <div id="tab-settings" class="tab-panel" style="display:none">
+        <div class="card" style="padding:24px">
+          <div class="fin-section-title">Parametri gestionali</div>
+          <div class="settings-form" id="settings-form">
+            <div>
+              <label>Salario base titolare (AED/mese)</label>
+              <input type="number" id="set-owner-salary" value="30000">
+            </div>
+            <div>
+              <label>Cuscinetto obiettivo (mesi)</label>
+              <input type="number" id="set-buffer-months" value="3" step="0.5">
+            </div>
+            <div>
+              <label>Alert COGS% (soglia)</label>
+              <input type="number" id="set-cogs-alert" value="0.58" step="0.01">
+            </div>
+          </div>
+          <button id="btn-save-settings" class="btn" style="margin-top:16px;background:var(--primary);color:white;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Salva impostazioni</button>
+        </div>
+
+        <div class="card" style="padding:24px;margin-top:16px">
+          <div class="fin-section-title">Conti bancari</div>
+          <div id="accounts-list"></div>
+          <button id="btn-add-account" class="btn" style="margin-top:12px;background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">+ Nuovo conto</button>
+        </div>
+
+        <div class="card" style="padding:24px;margin-top:16px">
+          <div class="fin-section-title">Tassi di cambio</div>
+          <div id="fx-rates-list"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/i18n.js"></script>
+<script src="/js/finance-engine.js"></script>
+<script>
+// ============================================================
+// Finance Dashboard — Main Script
+// ============================================================
+
+const CATEGORIES = {
+  revenue:'Ricavi', cogs:'COGS', salary:'Stipendi', owner_draw:'Prelievo titolare',
+  debt_repayment:'Rimborso credito', fees:'Fees', other:'Da classificare',
+  round_trip:'Partita di giro', fx_sweep:'Giro valutario'
+};
+
+let accounts = [], rules = [], internalParties = [], settings = {};
+let monthlyData = [], allTransactions = [];
+let txnPage = 1;
+const TXN_PAGE_SIZE = 50;
+
+// ── Tabs ──────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).style.display = '';
+    if (btn.dataset.tab === 'transactions') loadTransactions();
+    if (btn.dataset.tab === 'rules') loadRules();
+    if (btn.dataset.tab === 'settings') loadSettings();
+    if (btn.dataset.tab === 'upload') loadBatches();
+  });
+});
+
+// ── Init ──────────────────────────────────────────────────────
+async function init() {
+  try {
+    const [accs, stg] = await Promise.all([
+      sb.db.select('finance_accounts', { order: 'label.asc' }),
+      sb.db.select('finance_settings', { filter: 'id=eq.1' }),
+    ]);
+    accounts = accs || [];
+    settings = (stg && stg[0]) || { owner_base_salary_aed: 30000, buffer_target_months: 3, cogs_alert_pct: 0.58 };
+
+    // Populate account selects
+    const uploadSel = document.getElementById('upload-account');
+    const txnSel = document.getElementById('txn-filter-account');
+    uploadSel.innerHTML = accounts.map(a => `<option value="${a.id}">${ui.escapeHtml(a.label)} (${a.entity})</option>`).join('');
+    accounts.forEach(a => {
+      txnSel.insertAdjacentHTML('beforeend', `<option value="${a.id}">${ui.escapeHtml(a.label)}</option>`);
+    });
+
+    await loadDashboard();
+  } catch(e) {
+    console.error('Init error:', e);
+    document.getElementById('kpi-grid').innerHTML = `<div style="grid-column:1/-1" class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    monthlyData = await sb.db.select('finance_monthly_summary', { order: 'month.asc' }) || [];
+  } catch(e) {
+    // View might not exist yet, compute client-side
+    const txns = await sb.db.select('finance_transactions', { order: 'txn_date.asc' });
+    monthlyData = financeEngine.aggregateMonthly(txns || [], settings.owner_base_salary_aed);
+  }
+
+  if (!monthlyData.length) {
+    document.getElementById('kpi-grid').innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:40px">
+        <div style="font-size:32px;margin-bottom:8px">📊</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:4px">Nessun dato ancora</div>
+        <div style="font-size:13px;color:var(--text-muted)">Carica il primo estratto conto nella tab Upload</div>
+      </div>`;
+    return;
+  }
+
+  const latest = monthlyData[monthlyData.length - 1];
+  const prev = monthlyData.length > 1 ? monthlyData[monthlyData.length - 2] : null;
+
+  renderKPIs(latest, prev);
+  renderAlerts(latest);
+  renderHeadroom(latest);
+  renderCharts(monthlyData);
+}
+
+function renderKPIs(cur, prev) {
+  function delta(curVal, prevVal) {
+    if (!prev || prevVal == null || prevVal === 0) return '';
+    const d = ((curVal - prevVal) / Math.abs(prevVal)) * 100;
+    const cls = d >= 0 ? 'up' : 'down';
+    const sign = d >= 0 ? '+' : '';
+    return `<div class="fin-kpi-delta ${cls}">${sign}${d.toFixed(0)}% vs mese prec.</div>`;
+  }
+
+  const bufferMonths = (cur.operating_cash || 0) > 0
+    ? ((cur.cogs || 0) + (cur.salaries || 0) + (cur.fees || 0)) > 0
+      ? (cur.operating_cash / ((cur.cogs || 0) + (cur.salaries || 0) + (cur.fees || 0))).toFixed(1)
+      : '∞'
+    : '0';
+  const bufferWarn = parseFloat(bufferMonths) < settings.buffer_target_months ? ' warn' : '';
+  const cogsPct = cur.cogs_pct != null ? (cur.cogs_pct * 100).toFixed(0) + '%' : '—';
+  const cogsWarn = cur.cogs_pct != null && cur.cogs_pct > settings.cogs_alert_pct ? ' danger' : '';
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="fin-kpi">
+      <div class="fin-kpi-label">Ricavi mese</div>
+      <div class="fin-kpi-value">${fmtAED(cur.revenue)}</div>
+      ${delta(cur.revenue, prev?.revenue)}
+    </div>
+    <div class="fin-kpi">
+      <div class="fin-kpi-label">Cassa operativa</div>
+      <div class="fin-kpi-value">${fmtAED(cur.operating_cash)}</div>
+      ${delta(cur.operating_cash, prev?.operating_cash)}
+    </div>
+    <div class="fin-kpi">
+      <div class="fin-kpi-label">Surplus reale</div>
+      <div class="fin-kpi-value">${fmtAED(cur.real_surplus)}</div>
+      ${delta(cur.real_surplus, prev?.real_surplus)}
+    </div>
+    <div class="fin-kpi${bufferWarn}">
+      <div class="fin-kpi-label">Buffer (mesi)</div>
+      <div class="fin-kpi-value">${bufferMonths}</div>
+    </div>
+    <div class="fin-kpi${cogsWarn}">
+      <div class="fin-kpi-label">COGS%</div>
+      <div class="fin-kpi-value">${cogsPct}</div>
+      ${prev?.cogs_pct != null ? delta(cur.cogs_pct, prev.cogs_pct) : ''}
+    </div>`;
+}
+
+function renderAlerts(cur) {
+  const alerts = [];
+  if (cur.net_flow < 0) alerts.push({ type: 'danger', text: `Net flow negativo: ${fmtAED(cur.net_flow)}` });
+  if (cur.cogs_pct != null && cur.cogs_pct > settings.cogs_alert_pct) alerts.push({ type: 'warning', text: `COGS% al ${(cur.cogs_pct*100).toFixed(0)}% — margine in erosione` });
+  const bufferMonths = ((cur.cogs||0)+(cur.salaries||0)+(cur.fees||0)) > 0
+    ? cur.operating_cash / ((cur.cogs||0)+(cur.salaries||0)+(cur.fees||0)) : 999;
+  if (bufferMonths < settings.buffer_target_months) alerts.push({ type: 'warning', text: `Cuscinetto a ${bufferMonths.toFixed(1)} mesi — sotto obiettivo di ${settings.buffer_target_months}` });
+  if (cur.other_costs > 0) {
+    const totalOut = (cur.cogs||0)+(cur.salaries||0)+(cur.debt||0)+(cur.fees||0)+(cur.other_costs||0);
+    if (totalOut > 0 && cur.other_costs / totalOut > 0.05) alerts.push({ type: 'info', text: `${fmtAED(cur.other_costs)} in "Da classificare" — rivedi le transazioni` });
+  }
+
+  document.getElementById('alerts-container').innerHTML = alerts.map(a =>
+    `<div class="alert-box ${a.type}">${a.type==='danger'?'⚠':'ℹ'} ${a.text}</div>`
+  ).join('');
+}
+
+function renderHeadroom(cur) {
+  const panel = document.getElementById('headroom-panel');
+  panel.style.display = '';
+  const headroom = Math.max(cur.real_surplus || 0, 0);
+  const base = cur.owner_base || 30000;
+  const used = cur.owner_allowance || 0;
+  const total = base + headroom;
+
+  document.getElementById('headroom-value').textContent = fmtAED(headroom);
+  document.getElementById('headroom-value').style.color = headroom > 0 ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('headroom-text').textContent =
+    headroom > 0
+      ? `Puoi prelevare fino a ${fmtAED(headroom)} extra oltre i ${fmtAED(base)} base restando in positivo.`
+      : 'Nessun margine extra questo mese.';
+
+  const usedTotal = base + used;
+  const pct = total > 0 ? Math.min((usedTotal / total) * 100, 100) : 0;
+  const fill = document.getElementById('headroom-bar-fill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct > 90 ? 'var(--danger)' : pct > 70 ? 'var(--warning)' : 'var(--success)';
+  document.getElementById('headroom-bar-label').textContent = `Usato: ${fmtAED(usedTotal)} / ${fmtAED(total)}`;
+}
+
+let trendChart = null, compChart = null;
+
+function renderCharts(data) {
+  const last12 = data.slice(-12);
+  const labels = last12.map(d => {
+    const dt = new Date(d.month + '-01');
+    return dt.toLocaleDateString('it-IT', { month: 'short', year: '2-digit' });
+  });
+
+  // Trend chart
+  const ctx1 = document.getElementById('chart-trend').getContext('2d');
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Ricavi', data: last12.map(d => d.revenue || 0), backgroundColor: '#16a34a', borderRadius: 4, order: 2 },
+        { label: 'Uscite', data: last12.map(d => (d.cogs||0)+(d.salaries||0)+(d.debt||0)+(d.fees||0)+(d.other_costs||0)), backgroundColor: '#dc2626', borderRadius: 4, order: 2 },
+        { label: 'Net Flow', data: last12.map(d => d.net_flow || 0), type: 'line', borderColor: '#14161a', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#14161a', tension: 0.3, order: 1, fill: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 11 } } } },
+      scales: {
+        y: { ticks: { callback: v => fmtCompact(v), font: { size: 11 } }, grid: { color: '#f0f0f0' } },
+        x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Composition chart (latest month)
+  const cur = last12[last12.length - 1];
+  if (!cur) return;
+  const compData = [
+    { label: 'COGS', value: cur.cogs || 0, color: '#2563eb' },
+    { label: 'Stipendi', value: cur.salaries || 0, color: '#d97706' },
+    { label: 'Rimborso credito', value: cur.debt || 0, color: '#6366f1' },
+    { label: 'Fees', value: cur.fees || 0, color: '#6b7280' },
+    { label: 'Altri', value: cur.other_costs || 0, color: '#dc2626' },
+  ].filter(d => d.value > 0);
+
+  const ctx2 = document.getElementById('chart-composition').getContext('2d');
+  if (compChart) compChart.destroy();
+  compChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: compData.map(d => d.label),
+      datasets: [{
+        data: compData.map(d => d.value),
+        backgroundColor: compData.map(d => d.color),
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { callback: v => fmtCompact(v), font: { size: 11 } }, grid: { color: '#f0f0f0' } },
+        y: { ticks: { font: { size: 11, weight: 600 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ── Upload ────────────────────────────────────────────────────
+const uploadZone = document.getElementById('upload-zone');
+const uploadInput = document.getElementById('upload-input');
+
+uploadZone.addEventListener('click', () => uploadInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files[0]);
+});
+uploadInput.addEventListener('change', () => {
+  if (uploadInput.files.length) handleUpload(uploadInput.files[0]);
+});
+
+async function handleUpload(file) {
+  const accountId = document.getElementById('upload-account').value;
+  if (!accountId) { ui.showToast('Seleziona un conto', 'error'); return; }
+
+  const account = accounts.find(a => a.id === accountId);
+  if (!account) { ui.showToast('Conto non trovato', 'error'); return; }
+
+  const statusEl = document.getElementById('upload-status');
+  const previewEl = document.getElementById('upload-preview');
+
+  statusEl.innerHTML = '<div style="display:flex;align-items:center;gap:8px"><div class="spinner" style="width:18px;height:18px"></div> Parsing in corso...</div>';
+  previewEl.innerHTML = '';
+
+  try {
+    let parsed = [];
+    const text = await file.text();
+
+    if (account.parser === 'wio_csv' || file.name.endsWith('.csv')) {
+      parsed = financeEngine.parseWioCsv(text);
+    } else if (account.parser === 'generic_csv') {
+      parsed = financeEngine.parseGenericCsv(text);
+    } else {
+      ui.showToast('Parser PDF non ancora disponibile — usa CSV', 'error');
+      statusEl.innerHTML = '';
+      return;
+    }
+
+    if (!parsed.length) {
+      statusEl.innerHTML = '<div class="alert-box warning">Nessuna transazione trovata nel file</div>';
+      return;
+    }
+
+    // Load rules and parties for classification
+    const [rls, pts, fxRates] = await Promise.all([
+      sb.db.select('finance_rules', { filter: 'active=eq.true', order: 'priority.asc' }),
+      sb.db.select('finance_internal_parties'),
+      sb.db.select('finance_fx_rates'),
+    ]);
+
+    // Classify
+    const classified = financeEngine.classifyTransactions(parsed, rls || [], pts || []);
+
+    // Determine period
+    const dates = classified.map(t => t.txnDate).sort();
+    const periodStart = dates[0];
+    const periodEnd = dates[dates.length - 1];
+
+    // Create batch
+    const batch = await sb.db.insert('finance_batches', {
+      account_id: accountId,
+      period_start: periodStart,
+      period_end: periodEnd,
+      source_file: file.name,
+      status: 'classified'
+    });
+    const batchId = batch[0]?.id;
+
+    // Convert amounts to AED
+    const fxMap = {};
+    (fxRates || []).forEach(r => { fxMap[`${r.currency}_${r.month}`] = r.rate_to_aed; });
+
+    // Build transaction rows
+    const txnRows = classified.map(t => {
+      let amountAed = t.amount;
+      if (t.currency !== 'AED') {
+        const monthKey = t.txnDate.slice(0, 7) + '-01';
+        const rate = fxMap[`${t.currency}_${monthKey}`];
+        if (rate) amountAed = t.amount * parseFloat(rate);
+      }
+      return {
+        batch_id: batchId,
+        account_id: accountId,
+        txn_date: t.txnDate,
+        description: t.description,
+        counterparty: t.counterparty,
+        amount: t.amount,
+        currency: t.currency,
+        amount_aed: amountAed,
+        tx_type: t.txType,
+        ref_number: t.refNumber || null,
+        notes: t.notes,
+        category: t.category,
+        is_internal: t.is_internal,
+        raw: t.raw,
+      };
+    });
+
+    // Upsert (dedup on account_id + ref_number)
+    let inserted = 0, skipped = 0;
+    for (const row of txnRows) {
+      try {
+        if (row.ref_number) {
+          await sb.db.upsert('finance_transactions', row, 'account_id,ref_number');
+        } else {
+          await sb.db.insert('finance_transactions', row);
+        }
+        inserted++;
+      } catch(e) {
+        if (e.message && e.message.includes('duplicate')) skipped++;
+        else { skipped++; console.warn('Insert error:', e); }
+      }
+    }
+
+    const catCounts = {};
+    classified.forEach(t => { catCounts[t.category] = (catCounts[t.category] || 0) + 1; });
+
+    statusEl.innerHTML = `
+      <div class="alert-box info" style="flex-wrap:wrap">
+        ✓ ${inserted} transazioni caricate, ${skipped} duplicate saltate
+        <span style="margin-left:auto;font-size:11px">${periodStart} → ${periodEnd}</span>
+      </div>`;
+
+    previewEl.innerHTML = `
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+        ${Object.entries(catCounts).map(([cat, cnt]) =>
+          `<span class="cat-badge cat-${cat}">${CATEGORIES[cat] || cat}: ${cnt}</span>`
+        ).join('')}
+      </div>`;
+
+    await sb.db.log('finance_upload', null, { account: account.label, file: file.name, inserted, skipped });
+    loadDashboard();
+    loadBatches();
+
+  } catch(e) {
+    statusEl.innerHTML = `<div class="alert-box danger">Errore: ${ui.escapeHtml(e.message)}</div>`;
+    console.error('Upload error:', e);
+  }
+}
+
+async function loadBatches() {
+  try {
+    const batches = await sb.db.select('finance_batches', {
+      columns: '*,finance_accounts(label)',
+      order: 'uploaded_at.desc',
+      limit: 20,
+    });
+    const el = document.getElementById('batches-list');
+    if (!batches || !batches.length) {
+      el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">Nessun upload</div>';
+      return;
+    }
+    el.innerHTML = `<table><thead><tr>
+      <th>Data upload</th><th>Conto</th><th>Periodo</th><th>File</th><th>Stato</th><th></th>
+    </tr></thead><tbody>${batches.map(b => `<tr>
+      <td style="font-size:12px">${new Date(b.uploaded_at).toLocaleDateString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+      <td style="font-size:12px;font-weight:600">${ui.escapeHtml(b.finance_accounts?.label || '—')}</td>
+      <td style="font-size:12px">${b.period_start || '—'} → ${b.period_end || '—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${ui.escapeHtml(b.source_file || '—')}</td>
+      <td><span class="badge badge-ok">${b.status}</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="deleteBatch('${b.id}')" style="color:var(--danger);font-size:11px">Elimina</button></td>
+    </tr>`).join('')}</tbody></table>`;
+  } catch(e) {
+    document.getElementById('batches-list').innerHTML = `<div class="alert-box danger">${e.message}</div>`;
+  }
+}
+
+window.deleteBatch = async function(id) {
+  if (!confirm('Eliminare questo batch e tutte le transazioni associate?')) return;
+  try {
+    await sb.db.delete('finance_batches', `id=eq.${id}`);
+    ui.showToast('Batch eliminato', 'success');
+    loadBatches();
+    loadDashboard();
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  }
+};
+
+// ── Transactions ──────────────────────────────────────────────
+async function loadTransactions() {
+  const tableEl = document.getElementById('txn-table-wrap');
+  tableEl.innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner"></div></div>';
+
+  try {
+    let filter = '';
+    const month = document.getElementById('txn-filter-month').value;
+    const accountId = document.getElementById('txn-filter-account').value;
+    const category = document.getElementById('txn-filter-category').value;
+
+    const filters = [];
+    if (month) {
+      const [y, m] = month.split('-');
+      const start = `${y}-${m}-01`;
+      const end = new Date(parseInt(y), parseInt(m), 0).toISOString().slice(0, 10);
+      filters.push(`txn_date=gte.${start}`, `txn_date=lte.${end}`);
+    }
+    if (accountId) filters.push(`account_id=eq.${accountId}`);
+    if (category) filters.push(`category=eq.${category}`);
+
+    filter = filters.join('&');
+
+    allTransactions = await sb.db.select('finance_transactions', {
+      filter,
+      order: 'txn_date.desc',
+      columns: '*,finance_accounts(label)',
+    }) || [];
+
+    // Populate month filter if empty
+    const monthSel = document.getElementById('txn-filter-month');
+    if (monthSel.children.length <= 1) {
+      const months = new Set();
+      const allTxns = await sb.db.select('finance_transactions', { columns: 'txn_date', order: 'txn_date.desc' }) || [];
+      allTxns.forEach(t => { if (t.txn_date) months.add(t.txn_date.slice(0, 7)); });
+      monthSel.innerHTML = '<option value="">Tutti i mesi</option>' +
+        [...months].sort().reverse().map(m => {
+          const dt = new Date(m + '-01');
+          const label = dt.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+          return `<option value="${m}">${label}</option>`;
+        }).join('');
+    }
+
+    txnPage = 1;
+    renderTransactions();
+  } catch(e) {
+    tableEl.innerHTML = `<div class="alert-box danger" style="margin:16px">${e.message}</div>`;
+  }
+}
+
+function renderTransactions() {
+  const filtered = allTransactions;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / TXN_PAGE_SIZE));
+  if (txnPage > totalPages) txnPage = totalPages;
+  const page = filtered.slice((txnPage - 1) * TXN_PAGE_SIZE, txnPage * TXN_PAGE_SIZE);
+
+  document.getElementById('txn-count').textContent = `${filtered.length} transazioni`;
+
+  if (!page.length) {
+    document.getElementById('txn-table-wrap').innerHTML = `
+      <div class="empty-state" style="padding:40px;text-align:center">
+        <div style="font-size:32px;margin-bottom:8px">📋</div>
+        <h3 style="font-size:14px">Nessuna transazione</h3>
+        <p style="font-size:12px;color:var(--text-muted)">Carica un estratto conto nella tab Upload</p>
+      </div>`;
+    document.getElementById('txn-pagination').style.display = 'none';
+    return;
+  }
+
+  const catOptions = Object.entries(CATEGORIES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+
+  document.getElementById('txn-table-wrap').innerHTML = `
+    <table>
+      <thead><tr>
+        <th style="min-width:90px">Data</th>
+        <th>Descrizione</th>
+        <th>Controparte</th>
+        <th style="text-align:right">Importo</th>
+        <th>Conto</th>
+        <th style="min-width:140px">Categoria</th>
+      </tr></thead>
+      <tbody>${page.map(t => {
+        const isOther = t.category === 'other';
+        const amtClass = t.amount >= 0 ? 'color:var(--success);font-weight:700' : 'color:var(--danger);font-weight:700';
+        return `<tr class="${isOther ? 'txn-row-other' : ''}">
+          <td style="font-size:12px;white-space:nowrap">${ui.formatDate(t.txn_date)}</td>
+          <td style="font-size:12px;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${ui.escapeHtml(t.description)}">${ui.escapeHtml(t.description)}</td>
+          <td style="font-size:12px;font-weight:600">${ui.escapeHtml(t.counterparty || '—')}</td>
+          <td style="font-size:12px;text-align:right;${amtClass}">${fmtAED(t.amount_aed || t.amount)}</td>
+          <td style="font-size:11px;color:var(--text-muted)">${ui.escapeHtml(t.finance_accounts?.label || '—')}</td>
+          <td>
+            <select class="cat-select" onchange="updateCategory('${t.id}', this.value)" ${t.is_internal ? 'disabled' : ''}>
+              ${catOptions.replace(`value="${t.category}"`, `value="${t.category}" selected`)}
+            </select>
+            ${t.category_locked ? '<span style="font-size:9px;color:var(--text-muted);margin-left:4px" title="Corretta a mano">🔒</span>' : ''}
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+
+  // Pagination
+  const pgEl = document.getElementById('txn-pagination');
+  if (totalPages <= 1) { pgEl.style.display = 'none'; return; }
+  pgEl.style.display = 'flex';
+  document.getElementById('txn-page-info').textContent = `Pagina ${txnPage} di ${totalPages} · ${filtered.length} transazioni`;
+  let btns = `<button class="page-btn" onclick="txnGoPage(${txnPage-1})" ${txnPage===1?'disabled':''}>‹</button>`;
+  for (let i = Math.max(1,txnPage-2); i <= Math.min(totalPages,txnPage+2); i++) {
+    btns += `<button class="page-btn${i===txnPage?' on':''}" onclick="txnGoPage(${i})">${i}</button>`;
+  }
+  btns += `<button class="page-btn" onclick="txnGoPage(${txnPage+1})" ${txnPage===totalPages?'disabled':''}>›</button>`;
+  document.getElementById('txn-page-btns').innerHTML = btns;
+}
+
+window.txnGoPage = function(p) {
+  const total = Math.ceil(allTransactions.length / TXN_PAGE_SIZE);
+  if (p < 1 || p > total) return;
+  txnPage = p;
+  renderTransactions();
+  document.querySelector('#tab-transactions .card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+window.updateCategory = async function(txnId, newCat) {
+  try {
+    await sb.db.update('finance_transactions', `id=eq.${txnId}`, {
+      category: newCat,
+      category_locked: true,
+      is_internal: newCat === 'round_trip' || newCat === 'fx_sweep',
+    });
+    ui.showToast('Categoria aggiornata', 'success');
+    const txn = allTransactions.find(t => t.id === txnId);
+    if (txn) { txn.category = newCat; txn.category_locked = true; txn.is_internal = newCat === 'round_trip' || newCat === 'fx_sweep'; }
+    loadDashboard();
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  }
+};
+
+// Txn filters
+['txn-filter-month', 'txn-filter-account', 'txn-filter-category'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => { txnPage = 1; loadTransactions(); });
+});
+
+// ── Rules ─────────────────────────────────────────────────────
+async function loadRules() {
+  try {
+    const [rls, pts] = await Promise.all([
+      sb.db.select('finance_rules', { order: 'priority.asc' }),
+      sb.db.select('finance_internal_parties'),
+    ]);
+    rules = rls || [];
+    internalParties = pts || [];
+
+    document.getElementById('rules-container').innerHTML = rules.length
+      ? rules.map(r => `
+        <div class="rule-card ${r.active ? '' : 'inactive'}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span class="cat-badge cat-${r.set_category}">${CATEGORIES[r.set_category] || r.set_category}</span>
+            <div style="display:flex;gap:4px">
+              <button onclick="toggleRule('${r.id}',${!r.active})" class="btn btn-ghost btn-sm" style="font-size:10px">${r.active ? 'Disattiva' : 'Attiva'}</button>
+              <button onclick="deleteRule('${r.id}')" class="btn btn-ghost btn-sm" style="font-size:10px;color:var(--danger)">✕</button>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted)">
+            P${r.priority} · <strong>${r.match_field}</strong> ${r.match_op} "<code>${ui.escapeHtml(r.match_value)}</code>"
+            ${r.set_internal ? ' → <em>interno</em>' : ''}
+          </div>
+        </div>`).join('')
+      : '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-muted)">Nessuna regola</div>';
+
+    document.getElementById('parties-container').innerHTML = internalParties.length
+      ? `<table><thead><tr><th>Pattern</th><th>Note</th><th></th></tr></thead><tbody>
+        ${internalParties.map(p => `<tr>
+          <td style="font-weight:600;font-size:13px">${ui.escapeHtml(p.name_pattern)}</td>
+          <td style="font-size:12px;color:var(--text-muted)">${ui.escapeHtml(p.note || '')}</td>
+          <td><button onclick="deleteParty('${p.id}')" class="btn btn-ghost btn-sm" style="color:var(--danger);font-size:11px">Elimina</button></td>
+        </tr>`).join('')}</tbody></table>`
+      : '<div style="padding:12px;color:var(--text-muted);font-size:13px">Nessuna controparte interna</div>';
+
+  } catch(e) {
+    document.getElementById('rules-container').innerHTML = `<div class="alert-box danger">${e.message}</div>`;
+  }
+}
+
+window.toggleRule = async function(id, active) {
+  try {
+    await sb.db.update('finance_rules', `id=eq.${id}`, { active });
+    ui.showToast(active ? 'Regola attivata' : 'Regola disattivata', 'success');
+    loadRules();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+};
+
+window.deleteRule = async function(id) {
+  if (!confirm('Eliminare questa regola?')) return;
+  try {
+    await sb.db.delete('finance_rules', `id=eq.${id}`);
+    ui.showToast('Regola eliminata', 'success');
+    loadRules();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+};
+
+window.deleteParty = async function(id) {
+  if (!confirm('Eliminare questa controparte interna?')) return;
+  try {
+    await sb.db.delete('finance_internal_parties', `id=eq.${id}`);
+    ui.showToast('Eliminata', 'success');
+    loadRules();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+};
+
+document.getElementById('btn-add-rule').addEventListener('click', () => {
+  const field = prompt('Campo di match (counterparty, description, tx_type):');
+  if (!field) return;
+  const op = prompt('Operatore (contains, equals, regex):');
+  if (!op) return;
+  const value = prompt('Valore da cercare:');
+  if (!value) return;
+  const cat = prompt('Categoria da assegnare (revenue, cogs, salary, owner_draw, debt_repayment, fees, other, round_trip, fx_sweep):');
+  if (!cat) return;
+  const priority = parseInt(prompt('Priorità (numero, più basso = prima):') || '999');
+  const internal = cat === 'round_trip' || cat === 'fx_sweep';
+
+  sb.db.insert('finance_rules', {
+    priority, match_field: field, match_op: op, match_value: value,
+    set_category: cat, set_internal: internal, active: true,
+  }).then(() => { ui.showToast('Regola aggiunta', 'success'); loadRules(); })
+    .catch(e => ui.showToast('Errore: ' + e.message, 'error'));
+});
+
+document.getElementById('btn-add-party').addEventListener('click', () => {
+  const name = prompt('Pattern nome controparte (es. "sara tufo"):');
+  if (!name) return;
+  const note = prompt('Nota (opzionale):') || '';
+  sb.db.insert('finance_internal_parties', { name_pattern: name.toLowerCase(), note })
+    .then(() => { ui.showToast('Aggiunta', 'success'); loadRules(); })
+    .catch(e => ui.showToast('Errore: ' + e.message, 'error'));
+});
+
+// ── Settings ──────────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const stg = await sb.db.select('finance_settings', { filter: 'id=eq.1' });
+    settings = (stg && stg[0]) || settings;
+    document.getElementById('set-owner-salary').value = settings.owner_base_salary_aed || 30000;
+    document.getElementById('set-buffer-months').value = settings.buffer_target_months || 3;
+    document.getElementById('set-cogs-alert').value = settings.cogs_alert_pct || 0.58;
+
+    // Accounts list
+    const accs = await sb.db.select('finance_accounts', { order: 'label.asc' });
+    document.getElementById('accounts-list').innerHTML = accs.length
+      ? `<table><thead><tr><th>Label</th><th>Entità</th><th>Valuta</th><th>Parser</th><th>IBAN</th></tr></thead><tbody>
+        ${accs.map(a => `<tr>
+          <td style="font-weight:600;font-size:13px">${ui.escapeHtml(a.label)}</td>
+          <td style="font-size:12px">${ui.escapeHtml(a.entity)}</td>
+          <td style="font-size:12px">${a.currency}</td>
+          <td style="font-size:12px;font-family:monospace">${a.parser}</td>
+          <td style="font-size:11px;color:var(--text-muted)">${ui.escapeHtml(a.iban || '—')}</td>
+        </tr>`).join('')}</tbody></table>`
+      : '<div style="color:var(--text-muted)">Nessun conto configurato</div>';
+
+    // FX rates
+    const rates = await sb.db.select('finance_fx_rates', { order: 'currency.asc,month.desc', limit: 20 });
+    document.getElementById('fx-rates-list').innerHTML = rates.length
+      ? `<table><thead><tr><th>Valuta</th><th>Mese</th><th>Tasso → AED</th></tr></thead><tbody>
+        ${rates.map(r => `<tr>
+          <td style="font-weight:600">${r.currency}</td>
+          <td style="font-size:12px">${r.month}</td>
+          <td style="font-size:12px">${r.rate_to_aed}</td>
+        </tr>`).join('')}</tbody></table>`
+      : '<div style="color:var(--text-muted)">Nessun tasso configurato</div>';
+  } catch(e) {
+    console.error('Settings error:', e);
+  }
+}
+
+document.getElementById('btn-save-settings').addEventListener('click', async () => {
+  try {
+    await sb.db.upsert('finance_settings', {
+      id: 1,
+      owner_base_salary_aed: parseFloat(document.getElementById('set-owner-salary').value),
+      buffer_target_months: parseFloat(document.getElementById('set-buffer-months').value),
+      cogs_alert_pct: parseFloat(document.getElementById('set-cogs-alert').value),
+    }, 'id');
+    settings.owner_base_salary_aed = parseFloat(document.getElementById('set-owner-salary').value);
+    settings.buffer_target_months = parseFloat(document.getElementById('set-buffer-months').value);
+    settings.cogs_alert_pct = parseFloat(document.getElementById('set-cogs-alert').value);
+    ui.showToast('Impostazioni salvate', 'success');
+    loadDashboard();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+});
+
+document.getElementById('btn-add-account').addEventListener('click', () => {
+  const label = prompt('Nome conto (es. "Full Digital Wio AED"):');
+  if (!label) return;
+  const entity = prompt('Entità (es. "Full Digital FZCO"):');
+  if (!entity) return;
+  const currency = prompt('Valuta (es. AED, EUR, USD):') || 'AED';
+  const parser = prompt('Parser (wio_csv, fab_pdf, generic_csv):') || 'generic_csv';
+  const iban = prompt('IBAN (opzionale):') || null;
+
+  sb.db.insert('finance_accounts', { label, entity, currency, parser, iban })
+    .then(() => { ui.showToast('Conto aggiunto', 'success'); loadSettings(); init(); })
+    .catch(e => ui.showToast('Errore: ' + e.message, 'error'));
+});
+
+// ── Helpers ───────────────────────────────────────────────────
+function fmtAED(n) {
+  if (n == null) return '—';
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  return sign + 'AED ' + abs.toLocaleString('it-IT', { maximumFractionDigits: 0 });
+}
+
+function fmtCompact(n) {
+  if (Math.abs(n) >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (Math.abs(n) >= 1000) return (n/1000).toFixed(0) + 'K';
+  return n.toFixed(0);
+}
+
+// ── Start ─────────────────────────────────────────────────────
+init();
+window.addEventListener('pageshow', (e) => { if (e.persisted) init(); });
+</script>
+</body>
+</html>
