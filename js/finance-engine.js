@@ -203,87 +203,200 @@
   }
 
   // ── FAB PDF Parser ──────────────────────────────────────────
+  // FAB statements have columns: DATE | VALUE DATE | DESCRIPTION | DEBIT | CREDIT | BALANCE
+  // X coordinate thresholds (from actual FAB PDFs):
+  //   Date: x < 80, ValueDate: 80-150, Description: 150-340, Debit: 340-420, Credit: 420-510, Balance: 510+
+  const FAB_COL = { DESC: 150, DEBIT: 340, CREDIT: 420, BALANCE: 510 };
+  const FAB_DATE_RE = /^(\d{1,2})\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{4})$/i;
+  const FAB_MONTHS = { JAN:'01',FEB:'02',MAR:'03',APR:'04',MAY:'05',JUN:'06',JUL:'07',AUG:'08',SEP:'09',OCT:'10',NOV:'11',DEC:'12' };
+
+  function parseFabDate(s) {
+    if (!s) return null;
+    const m = s.trim().match(FAB_DATE_RE);
+    if (!m) return parseDate(s);
+    return `${m[3]}-${FAB_MONTHS[m[2].toUpperCase()]}-${m[1].padStart(2, '0')}`;
+  }
+
+  function parseFabPdfItems(pages) {
+    const SKIP = /opening balance|balance brought forward|balance carried forward|closing statement/i;
+    const rows = [];
+
+    for (const pageItems of pages) {
+      const lineMap = {};
+      pageItems.forEach(item => {
+        const y = Math.round(item.transform[5]);
+        const x = Math.round(item.transform[4]);
+        if (!lineMap[y]) lineMap[y] = [];
+        lineMap[y].push({ x, text: item.str });
+      });
+
+      const sortedYs = Object.keys(lineMap).map(Number).sort((a, b) => b - a);
+      let currentTxn = null;
+
+      for (const y of sortedYs) {
+        const items = lineMap[y].sort((a, b) => a.x - b.x);
+        const fullLine = items.map(i => i.text).join(' ').trim();
+
+        if (!fullLine || SKIP.test(fullLine)) {
+          if (currentTxn) { rows.push(currentTxn); currentTxn = null; }
+          continue;
+        }
+
+        const dateItems = items.filter(i => i.x < 80);
+        const dateText = dateItems.map(i => i.text).join(' ').trim();
+        const dateMatch = dateText.match(FAB_DATE_RE);
+
+        if (dateMatch) {
+          if (currentTxn) rows.push(currentTxn);
+
+          const txnDate = parseFabDate(dateText);
+          const vdItems = items.filter(i => i.x >= 80 && i.x < FAB_COL.DESC);
+          const valueDate = parseFabDate(vdItems.map(i => i.text).join(' ').trim());
+
+          const descItems = items.filter(i => i.x >= FAB_COL.DESC && i.x < FAB_COL.DEBIT);
+          const description = descItems.map(i => i.text).join(' ').trim();
+
+          const debitItems = items.filter(i => i.x >= FAB_COL.DEBIT && i.x < FAB_COL.CREDIT);
+          const creditItems = items.filter(i => i.x >= FAB_COL.CREDIT && i.x < FAB_COL.BALANCE);
+
+          const debitText = debitItems.map(i => i.text).join('').replace(/[,\s]/g, m => m === ',' ? '' : m).trim();
+          const creditText = creditItems.map(i => i.text).join('').replace(/[,\s]/g, m => m === ',' ? '' : m).trim();
+
+          const debit = parseFloat(debitText.replace(/,/g, '')) || 0;
+          const credit = parseFloat(creditText.replace(/,/g, '')) || 0;
+          const amount = credit > 0 ? credit : -debit;
+
+          if (amount === 0) { currentTxn = null; i++; continue; }
+
+          currentTxn = {
+            txnDate,
+            valueDate,
+            description,
+            descLines: [],
+            counterparty: '',
+            amount,
+            currency: 'AED',
+            txType: description,
+            refNumber: '',
+            notes: '',
+            raw: { original_line: fullLine },
+          };
+        } else if (currentTxn) {
+          const contItems = items.filter(i => i.x >= FAB_COL.DESC && i.x < FAB_COL.DEBIT);
+          const contText = contItems.length ? contItems.map(i => i.text).join(' ').trim() : fullLine;
+          if (contText && !/^DATE|^VALUE DATE|^DESCRIPTION|^DEBIT|^CREDIT|^BALANCE|^Sheet no|^Currency|^PBTAX|^PLATINUM|^Dubai|^00000|^Tot\.|^Total|^Debit Interest|^Closing Book|^\*|^Important|^We shall|^First Abu/i.test(contText)) {
+            currentTxn.descLines.push(contText);
+          }
+        }
+      }
+      if (currentTxn) { rows.push(currentTxn); currentTxn = null; }
+    }
+
+    return rows.map(txn => {
+      const allDesc = [txn.description, ...txn.descLines].join(' ');
+
+      let counterparty = '';
+      const remitterMatch = allDesc.match(/Remitter Info\s*:\s*(?:\d{3}\s+\d{3}\s+)?(.+?)(?:,\s*Sender|$)/i);
+      if (remitterMatch) {
+        counterparty = remitterMatch[1].trim()
+          .replace(/\s*OPER\s*ATING\s+AS\b/i, ' OPERATING AS').trim();
+      }
+      if (!counterparty) {
+        const benefMatch = allDesc.match(/Beneficiary[:\s]+([^,\d][^,]*)/i);
+        if (benefMatch) counterparty = benefMatch[1].trim();
+      }
+      if (!counterparty) {
+        const outMatch = allDesc.match(/OUTWARD\s+TRANS(?:FER)?\s+(.+?)(?:\s+REF|\s+Ref:|,|$)/i);
+        if (outMatch) counterparty = outMatch[1].trim();
+      }
+      if (!counterparty) {
+        const descOnly = txn.description;
+        const posMatch = descOnly.match(/POS Settlement\s+(.+)/i);
+        if (posMatch) counterparty = posMatch[1].trim();
+      }
+
+      const ftMatch = allDesc.match(/\b(FT\d{5}[A-Z0-9]+)\b/);
+      const refMatch = allDesc.match(/Ref:\s*([A-Z0-9]+)/i);
+      const ippMatch = allDesc.match(/IPP Ref:\s*([A-Z0-9]+)/i);
+      const refNumber = ftMatch ? ftMatch[1] : (ippMatch ? ippMatch[1] : (refMatch ? refMatch[1] : `FAB_${txn.txnDate}_${Math.abs(txn.amount).toFixed(2)}`));
+
+      delete txn.descLines;
+      return {
+        ...txn,
+        description: allDesc.slice(0, 500),
+        counterparty,
+        refNumber,
+      };
+    });
+  }
+
   function parseFabPdfText(textLines) {
     const rows = [];
-    const dateRe = /^(\d{2}[\/\-]\d{2}[\/\-]\d{4})/;
-    const amountRe = /[\d,]+\.\d{2}/g;
+    const SKIP = /opening balance|balance brought forward|balance carried forward|closing statement/i;
+    const dateRe = /^(\d{1,2})\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{4})/i;
 
     let i = 0;
     while (i < textLines.length) {
       const line = textLines[i].trim();
+      if (!line || SKIP.test(line)) { i++; continue; }
       const dateMatch = line.match(dateRe);
       if (!dateMatch) { i++; continue; }
 
-      const txnDateRaw = dateMatch[1];
-      const txnDate = parseDate(txnDateRaw);
+      const txnDate = parseFabDate(dateMatch[0]);
       if (!txnDate) { i++; continue; }
 
       let rest = line.slice(dateMatch[0].length).trim();
-
-      let valueDateRaw = null;
+      let valueDate = null;
       const vdMatch = rest.match(dateRe);
       if (vdMatch) {
-        valueDateRaw = vdMatch[1];
+        valueDate = parseFabDate(vdMatch[0]);
         rest = rest.slice(vdMatch[0].length).trim();
       }
 
       let descParts = [rest];
       let j = i + 1;
-      while (j < textLines.length && !textLines[j].trim().match(dateRe)) {
-        const nextLine = textLines[j].trim();
-        if (!nextLine) { j++; continue; }
-        const onlyAmounts = nextLine.replace(/[\d,]+\.\d{2}/g, '').replace(/[A-Z]{3}/g, '').trim();
-        if (!onlyAmounts && nextLine.match(amountRe)) break;
-        descParts.push(nextLine);
+      while (j < textLines.length) {
+        const next = textLines[j].trim();
+        if (!next || next.match(dateRe) || SKIP.test(next)) break;
+        if (/^(DATE|Sheet no|Currency|PBTAX|PLATINUM|Dubai|00000|Tot\.|Total|Debit Interest|Closing Book|\*|Important|We shall|First Abu)/i.test(next)) break;
+        descParts.push(next);
         j++;
       }
 
       const fullText = descParts.join(' ');
-      const amounts = fullText.match(amountRe);
-
-      if (!amounts || amounts.length === 0) { i = Math.max(j, i + 1); continue; }
+      const amounts = fullText.match(/[\d,]+\.\d{2}/g);
+      if (!amounts || amounts.length === 0) { i = j; continue; }
 
       let description = fullText;
       amounts.forEach(a => { description = description.replace(a, ''); });
       description = description.replace(/\s{2,}/g, ' ').trim();
 
-      let debit = 0, credit = 0;
-      const parsedAmounts = amounts.map(a => parseFloat(a.replace(/,/g, '')));
-
-      if (parsedAmounts.length >= 3) {
-        debit = parsedAmounts[0];
-        credit = parsedAmounts[1];
-      } else if (parsedAmounts.length === 2) {
-        debit = parsedAmounts[0];
-        credit = parsedAmounts[1];
+      const lastAmount = parseFloat(amounts[amounts.length - 1].replace(/,/g, ''));
+      let amount;
+      if (amounts.length >= 2) {
+        const txnAmount = parseFloat(amounts[amounts.length - 2].replace(/,/g, ''));
+        const isCredit = /inward|credit|deposit|incoming/i.test(description);
+        amount = isCredit ? txnAmount : -txnAmount;
       } else {
-        const val = parsedAmounts[0];
-        if (description.toLowerCase().includes('credit') || description.toLowerCase().includes('deposit') || description.toLowerCase().includes('transfer credit')) {
-          credit = val;
-        } else {
-          debit = val;
-        }
+        amount = -lastAmount;
       }
-
-      if (debit === 0 && credit === 0) { i = Math.max(j, i + 1); continue; }
-
-      const amount = credit > 0 ? credit : -debit;
 
       let counterparty = '';
-      const cpMatch = description.match(/(?:from|to|favouring|beneficiary)[:\s]+([^,\d][^,]*)/i);
-      if (cpMatch) counterparty = cpMatch[1].trim();
+      const remitterMatch = description.match(/Remitter Info:.*?(\d{3}\s+\d{3}\s+)?(.+?)(?:,\s*Sender|$)/i);
+      if (remitterMatch) counterparty = remitterMatch[2].trim();
       if (!counterparty) {
-        const words = description.split(/\s+/).filter(w => w.length > 2 && !/^\d/.test(w) && !['THE','FOR','AND','REF','TRF','FTS','IPI'].includes(w.toUpperCase()));
-        counterparty = words.slice(0, 4).join(' ');
+        const cpMatch = description.match(/(?:from|to|favouring|beneficiary)[:\s]+([^,\d][^,]*)/i);
+        if (cpMatch) counterparty = cpMatch[1].trim();
       }
 
-      const refMatch = description.match(/(?:ref(?:erence)?|trn)[.:\s]*([A-Z0-9]{6,})/i);
-      const refNumber = refMatch ? refMatch[1] : `FAB_${txnDate}_${Math.abs(amount).toFixed(2)}`;
+      const ftMatch = fullText.match(/\b(FT\d{5}[A-Z0-9]+)\b/);
+      const refMatch = fullText.match(/Ref:\s*([A-Z0-9]+)/i);
+      const refNumber = ftMatch ? ftMatch[1] : (refMatch ? refMatch[1] : `FAB_${txnDate}_${Math.abs(amount).toFixed(2)}`);
 
       rows.push({
         txnDate,
-        valueDate: valueDateRaw ? parseDate(valueDateRaw) : null,
-        description,
+        valueDate,
+        description: description.slice(0, 500),
         counterparty,
         amount,
         currency: 'AED',
@@ -293,7 +406,7 @@
         raw: { original_line: fullText },
       });
 
-      i = Math.max(j, i + 1);
+      i = j;
     }
     return rows;
   }
@@ -313,32 +426,21 @@
     });
   }
 
-  async function extractPdfText(arrayBuffer) {
+  async function extractPdfPages(arrayBuffer) {
     const pdfjsLib = await loadPdfJs();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const lines = [];
+    const pages = [];
     for (let p = 1; p <= pdf.numPages; p++) {
       const page = await pdf.getPage(p);
       const content = await page.getTextContent();
-      let lastY = null;
-      let currentLine = '';
-      content.items.forEach(item => {
-        const y = Math.round(item.transform[5]);
-        if (lastY !== null && Math.abs(y - lastY) > 3) {
-          if (currentLine.trim()) lines.push(currentLine.trim());
-          currentLine = '';
-        }
-        currentLine += (currentLine ? ' ' : '') + item.str;
-        lastY = y;
-      });
-      if (currentLine.trim()) lines.push(currentLine.trim());
+      pages.push(content.items);
     }
-    return lines;
+    return pages;
   }
 
   async function parseFabPdf(arrayBuffer) {
-    const lines = await extractPdfText(arrayBuffer);
-    return parseFabPdfText(lines);
+    const pages = await extractPdfPages(arrayBuffer);
+    return parseFabPdfItems(pages);
   }
 
   // ── Expose globals ──────────────────────────────────────────
@@ -350,8 +452,10 @@
     aggregateMonthly,
     matchRule,
     parseFabPdf,
+    parseFabPdfItems,
     parseFabPdfText,
-    extractPdfText,
+    parseFabDate,
+    extractPdfPages,
     loadPdfJs,
   };
 
