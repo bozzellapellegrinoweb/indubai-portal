@@ -82,7 +82,6 @@
     { id: 'payments',   icon: 'credit-card',   label: 'Abbonamenti',    href: '/payments.html' },
     { id: 'reconciliation', icon: 'refresh-cw', label: 'Riconciliazione', href: '/reconciliation.html' },
     { id: 'bilanci',    icon: 'bar-chart-2',   label: 'Bilanci',        href: '/bilanci.html' },
-    { id: 'finance',    icon: 'dollar-sign',   label: 'Cashflow Gruppo', href: '/finance.html' },
     { id: 'ferie',      icon: 'sun',           label: 'Ferie & Permessi', href: '/ferie.html' },
     { id: 'vat',        icon: 'percent',       label: 'VAT Register',   href: '/vat.html',        section: 'COMPLIANCE' },
     { id: 'corp-tax',   icon: 'briefcase',     label: 'Corporate Tax',  href: '/corp-tax.html' },
@@ -91,6 +90,9 @@
     { id: 'pw',         icon: '', label: '↳ P&W',            href: '/pw.html' },
     { id: 'reports',    icon: 'bar-chart-2',   label: 'Report',         href: '/reports.html',    section: 'ANALYTICS' },
     { id: 'lead-analytics', icon: 'target',    label: 'Lead per Fonte', href: '/lead-analytics.html' },
+    ...(role === 'admin' ? [
+      { id: 'finance',    icon: 'dollar-sign',   label: 'Cashflow Gruppo', href: '/finance.html' },
+    ] : []),
     { id: 'news',       icon: 'book-open',     label: 'UAE News',       href: '/news.html' },
     { id: 'search',     icon: 'search',        label: 'Ricerca',        href: '/search.html' },
     ...(role === 'admin' ? [

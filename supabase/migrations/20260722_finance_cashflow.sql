@@ -288,5 +288,14 @@ select
 from p
 order by month;
 
+-- Grant table access to authenticated (RLS policies restrict to admin)
+grant all on finance_accounts to authenticated;
+grant all on finance_batches to authenticated;
+grant all on finance_transactions to authenticated;
+grant all on finance_fx_rates to authenticated;
+grant all on finance_rules to authenticated;
+grant all on finance_internal_parties to authenticated;
+grant all on finance_settings to authenticated;
+
 -- Grant access to the view
 grant select on finance_monthly_summary to authenticated;
