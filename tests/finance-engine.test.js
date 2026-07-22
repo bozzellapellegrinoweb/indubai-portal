@@ -584,18 +584,31 @@ Full Digital,AED,Transfers,29/01/2025,R011,"To Random Vendor - Office supplies",
 // ════════════════════════════════════════════════════════════════
 console.log('\n=== FAB PDF Text Parser Tests ===');
 
+// parseFabDate tests
+{
+  assertEq(engine.parseFabDate('04 JUN 2026'), '2026-06-04', 'parseFabDate: DD MMM YYYY');
+  assertEq(engine.parseFabDate('22 APR 2026'), '2026-04-22', 'parseFabDate: APR');
+  assertEq(engine.parseFabDate('1 JAN 2025'), '2025-01-01', 'parseFabDate: single digit day');
+  assertEq(engine.parseFabDate(null), null, 'parseFabDate: null');
+  assertEq(engine.parseFabDate(''), null, 'parseFabDate: empty');
+}
+
+// parseFabPdfText with DD MMM YYYY format
 {
   const lines = [
     'Statement of Account',
     'Account Number: 1234567890',
-    '01/03/2025 01/03/2025 TRF TO IFZA FREE ZONE REF FTS250301001 5,000.00 150,000.00',
-    '05/03/2025 05/03/2025 SALARY CREDIT FROM ACME CORP 80,000.00 230,000.00',
-    '10/03/2025 PAYMENT TO THE VAT CONSULTANT 2,500.00 227,500.00',
+    '01 MAR 2025 01 MAR 2025 Inward Telex Transfer Ref: 000123456, 5,000.00 150,000.00',
+    'Remitter Info: ACME CORP, Sender: NRAKAEAK, Value Date: 01-03-2025',
+    'FT26001ABCDE',
+    '05 MAR 2025 05 MAR 2025 Inward Telex Transfer Ref: 000123457, 80,000.00 230,000.00',
+    'Remitter Info: BETA LLC, Sender: NRAKAEAK, Value Date: 05-03-2025',
+    'FT26002FGHIJ',
   ];
 
   const txns = engine.parseFabPdfText(lines);
   assert(txns.length >= 2, 'parseFabPdfText: parses multiple transactions');
-  assertEq(txns[0].txnDate, '2025-03-01', 'parseFabPdfText: date DD/MM/YYYY');
+  assertEq(txns[0].txnDate, '2025-03-01', 'parseFabPdfText: date DD MMM YYYY');
   assertEq(txns[0].currency, 'AED', 'parseFabPdfText: default currency AED');
   assert(txns[0].refNumber, 'parseFabPdfText: has refNumber');
   assert(txns[0].description.length > 0, 'parseFabPdfText: has description');
@@ -603,12 +616,12 @@ console.log('\n=== FAB PDF Text Parser Tests ===');
 
 {
   const lines = [
-    '15/06/2025 15/06/2025 Transfer to Pellegrino Bozzella REF TRN123456 60,000.00 100,000.00',
+    '15 JUN 2025 15 JUN 2025 Inward IPP Payment Inward Instant Payment,IPP Ref: INST123,Remitter Info: Pellegrino Bozzella,Sender: 180 60,000.00 100,000.00',
   ];
   const txns = engine.parseFabPdfText(lines);
-  assertEq(txns.length, 1, 'parseFabPdfText: single debit line');
-  assert(txns[0].amount < 0 || txns[0].amount > 0, 'parseFabPdfText: non-zero amount');
-  assert(txns[0].counterparty.length > 0, 'parseFabPdfText: extracts counterparty');
+  assertEq(txns.length, 1, 'parseFabPdfText: single line');
+  assert(txns[0].amount !== 0, 'parseFabPdfText: non-zero amount');
+  assert(txns[0].counterparty.includes('Pellegrino Bozzella'), 'parseFabPdfText: extracts counterparty from Remitter Info');
 }
 
 {
@@ -629,18 +642,20 @@ console.log('\n=== FAB PDF Text Parser Tests ===');
 
 {
   const lines = [
-    '20/04/2025 Credit deposit from Client XYZ 25,000.00 175,000.00',
+    '20 APR 2025 Inward Telex Transfer credit from Client XYZ 25,000.00 175,000.00',
   ];
   const txns = engine.parseFabPdfText(lines);
   assertEq(txns.length, 1, 'parseFabPdfText: credit line parsed');
 }
 
-// FAB PDF → Classify → Aggregate end-to-end
+// FAB PDF text → Classify → Aggregate end-to-end
 {
   const lines = [
-    '01/01/2025 01/01/2025 Transfer credit from Acme Corp Invoice 100 200,000.00 200,000.00',
-    '10/01/2025 10/01/2025 TRF TO IFZA FREE ZONE License REF FTS250110 80,000.00 120,000.00',
-    '15/01/2025 15/01/2025 Transfer to Pellegrino Bozzella Monthly REF TRN150125 60,000.00 60,000.00',
+    '01 JAN 2025 01 JAN 2025 Inward Telex Transfer credit Ref: 000100, 200,000.00 200,000.00',
+    'Remitter Info: Acme Corp, Sender: NRAKAEAK',
+    'FT26010AAAAA',
+    '10 JAN 2025 10 JAN 2025 POS Settlement IFZA FREE ZONE 80,000.00 120,000.00',
+    '15 JAN 2025 15 JAN 2025 Inward IPP Payment,Remitter Info: Pellegrino Bozzella,Sender: 180 60,000.00 60,000.00',
   ];
 
   const parsed = engine.parseFabPdfText(lines);
