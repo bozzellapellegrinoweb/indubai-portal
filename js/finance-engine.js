@@ -443,6 +443,36 @@
     return parseFabPdfItems(pages);
   }
 
+  // ── Category suggestion for uncategorised transactions ──────
+  function suggestCategory(txn) {
+    const desc = (txn.description || '').toLowerCase();
+    const cp = (txn.counterparty || '').toLowerCase();
+    const tt = (txn.tx_type || txn.txType || '').toLowerCase();
+    const amt = parseFloat(txn.amount_aed || txn.amount) || 0;
+    const combined = `${desc} ${cp} ${tt}`;
+
+    // Fees patterns
+    if (/\b(fee|charge|commission|commissione|penalty|penale|vat on|service charge|account maintenance|swift charge|sms alert|debit interest)\b/i.test(combined)) return 'fees';
+    if (tt === 'fees') return 'fees';
+
+    // Debt repayment
+    if (/\b(repayment|autopay|emi\b|loan|rata|mutuo|credit card payment|installment)\b/i.test(combined)) return 'debt_repayment';
+
+    // Salary patterns (outgoing)
+    if (amt < 0 && /\b(salary|salario|stipendio|wps|wage|payroll)\b/i.test(combined)) return 'salary';
+
+    // Revenue (incoming with invoice/payment patterns)
+    if (amt > 0 && /\b(invoice|fattura|pagamento|payment received|ricevuto|inward|incoming|credit transfer)\b/i.test(combined)) return 'revenue';
+
+    // If positive and no other match, likely revenue
+    if (amt > 0) return 'revenue';
+
+    // COGS (outgoing to vendors/services)
+    if (amt < 0 && /\b(hosting|server|cloud|software|license|licenza|dominio|domain|consultant|consulen|freelanc|subcontract|fornitore|supplier|servizi|agenzia|agency)\b/i.test(combined)) return 'cogs';
+
+    return null; // no suggestion
+  }
+
   // ── Expose globals ──────────────────────────────────────────
   window.financeEngine = {
     parseWioCsv,
@@ -457,6 +487,7 @@
     parseFabDate,
     extractPdfPages,
     loadPdfJs,
+    suggestCategory,
   };
 
 })();
