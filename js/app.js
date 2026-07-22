@@ -60,6 +60,7 @@
     'book-open': '<path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>',
     search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
     clipboard: '<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>',
+    'dollar-sign': '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
   };
   function navIcon(key) {
     if (!key || !ICON_PATHS[key]) return '';
@@ -81,6 +82,7 @@
     { id: 'payments',   icon: 'credit-card',   label: 'Abbonamenti',    href: '/payments.html' },
     { id: 'reconciliation', icon: 'refresh-cw', label: 'Riconciliazione', href: '/reconciliation.html' },
     { id: 'bilanci',    icon: 'bar-chart-2',   label: 'Bilanci',        href: '/bilanci.html' },
+    { id: 'finance',    icon: 'dollar-sign',   label: 'Cashflow Gruppo', href: '/finance.html' },
     { id: 'ferie',      icon: 'sun',           label: 'Ferie & Permessi', href: '/ferie.html' },
     { id: 'vat',        icon: 'percent',       label: 'VAT Register',   href: '/vat.html',        section: 'COMPLIANCE' },
     { id: 'corp-tax',   icon: 'briefcase',     label: 'Corporate Tax',  href: '/corp-tax.html' },
@@ -410,6 +412,7 @@
     'affinitas': 'Affinitas', 'vat-partner': 'VAT Consultant', 'pw': 'P&W', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
     'client-detail': 'Cliente', 'attivita': 'Attività Staff', 'broadcast': 'Broadcast', 'bacheca': 'Bacheca',
     'reconciliation': 'Riconciliazione',
+    'finance': 'Cashflow Gruppo',
   };
   const pageLabel = PAGE_LABELS[currentPage] || 'InDubai';
 
