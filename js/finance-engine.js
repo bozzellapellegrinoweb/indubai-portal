@@ -202,6 +202,145 @@
     });
   }
 
+  // ── FAB PDF Parser ──────────────────────────────────────────
+  function parseFabPdfText(textLines) {
+    const rows = [];
+    const dateRe = /^(\d{2}[\/\-]\d{2}[\/\-]\d{4})/;
+    const amountRe = /[\d,]+\.\d{2}/g;
+
+    let i = 0;
+    while (i < textLines.length) {
+      const line = textLines[i].trim();
+      const dateMatch = line.match(dateRe);
+      if (!dateMatch) { i++; continue; }
+
+      const txnDateRaw = dateMatch[1];
+      const txnDate = parseDate(txnDateRaw);
+      if (!txnDate) { i++; continue; }
+
+      let rest = line.slice(dateMatch[0].length).trim();
+
+      let valueDateRaw = null;
+      const vdMatch = rest.match(dateRe);
+      if (vdMatch) {
+        valueDateRaw = vdMatch[1];
+        rest = rest.slice(vdMatch[0].length).trim();
+      }
+
+      let descParts = [rest];
+      let j = i + 1;
+      while (j < textLines.length && !textLines[j].trim().match(dateRe)) {
+        const nextLine = textLines[j].trim();
+        if (!nextLine) { j++; continue; }
+        const onlyAmounts = nextLine.replace(/[\d,]+\.\d{2}/g, '').replace(/[A-Z]{3}/g, '').trim();
+        if (!onlyAmounts && nextLine.match(amountRe)) break;
+        descParts.push(nextLine);
+        j++;
+      }
+
+      const fullText = descParts.join(' ');
+      const amounts = fullText.match(amountRe);
+
+      if (!amounts || amounts.length === 0) { i = Math.max(j, i + 1); continue; }
+
+      let description = fullText;
+      amounts.forEach(a => { description = description.replace(a, ''); });
+      description = description.replace(/\s{2,}/g, ' ').trim();
+
+      let debit = 0, credit = 0;
+      const parsedAmounts = amounts.map(a => parseFloat(a.replace(/,/g, '')));
+
+      if (parsedAmounts.length >= 3) {
+        debit = parsedAmounts[0];
+        credit = parsedAmounts[1];
+      } else if (parsedAmounts.length === 2) {
+        debit = parsedAmounts[0];
+        credit = parsedAmounts[1];
+      } else {
+        const val = parsedAmounts[0];
+        if (description.toLowerCase().includes('credit') || description.toLowerCase().includes('deposit') || description.toLowerCase().includes('transfer credit')) {
+          credit = val;
+        } else {
+          debit = val;
+        }
+      }
+
+      if (debit === 0 && credit === 0) { i = Math.max(j, i + 1); continue; }
+
+      const amount = credit > 0 ? credit : -debit;
+
+      let counterparty = '';
+      const cpMatch = description.match(/(?:from|to|favouring|beneficiary)[:\s]+([^,\d][^,]*)/i);
+      if (cpMatch) counterparty = cpMatch[1].trim();
+      if (!counterparty) {
+        const words = description.split(/\s+/).filter(w => w.length > 2 && !/^\d/.test(w) && !['THE','FOR','AND','REF','TRF','FTS','IPI'].includes(w.toUpperCase()));
+        counterparty = words.slice(0, 4).join(' ');
+      }
+
+      const refMatch = description.match(/(?:ref(?:erence)?|trn)[.:\s]*([A-Z0-9]{6,})/i);
+      const refNumber = refMatch ? refMatch[1] : `FAB_${txnDate}_${Math.abs(amount).toFixed(2)}`;
+
+      rows.push({
+        txnDate,
+        valueDate: valueDateRaw ? parseDate(valueDateRaw) : null,
+        description,
+        counterparty,
+        amount,
+        currency: 'AED',
+        txType: '',
+        refNumber,
+        notes: '',
+        raw: { original_line: fullText },
+      });
+
+      i = Math.max(j, i + 1);
+    }
+    return rows;
+  }
+
+  async function loadPdfJs() {
+    if (window.pdfjsLib) return window.pdfjsLib;
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = () => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      };
+      s.onerror = () => reject(new Error('Impossibile caricare PDF.js'));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function extractPdfText(arrayBuffer) {
+    const pdfjsLib = await loadPdfJs();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const lines = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      let lastY = null;
+      let currentLine = '';
+      content.items.forEach(item => {
+        const y = Math.round(item.transform[5]);
+        if (lastY !== null && Math.abs(y - lastY) > 3) {
+          if (currentLine.trim()) lines.push(currentLine.trim());
+          currentLine = '';
+        }
+        currentLine += (currentLine ? ' ' : '') + item.str;
+        lastY = y;
+      });
+      if (currentLine.trim()) lines.push(currentLine.trim());
+    }
+    return lines;
+  }
+
+  async function parseFabPdf(arrayBuffer) {
+    const lines = await extractPdfText(arrayBuffer);
+    return parseFabPdfText(lines);
+  }
+
   // ── Expose globals ──────────────────────────────────────────
   window.financeEngine = {
     parseWioCsv,
@@ -210,6 +349,10 @@
     classifyTransactions,
     aggregateMonthly,
     matchRule,
+    parseFabPdf,
+    parseFabPdfText,
+    extractPdfText,
+    loadPdfJs,
   };
 
 })();
