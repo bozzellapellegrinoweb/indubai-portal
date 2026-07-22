@@ -517,16 +517,22 @@ async function handleUpload(file) {
 
   try {
     let parsed = [];
-    const text = await file.text();
 
-    if (account.parser === 'wio_csv' || file.name.endsWith('.csv')) {
-      parsed = financeEngine.parseWioCsv(text);
-    } else if (account.parser === 'generic_csv') {
-      parsed = financeEngine.parseGenericCsv(text);
+    if (file.name.endsWith('.pdf') || account.parser === 'fab_pdf') {
+      statusEl.innerHTML = '<div style="display:flex;align-items:center;gap:8px"><div class="spinner" style="width:18px;height:18px"></div> Estrazione testo dal PDF...</div>';
+      const arrayBuffer = await file.arrayBuffer();
+      parsed = await financeEngine.parseFabPdf(arrayBuffer);
     } else {
-      ui.showToast('Parser PDF non ancora disponibile — usa CSV', 'error');
-      statusEl.innerHTML = '';
-      return;
+      const text = await file.text();
+      if (account.parser === 'wio_csv' || file.name.endsWith('.csv')) {
+        parsed = financeEngine.parseWioCsv(text);
+      } else if (account.parser === 'generic_csv') {
+        parsed = financeEngine.parseGenericCsv(text);
+      } else {
+        ui.showToast('Formato file non supportato', 'error');
+        statusEl.innerHTML = '';
+        return;
+      }
     }
 
     if (!parsed.length) {

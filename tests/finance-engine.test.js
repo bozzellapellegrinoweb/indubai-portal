@@ -580,6 +580,82 @@ Full Digital,AED,Transfers,29/01/2025,R011,"To Random Vendor - Office supplies",
 
 
 // ════════════════════════════════════════════════════════════════
+// 7. FAB PDF TEXT PARSER
+// ════════════════════════════════════════════════════════════════
+console.log('\n=== FAB PDF Text Parser Tests ===');
+
+{
+  const lines = [
+    'Statement of Account',
+    'Account Number: 1234567890',
+    '01/03/2025 01/03/2025 TRF TO IFZA FREE ZONE REF FTS250301001 5,000.00 150,000.00',
+    '05/03/2025 05/03/2025 SALARY CREDIT FROM ACME CORP 80,000.00 230,000.00',
+    '10/03/2025 PAYMENT TO THE VAT CONSULTANT 2,500.00 227,500.00',
+  ];
+
+  const txns = engine.parseFabPdfText(lines);
+  assert(txns.length >= 2, 'parseFabPdfText: parses multiple transactions');
+  assertEq(txns[0].txnDate, '2025-03-01', 'parseFabPdfText: date DD/MM/YYYY');
+  assertEq(txns[0].currency, 'AED', 'parseFabPdfText: default currency AED');
+  assert(txns[0].refNumber, 'parseFabPdfText: has refNumber');
+  assert(txns[0].description.length > 0, 'parseFabPdfText: has description');
+}
+
+{
+  const lines = [
+    '15/06/2025 15/06/2025 Transfer to Pellegrino Bozzella REF TRN123456 60,000.00 100,000.00',
+  ];
+  const txns = engine.parseFabPdfText(lines);
+  assertEq(txns.length, 1, 'parseFabPdfText: single debit line');
+  assert(txns[0].amount < 0 || txns[0].amount > 0, 'parseFabPdfText: non-zero amount');
+  assert(txns[0].counterparty.length > 0, 'parseFabPdfText: extracts counterparty');
+}
+
+{
+  const lines = [];
+  const txns = engine.parseFabPdfText(lines);
+  assertEq(txns.length, 0, 'parseFabPdfText: empty input → empty');
+}
+
+{
+  const lines = [
+    'This is a header line',
+    'Another non-transaction line',
+    'Page 1 of 3',
+  ];
+  const txns = engine.parseFabPdfText(lines);
+  assertEq(txns.length, 0, 'parseFabPdfText: no dates → no transactions');
+}
+
+{
+  const lines = [
+    '20/04/2025 Credit deposit from Client XYZ 25,000.00 175,000.00',
+  ];
+  const txns = engine.parseFabPdfText(lines);
+  assertEq(txns.length, 1, 'parseFabPdfText: credit line parsed');
+}
+
+// FAB PDF → Classify → Aggregate end-to-end
+{
+  const lines = [
+    '01/01/2025 01/01/2025 Transfer credit from Acme Corp Invoice 100 200,000.00 200,000.00',
+    '10/01/2025 10/01/2025 TRF TO IFZA FREE ZONE License REF FTS250110 80,000.00 120,000.00',
+    '15/01/2025 15/01/2025 Transfer to Pellegrino Bozzella Monthly REF TRN150125 60,000.00 60,000.00',
+  ];
+
+  const parsed = engine.parseFabPdfText(lines);
+  assert(parsed.length >= 2, 'fab e2e: parsed transactions from PDF text');
+
+  const classified = engine.classifyTransactions(parsed, RULES, INTERNAL_PARTIES);
+  const categories = classified.map(t => t.category);
+
+  const hasCogs = categories.includes('cogs');
+  const hasOwnerDraw = categories.includes('owner_draw');
+  assert(hasCogs || hasOwnerDraw || categories.includes('revenue'), 'fab e2e: classified FAB transactions');
+}
+
+
+// ════════════════════════════════════════════════════════════════
 // RESULTS
 // ════════════════════════════════════════════════════════════════
 console.log('\n' + '='.repeat(50));
