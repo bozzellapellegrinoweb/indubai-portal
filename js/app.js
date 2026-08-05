@@ -25,9 +25,9 @@
   const ROLE_PAGES_DEFAULT = {
     admin:        null,   // null = all pages
     senior:       null,   // all pages (admin section hidden by nav filter)
-    junior:       ['index','tasks','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports','lead-analytics'],
-    mini_admin:   ['index','tasks','clients','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
-    collaborator: ['index','tasks','clients','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
+    junior:       ['index','tasks','pipeline','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports','lead-analytics'],
+    mini_admin:   ['index','tasks','pipeline','clients','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
+    collaborator: ['index','tasks','pipeline','clients','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
   };
 
   function _getAllowed(r) {
@@ -61,6 +61,7 @@
     search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
     clipboard: '<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>',
     'dollar-sign': '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
+    columns: '<rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/>',
   };
   function navIcon(key) {
     if (!key || !ICON_PATHS[key]) return '';
@@ -70,6 +71,7 @@
   const allNavItems = [
     { id: 'index',      icon: 'grid',          label: 'Dashboard',     href: '/index.html',      section: 'OVERVIEW' },
     { id: 'tasks',      icon: 'check-square',  label: 'Task',           href: '/tasks.html' },
+    { id: 'pipeline',   icon: 'columns',       label: 'Pipeline',       href: '/pipeline.html' },
     { id: 'notifiche',  icon: 'bell',          label: 'Notifiche',     href: '/notifiche.html' },
     { id: 'broadcast', icon: 'megaphone',      label: 'Broadcast',     href: '/broadcast.html' },
     { id: 'bacheca',   icon: '',   label: '↳ Bacheca',      href: '/bacheca.html' },
