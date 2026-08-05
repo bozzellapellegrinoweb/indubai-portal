@@ -36,6 +36,7 @@
           <option value="affinitas">Affinitas</option>
           <option value="p_w">P&amp;W</option>
           <option value="in_sospeso">In Sospeso</option>
+          <option value="off">Solo Clienti Off</option>
         </select>
         <button class="btn btn-accent" id="btn-add">+ Nuovo Cliente</button>
       </div>
@@ -185,10 +186,19 @@ function licenseCell(date) {
   return `<span style="font-size:12px;color:var(--text)">${fmt}</span>`;
 }
 
+// Ordina i clienti: attivi (in gestione) in alto, archiviati ("clienti off") in fondo.
+// Ogni gruppo mantiene l'ordine alfabetico già restituito dal DB.
+function orderClients(list) {
+  const active = list.filter(c => c.is_active !== false);
+  const off    = list.filter(c => c.is_active === false);
+  return active.concat(off);
+}
+
 async function loadClients() {
   try {
-    allClients = await sb.db.getClients();
-    renderClients(allClients);
+    // activeOnly:false → include anche i clienti archiviati/non più in gestione
+    allClients = orderClients(await sb.db.getClients({ activeOnly: false }));
+    renderClients(getFilteredClients());
   } catch(e) {
     document.getElementById('clients-tbody').innerHTML =
       `<tr><td colspan="9"><div class="alert alert-danger" style="margin:16px">${e.message}</div></td></tr>`;
@@ -202,7 +212,13 @@ function renderClients(clients) {
   const start = (currentPage - 1) * PAGE_SIZE;
   const page = clients.slice(start, start + PAGE_SIZE);
 
-  document.getElementById('clients-count').textContent = `${total} clienti`;
+  const offCount = clients.filter(c => c.is_active === false).length;
+  const activeCount = total - offCount;
+  document.getElementById('clients-count').textContent =
+    offCount ? `${activeCount} clienti · ${offCount} off` : `${total} clienti`;
+
+  // Indice (assoluto) del primo cliente archiviato: qui inseriamo l'intestazione "CLIENTI OFF"
+  const firstOffIdx = clients.findIndex(c => c.is_active === false);
 
   if (!total) {
     document.getElementById('clients-tbody').innerHTML =
@@ -211,10 +227,17 @@ function renderClients(clients) {
     return;
   }
 
-  document.getElementById('clients-tbody').innerHTML = page.map(c => `
-    <tr>
+  document.getElementById('clients-tbody').innerHTML = page.map((c, i) => {
+    const absIdx = start + i;
+    const off = c.is_active === false;
+    // Intestazione della sezione "CLIENTI OFF" prima del primo cliente archiviato
+    const divider = (absIdx === firstOffIdx)
+      ? `<tr class="section-divider"><td colspan="9" style="background:var(--surface-2,#1a1d23);padding:10px 16px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);border-top:2px solid var(--border)">Clienti Off · Non più in gestione (${offCount})</td></tr>`
+      : '';
+    return `${divider}
+    <tr${off ? ' style="opacity:.62"' : ''}>
       <td>
-        <div class="td-company">${ui.escapeHtml(c.company_name)}</div>
+        <div class="td-company">${ui.escapeHtml(c.company_name)}${off ? ' <span class="badge" style="background:#3f3f46;color:#e4e4e7;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;vertical-align:middle">OFF</span>' : ''}</div>
       </td>
       <td style="font-size:13px">${c.general_manager ? ui.escapeHtml(c.general_manager) : (c.contact_name ? '<span style="color:var(--text-muted);font-size:12px">'+ui.escapeHtml(c.contact_name)+'</span>' : '—')}</td>
       <td>${ui.partnerLabel(c.accounting_partner)}</td>
@@ -233,8 +256,8 @@ function renderClients(clients) {
       <td>
         <a href="/client-detail.html?id=${c.id}" class="btn btn-ghost btn-sm">Apri</a>
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 
   renderPagination(total, totalPages);
 }
@@ -277,8 +300,10 @@ function getFilteredClients() {
     (c.company_name || '').toLowerCase().includes(q) ||
     (c.contact_name || '').toLowerCase().includes(q)
   );
-  if (partner) filtered = filtered.filter(c => c.accounting_partner === partner);
-  return filtered;
+  if (partner === 'off') filtered = filtered.filter(c => c.is_active === false);
+  else if (partner) filtered = filtered.filter(c => c.accounting_partner === partner);
+  // Mantiene gli attivi in alto e i "clienti off" in fondo anche dopo la ricerca/filtro
+  return orderClients(filtered);
 }
 
 function applyFilters() {
