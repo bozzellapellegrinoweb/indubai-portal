@@ -27,6 +27,12 @@ drop policy if exists "auth delete pipeline_stages" on pipeline_stages;
 create policy "auth delete pipeline_stages" on pipeline_stages
   for delete using (auth.role() = 'authenticated');
 
+-- Privilegi di tabella (le policy RLS da sole non bastano: senza GRANT il ruolo
+-- authenticated riceve "permission denied for table pipeline_stages").
+grant select, insert, update, delete on public.pipeline_stages to authenticated;
+grant select on public.pipeline_stages to anon;
+grant select, insert, update, delete on public.pipeline_stages to service_role;
+
 -- In quale fase della pipeline si trova ogni cliente (null = non assegnato)
 alter table clients add column if not exists pipeline_stage_id uuid
   references pipeline_stages(id) on delete set null;
