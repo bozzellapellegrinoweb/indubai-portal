@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pipeline — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <link rel="manifest" href="/manifest-admin.json">
+  <meta name="theme-color" content="#14161a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="InDubai">
+  <style>
+    .board-scroll { overflow-x:auto; overflow-y:hidden; padding:4px 0 16px; -webkit-overflow-scrolling:touch; }
+    .board { display:flex; gap:14px; align-items:flex-start; min-height:60vh; }
+    .pcol { flex:0 0 300px; width:300px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius,12px); display:flex; flex-direction:column; max-height:calc(100vh - 190px); }
+    .pcol.dragover { outline:2px dashed var(--accent); outline-offset:-3px; }
+    .pcol-head { display:flex; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid var(--border); position:sticky; top:0; }
+    .pcol-dot { width:10px; height:10px; border-radius:50%; flex:0 0 auto; }
+    .pcol-name { font-weight:800; font-size:13px; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pcol-meta { font-size:11px; color:var(--text-muted); font-weight:700; white-space:nowrap; }
+    .pcol-body { padding:10px; overflow-y:auto; display:flex; flex-direction:column; gap:9px; flex:1; }
+    .pcol-body:empty::after { content:'Trascina qui i clienti'; color:var(--text-muted); font-size:12px; text-align:center; padding:18px 8px; display:block; opacity:.7; }
+    .pcard { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:11px 12px; cursor:grab; transition:box-shadow .12s, transform .12s; }
+    .pcard:hover { box-shadow:var(--shadow); }
+    .pcard.dragging { opacity:.5; }
+    .pcard-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+    .pcard-name { font-weight:700; font-size:13.5px; color:var(--text); line-height:1.25; }
+    .pcard-sub { font-size:11.5px; color:var(--text-muted); margin-top:2px; }
+    .pcard-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:9px; }
+    .pcard-val { font-weight:800; font-size:12.5px; color:var(--text); }
+    .pchip { font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:6px; background:var(--bg); color:var(--text-muted); border:1px solid var(--border); }
+    .pmove { font-size:11px; padding:4px 6px; border:1px solid var(--border); border-radius:7px; background:var(--surface); color:var(--text); max-width:150px; cursor:pointer; }
+    .pcard-open { font-size:11px; color:var(--accent); font-weight:700; text-decoration:none; }
+    .stage-edit-row { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid var(--border); border-radius:9px; margin-bottom:8px; background:var(--surface2); }
+    .stage-edit-row input[type=text] { flex:1; min-width:0; }
+    .icon-btn { background:none; border:1px solid var(--border); border-radius:7px; width:30px; height:30px; cursor:pointer; color:var(--text-muted); font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
+    .icon-btn:hover { color:var(--text); }
+    @media (max-width:640px){ .pcol{ flex-basis:82vw; width:82vw; } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Pipeline</div>
+        <div class="topbar-subtitle" id="p-count">Caricamento...</div>
+      </div>
+      <div class="toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="search-box">
+          <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <input type="text" class="form-control" id="search" placeholder="Cerca cliente..." style="min-width:220px">
+        </div>
+        <select class="form-control" id="filter-partner" style="width:auto">
+          <option value="">Tutti i partner</option>
+          <option value="noi">Noi</option>
+          <option value="vat_consultant">VAT Consultant</option>
+          <option value="affinitas">Affinitas</option>
+          <option value="p_w">P&amp;W</option>
+          <option value="in_sospeso">In Sospeso</option>
+        </select>
+        <button class="btn btn-ghost" id="btn-stages">⚙ Gestisci fasi</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="board-scroll">
+        <div class="board" id="board">
+          <div style="padding:40px"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GESTIONE FASI -->
+<div class="modal-overlay" id="modal-stages" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Gestisci fasi pipeline</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeStages()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="stage-list"></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <input type="text" class="form-control" id="new-stage-name" placeholder="Nuova fase...">
+        <input type="color" id="new-stage-color" value="#3b82f6" style="width:44px;height:38px;padding:2px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer">
+        <button class="btn btn-accent" id="btn-add-stage">+ Aggiungi</button>
+      </div>
+      <p style="font-size:11.5px;color:var(--text-muted);margin-top:12px">Eliminando una fase, i clienti che vi si trovano tornano tra i "Non assegnati". Nessun cliente viene cancellato.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-accent" onclick="closeStages()">Fatto</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/i18n.js"></script>
+<script>
+let stages = [];       // [{id,name,position,color}]
+let allClients = [];   // clienti attivi con pipeline_stage_id
+const UNASSIGNED = '__none__';
+
+async function loadAll() {
+  try {
+    const [st, cl] = await Promise.all([
+      sb.db.select('pipeline_stages', { order: 'position.asc' }),
+      sb.db.getClients({ activeOnly: true }),
+    ]);
+    stages = st || [];
+    allClients = cl || [];
+    render();
+  } catch(e) {
+    document.getElementById('board').innerHTML =
+      `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+  }
+}
+
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const partner = document.getElementById('filter-partner').value;
+  let list = allClients;
+  if (q) list = list.filter(c =>
+    (c.company_name||'').toLowerCase().includes(q) ||
+    (c.contact_name||'').toLowerCase().includes(q) ||
+    (c.general_manager||'').toLowerCase().includes(q));
+  if (partner) list = list.filter(c => c.accounting_partner === partner);
+  return list;
+}
+
+function render() {
+  const list = getFiltered();
+  const board = document.getElementById('board');
+
+  // Colonna "Non assegnati" + una colonna per ogni fase
+  const cols = [{ id: UNASSIGNED, name: 'Non assegnati', color: '#94a3b8' }, ...stages];
+
+  const totalVal = list.reduce((s,c) => s + (Number(c.service_cost)||0), 0);
+  document.getElementById('p-count').textContent =
+    `${list.length} clienti · ${ui.formatAED(totalVal)} totali`;
+
+  board.innerHTML = cols.map(col => {
+    const items = list.filter(c => (c.pipeline_stage_id || UNASSIGNED) === col.id);
+    const sum = items.reduce((s,c) => s + (Number(c.service_cost)||0), 0);
+    return `
+      <div class="pcol" data-stage="${col.id}"
+           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'${col.id}')">
+        <div class="pcol-head">
+          <span class="pcol-dot" style="background:${col.color||'#3b82f6'}"></span>
+          <span class="pcol-name">${ui.escapeHtml(col.name)}</span>
+          <span class="pcol-meta">${items.length} · ${ui.formatAED(sum)}</span>
+        </div>
+        <div class="pcol-body">
+          ${items.map(cardHTML).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function cardHTML(c) {
+  const val = c.service_cost ? ui.formatAED(c.service_cost) : '—';
+  const gm = c.general_manager || c.contact_name || '';
+  const opts = [`<option value="${UNASSIGNED}">— Non assegnato —</option>`]
+    .concat(stages.map(s => `<option value="${s.id}" ${((c.pipeline_stage_id||UNASSIGNED)===s.id)?'selected':''}>${ui.escapeHtml(s.name)}</option>`))
+    .join('');
+  return `
+    <div class="pcard" draggable="true" data-id="${c.id}"
+         ondragstart="onDragStart(event,'${c.id}')" ondragend="onDragEnd(event)">
+      <div class="pcard-top">
+        <div>
+          <div class="pcard-name">${ui.escapeHtml(c.company_name)}</div>
+          ${gm ? `<div class="pcard-sub">${ui.escapeHtml(gm)}</div>` : ''}
+        </div>
+        ${c.vat_registered ? '<span class="badge badge-ok" style="font-size:9px">VAT</span>' : ''}
+      </div>
+      <div class="pcard-row">
+        <span class="pcard-val">${val}</span>
+        <span class="pchip">${ui.partnerLabel(c.accounting_partner)}</span>
+      </div>
+      <div class="pcard-row">
+        <select class="pmove" onchange="onSelectMove(event,'${c.id}')" onclick="event.stopPropagation()">
+          ${opts}
+        </select>
+        <a class="pcard-open" href="/client-detail.html?id=${c.id}">Apri →</a>
+      </div>
+    </div>`;
+}
+
+// ── Spostamento cliente ─────────────────────────────────────
+async function moveClient(id, stageId) {
+  const newStage = (stageId === UNASSIGNED) ? null : stageId;
+  const c = allClients.find(x => x.id === id);
+  const prev = c ? c.pipeline_stage_id : undefined;
+  if (c) c.pipeline_stage_id = newStage; // ottimistico
+  render();
+  try {
+    await sb.db.update('clients', `id=eq.${id}`, { pipeline_stage_id: newStage });
+    try { await sb.db.log('client_stage_moved', id, { stage_id: newStage }); } catch(_){}
+  } catch(e) {
+    if (c) c.pipeline_stage_id = prev; // rollback
+    render();
+    ui.showToast('Errore spostamento: ' + e.message, 'error');
+  }
+}
+
+function onSelectMove(e, id) { moveClient(id, e.target.value); }
+
+// ── Drag & drop (desktop) ──────────────────────────────────
+let draggingId = null;
+function onDragStart(e, id) { draggingId = id; e.dataTransfer.effectAllowed='move'; e.currentTarget.classList.add('dragging'); }
+function onDragEnd(e) { e.currentTarget.classList.remove('dragging'); draggingId = null; }
+function onDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('dragover'); }
+function onDragLeave(e) { e.currentTarget.classList.remove('dragover'); }
+function onDrop(e, stageId) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+  const id = draggingId;
+  if (!id) return;
+  const c = allClients.find(x => x.id === id);
+  if (c && (c.pipeline_stage_id || UNASSIGNED) === stageId) return; // già lì
+  moveClient(id, stageId);
+}
+
+// ── Gestione fasi ──────────────────────────────────────────
+function openStages() { renderStageList(); document.getElementById('modal-stages').style.display='flex'; }
+function closeStages() { document.getElementById('modal-stages').style.display='none'; }
+
+function renderStageList() {
+  document.getElementById('stage-list').innerHTML = stages.map((s, i) => `
+    <div class="stage-edit-row">
+      <input type="color" value="${s.color||'#3b82f6'}" style="width:36px;height:32px;padding:2px;border:1px solid var(--border);border-radius:7px;background:var(--surface);cursor:pointer"
+             onchange="updateStage('${s.id}',{color:this.value})">
+      <input type="text" class="form-control" value="${ui.escapeHtml(s.name)}"
+             onchange="updateStage('${s.id}',{name:this.value.trim()})">
+      <button class="icon-btn" title="Su"  ${i===0?'disabled':''} onclick="reorderStage(${i},-1)">↑</button>
+      <button class="icon-btn" title="Giù" ${i===stages.length-1?'disabled':''} onclick="reorderStage(${i},1)">↓</button>
+      <button class="icon-btn" title="Elimina" style="color:var(--danger)" onclick="deleteStage('${s.id}','${ui.escapeHtml(s.name).replace(/'/g,"\\'")}')">×</button>
+    </div>`).join('') || '<p style="color:var(--text-muted);font-size:13px">Nessuna fase. Aggiungine una qui sotto.</p>';
+}
+
+async function addStage() {
+  const name = document.getElementById('new-stage-name').value.trim();
+  const color = document.getElementById('new-stage-color').value;
+  if (!name) { ui.showToast('Inserisci un nome fase', 'error'); return; }
+  const pos = stages.length ? Math.max(...stages.map(s => s.position||0)) + 1 : 1;
+  try {
+    const r = await sb.db.insert('pipeline_stages', { name, color, position: pos });
+    stages.push(r[0]);
+    document.getElementById('new-stage-name').value = '';
+    renderStageList(); render();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+async function updateStage(id, patch) {
+  const s = stages.find(x => x.id === id);
+  if (patch.name === '') { ui.showToast('Il nome non può essere vuoto', 'error'); renderStageList(); return; }
+  Object.assign(s, patch);
+  render();
+  try { await sb.db.update('pipeline_stages', `id=eq.${id}`, patch); }
+  catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+async function reorderStage(index, dir) {
+  const j = index + dir;
+  if (j < 0 || j >= stages.length) return;
+  const a = stages[index], b = stages[j];
+  const pa = a.position, pb = b.position;
+  a.position = pb; b.position = pa;
+  stages.sort((x,y) => (x.position||0)-(y.position||0));
+  renderStageList(); render();
+  try {
+    await sb.db.update('pipeline_stages', `id=eq.${a.id}`, { position: a.position });
+    await sb.db.update('pipeline_stages', `id=eq.${b.id}`, { position: b.position });
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+async function deleteStage(id, name) {
+  const count = allClients.filter(c => c.pipeline_stage_id === id).length;
+  const msg = count
+    ? `Eliminare la fase "${name}"? I ${count} clienti in questa fase torneranno tra i "Non assegnati".`
+    : `Eliminare la fase "${name}"?`;
+  if (!confirm(msg)) return;
+  try {
+    await sb.db.delete('pipeline_stages', `id=eq.${id}`);
+    stages = stages.filter(s => s.id !== id);
+    allClients.forEach(c => { if (c.pipeline_stage_id === id) c.pipeline_stage_id = null; });
+    renderStageList(); render();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+// ── Eventi ─────────────────────────────────────────────────
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('filter-partner').addEventListener('change', render);
+document.getElementById('btn-stages').addEventListener('click', openStages);
+document.getElementById('btn-add-stage').addEventListener('click', addStage);
+document.getElementById('new-stage-name').addEventListener('keydown', e => { if (e.key==='Enter') addStage(); });
+document.getElementById('modal-stages').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-stages')) closeStages();
+});
+
+loadAll();
+window.addEventListener('pageshow', (e) => { if (e.persisted) loadAll(); });
+</script>
+</body>
+</html>
