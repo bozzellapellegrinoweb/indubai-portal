@@ -66,6 +66,7 @@
           <option value="in_sospeso">In Sospeso</option>
         </select>
         <button class="btn btn-ghost" id="btn-stages">⚙ Gestisci fasi</button>
+        <button class="btn btn-accent" id="btn-add">+ Nuovo Cliente</button>
       </div>
     </div>
 
@@ -101,9 +102,80 @@
   </div>
 </div>
 
+<!-- MODAL NUOVO CLIENTE -->
+<div class="modal-overlay" id="modal-add" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nuovo Cliente</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeAdd()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nome Azienda *</label>
+          <input type="text" class="form-control" id="f-company" placeholder="ACME FZCO">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fase iniziale</label>
+          <select class="form-control" id="f-stage"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nome Contatto</label>
+          <input type="text" class="form-control" id="f-contact" placeholder="Mario Rossi">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" id="f-email" placeholder="mario@azienda.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Telefono UAE</label>
+          <input type="text" class="form-control" id="f-phone" placeholder="+971 50 000 0000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Acquisito da</label>
+          <select class="form-control" id="f-source">
+            <option value="pellegrino">Pellegrino</option>
+            <option value="giuseppe">Giuseppe</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Partner Contabilità</label>
+          <select class="form-control" id="f-partner">
+            <option value="">—</option>
+            <option value="noi">Noi</option>
+            <option value="vat_consultant">VAT Consultant</option>
+            <option value="affinitas">Affinitas</option>
+            <option value="p_w">P&amp;W</option>
+            <option value="in_sospeso">In Sospeso</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Costo Servizio (AED)</label>
+          <input type="number" class="form-control" id="f-cost" placeholder="1200" step="100">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data Avvio</label>
+        <input type="date" class="form-control" id="f-start">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAdd()">Annulla</button>
+      <button class="btn btn-accent" id="btn-save-client">Crea Cliente</button>
+    </div>
+  </div>
+</div>
+
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
 <script src="/js/i18n.js"></script>
+<script src="/js/notify.js"></script>
 <script>
 let stages = [];       // [{id,name,position,color}]
 let allClients = [];   // clienti attivi con pipeline_stage_id
@@ -296,7 +368,89 @@ async function deleteStage(id, name) {
   } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
 }
 
+// ── Nuovo cliente ──────────────────────────────────────────
+function openAdd() {
+  // Popola la tendina fase iniziale (default: "In gestione" se esiste, altrimenti la prima)
+  const preferred = stages.find(s => /in gestione/i.test(s.name)) || stages[0];
+  document.getElementById('f-stage').innerHTML =
+    `<option value="${UNASSIGNED}">— Non assegnato —</option>` +
+    stages.map(s => `<option value="${s.id}" ${preferred && s.id===preferred.id ? 'selected':''}>${ui.escapeHtml(s.name)}</option>`).join('');
+  ['f-company','f-contact','f-email','f-phone','f-cost','f-start'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('modal-add').style.display = 'flex';
+  document.getElementById('f-company').focus();
+}
+function closeAdd() { document.getElementById('modal-add').style.display = 'none'; }
+
+async function saveClient() {
+  const company = document.getElementById('f-company').value.trim();
+  if (!company) { ui.showToast('Inserisci il nome azienda', 'error'); return; }
+  const stageSel = document.getElementById('f-stage').value;
+  const stageId = (stageSel === UNASSIGNED) ? null : stageSel;
+  const partner = document.getElementById('f-partner').value || null;
+  const startDate = document.getElementById('f-start').value || null;
+
+  const btn = document.getElementById('btn-save-client');
+  btn.textContent = 'Salvataggio...'; btn.disabled = true;
+  try {
+    const result = await sb.db.insert('clients', {
+      company_name: company,
+      contact_name: document.getElementById('f-contact').value.trim() || null,
+      email: document.getElementById('f-email').value.trim() || null,
+      phone_uae: document.getElementById('f-phone').value.trim() || null,
+      source: document.getElementById('f-source').value,
+      accounting_partner: partner,
+      service_cost: parseFloat(document.getElementById('f-cost').value) || null,
+      start_date: startDate,
+      is_active: true,
+      in_bilancio: true,
+      pipeline_stage_id: stageId,
+    });
+    const newId = result[0]?.id;
+    try { await sb.db.log('client_created', newId, { company }); } catch(_){}
+
+    // Auto-crea righe vat_register e corporate_tax (come nella pagina Clienti)
+    if (newId) {
+      let ctDeadline = null;
+      if (startDate) { const d = new Date(startDate); d.setDate(d.getDate() + 89); ctDeadline = d.toISOString().split('T')[0]; }
+      try { await sb.db.insert('vat_register', { client_id: newId, accounting_partner: partner }); } catch(_){}
+      try { await sb.db.insert('corporate_tax', { client_id: newId, deadline: ctDeadline }); } catch(_){}
+    }
+
+    ui.showToast(`Cliente "${company}" creato!`, 'success');
+    closeAdd();
+    await loadAll();
+
+    // Notifica staff (se notify.js è disponibile)
+    if (typeof emailNotifyStaff === 'function') {
+      const partnerLabel = document.getElementById('f-partner').selectedOptions[0]?.text || '';
+      emailNotifyStaff({
+        subject: `🆕 Nuovo cliente: ${company}`,
+        html: `<h2 style="margin:0 0 16px;color:#1a2744;font-size:20px">🆕 Nuovo cliente creato</h2>
+               <p style="color:#374151;font-size:15px">Aggiunto dalla Pipeline.</p>
+               <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:16px">
+                 <tr><td style="padding:8px;color:#6b7280">Azienda</td><td style="padding:8px;font-weight:600">${company}</td></tr>
+                 <tr style="background:#f9f9f9"><td style="padding:8px;color:#6b7280">Partner</td><td style="padding:8px">${partnerLabel}</td></tr>
+               </table>
+               <p style="text-align:center;margin-top:28px"><a href="https://portal.indubai.it/pipeline" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri Pipeline</a></p>`,
+        event_type: 'client_created', entity_id: newId, entity_type: 'client',
+      });
+    }
+    if (typeof pushNotifyStaff === 'function') {
+      pushNotifyStaff({ title: '🆕 Nuovo cliente', message: company, url: 'https://portal.indubai.it/pipeline' });
+    }
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  } finally {
+    btn.textContent = 'Crea Cliente'; btn.disabled = false;
+  }
+}
+
 // ── Eventi ─────────────────────────────────────────────────
+document.getElementById('btn-add').addEventListener('click', openAdd);
+document.getElementById('btn-save-client').addEventListener('click', saveClient);
+document.getElementById('modal-add').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-add')) closeAdd();
+});
 document.getElementById('search').addEventListener('input', render);
 document.getElementById('filter-partner').addEventListener('change', render);
 document.getElementById('btn-stages').addEventListener('click', openStages);
