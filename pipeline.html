@@ -276,6 +276,20 @@ async function moveClient(id, stageId) {
   try {
     await sb.db.update('clients', `id=eq.${id}`, { pipeline_stage_id: newStage });
     try { await sb.db.log('client_stage_moved', id, { stage_id: newStage }); } catch(_){}
+    // Notifica staff se la fase di destinazione ha "avvisa all'ingresso" attivo
+    const st = stages.find(s => s.id === newStage);
+    if (st && st.notify_on_enter && typeof emailNotifyStaff === 'function') {
+      const val = (c && c.service_cost) ? ' (' + ui.formatAED(c.service_cost) + ')' : '';
+      const company = ui.escapeHtml(c?.company_name || 'Cliente');
+      const stageName = ui.escapeHtml(st.name);
+      emailNotifyStaff({
+        subject: `➡️ ${c?.company_name || 'Cliente'} → ${st.name}`,
+        html: `<h2 style="margin:0 0 12px;color:#1a2744;font-size:20px">➡️ Avanzamento pipeline</h2>
+               <p style="color:#374151;font-size:15px">Il cliente <strong>${company}</strong> è entrato nella fase <strong>${stageName}</strong>${val}.</p>
+               <p style="text-align:center;margin-top:24px"><a href="https://portal.indubai.it/pipeline" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri Pipeline</a></p>`,
+        event_type: 'pipeline_stage', entity_id: id, entity_type: 'client',
+      });
+    }
   } catch(e) {
     if (c) c.pipeline_stage_id = prev; // rollback
     render();

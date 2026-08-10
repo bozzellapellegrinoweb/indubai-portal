@@ -59,6 +59,36 @@ async function pushNotifyStaff({ roles, title, message, url }) {
   await Promise.all(ids.map(uid => pushNotify({ action: 'send_to_user', title, message, url, user_id: uid })));
 }
 
+// ── Impostazioni notifiche (tabella notification_settings) ───────────────────
+// Cache in-memory: on/off + destinatari per ruolo, per event_type.
+// Fail-open: se la config non è raggiungibile o l'evento non è mappato, si invia.
+let _notifSettingsCache = null;
+async function getNotifSettings() {
+  if (_notifSettingsCache) return _notifSettingsCache;
+  try {
+    const SB = window.ENV_SUPABASE_URL;
+    const AK = window.ENV_SUPABASE_ANON_KEY;
+    const tok = (typeof sb !== 'undefined' && sb.getSession?.()?.access_token) || AK;
+    const r = await fetch(`${SB}/rest/v1/notification_settings?select=event_type,enabled,roles`, {
+      headers: { apikey: AK, Authorization: 'Bearer ' + tok }
+    });
+    const rows = await r.json();
+    const map = {};
+    (rows || []).forEach(x => { map[x.event_type] = x; });
+    _notifSettingsCache = map;
+    return map;
+  } catch (e) {
+    return {}; // fail-open
+  }
+}
+
+// True se l'evento è abilitato (o non mappato → default abilitato)
+async function isEventEnabled(event_type) {
+  if (!event_type) return true;
+  const s = (await getNotifSettings())[event_type];
+  return !s || s.enabled !== false;
+}
+
 // ── Email Notifications (Resend via send-email Edge Function) ─────────────────
 
 const EMAIL_FN = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/send-email';
@@ -77,6 +107,8 @@ const EMAIL_FN = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/send-ema
  */
 async function emailNotify({ to, user_id, subject, html, event_type, entity_id, entity_type }) {
   try {
+    // Rispetta l'on/off configurato in notification_settings
+    if (!(await isEventEnabled(event_type))) return { ok: true, skipped: true };
     const tok = (typeof sb !== 'undefined' && sb.getSession?.()?.access_token)
       || window.ENV_SUPABASE_ANON_KEY;
     const body = { subject, html };
@@ -102,8 +134,18 @@ async function emailNotify({ to, user_id, subject, html, event_type, entity_id, 
  * Invia email a tutti gli staff admin + senior.
  * Recupera user_id dei profili e li passa uno per uno (la Edge Function risolve le email).
  */
-async function emailNotifyStaff({ roles = ['admin', 'senior', 'mini_admin', 'junior', 'collaborator', 'staff'], subject, html, event_type, entity_id, entity_type }) {
-  const ids = await getStaffUserIds(roles);
+async function emailNotifyStaff({ roles, subject, html, event_type, entity_id, entity_type }) {
+  const DEFAULT_ROLES = ['admin', 'senior', 'mini_admin', 'junior', 'collaborator', 'staff'];
+  let useRoles = roles || DEFAULT_ROLES;
+  // La configurazione admin (notification_settings) ha la precedenza sui destinatari
+  if (event_type) {
+    const s = (await getNotifSettings())[event_type];
+    if (s) {
+      if (s.enabled === false) return;                     // notifica spenta
+      if (Array.isArray(s.roles) && s.roles.length) useRoles = s.roles; // ruoli configurati
+    }
+  }
+  const ids = await getStaffUserIds(useRoles);
   await Promise.all(ids.map(uid =>
     emailNotify({ user_id: uid, subject, html, event_type, entity_id, entity_type })
   ));
