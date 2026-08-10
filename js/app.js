@@ -103,6 +103,7 @@
     ...(role === 'admin' ? [
       { id: 'attivita', icon: 'clipboard',     label: 'Attività Staff', href: '/attivita.html', section: 'ADMIN' },
       { id: 'users',    icon: 'users',         label: 'Utenti',         href: '/users.html' },
+      { id: 'notifiche-admin', icon: 'bell',   label: 'Impostazioni Notifiche', href: '/notifiche-admin.html' },
     ] : []),
   ];
 
