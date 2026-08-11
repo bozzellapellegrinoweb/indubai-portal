@@ -276,9 +276,18 @@ async function moveClient(id, stageId) {
   try {
     await sb.db.update('clients', `id=eq.${id}`, { pipeline_stage_id: newStage });
     try { await sb.db.log('client_stage_moved', id, { stage_id: newStage }); } catch(_){}
-    // Notifica staff se la fase di destinazione ha "avvisa all'ingresso" attivo
+    // Notifica staff se la fase di destinazione ha "avvisa all'ingresso" attivo.
+    // Rileggo il flag aggiornato dal DB (evita dati stale se le impostazioni sono
+    // state cambiate mentre questa pagina era già aperta).
     const st = stages.find(s => s.id === newStage);
-    if (st && st.notify_on_enter && typeof emailNotifyStaff === 'function') {
+    let notifyOn = st ? st.notify_on_enter === true : false;
+    if (st) {
+      try {
+        const fresh = await sb.db.select('pipeline_stages', { filter: `id=eq.${newStage}`, columns: 'notify_on_enter' });
+        if (fresh && fresh[0]) { notifyOn = fresh[0].notify_on_enter === true; st.notify_on_enter = notifyOn; }
+      } catch(_) {}
+    }
+    if (st && notifyOn && typeof emailNotifyStaff === 'function') {
       const val = (c && c.service_cost) ? ' (' + ui.formatAED(c.service_cost) + ')' : '';
       const company = ui.escapeHtml(c?.company_name || 'Cliente');
       const stageName = ui.escapeHtml(st.name);
