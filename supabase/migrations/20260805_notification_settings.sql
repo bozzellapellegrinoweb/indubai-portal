@@ -7,7 +7,7 @@ create table if not exists notification_settings (
   category   text not null default 'Generale',
   audience   text not null default 'staff',   -- 'staff' | 'user' | 'client'
   enabled    boolean not null default true,
-  roles      text[] default '{admin,senior,mini_admin,junior,collaborator,staff}',
+  roles      text[] default '{admin,senior,mini_admin,junior,staff}',  -- solo valori validi dell'enum user_role
   position   integer not null default 0,
   updated_at timestamptz not null default now()
 );
