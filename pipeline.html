@@ -385,10 +385,10 @@ async function deleteStage(id, name) {
 // ── Nuovo cliente ──────────────────────────────────────────
 function openAdd() {
   // Popola la tendina fase iniziale (default: "In gestione" se esiste, altrimenti la prima)
-  const preferred = stages.find(s => /in gestione/i.test(s.name)) || stages[0];
+  // Default: "Non assegnato" (coerente con l'import automatico da Drive)
   document.getElementById('f-stage').innerHTML =
-    `<option value="${UNASSIGNED}">— Non assegnato —</option>` +
-    stages.map(s => `<option value="${s.id}" ${preferred && s.id===preferred.id ? 'selected':''}>${ui.escapeHtml(s.name)}</option>`).join('');
+    `<option value="${UNASSIGNED}" selected>— Non assegnato —</option>` +
+    stages.map(s => `<option value="${s.id}">${ui.escapeHtml(s.name)}</option>`).join('');
   ['f-company','f-contact','f-email','f-phone','f-cost','f-start'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('modal-add').style.display = 'flex';
   document.getElementById('f-company').focus();
