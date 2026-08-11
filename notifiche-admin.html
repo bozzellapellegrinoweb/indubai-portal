@@ -66,8 +66,9 @@
 <script src="/js/app.js"></script>
 <script src="/js/i18n.js"></script>
 <script>
-const ROLE_LABELS = { admin:'Admin', senior:'Senior', mini_admin:'Mini Admin', junior:'Junior', collaborator:'Collaboratore', staff:'Staff' };
-const ALL_ROLES = ['admin','senior','mini_admin','junior','collaborator','staff'];
+// Solo ruoli reali dell'enum user_role ('collaborator' non esiste).
+const ROLE_LABELS = { admin:'Admin', senior:'Senior', mini_admin:'Mini Admin', junior:'Junior', staff:'Staff' };
+const ALL_ROLES = ['admin','senior','mini_admin','junior','staff'];
 let settings = [];
 let stages = [];
 

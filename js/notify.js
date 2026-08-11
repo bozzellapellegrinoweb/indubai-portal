@@ -38,13 +38,20 @@ async function getClientUserId(clientId) {
   } catch(e) { return null; }
 }
 
+// Ruoli staff VALIDI (valori reali dell'enum user_role). 'collaborator' NON esiste:
+// includerlo nella query profiles causa errore enum 22P02 e azzera i destinatari.
+const VALID_STAFF_ROLES = ['admin', 'senior', 'mini_admin', 'junior', 'staff'];
+
 // Helper: get user_ids of all admin/senior/junior staff (for internal alerts)
 async function getStaffUserIds(roles = ['admin', 'senior', 'mini_admin', 'junior']) {
   try {
     const SB = window.ENV_SUPABASE_URL;
     const AK = window.ENV_SUPABASE_ANON_KEY;
     const tok = (typeof sb !== 'undefined' && sb.getSession?.()?.access_token) || AK;
-    const roleFilter = roles.map(r => `role.eq.${r}`).join(',');
+    // Scarta eventuali ruoli non validi per non rompere l'intera query
+    const valid = (roles || []).filter(r => VALID_STAFF_ROLES.includes(r));
+    if (!valid.length) return [];
+    const roleFilter = valid.map(r => `role.eq.${r}`).join(',');
     const r = await fetch(`${SB}/rest/v1/profiles?or=(${roleFilter})&select=id`, {
       headers: { apikey: AK, Authorization: 'Bearer ' + tok }
     });
@@ -135,7 +142,7 @@ async function emailNotify({ to, user_id, subject, html, event_type, entity_id, 
  * Recupera user_id dei profili e li passa uno per uno (la Edge Function risolve le email).
  */
 async function emailNotifyStaff({ roles, subject, html, event_type, entity_id, entity_type }) {
-  const DEFAULT_ROLES = ['admin', 'senior', 'mini_admin', 'junior', 'collaborator', 'staff'];
+  const DEFAULT_ROLES = ['admin', 'senior', 'mini_admin', 'junior', 'staff'];
   let useRoles = roles || DEFAULT_ROLES;
   // La configurazione admin (notification_settings) ha la precedenza sui destinatari
   if (event_type) {
