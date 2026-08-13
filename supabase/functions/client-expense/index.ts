@@ -36,19 +36,26 @@ async function extractReceipt(base64: string, mime: string) {
   const source = isPdf
     ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
     : { type: 'image', source: { type: 'base64', media_type: imgTypes.includes(mime) ? mime : 'image/jpeg', data: base64 } };
-  const prompt = `You are reading a single expense receipt/invoice. Return ONLY a JSON object, no other text:
+  const prompt = `You are reading a single UAE expense receipt or tax invoice. Return ONLY a JSON object, no other text:
 {
   "vendor": "actual merchant name",
   "date": "YYYY-MM-DD",
   "amount": 0.00,
   "currency": "AED/EUR/USD/...",
+  "supplier_trn": "",
+  "is_tax_invoice": false,
   "vat_amount": 0.00
 }
 Rules:
 - vendor = the actual shop/restaurant/business (trading name) where the purchase was made, usually the biggest name/logo at the top of the receipt. Do NOT use the payment processor, acquiring bank, POS/terminal descriptor or gateway (ignore names such as Merchant Services, ADCB, Mashreq, Network International, Payment Gateway, POS). If both a processor descriptor and a store name appear, always use the store name.
-- amount = grand total actually paid (numbers only)
-- date in YYYY-MM-DD; if unclear use empty string
-- vat_amount = tax/VAT total if shown, else 0
+- amount = grand total actually paid (numbers only).
+- date in YYYY-MM-DD; if unclear use empty string.
+- supplier_trn = the SUPPLIER's Tax Registration Number: a ~15-digit number, usually labelled TRN, Tax Reg. No, TRN No, or VATIN. Digits only. Empty string if none is printed.
+- is_tax_invoice = true ONLY if BOTH are present: (a) a supplier TRN is printed, AND (b) VAT/tax is evidenced — either an explicit VAT/Tax line, or wording that the total is inclusive of VAT / 5%. The words "Tax Invoice" support this but the TRN is mandatory. A plain sales receipt / slip with no TRN is NOT a tax invoice.
+- vat_amount:
+  - If is_tax_invoice is false → 0 (do NOT invent VAT).
+  - If a VAT/tax amount is explicitly printed → that number.
+  - If it is a tax invoice stating the total is inclusive of 5% VAT but no separate line is shown → amount * 5 / 105, rounded to 2 decimals.
 - Return valid JSON only, no markdown.`;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -112,6 +119,11 @@ Deno.serve(async (req: Request) => {
       // estrazione AI (best-effort: se fallisce, la spesa si salva comunque)
       const ai = await extractReceipt(b64, mime);
       const cleanDate = ai?.date && /^\d{4}-\d{2}-\d{2}$/.test(ai.date) ? ai.date : null;
+      const isTaxInvoice = ai?.is_tax_invoice === true;
+      const trn = (ai?.supplier_trn || '').toString().replace(/\D/g, '') || null;
+      // IVA valida solo su tax invoice: se non lo è, resta 0 (niente IVA inventata)
+      const vat = (isTaxInvoice && ai && ai.vat_amount != null && !isNaN(Number(ai.vat_amount)))
+        ? Number(ai.vat_amount) : 0;
 
       const row = {
         client_id: client.id,
@@ -122,7 +134,9 @@ Deno.serve(async (req: Request) => {
         expense_date: cleanDate,
         amount: (ai && ai.amount != null && !isNaN(Number(ai.amount))) ? Number(ai.amount) : null,
         currency: ai?.currency || null,
-        vat_amount: (ai && ai.vat_amount != null && !isNaN(Number(ai.vat_amount))) ? Number(ai.vat_amount) : null,
+        supplier_trn: trn,
+        is_tax_invoice: isTaxInvoice,
+        vat_amount: vat,
         ai_raw: ai || null,
         paid_with: (body.paid_with || '').toString().trim() || null,
         note: (body.note || '').toString().trim() || null,
