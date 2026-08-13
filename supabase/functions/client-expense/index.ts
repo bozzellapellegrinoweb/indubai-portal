@@ -38,13 +38,14 @@ async function extractReceipt(base64: string, mime: string) {
     : { type: 'image', source: { type: 'base64', media_type: imgTypes.includes(mime) ? mime : 'image/jpeg', data: base64 } };
   const prompt = `You are reading a single expense receipt/invoice. Return ONLY a JSON object, no other text:
 {
-  "vendor": "merchant/business name",
+  "vendor": "actual merchant name",
   "date": "YYYY-MM-DD",
   "amount": 0.00,
   "currency": "AED/EUR/USD/...",
   "vat_amount": 0.00
 }
 Rules:
+- vendor = the actual shop/restaurant/business (trading name) where the purchase was made, usually the biggest name/logo at the top of the receipt. Do NOT use the payment processor, acquiring bank, POS/terminal descriptor or gateway (ignore names such as Merchant Services, ADCB, Mashreq, Network International, Payment Gateway, POS). If both a processor descriptor and a store name appear, always use the store name.
 - amount = grand total actually paid (numbers only)
 - date in YYYY-MM-DD; if unclear use empty string
 - vat_amount = tax/VAT total if shown, else 0
