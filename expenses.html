@@ -37,6 +37,9 @@
     .exp-actions .btn { flex:1; }
     .exp-msg { font-size:12px; padding:8px 14px; }
     .exp-msg.err { color:#b91c1c; } .exp-msg.ok { color:#16a34a; }
+    .tax-badge { display:inline-block; font-size:9px; font-weight:800; letter-spacing:.02em; padding:2px 6px; border-radius:20px; vertical-align:middle; margin-left:4px; }
+    .tax-badge.ok { background:rgba(22,163,74,.14); color:#16a34a; }
+    .tax-badge.no { background:rgba(120,120,120,.16); color:var(--text-muted); }
     .lightbox { position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px; }
     .lightbox img { max-width:100%; max-height:100%; border-radius:8px; }
   </style>
@@ -157,7 +160,13 @@ function cardHTML(e) {
         </div>
         <div class="fg">
           <div><label>Valuta</label><input id="f-cur-${e.id}" value="${esc(e.currency||'AED')}"></div>
-          <div><label>IVA</label><input type="number" step="0.01" id="f-vat-${e.id}" value="${esc(e.vat_amount)}"></div>
+          <div><label>IVA ${e.is_tax_invoice ? 'recuperabile' : '(solo costo)'}</label><input type="number" step="0.01" id="f-vat-${e.id}" value="${esc(e.vat_amount)}"></div>
+        </div>
+        <div class="fg">
+          <div>
+            <label>TRN fornitore <span class="tax-badge ${e.is_tax_invoice?'ok':'no'}" id="badge-${e.id}">${e.is_tax_invoice?'Tax invoice ✓':'No tax invoice'}</span></label>
+            <input id="f-trn-${e.id}" value="${esc(e.supplier_trn)}" placeholder="15 cifre" oninput="onTrn('${e.id}')">
+          </div>
         </div>
         <div class="fg">
           <div><label>Pagato con</label><input id="f-paid-${e.id}" value="${esc(CARD_LABELS[e.paid_with]||e.paid_with||'')}"></div>
@@ -212,6 +221,15 @@ function openImg(id){ const b=document.getElementById('thumb-'+id); const u=b?.d
 
 function val(id){ const el=document.getElementById(id); return el?el.value:''; }
 
+// TRN valida (~15 cifre) = tax invoice → aggiorna badge in tempo reale
+function onTrn(id){
+  const trn = (val('f-trn-'+id)||'').replace(/\D/g,'');
+  const ok = trn.length >= 15;
+  const b = document.getElementById('badge-'+id);
+  if (b){ b.className = 'tax-badge '+(ok?'ok':'no'); b.textContent = ok?'Tax invoice ✓':'No tax invoice'; }
+}
+function isTaxInvoice(id){ return (val('f-trn-'+id)||'').replace(/\D/g,'').length >= 15; }
+
 async function approve(id) {
   const btn = document.getElementById('ok-'+id); const msg = document.getElementById('msg-'+id);
   msg.className='exp-msg'; msg.textContent='';
@@ -223,7 +241,9 @@ async function approve(id) {
       expense_date: val('f-date-'+id) || null,
       amount: parseFloat(val('f-amount-'+id)) || null,
       currency: val('f-cur-'+id).trim() || null,
-      vat_amount: parseFloat(val('f-vat-'+id)) || null,
+      supplier_trn: (val('f-trn-'+id)||'').replace(/\D/g,'') || null,
+      is_tax_invoice: isTaxInvoice(id),
+      vat_amount: parseFloat(val('f-vat-'+id)) || 0,
       paid_with: val('f-paid-'+id).trim() || null,
       note: val('f-note-'+id).trim() || null,
     });
