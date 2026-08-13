@@ -11,6 +11,13 @@
   <link rel="manifest" href="/manifest-admin.json">
   <meta name="theme-color" content="#14161a">
   <style>
+    .exp-filters { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+    .exp-filter-ctl { border:1.5px solid var(--border); border-radius:9px; padding:9px 11px; font-size:13px; font-family:inherit; color:var(--text); background:var(--surface); outline:none; }
+    .exp-filter-ctl:focus { border-color:var(--accent); }
+    #f-client { min-width:200px; font-weight:600; }
+    .exp-search { flex:1; min-width:180px; max-width:320px; }
+    .exp-search input { width:100%; }
+    .exp-summary { margin-left:auto; font-size:13px; font-weight:700; color:var(--text-muted); white-space:nowrap; }
     .exp-grid { display:grid; grid-template-columns:1fr; gap:14px; }
     @media (min-width:900px){ .exp-grid { grid-template-columns:1fr 1fr; } }
     .exp-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
@@ -47,6 +54,13 @@
       </div>
     </div>
     <div class="page-content">
+      <div class="exp-filters" id="filters" style="display:none">
+        <select id="f-client" class="exp-filter-ctl"><option value="">Tutti i clienti</option></select>
+        <div class="exp-search">
+          <input id="f-search" class="exp-filter-ctl" placeholder="Cerca fornitore o nota…">
+        </div>
+        <div class="exp-summary" id="summary"></div>
+      </div>
       <div id="list"><div class="card" style="padding:40px"><div class="spinner"></div></div></div>
     </div>
   </div>
@@ -61,6 +75,9 @@ const SB = window.ENV_SUPABASE_URL, AK = window.ENV_SUPABASE_ANON_KEY;
 const FN = SB + '/functions/v1/expense-zoho';
 const CARD_LABELS = { wio:'Wio', mashreq:'Mashreq', stripe:'Stripe', paypal:'PayPal', payoneer:'Payoneer', hubpay:'HubPay', credium:'Credium', ziina:'Ziina', mamo:'Mamo' };
 let items = [];
+let fClient = '';   // client_id selezionato
+let fSearch = '';
+const receiptCache = {}; // id -> { url, isPdf }
 
 async function load() {
   try {
@@ -69,20 +86,58 @@ async function load() {
       order: 'created_at.desc',
       columns: '*,clients(company_name)',
     });
+    buildClientFilter();
     render();
   } catch(e) {
     document.getElementById('list').innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
   }
 }
 
+function buildClientFilter() {
+  const counts = {};
+  items.forEach(e => {
+    const id = e.client_id || '?';
+    if (!counts[id]) counts[id] = { name: e.clients?.company_name || '—', n: 0 };
+    counts[id].n++;
+  });
+  const sel = document.getElementById('f-client');
+  const list = Object.entries(counts).sort((a,b)=> a[1].name.localeCompare(b[1].name));
+  sel.innerHTML = `<option value="">Tutti i clienti (${items.length})</option>` +
+    list.map(([id,c]) => `<option value="${id}"${id===fClient?' selected':''}>${esc(c.name)} (${c.n})</option>`).join('');
+  // se il cliente filtrato non ha più spese, torna a "tutti"
+  if (fClient && !counts[fClient]) fClient = '';
+}
+
+function filtered() {
+  const q = fSearch.trim().toLowerCase();
+  return items.filter(e => {
+    if (fClient && (e.client_id || '?') !== fClient) return false;
+    if (q) {
+      const hay = `${e.vendor||''} ${e.note||''} ${e.clients?.company_name||''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
 function render() {
+  document.getElementById('filters').style.display = items.length ? 'flex' : 'none';
   document.getElementById('sub').textContent = `${items.length} spese in attesa`;
   if (!items.length) {
     document.getElementById('list').innerHTML = `<div class="empty-state" style="padding:60px 20px"><h3>Nessuna spesa in attesa</h3><p style="color:var(--text-muted)">Le spese caricate dai clienti compaiono qui.</p></div>`;
+    document.getElementById('summary').textContent = '';
     return;
   }
-  document.getElementById('list').innerHTML = '<div class="exp-grid">' + items.map(cardHTML).join('') + '</div>';
-  items.forEach(e => loadReceipt(e));
+  const view = filtered();
+  const totAed = view.filter(e => (e.currency||'AED').toUpperCase()==='AED').reduce((s,e)=> s + (parseFloat(e.amount)||0), 0);
+  document.getElementById('summary').textContent =
+    `${view.length} di ${items.length}` + (totAed ? ` · ${totAed.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})} AED` : '');
+  if (!view.length) {
+    document.getElementById('list').innerHTML = `<div class="empty-state" style="padding:40px 20px"><p style="color:var(--text-muted)">Nessuna spesa per questo filtro.</p></div>`;
+    return;
+  }
+  document.getElementById('list').innerHTML = '<div class="exp-grid">' + view.map(cardHTML).join('') + '</div>';
+  view.forEach(e => loadReceipt(e));
 }
 
 function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -120,9 +175,21 @@ function cardHTML(e) {
 }
 
 // Anteprima scontrino dal bucket privato (staff autenticato)
+function paintReceipt(box, e, cached) {
+  if (cached.isPdf) {
+    box.innerHTML = '<div class="ph">📄 PDF<br>tocca per aprire</div>';
+    box.dataset.url = cached.url;
+    box.onclick = () => window.open(cached.url, '_blank');
+  } else {
+    box.dataset.url = cached.url;
+    box.innerHTML = `<img src="${cached.url}">`;
+  }
+}
+
 async function loadReceipt(e) {
   const box = document.getElementById('thumb-' + e.id);
   if (!box) return;
+  if (receiptCache[e.id]) { paintReceipt(box, e, receiptCache[e.id]); return; }
   try {
     const tok = sb.getSession()?.access_token || AK;
     const r = await fetch(`${SB}/storage/v1/object/authenticated/expense-receipts/${e.storage_path}`, {
@@ -131,15 +198,12 @@ async function loadReceipt(e) {
     if (!r.ok) throw new Error('no');
     const blob = await r.blob();
     if ((e.mime_type||'').includes('pdf')) {
-      const url = URL.createObjectURL(blob);
-      box.dataset.url = url;
-      box.innerHTML = '<div class="ph">📄 PDF<br>tocca per aprire</div>';
-      box.onclick = () => window.open(url, '_blank');
+      receiptCache[e.id] = { url: URL.createObjectURL(blob), isPdf: true };
     } else {
       const dataUrl = await new Promise((res)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(blob); });
-      box.dataset.url = dataUrl;
-      box.innerHTML = `<img src="${dataUrl}">`;
+      receiptCache[e.id] = { url: dataUrl, isPdf: false };
     }
+    paintReceipt(box, e, receiptCache[e.id]);
   } catch(_) {
     box.innerHTML = '<div class="ph">Anteprima<br>non disponibile</div>';
   }
@@ -174,7 +238,7 @@ async function approve(id) {
     if (d.ok) {
       msg.className='exp-msg ok';
       msg.textContent = '✓ Registrata in Zoho' + (d.attached ? ' con allegato' : ' (allegato non riuscito)');
-      setTimeout(() => { const c=document.getElementById('card-'+id); if(c) c.remove(); items=items.filter(x=>x.id!==id); document.getElementById('sub').textContent = `${items.length} spese in attesa`; if(!items.length) render(); }, 1200);
+      setTimeout(() => removeExpense(id), 1200);
     } else {
       msg.className='exp-msg err';
       msg.textContent = 'Errore Zoho: ' + (d.error || 'riprova');
@@ -186,18 +250,24 @@ async function approve(id) {
   }
 }
 
+function removeExpense(id) {
+  items = items.filter(x => x.id !== id);
+  delete receiptCache[id];
+  buildClientFilter();
+  render();
+}
+
 async function reject(id) {
   if (!confirm('Rifiutare questa spesa? Non verrà registrata.')) return;
   try {
     await sb.db.update('client_expenses', `id=eq.${id}`, { status:'rejected' });
-    const c=document.getElementById('card-'+id); if(c) c.remove();
-    items=items.filter(x=>x.id!==id);
-    document.getElementById('sub').textContent = `${items.length} spese in attesa`;
-    if(!items.length) render();
+    removeExpense(id);
   } catch(e){ alert('Errore: '+e.message); }
 }
 
 document.getElementById('btn-reload').addEventListener('click', load);
+document.getElementById('f-client').addEventListener('change', (e)=>{ fClient = e.target.value; render(); });
+document.getElementById('f-search').addEventListener('input', (e)=>{ fSearch = e.target.value; render(); });
 load();
 window.addEventListener('pageshow', (e)=>{ if(e.persisted) load(); });
 </script>
