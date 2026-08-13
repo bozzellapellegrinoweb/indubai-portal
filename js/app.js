@@ -25,9 +25,9 @@
   const ROLE_PAGES_DEFAULT = {
     admin:        null,   // null = all pages
     senior:       null,   // all pages (admin section hidden by nav filter)
-    junior:       ['index','tasks','pipeline','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports','lead-analytics'],
-    mini_admin:   ['index','tasks','pipeline','clients','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
-    collaborator: ['index','tasks','pipeline','clients','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
+    junior:       ['index','tasks','pipeline','clients','zoho-setup','zoho-vat','onboarding','statements','reconciliation','expenses','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports','lead-analytics'],
+    mini_admin:   ['index','tasks','pipeline','clients','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
+    collaborator: ['index','tasks','pipeline','clients','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
   };
 
   function _getAllowed(r) {
@@ -62,6 +62,7 @@
     clipboard: '<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>',
     'dollar-sign': '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
     columns: '<rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/>',
+    receipt: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/>',
   };
   function navIcon(key) {
     if (!key || !ICON_PATHS[key]) return '';
@@ -83,6 +84,7 @@
     { id: 'statements', icon: 'file-text',     label: 'Estratti Conto', href: '/statements.html' },
     { id: 'payments',   icon: 'credit-card',   label: 'Abbonamenti',    href: '/payments.html' },
     { id: 'reconciliation', icon: 'refresh-cw', label: 'Riconciliazione', href: '/reconciliation.html' },
+    { id: 'expenses',   icon: 'receipt',        label: 'Spese',          href: '/expenses.html' },
     { id: 'bilanci',    icon: 'bar-chart-2',   label: 'Bilanci',        href: '/bilanci.html' },
     { id: 'ferie',      icon: 'sun',           label: 'Ferie & Permessi', href: '/ferie.html' },
     { id: 'vat',        icon: 'percent',       label: 'VAT Register',   href: '/vat.html',        section: 'COMPLIANCE' },
@@ -417,6 +419,7 @@
     'affinitas': 'Affinitas', 'vat-partner': 'VAT Consultant', 'pw': 'P&W', 'zoho-setup': 'Setup Zoho', 'zoho-vat': 'Monitor VAT',
     'client-detail': 'Cliente', 'attivita': 'Attività Staff', 'broadcast': 'Broadcast', 'bacheca': 'Bacheca',
     'reconciliation': 'Riconciliazione',
+    'expenses': 'Spese',
     'finance': 'Cashflow Gruppo',
   };
   const pageLabel = PAGE_LABELS[currentPage] || 'InDubai';
