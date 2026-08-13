@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Spese Indubai</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <meta name="theme-color" content="#0f1628">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Spese Indubai">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="/js/config.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root { --bg:#0f1628; --card:#fff; --ink:#1a2744; --muted:#6b7280; --accent:#22c55e; --line:#e6e8ee; --gold:#c9a84c; }
+    body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; min-height:100dvh; }
+    .wrap { max-width:480px; margin:0 auto; min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
+    .top { padding:28px 22px 18px; text-align:center; color:#fff; }
+    .top .brand { font-size:12px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); font-weight:700; }
+    .top .app { font-size:24px; font-weight:800; margin-top:2px; }
+    .top .co { font-size:13px; color:rgba(255,255,255,.65); margin-top:8px; }
+    .sheet { background:var(--bg); flex:1; padding:0 16px 32px; }
+    .card { background:var(--card); border-radius:18px; padding:20px; box-shadow:0 8px 30px rgba(0,0,0,.25); }
+    .step-label { font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
+    .capture-btn { width:100%; border:2px dashed var(--line); border-radius:16px; padding:30px 16px; text-align:center; cursor:pointer; background:#fafbfc; transition:.15s; }
+    .capture-btn:active { transform:scale(.99); background:#f2f4f8; }
+    .capture-btn svg { width:40px; height:40px; color:var(--gold); }
+    .capture-btn .t1 { font-weight:700; font-size:16px; margin-top:8px; }
+    .capture-btn .t2 { font-size:12.5px; color:var(--muted); margin-top:3px; }
+    .alt { text-align:center; margin-top:12px; font-size:13px; color:var(--muted); }
+    .alt a { color:var(--ink); font-weight:700; text-decoration:underline; cursor:pointer; }
+    .preview { margin-top:4px; }
+    .preview img { width:100%; border-radius:12px; max-height:320px; object-fit:contain; background:#f2f4f8; }
+    .preview .pdf { background:#f2f4f8; border-radius:12px; padding:22px; text-align:center; font-weight:700; color:var(--ink); }
+    .field { margin-top:18px; }
+    .field label { display:block; font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; }
+    select, input[type=text], textarea { width:100%; border:1.5px solid var(--line); border-radius:12px; padding:13px 14px; font-size:15px; font-family:inherit; color:var(--ink); outline:none; background:#fff; }
+    select:focus, input:focus, textarea:focus { border-color:var(--gold); }
+    .btn { width:100%; border:0; border-radius:14px; padding:16px; font-size:16px; font-weight:800; cursor:pointer; margin-top:20px; }
+    .btn-go { background:var(--accent); color:#062012; }
+    .btn-go:disabled { opacity:.5; }
+    .btn-ghost { background:#eef0f4; color:var(--ink); }
+    .hidden { display:none !important; }
+    .center { text-align:center; }
+    .spinner { width:34px; height:34px; border:3px solid rgba(0,0,0,.1); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; margin:0 auto; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .ok-ico { width:64px; height:64px; border-radius:50%; background:#dcfce7; color:#16a34a; display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
+    .summary { background:#f7f9fc; border-radius:12px; padding:14px 16px; margin-top:14px; text-align:left; }
+    .summary .row { display:flex; justify-content:space-between; padding:5px 0; font-size:14px; }
+    .summary .row .k { color:var(--muted); }
+    .summary .row .v { font-weight:700; }
+    .foot { text-align:center; color:rgba(255,255,255,.35); font-size:11px; padding:16px; }
+    .err { color:#b91c1c; background:#fef2f2; border:1px solid #fca5a5; border-radius:12px; padding:12px 14px; font-size:14px; margin-top:12px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">InDubai</div>
+    <div class="app">Spese</div>
+    <div class="co" id="co-name">—</div>
+  </div>
+
+  <div class="sheet">
+    <!-- LOADING -->
+    <div class="card center" id="view-loading">
+      <div class="spinner"></div>
+      <div style="margin-top:14px;color:var(--muted);font-size:14px">Caricamento…</div>
+    </div>
+
+    <!-- ERRORE TOKEN -->
+    <div class="card center hidden" id="view-error">
+      <div style="font-size:40px">🔒</div>
+      <h2 style="margin:10px 0 6px;font-size:18px">Link non valido</h2>
+      <p style="color:var(--muted);font-size:14px" id="err-msg">Questo link non è più attivo. Contatta InDubai.</p>
+    </div>
+
+    <!-- FORM -->
+    <div class="card hidden" id="view-form">
+      <div class="step-label">1 · Scontrino</div>
+      <div class="capture-btn" id="pick-photo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <div class="t1">Scatta foto scontrino</div>
+        <div class="t2">Inquadra e scatta</div>
+      </div>
+      <div class="alt">oppure <a id="pick-file">carica una foto o un PDF</a></div>
+      <input type="file" id="in-photo" accept="image/*" capture="environment" class="hidden">
+      <input type="file" id="in-file" accept="image/*,application/pdf" class="hidden">
+
+      <div class="preview hidden" id="preview"></div>
+
+      <div class="field hidden" id="field-card">
+        <label>2 · Pagato con</label>
+        <select id="sel-card"></select>
+      </div>
+
+      <div class="field">
+        <label>Nota (facoltativa)</label>
+        <input type="text" id="in-note" placeholder="Es. pranzo di lavoro con cliente">
+      </div>
+
+      <div class="err hidden" id="form-err"></div>
+      <button class="btn btn-go" id="btn-send" disabled>Invia spesa</button>
+    </div>
+
+    <!-- INVIO IN CORSO -->
+    <div class="card center hidden" id="view-sending">
+      <div class="spinner"></div>
+      <div style="margin-top:14px;font-weight:700">Invio in corso…</div>
+      <div style="margin-top:4px;color:var(--muted);font-size:13px">Lettura scontrino con AI</div>
+    </div>
+
+    <!-- SUCCESSO -->
+    <div class="card center hidden" id="view-done">
+      <div class="ok-ico">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h2 style="font-size:19px;margin-bottom:4px">Spesa inviata!</h2>
+      <p style="color:var(--muted);font-size:14px">La contabilità la verificherà e la registrerà.</p>
+      <div class="summary" id="done-summary"></div>
+      <button class="btn btn-ghost" id="btn-again">Carica un'altra spesa</button>
+    </div>
+  </div>
+
+  <div class="foot">InDubai Portal · Spese</div>
+</div>
+
+<script>
+const FN = window.ENV_SUPABASE_URL + '/functions/v1/client-expense';
+const ANON = window.ENV_SUPABASE_ANON_KEY;
+
+// Token: da URL (?t=) o da localStorage (dopo l'installazione come app)
+const params = new URLSearchParams(location.search);
+let token = params.get('t') || params.get('token');
+if (token) localStorage.setItem('spese_token', token);
+else token = localStorage.getItem('spese_token');
+
+let picked = null; // { b64, mime, previewUrl, isPdf }
+
+function show(id) {
+  ['view-loading','view-error','view-form','view-sending','view-done'].forEach(v =>
+    document.getElementById(v).classList.toggle('hidden', v !== id));
+}
+async function api(payload) {
+  const r = await fetch(FN, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + ANON },
+    body: JSON.stringify({ ...payload, token }),
+  });
+  return r.json();
+}
+
+async function init() {
+  if (!token) { document.getElementById('err-msg').textContent = 'Manca il codice di accesso nel link.'; return show('view-error'); }
+  try {
+    const d = await api({ action:'config' });
+    if (!d.ok) return show('view-error');
+    document.getElementById('co-name').textContent = d.client.company_name || '';
+    const cards = d.cards || [];
+    if (cards.length) {
+      document.getElementById('field-card').classList.remove('hidden');
+      const sel = document.getElementById('sel-card');
+      const LABELS = { wio:'Wio', mashreq:'Mashreq', stripe:'Stripe', paypal:'PayPal', payoneer:'Payoneer', hubpay:'HubPay', credium:'Credium', ziina:'Ziina', mamo:'Mamo' };
+      sel.innerHTML = cards.map(c => `<option value="${c}">${LABELS[c] || c}</option>`).join('');
+    }
+    show('view-form');
+  } catch(e) { show('view-error'); }
+}
+
+// ── selezione file ──
+document.getElementById('pick-photo').onclick = () => document.getElementById('in-photo').click();
+document.getElementById('pick-file').onclick  = () => document.getElementById('in-file').click();
+document.getElementById('in-photo').onchange = e => handleFile(e.target.files[0]);
+document.getElementById('in-file').onchange  = e => handleFile(e.target.files[0]);
+
+// Legge il file come data: URL (compatibile con CSP img-src 'data:'; niente blob:)
+function readDataUrl(file) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(String(fr.result));
+    fr.onerror = rej;
+    fr.readAsDataURL(file);
+  });
+}
+function loadImg(dataUrl) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = dataUrl;
+  });
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  const prev = document.getElementById('preview');
+  const isPdf = file.type === 'application/pdf';
+  try {
+    if (isPdf) {
+      const du = await readDataUrl(file);
+      picked = { b64: du.split(',')[1], mime:'application/pdf', isPdf:true };
+      prev.innerHTML = '<div class="pdf">📄 ' + (file.name || 'documento.pdf') + '</div>';
+    } else {
+      const du = await readDataUrl(file);
+      let b64, mime = 'image/jpeg', url;
+      try {
+        // downscale immagine per payload leggero
+        const img = await loadImg(du);
+        const max = 1600; let w = img.width, h = img.height;
+        if (w > max || h > max) { const s = Math.min(max/w, max/h); w = Math.round(w*s); h = Math.round(h*s); }
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        url = cv.toDataURL('image/jpeg', 0.85);
+        b64 = url.split(',')[1];
+      } catch(_) {
+        // fallback: file originale (es. HEIC non decodificabile dal canvas)
+        b64 = du.split(',')[1]; mime = file.type || 'image/jpeg'; url = du;
+      }
+      picked = { b64, mime, isPdf:false };
+      prev.innerHTML = '<img src="' + url + '">';
+    }
+    prev.classList.remove('hidden');
+    document.getElementById('btn-send').disabled = false;
+  } catch(e) {
+    formErr('Impossibile leggere il file. Riprova.');
+  }
+}
+
+function formErr(msg) {
+  const el = document.getElementById('form-err');
+  el.textContent = msg; el.classList.remove('hidden');
+}
+
+document.getElementById('btn-send').onclick = async () => {
+  if (!picked) return;
+  document.getElementById('form-err').classList.add('hidden');
+  show('view-sending');
+  try {
+    const d = await api({
+      action:'upload',
+      file_base64: picked.b64,
+      mime: picked.mime,
+      paid_with: document.getElementById('sel-card')?.value || '',
+      note: document.getElementById('in-note').value || '',
+    });
+    if (!d.ok) { show('view-form'); formErr('Errore: ' + (d.error || 'riprova')); return; }
+    const x = d.extracted || {};
+    const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2 }));
+    document.getElementById('done-summary').innerHTML =
+      row('Fornitore', x.vendor || '—') +
+      row('Data', x.date || '—') +
+      row('Importo', (x.amount != null ? fmt(x.amount) + ' ' + (x.currency || '') : '—'));
+    show('view-done');
+  } catch(e) {
+    show('view-form'); formErr('Errore di rete. Riprova.');
+  }
+};
+function row(k, v) { return '<div class="row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'; }
+
+document.getElementById('btn-again').onclick = () => {
+  picked = null;
+  document.getElementById('preview').classList.add('hidden');
+  document.getElementById('preview').innerHTML = '';
+  document.getElementById('in-note').value = '';
+  document.getElementById('btn-send').disabled = true;
+  show('view-form');
+};
+
+init();
+</script>
+</body>
+</html>
