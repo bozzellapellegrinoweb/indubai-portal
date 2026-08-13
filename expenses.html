@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Spese da approvare — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <link rel="manifest" href="/manifest-admin.json">
+  <meta name="theme-color" content="#14161a">
+  <style>
+    .exp-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+    @media (min-width:900px){ .exp-grid { grid-template-columns:1fr 1fr; } }
+    .exp-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
+    .exp-top { display:flex; gap:14px; padding:14px; }
+    .exp-thumb { width:120px; flex:0 0 120px; height:150px; border-radius:10px; background:var(--surface2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:pointer; position:relative; }
+    .exp-thumb img { width:100%; height:100%; object-fit:cover; }
+    .exp-thumb .ph { color:var(--text-muted); font-size:12px; text-align:center; padding:8px; }
+    .exp-fields { flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
+    .exp-co { font-weight:800; font-size:14px; color:var(--text); }
+    .exp-co small { display:block; font-weight:600; color:var(--text-muted); font-size:11px; margin-top:1px; }
+    .fg { display:flex; gap:8px; }
+    .fg > div { flex:1; }
+    .fg label, .exp-fields > label { font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:3px; }
+    .exp-fields input, .exp-fields select { width:100%; border:1.5px solid var(--border); border-radius:8px; padding:8px 9px; font-size:13px; font-family:inherit; color:var(--text); background:var(--surface); outline:none; }
+    .exp-fields input:focus, .exp-fields select:focus { border-color:var(--accent); }
+    .exp-actions { display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--border); background:var(--surface2); }
+    .exp-actions .btn { flex:1; }
+    .exp-msg { font-size:12px; padding:8px 14px; }
+    .exp-msg.err { color:#b91c1c; } .exp-msg.ok { color:#16a34a; }
+    .lightbox { position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px; }
+    .lightbox img { max-width:100%; max-height:100%; border-radius:8px; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Spese da approvare</div>
+        <div class="topbar-subtitle" id="sub">Caricamento...</div>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-ghost" id="btn-reload">↻ Aggiorna</button>
+      </div>
+    </div>
+    <div class="page-content">
+      <div id="list"><div class="card" style="padding:40px"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</div>
+<div class="lightbox" id="lightbox" onclick="this.style.display='none'"><img id="lightbox-img" src=""></div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/i18n.js"></script>
+<script>
+const SB = window.ENV_SUPABASE_URL, AK = window.ENV_SUPABASE_ANON_KEY;
+const FN = SB + '/functions/v1/expense-zoho';
+const CARD_LABELS = { wio:'Wio', mashreq:'Mashreq', stripe:'Stripe', paypal:'PayPal', payoneer:'Payoneer', hubpay:'HubPay', credium:'Credium', ziina:'Ziina', mamo:'Mamo' };
+let items = [];
+
+async function load() {
+  try {
+    items = await sb.db.select('client_expenses', {
+      filter: 'status=eq.pending',
+      order: 'created_at.desc',
+      columns: '*,clients(company_name)',
+    });
+    render();
+  } catch(e) {
+    document.getElementById('list').innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+  }
+}
+
+function render() {
+  document.getElementById('sub').textContent = `${items.length} spese in attesa`;
+  if (!items.length) {
+    document.getElementById('list').innerHTML = `<div class="empty-state" style="padding:60px 20px"><h3>Nessuna spesa in attesa</h3><p style="color:var(--text-muted)">Le spese caricate dai clienti compaiono qui.</p></div>`;
+    return;
+  }
+  document.getElementById('list').innerHTML = '<div class="exp-grid">' + items.map(cardHTML).join('') + '</div>';
+  items.forEach(e => loadReceipt(e));
+}
+
+function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function cardHTML(e) {
+  const co = e.clients?.company_name || '—';
+  return `
+  <div class="exp-card" id="card-${e.id}">
+    <div class="exp-top">
+      <div class="exp-thumb" id="thumb-${e.id}" onclick="openImg('${e.id}')"><div class="ph">Scontrino…</div></div>
+      <div class="exp-fields">
+        <div class="exp-co">${esc(co)}<small>caricata ${new Date(e.created_at).toLocaleDateString('it-IT')}</small></div>
+        <div><label>Fornitore</label><input id="f-vendor-${e.id}" value="${esc(e.vendor)}"></div>
+        <div class="fg">
+          <div><label>Data</label><input type="date" id="f-date-${e.id}" value="${esc(e.expense_date)}"></div>
+          <div><label>Importo</label><input type="number" step="0.01" id="f-amount-${e.id}" value="${esc(e.amount)}"></div>
+        </div>
+        <div class="fg">
+          <div><label>Valuta</label><input id="f-cur-${e.id}" value="${esc(e.currency||'AED')}"></div>
+          <div><label>IVA</label><input type="number" step="0.01" id="f-vat-${e.id}" value="${esc(e.vat_amount)}"></div>
+        </div>
+        <div class="fg">
+          <div><label>Pagato con</label><input id="f-paid-${e.id}" value="${esc(CARD_LABELS[e.paid_with]||e.paid_with||'')}"></div>
+          <div><label>Nota</label><input id="f-note-${e.id}" value="${esc(e.note)}"></div>
+        </div>
+        ${!e.zoho_org_id ? '<div class="exp-msg err">⚠ Cliente senza Zoho collegato</div>' : ''}
+      </div>
+    </div>
+    <div class="exp-msg" id="msg-${e.id}"></div>
+    <div class="exp-actions">
+      <button class="btn btn-ghost" onclick="reject('${e.id}')">Rifiuta</button>
+      <button class="btn btn-accent" onclick="approve('${e.id}')" id="ok-${e.id}">Approva e invia a Zoho</button>
+    </div>
+  </div>`;
+}
+
+// Anteprima scontrino dal bucket privato (staff autenticato)
+async function loadReceipt(e) {
+  const box = document.getElementById('thumb-' + e.id);
+  if (!box) return;
+  try {
+    const tok = sb.getSession()?.access_token || AK;
+    const r = await fetch(`${SB}/storage/v1/object/authenticated/expense-receipts/${e.storage_path}`, {
+      headers: { apikey: AK, Authorization: 'Bearer ' + tok }
+    });
+    if (!r.ok) throw new Error('no');
+    const blob = await r.blob();
+    if ((e.mime_type||'').includes('pdf')) {
+      const url = URL.createObjectURL(blob);
+      box.dataset.url = url;
+      box.innerHTML = '<div class="ph">📄 PDF<br>tocca per aprire</div>';
+      box.onclick = () => window.open(url, '_blank');
+    } else {
+      const dataUrl = await new Promise((res)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(blob); });
+      box.dataset.url = dataUrl;
+      box.innerHTML = `<img src="${dataUrl}">`;
+    }
+  } catch(_) {
+    box.innerHTML = '<div class="ph">Anteprima<br>non disponibile</div>';
+  }
+}
+function openImg(id){ const b=document.getElementById('thumb-'+id); const u=b?.dataset?.url; if(u && !u.startsWith('blob')){ document.getElementById('lightbox-img').src=u; document.getElementById('lightbox').style.display='flex'; } else if(u){ window.open(u,'_blank'); } }
+
+function val(id){ const el=document.getElementById(id); return el?el.value:''; }
+
+async function approve(id) {
+  const btn = document.getElementById('ok-'+id); const msg = document.getElementById('msg-'+id);
+  msg.className='exp-msg'; msg.textContent='';
+  btn.disabled = true; btn.textContent='Invio…';
+  try {
+    // 1) salva le eventuali correzioni
+    await sb.db.update('client_expenses', `id=eq.${id}`, {
+      vendor: val('f-vendor-'+id).trim() || null,
+      expense_date: val('f-date-'+id) || null,
+      amount: parseFloat(val('f-amount-'+id)) || null,
+      currency: val('f-cur-'+id).trim() || null,
+      vat_amount: parseFloat(val('f-vat-'+id)) || null,
+      paid_with: val('f-paid-'+id).trim() || null,
+      note: val('f-note-'+id).trim() || null,
+    });
+    // 2) crea in Zoho + allega
+    const tok = sb.getSession()?.access_token || AK;
+    const r = await fetch(FN, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+tok },
+      body: JSON.stringify({ action:'create_expense_with_receipt', expense_id: id }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      msg.className='exp-msg ok';
+      msg.textContent = '✓ Registrata in Zoho' + (d.attached ? ' con allegato' : ' (allegato non riuscito)');
+      setTimeout(() => { const c=document.getElementById('card-'+id); if(c) c.remove(); items=items.filter(x=>x.id!==id); document.getElementById('sub').textContent = `${items.length} spese in attesa`; if(!items.length) render(); }, 1200);
+    } else {
+      msg.className='exp-msg err';
+      msg.textContent = 'Errore Zoho: ' + (d.error || 'riprova');
+      btn.disabled=false; btn.textContent='Approva e invia a Zoho';
+    }
+  } catch(e) {
+    msg.className='exp-msg err'; msg.textContent='Errore: '+e.message;
+    btn.disabled=false; btn.textContent='Approva e invia a Zoho';
+  }
+}
+
+async function reject(id) {
+  if (!confirm('Rifiutare questa spesa? Non verrà registrata.')) return;
+  try {
+    await sb.db.update('client_expenses', `id=eq.${id}`, { status:'rejected' });
+    const c=document.getElementById('card-'+id); if(c) c.remove();
+    items=items.filter(x=>x.id!==id);
+    document.getElementById('sub').textContent = `${items.length} spese in attesa`;
+    if(!items.length) render();
+  } catch(e){ alert('Errore: '+e.message); }
+}
+
+document.getElementById('btn-reload').addEventListener('click', load);
+load();
+window.addEventListener('pageshow', (e)=>{ if(e.persisted) load(); });
+</script>
+</body>
+</html>
