@@ -36,6 +36,25 @@ async function getAccessToken(): Promise<string> {
   return cachedToken.token;
 }
 
+// Cache del tax_id 5% per organizzazione (chiave: percentuale = 5, tipo "tax")
+const taxIdCache: Record<string, string | null> = {};
+async function getFivePctTaxId(oid: string, token: string): Promise<string | null> {
+  if (oid in taxIdCache) return taxIdCache[oid];
+  try {
+    const r = await fetch(ZOHO_API_BASE + '/settings/taxes?organization_id=' + oid, {
+      headers: { Authorization: 'Zoho-oauthtoken ' + token },
+    });
+    const data = await r.json();
+    const taxes = Array.isArray(data.taxes) ? data.taxes : [];
+    const five = taxes.find((t: any) =>
+      Number(t.tax_percentage) === 5 && (t.tax_type === 'tax' || !t.tax_type) && !t.is_deleted);
+    taxIdCache[oid] = five ? String(five.tax_id) : null;
+  } catch (_) {
+    taxIdCache[oid] = null;
+  }
+  return taxIdCache[oid];
+}
+
 async function sbGet(path: string) {
   const r = await fetch(SB_URL + path, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
   return r.json();
@@ -90,12 +109,34 @@ Deno.serve(async (req: Request) => {
       };
       if (cat) expenseBody.account_id = cat;
       if (paid) expenseBody.paid_through_account_id = paid;
-      const cr = await fetch(ZOHO_API_BASE + '/expenses?organization_id=' + oid, {
-        method: 'POST',
-        headers: { Authorization: 'Zoho-oauthtoken ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify(expenseBody),
-      });
-      const cd = await cr.json();
+
+      // IVA 5% recuperabile: SOLO su tax invoice valida. L'importo è lordo →
+      // is_inclusive_tax così Zoho scorpora il 5% invece di sommarlo.
+      // Best-effort: se il tax_id non si trova, la spesa si registra comunque al lordo.
+      let taxApplied = false;
+      if (exp.is_tax_invoice) {
+        const taxId = await getFivePctTaxId(oid, token);
+        if (taxId) {
+          expenseBody.tax_id = taxId;
+          expenseBody.is_inclusive_tax = true;
+          taxApplied = true;
+        }
+      }
+      const postExpense = async (payload: any) => {
+        const cr = await fetch(ZOHO_API_BASE + '/expenses?organization_id=' + oid, {
+          method: 'POST',
+          headers: { Authorization: 'Zoho-oauthtoken ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        return cr.json();
+      };
+      let cd = await postExpense(expenseBody);
+      // Se Zoho rifiuta la creazione con l'IVA, ritenta al lordo (non blocchiamo mai la spesa).
+      if (cd.code !== 0 && taxApplied) {
+        const { tax_id: _t, is_inclusive_tax: _i, ...gross } = expenseBody;
+        taxApplied = false;
+        cd = await postExpense(gross);
+      }
       if (cd.code !== 0) {
         await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, { status: 'error', error_msg: cd.message || 'Zoho create failed' });
         return json({ ok: false, error: cd.message || 'Zoho create failed' }, 400);
@@ -127,7 +168,7 @@ Deno.serve(async (req: Request) => {
       await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, {
         status: 'posted', zoho_expense_id: zid, error_msg: attachErr, approved_at: new Date().toISOString(),
       });
-      return json({ ok: true, zoho_expense_id: zid, attached, attach_error: attachErr });
+      return json({ ok: true, zoho_expense_id: zid, attached, attach_error: attachErr, tax_applied: taxApplied });
     }
 
     return json({ ok: false, error: 'unknown_action' }, 400);

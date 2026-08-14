@@ -44,7 +44,8 @@ async function extractReceipt(base64: string, mime: string) {
   "currency": "AED/EUR/USD/...",
   "supplier_trn": "",
   "is_tax_invoice": false,
-  "vat_amount": 0.00
+  "vat_amount": 0.00,
+  "category_guess": ""
 }
 Rules:
 - vendor = the actual shop/restaurant/business (trading name) where the purchase was made, usually the biggest name/logo at the top of the receipt. Do NOT use the payment processor, acquiring bank, POS/terminal descriptor or gateway (ignore names such as Merchant Services, ADCB, Mashreq, Network International, Payment Gateway, POS). If both a processor descriptor and a store name appear, always use the store name.
@@ -56,6 +57,7 @@ Rules:
   - If is_tax_invoice is false → 0 (do NOT invent VAT).
   - If a VAT/tax amount is explicitly printed → that number.
   - If it is a tax invoice stating the total is inclusive of 5% VAT but no separate line is shown → amount * 5 / 105, rounded to 2 decimals.
+- category_guess = a short, generic accounting expense category in English that best fits this purchase, chosen from common Zoho Books-style names, e.g.: "Meals and Entertainment", "Fuel/Mileage Expenses", "Travel Expense", "Automobile Expense", "Office Supplies", "Telephone Expense", "Internet Expense", "Rent Expense", "Repairs and Maintenance", "IT and Internet Expenses", "Advertising And Marketing", "Consultant Expense", "Bank Fees and Charges", "Printing and Stationery", "Postage", "Lodging", "Purchase", "Other Expenses". Pick the single closest; empty string only if truly impossible to tell.
 - Return valid JSON only, no markdown.`;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
