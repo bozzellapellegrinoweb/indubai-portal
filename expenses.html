@@ -140,7 +140,54 @@ function render() {
     return;
   }
   document.getElementById('list').innerHTML = '<div class="exp-grid">' + view.map(cardHTML).join('') + '</div>';
-  view.forEach(e => loadReceipt(e));
+  view.forEach(e => { loadReceipt(e); loadCategories(e); });
+}
+
+// Categorie Zoho per organizzazione (cache per org_id) + preselezione AI
+const accountsCache = {}; // org_id -> [{id,name}]
+function normCat(s){ return (s||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); }
+function matchCategory(guess, accounts) {
+  const g = normCat(guess);
+  if (!g) return '';
+  // 1) match esatto  2) uno contiene l'altro  3) massima sovrapposizione di parole
+  let exact = accounts.find(a => normCat(a.name) === g);
+  if (exact) return exact.id;
+  let contains = accounts.find(a => { const n = normCat(a.name); return n && (n.includes(g) || g.includes(n)); });
+  if (contains) return contains.id;
+  const gw = new Set(g.split(' ').filter(w => w.length > 2));
+  let best = null, bestScore = 0;
+  accounts.forEach(a => {
+    const nw = normCat(a.name).split(' ').filter(w => w.length > 2);
+    const score = nw.filter(w => gw.has(w)).length;
+    if (score > bestScore) { bestScore = score; best = a; }
+  });
+  return bestScore > 0 ? best.id : '';
+}
+async function loadCategories(e) {
+  const sel = document.getElementById('f-cat-' + e.id);
+  if (!sel) return;
+  if (!e.zoho_org_id) { sel.innerHTML = '<option value="">—</option>'; sel.disabled = true; return; }
+  try {
+    let accts = accountsCache[e.zoho_org_id];
+    if (!accts) {
+      const tok = sb.getSession()?.access_token || AK;
+      const r = await fetch(FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
+        body: JSON.stringify({ action: 'list_expense_accounts', org_id: e.zoho_org_id }),
+      });
+      const d = await r.json();
+      accts = (d.ok && d.expense_accounts) ? d.expense_accounts : [];
+      accountsCache[e.zoho_org_id] = accts;
+    }
+    if (!accts.length) { sel.innerHTML = '<option value="">Categoria di default Zoho</option>'; return; }
+    const guess = e.ai_raw && e.ai_raw.category_guess;
+    const preId = matchCategory(guess, accts);
+    sel.innerHTML = '<option value="">— Categoria di default —</option>' +
+      accts.map(a => `<option value="${esc(a.id)}"${a.id===preId?' selected':''}>${esc(a.name)}</option>`).join('');
+  } catch(_) {
+    sel.innerHTML = '<option value="">Categoria di default Zoho</option>';
+  }
 }
 
 function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -171,6 +218,10 @@ function cardHTML(e) {
         <div class="fg">
           <div><label>Pagato con</label><input id="f-paid-${e.id}" value="${esc(CARD_LABELS[e.paid_with]||e.paid_with||'')}"></div>
           <div><label>Nota</label><input id="f-note-${e.id}" value="${esc(e.note)}"></div>
+        </div>
+        <div>
+          <label>Categoria Zoho ${e.is_tax_invoice ? '<span class="tax-badge ok">IVA 5% recuperabile</span>' : ''}</label>
+          <select id="f-cat-${e.id}"><option value="">Caricamento categorie…</option></select>
         </div>
         ${!e.zoho_org_id ? '<div class="exp-msg err">⚠ Cliente senza Zoho collegato</div>' : ''}
       </div>
@@ -244,6 +295,7 @@ async function approve(id) {
       supplier_trn: (val('f-trn-'+id)||'').replace(/\D/g,'') || null,
       is_tax_invoice: isTaxInvoice(id),
       vat_amount: parseFloat(val('f-vat-'+id)) || 0,
+      category_account_id: val('f-cat-'+id) || null,
       paid_with: val('f-paid-'+id).trim() || null,
       note: val('f-note-'+id).trim() || null,
     });
@@ -257,7 +309,7 @@ async function approve(id) {
     const d = await r.json();
     if (d.ok) {
       msg.className='exp-msg ok';
-      msg.textContent = '✓ Registrata in Zoho' + (d.attached ? ' con allegato' : ' (allegato non riuscito)');
+      msg.textContent = '✓ Registrata in Zoho' + (d.attached ? ' con allegato' : ' (allegato non riuscito)') + (d.tax_applied ? ' · IVA 5% recuperabile' : '');
       setTimeout(() => removeExpense(id), 1200);
     } else {
       msg.className='exp-msg err';
