@@ -37,8 +37,13 @@
     .pchip { font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:6px; background:var(--bg); color:var(--text-muted); border:1px solid var(--border); }
     .pmove { font-size:11px; padding:4px 6px; border:1px solid var(--border); border-radius:7px; background:var(--surface); color:var(--text); max-width:150px; cursor:pointer; }
     .pcard-open { font-size:11px; color:var(--accent); font-weight:700; text-decoration:none; }
+    .pref { margin-top:8px; display:block; font-size:10px; font-weight:800; letter-spacing:.06em;
+      background:var(--accent); color:var(--primary); border-radius:5px; padding:3px 7px;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .stage-edit-row { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid var(--border); border-radius:9px; margin-bottom:8px; background:var(--surface2); }
     .stage-edit-row input[type=text] { flex:1; min-width:0; }
+    .stage-won { display:inline-flex; align-items:center; gap:3px; font-size:13px; cursor:pointer; flex:0 0 auto; }
+    .stage-won input { width:15px; height:15px; cursor:pointer; }
     .icon-btn { background:none; border:1px solid var(--border); border-radius:7px; width:30px; height:30px; cursor:pointer; color:var(--text-muted); font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
     .icon-btn:hover { color:var(--text); }
     @media (max-width:640px){ .pcol{ flex-basis:82vw; width:82vw; } }
@@ -177,18 +182,24 @@
 <script src="/js/i18n.js"></script>
 <script src="/js/notify.js"></script>
 <script>
-let stages = [];       // [{id,name,position,color}]
+let stages = [];       // [{id,name,position,color,is_won}]
 let allClients = [];   // clienti attivi con pipeline_stage_id
+let ambassadors = {};  // id -> full_name (per l'etichetta referral)
 const UNASSIGNED = '__none__';
 
 async function loadAll() {
   try {
-    const [st, cl] = await Promise.all([
+    const [st, cl, amb] = await Promise.all([
       sb.db.select('pipeline_stages', { order: 'position.asc' }),
       sb.db.getClients({ activeOnly: true }),
+      // Se la migrazione ambassador non e' ancora stata eseguita la board
+      // deve comunque funzionare: fallback silenzioso a lista vuota.
+      sb.db.select('ambassadors', { columns: 'id,full_name' }).catch(() => []),
     ]);
     stages = st || [];
     allClients = cl || [];
+    ambassadors = {};
+    (amb || []).forEach(a => { ambassadors[a.id] = a.full_name; });
     render();
   } catch(e) {
     document.getElementById('board').innerHTML =
@@ -237,6 +248,13 @@ function render() {
   }).join('');
 }
 
+// Etichetta ben visibile: questo contatto arriva da un ambassador
+function refBadge(c) {
+  if (!c.ambassador_id) return '';
+  const who = ambassadors[c.ambassador_id] || 'Ambassador';
+  return `<div class="pref">REFERRAL · ${ui.escapeHtml(who)}</div>`;
+}
+
 function cardHTML(c) {
   const val = c.service_cost ? ui.formatAED(c.service_cost) : '—';
   const gm = c.general_manager || c.contact_name || '';
@@ -253,6 +271,7 @@ function cardHTML(c) {
         </div>
         ${c.vat_registered ? '<span class="badge badge-ok" style="font-size:9px">VAT</span>' : ''}
       </div>
+      ${refBadge(c)}
       <div class="pcard-row">
         <span class="pcard-val">${val}</span>
         <span class="pchip">${ui.partnerLabel(c.accounting_partner)}</span>
@@ -287,6 +306,13 @@ async function moveClient(id, stageId) {
         if (fresh && fresh[0]) { notifyOn = fresh[0].notify_on_enter === true; st.notify_on_enter = notifyOn; }
       } catch(_) {}
     }
+    // Fase "Cliente ha pagato": matura la commissione dell'ambassador che l'ha
+    // segnalato. L'endpoint e' idempotente, quindi spostare avanti e indietro
+    // non genera doppi guadagni.
+    if (st && st.is_won && c && c.ambassador_id) {
+      accrueCommission(id);
+    }
+
     if (st && notifyOn && typeof emailNotifyStaff === 'function') {
       const val = (c && c.service_cost) ? ' (' + ui.formatAED(c.service_cost) + ')' : '';
       const company = ui.escapeHtml(c?.company_name || 'Cliente');
@@ -303,6 +329,24 @@ async function moveClient(id, stageId) {
     if (c) c.pipeline_stage_id = prev; // rollback
     render();
     ui.showToast('Errore spostamento: ' + e.message, 'error');
+  }
+}
+
+async function accrueCommission(clientId) {
+  try {
+    const res = await fetch('/api/ambassador-commission', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sb.getSession().access_token },
+      body: JSON.stringify({ client_id: clientId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Errore');
+    if (data.already) ui.showToast('Commissione ambassador gia\' registrata');
+    else if (data.commission) {
+      ui.showToast('Commissione ambassador: ' + ui.formatAED(data.commission.commission_amount_aed), 'success');
+    }
+  } catch (e) {
+    ui.showToast('Commissione ambassador non registrata: ' + e.message, 'error');
   }
 }
 
@@ -335,6 +379,9 @@ function renderStageList() {
              onchange="updateStage('${s.id}',{color:this.value})">
       <input type="text" class="form-control" value="${ui.escapeHtml(s.name)}"
              onchange="updateStage('${s.id}',{name:this.value.trim()})">
+      <label class="stage-won" title="Fase &quot;cliente ha pagato&quot;: genera la commissione dell'ambassador">
+        <input type="checkbox" ${s.is_won ? 'checked' : ''} onchange="updateStage('${s.id}',{is_won:this.checked})"> 💰
+      </label>
       <button class="icon-btn" title="Su"  ${i===0?'disabled':''} onclick="reorderStage(${i},-1)">↑</button>
       <button class="icon-btn" title="Giù" ${i===stages.length-1?'disabled':''} onclick="reorderStage(${i},1)">↓</button>
       <button class="icon-btn" title="Elimina" style="color:var(--danger)" onclick="deleteStage('${s.id}','${ui.escapeHtml(s.name).replace(/'/g,"\\'")}')">×</button>

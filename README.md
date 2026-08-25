@@ -74,6 +74,11 @@ clients                    ← anagrafica master (97 clienti)
 ├── corporate_tax          ← registrazioni CT per mese (N:1)
 └── monthly_balance        ← bilancio mensile (N:1)
 
+ambassadors                ← programma ambassador (vedi AMBASSADOR.md)
+├── ambassador_referrals   ← segnalazioni dal link personale
+├── ambassador_commissions ← commissioni maturate / pagate
+└── ambassador_services    ← catalogo servizi e regole di commissione
+
 affinitas_subscriptions    ← abbonati piattaforma Affinitas
 profiles                   ← utenti interni (Pellegrino, Giuseppe, staff)
 activity_log               ← audit trail di tutte le azioni

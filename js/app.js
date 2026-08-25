@@ -18,6 +18,13 @@
     return;
   }
 
+  // Gli ambassador hanno la loro area riservata, non il portale staff
+  const isAmbassador = role === 'ambassador' || session?.user?.user_metadata?.role === 'ambassador';
+  if (isAmbassador) {
+    window.location.href = '/ambassador/dashboard.html';
+    return;
+  }
+
   // ── Role-based page permissions (dynamic from DB, cached in sessionStorage) ──
   let _dynPerms = null;
   try { _dynPerms = JSON.parse(sessionStorage.getItem('indubai_role_perms')); } catch(e) {}
@@ -63,6 +70,7 @@
     'dollar-sign': '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
     columns: '<rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/>',
     receipt: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/>',
+    award: '<circle cx="12" cy="8" r="6"/><path d="M15.48 13.37L17 22l-5-3-5 3 1.52-8.63"/>',
   };
   function navIcon(key) {
     if (!key || !ICON_PATHS[key]) return '';
@@ -79,6 +87,7 @@
     { id: 'clients',    icon: 'users',         label: 'Clienti',        href: '/clients.html',    section: 'GESTIONE' },
     { id: 'zoho-setup', icon: '',   label: '↳ Setup Zoho',     href: '/zoho-setup.html' },
     { id: 'zoho-vat',   icon: '',   label: '↳ Monitor VAT',    href: '/zoho-vat.html' },
+    { id: 'ambassadors', icon: 'award',        label: 'Ambassador',     href: '/ambassadors.html' },
     { id: 'documents',  icon: 'folder',        label: 'Documenti',     href: '/documents.html' },
     { id: 'onboarding', icon: 'star',          label: 'Onboarding',     href: '/onboarding.html' },
     { id: 'statements', icon: 'file-text',     label: 'Estratti Conto', href: '/statements.html' },

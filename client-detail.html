@@ -79,6 +79,9 @@
           </div>
         </div>
 
+        <!-- Segnalato da un ambassador -->
+        <div id="referral-banner" style="display:none"></div>
+
         <!-- Tabs -->
         <div class="tab-bar">
           <button class="tab active" onclick="switchTab('info',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Info</button>
@@ -221,6 +224,33 @@ async function loadClient() {
   }
 }
 
+// Se il cliente arriva da un ambassador lo si deve vedere subito
+async function renderReferralBanner(c) {
+  const box = document.getElementById('referral-banner');
+  if (!box || !c.ambassador_id) return;
+  let who = 'un ambassador';
+  let extra = '';
+  try {
+    const rows = await sb.db.select('ambassadors', { filter: `id=eq.${c.ambassador_id}`, columns: 'full_name,email' });
+    if (rows && rows[0]) who = rows[0].full_name;
+    const com = await sb.db.select('ambassador_commissions', {
+      filter: `client_id=eq.${c.id}`, columns: 'commission_amount_aed,status,service_name',
+    });
+    if (com && com[0]) {
+      extra = ` · Commissione ${ui.formatAED(com[0].commission_amount_aed)} (${com[0].status}) su ${ui.escapeHtml(com[0].service_name)}`;
+    }
+  } catch (_) { /* migrazione ambassador non ancora eseguita */ }
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent);
+                color:var(--primary);border-radius:12px;padding:11px 16px;margin-bottom:18px;font-weight:700;font-size:13px">
+      <span style="font-size:10px;letter-spacing:.1em;background:var(--primary);color:var(--accent);
+                   padding:3px 8px;border-radius:5px">REFERRAL</span>
+      <span>Segnalato da ${ui.escapeHtml(who)}${extra}</span>
+      <a href="/ambassadors.html" style="margin-left:auto;color:var(--primary);text-decoration:underline;font-size:12px">Area Ambassador →</a>
+    </div>`;
+}
+
 function renderClient() {
   const c = clientData;
   const initials = (c.company_name||'?').split(/[\s-]/)[0].substring(0,2).toUpperCase();
@@ -235,6 +265,7 @@ function renderClient() {
   if (c.phone_uae) meta.push('<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 9.64a19.79 19.79 0 01-3.07-8.67A2 2 0 013.4 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> '+c.phone_uae);
   if (!c.is_active) meta.push('INATTIVO');
   document.getElementById('h-meta').innerHTML = meta.join(' &nbsp;·&nbsp; ');
+  renderReferralBanner(c);
 
   // Info grid
   const fields = [

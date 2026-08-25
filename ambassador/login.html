@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Area Ambassador — InDubai</title>
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico">
+<link rel="manifest" href="/ambassador/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="InDubai Ambassador">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="/js/config.js"></script>
+<style>
+  :root{--accent:#47ee74;--light:#f4f2ef;--line:rgba(244,242,239,.16);}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#000;color:var(--light);
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));
+    -webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(60% 45% at 90% -8%, rgba(71,238,116,.20) 0%, rgba(71,238,116,0) 62%),
+                     radial-gradient(48% 40% at -10% 106%, rgba(71,238,116,.10) 0%, rgba(71,238,116,0) 64%);}
+  .box{width:100%;max-width:400px;}
+  .brand{font-weight:700;font-size:26px;letter-spacing:-.03em;text-align:center;}
+  .brand span{color:var(--accent);}
+  .mono{font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.2em;
+    text-transform:uppercase;color:rgba(244,242,239,.5);text-align:center;margin:8px 0 36px;}
+  .card{border:1px solid var(--line);border-radius:4px;padding:28px 24px;background:rgba(244,242,239,.04);}
+  h1{font-size:19px;font-weight:700;letter-spacing:-.02em;margin-bottom:22px;}
+  label{display:block;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:rgba(244,242,239,.5);margin-bottom:6px;}
+  .field{margin-bottom:15px;}
+  input{width:100%;padding:14px 15px;background:rgba(244,242,239,.06);border:1px solid var(--line);
+    border-radius:3px;font-family:inherit;font-size:16px;color:var(--light);outline:none;}
+  input::placeholder{color:rgba(244,242,239,.3);}
+  input:focus{border-color:rgba(71,238,116,.65);background:rgba(244,242,239,.09);}
+  button{width:100%;margin-top:8px;padding:15px;background:var(--accent);border:0;border-radius:2px;
+    font-family:inherit;font-size:16px;font-weight:700;color:#000;cursor:pointer;transition:background .2s;}
+  button:hover:not(:disabled){background:#fff;}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  .alert{display:none;background:rgba(220,38,38,.14);border:1px solid rgba(220,38,38,.35);border-radius:3px;
+    padding:11px 13px;font-size:13.5px;color:#ff8080;margin-bottom:16px;}
+  .foot{text-align:center;margin-top:22px;font-size:12px;color:rgba(244,242,239,.32);line-height:1.7;}
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="brand">In<span>Dubai</span></div>
+    <div class="mono">Area Ambassador</div>
+    <div class="card">
+      <h1>Accedi al tuo profilo</h1>
+      <div class="alert" id="alert"></div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="email@esempio.com" autocomplete="email" autocapitalize="off" autocorrect="off">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button id="btn">Accedi</button>
+    </div>
+    <div class="foot">
+      Hai perso le credenziali? Scrivi a <span style="color:rgba(244,242,239,.6)">segreteria@indubai.it</span><br>
+      © InDubai — Platinum Tower, JLT, Dubai
+    </div>
+  </div>
+
+<script src="/ambassador/amb.js"></script>
+<script>
+(function () {
+  var s = amb.getSession();
+  if (s && s.access_token && s.ambassador) { location.replace('/ambassador/dashboard.html'); return; }
+
+  var btn = document.getElementById('btn');
+  var alertEl = document.getElementById('alert');
+
+  function showAlert(m) { alertEl.textContent = m; alertEl.style.display = 'block'; }
+
+  function doLogin() {
+    var email = document.getElementById('email').value.trim();
+    var pass = document.getElementById('password').value;
+    if (!email || !pass) return showAlert('Inserisci email e password.');
+
+    alertEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Accesso…';
+
+    amb.signIn(email, pass)
+      .then(function () { location.href = '/ambassador/dashboard.html'; })
+      .catch(function (e) {
+        var m = /invalid login/i.test(e.message) ? 'Email o password non corretti.' : e.message;
+        showAlert(m);
+        btn.disabled = false;
+        btn.textContent = 'Accedi';
+      });
+  }
+
+  btn.addEventListener('click', doLogin);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+})();
+</script>
+</body>
+</html>

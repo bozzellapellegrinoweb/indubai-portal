@@ -2,6 +2,10 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/r/:code",
+      "destination": "/ambassador-lead.html"
+    },
+    {
       "source": "/",
       "destination": "/login.html"
     }
