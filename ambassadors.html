@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Ambassador — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <link rel="manifest" href="/manifest-admin.json">
+  <meta name="theme-color" content="#14161a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="InDubai">
+  <style>
+    .kpi-strip { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:14px; margin-bottom:22px; }
+    .kpi-card { background:var(--surface); border:1.5px solid var(--border); border-radius:14px; padding:16px 18px; }
+    .kpi-card.c-accent { background:linear-gradient(135deg,#14161a,#2b2e35); border-color:transparent; }
+    .kpi-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); margin-bottom:6px; }
+    .kpi-value { font-size:26px; font-weight:900; color:var(--text); line-height:1; }
+    .kpi-sub { font-size:11px; color:var(--text-muted); margin-top:4px; }
+    .kpi-card.c-accent .kpi-label { color:rgba(255,255,255,.6); }
+    .kpi-card.c-accent .kpi-value { color:var(--accent); }
+    .kpi-card.c-accent .kpi-sub { color:rgba(255,255,255,.5); }
+    .reflink { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px; color:var(--text-muted);
+      background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:3px 8px;
+      cursor:pointer; display:inline-block; max-width:230px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
+    .reflink:hover { color:var(--text); border-color:var(--accent-dark); }
+    .srv-row { display:grid; grid-template-columns:1.6fr .8fr .8fr .8fr auto auto; gap:8px; align-items:center;
+      padding:9px; border:1px solid var(--border); border-radius:9px; margin-bottom:8px; background:var(--surface2); }
+    .srv-row input, .srv-row select { padding:7px 9px; font-size:12.5px; }
+    .srv-head { display:grid; grid-template-columns:1.6fr .8fr .8fr .8fr auto auto; gap:8px; padding:0 9px 4px;
+      font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); }
+    .icon-btn { background:none; border:1px solid var(--border); border-radius:7px; width:30px; height:30px;
+      cursor:pointer; color:var(--text-muted); font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
+    .icon-btn:hover { color:var(--danger); border-color:var(--danger); }
+    .det-sec { margin-bottom:22px; }
+    .det-sec h4 { font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); margin-bottom:10px; }
+    .det-row { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+      border:1px solid var(--border); border-radius:10px; padding:11px 13px; margin-bottom:8px; }
+    .det-row .t { font-weight:700; font-size:13.5px; }
+    .det-row .s { font-size:11.5px; color:var(--text-muted); margin-top:2px; }
+    .det-amount { font-weight:900; font-size:15px; }
+    @media (max-width:760px){ .srv-row, .srv-head { grid-template-columns:1fr 1fr; } .srv-head { display:none; } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Ambassador</div>
+        <div class="topbar-subtitle" id="sub">Caricamento...</div>
+      </div>
+      <div class="toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="search-box">
+          <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <input type="text" class="form-control" id="search" placeholder="Cerca ambassador..." style="min-width:220px">
+        </div>
+        <button class="btn btn-ghost" id="btn-services">⚙ Servizi &amp; commissioni</button>
+        <button class="btn btn-accent" id="btn-new">+ Nuovo Ambassador</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="kpi-strip" id="kpis"></div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ambassador</th>
+                <th>Link personale</th>
+                <th style="text-align:center">Segnalate</th>
+                <th style="text-align:center">Chiuse</th>
+                <th style="text-align:right">Guadagnato</th>
+                <th style="text-align:right">Da pagare</th>
+                <th>Stato</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="8"><div class="loading-overlay"><div class="spinner"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Nuovo ambassador -->
+<div class="modal-overlay" id="modal-new" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nuovo Ambassador</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeNew()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-danger" id="new-err" style="display:none"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nome e cognome *</label>
+          <input type="text" class="form-control" id="n-name" placeholder="Maria Rossi">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" class="form-control" id="n-email" placeholder="maria@esempio.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Telefono</label>
+          <input type="text" class="form-control" id="n-phone" placeholder="+971 50 1234567">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Instagram / TikTok</label>
+          <input type="text" class="form-control" id="n-social" placeholder="@mariarossi">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Codice link (URL)</label>
+          <input type="text" class="form-control" id="n-code" placeholder="maria-rossi-a1b2">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Moltiplicatore commissione</label>
+          <input type="number" class="form-control" id="n-mult" value="1" step="0.05" min="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:9px;text-transform:none;font-size:13px">
+          <input type="checkbox" id="n-account" checked style="width:16px;height:16px">
+          Crea subito l'accesso e invia le credenziali via email
+        </label>
+      </div>
+      <div class="form-group" id="pwd-group">
+        <label class="form-label">Password iniziale</label>
+        <input type="text" class="form-control" id="n-pwd">
+        <p style="font-size:11.5px;color:var(--text-muted);margin-top:6px">
+          Viene inviata via email insieme al link personale. L'ambassador può cambiarla dalla sua area.
+        </p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeNew()">Annulla</button>
+      <button class="btn btn-accent" id="btn-save-new">Crea Ambassador</button>
+    </div>
+  </div>
+</div>
+
+<!-- Dettaglio -->
+<div class="modal-overlay" id="modal-det" style="display:none">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <div class="modal-title" id="det-title">Dettaglio</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeDet()">✕</button>
+    </div>
+    <div class="modal-body" id="det-body"><div class="spinner"></div></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDet()">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- Servizi -->
+<div class="modal-overlay" id="modal-srv" style="display:none">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-header">
+      <div class="modal-title">Servizi &amp; commissioni</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeSrv()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
+        Questi sono i servizi che l'ambassador vede nel suo link e nella sua area.
+        <strong>Fisso</strong> = importo in AED per contratto chiuso, <strong>%</strong> = percentuale sul valore del contratto.
+      </p>
+      <div class="srv-head">
+        <span>Servizio</span><span>Prezzo AED</span><span>Tipo</span><span>Commissione</span><span>Attivo</span><span></span>
+      </div>
+      <div id="srv-list"></div>
+      <button class="btn btn-ghost btn-sm" id="btn-srv-add" style="margin-top:8px">+ Aggiungi servizio</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSrv()">Chiudi</button>
+      <button class="btn btn-accent" id="btn-srv-save">Salva servizi</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/i18n.js"></script>
+<script src="/js/notify.js"></script>
+<script>
+let rows = [];       // ambassador_summary
+let services = [];   // ambassador_services
+
+const REF_STATUS = {
+  nuovo:         ['badge-pending', 'Da contattare'],
+  contattato:    ['badge-info',    'Contattata'],
+  in_trattativa: ['badge-warn',    'In trattativa'],
+  cliente:       ['badge-ok',      'Cliente'],
+  perso:         ['badge-fail',    'Persa'],
+};
+const COM_STATUS = {
+  maturata:  ['badge-warn', 'Da pagare'],
+  pagata:    ['badge-ok',   'Pagata'],
+  annullata: ['badge-fail', 'Annullata'],
+};
+
+function refLink(code) { return location.origin + '/r/' + code; }
+
+async function loadAll() {
+  try {
+    const [amb, srv] = await Promise.all([
+      sb.db.select('ambassador_summary', { order: 'created_at.desc' }),
+      sb.db.select('ambassador_services', { order: 'position.asc' }),
+    ]);
+    rows = amb || [];
+    services = srv || [];
+    render();
+  } catch (e) {
+    document.getElementById('tbody').innerHTML =
+      `<tr><td colspan="8"><div class="alert alert-danger">${ui.escapeHtml(e.message)}</div></td></tr>`;
+  }
+}
+
+function render() {
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const list = q
+    ? rows.filter(r => (r.full_name || '').toLowerCase().includes(q) || (r.email || '').toLowerCase().includes(q))
+    : rows;
+
+  const active = rows.filter(r => r.status === 'active').length;
+  const refsTot = rows.reduce((s, r) => s + Number(r.total_referrals || 0), 0);
+  const wonTot  = rows.reduce((s, r) => s + Number(r.won_referrals || 0), 0);
+  const earned  = rows.reduce((s, r) => s + Number(r.earned_aed || 0), 0);
+  const due     = rows.reduce((s, r) => s + Number(r.due_aed || 0), 0);
+
+  document.getElementById('sub').textContent =
+    `${rows.length} ambassador · ${active} attivi · ${refsTot} segnalazioni`;
+
+  document.getElementById('kpis').innerHTML = [
+    ['Ambassador attivi', active, `${rows.length} in anagrafica`, ''],
+    ['Segnalazioni', refsTot, 'contatti ricevuti', ''],
+    ['Diventate clienti', wonTot, refsTot ? Math.round(wonTot / refsTot * 100) + '% di conversione' : '—', ''],
+    ['Commissioni maturate', ui.formatAED(earned), 'totale lordo', 'c-accent'],
+    ['Da liquidare', ui.formatAED(due), 'non ancora pagate', ''],
+  ].map(k => `<div class="kpi-card ${k[3]}">
+      <div class="kpi-label">${k[0]}</div><div class="kpi-value">${k[1]}</div><div class="kpi-sub">${k[2]}</div>
+    </div>`).join('');
+
+  document.getElementById('tbody').innerHTML = list.length ? list.map(r => {
+    const stBadge = r.status === 'active'
+      ? '<span class="badge badge-ok">Attivo</span>'
+      : r.status === 'paused'
+        ? '<span class="badge badge-warn">In pausa</span>'
+        : '<span class="badge badge-fail">Disattivato</span>';
+    const account = r.user_id
+      ? ''
+      : `<button class="btn btn-ghost btn-sm" onclick="createAccess('${r.id}','${ui.escapeHtml(r.email)}')">Crea accesso</button>`;
+    return `<tr>
+      <td>
+        <div style="font-weight:700">${ui.escapeHtml(r.full_name)}</div>
+        <div style="font-size:11.5px;color:var(--text-muted)">${ui.escapeHtml(r.email)}${r.user_id ? '' : ' · nessun accesso'}</div>
+      </td>
+      <td><span class="reflink" title="Clicca per copiare" onclick="copyLink('${r.ref_code}')">${refLink(r.ref_code)}</span></td>
+      <td style="text-align:center;font-weight:700">${r.total_referrals || 0}</td>
+      <td style="text-align:center;font-weight:700">${r.won_referrals || 0}</td>
+      <td style="text-align:right;font-weight:700">${ui.formatAED(r.earned_aed || 0)}</td>
+      <td style="text-align:right;font-weight:700;color:${Number(r.due_aed) > 0 ? 'var(--warning)' : 'var(--text-muted)'}">${ui.formatAED(r.due_aed || 0)}</td>
+      <td>${stBadge}</td>
+      <td style="text-align:right;white-space:nowrap">
+        ${account}
+        <button class="btn btn-ghost btn-sm" onclick="openDet('${r.id}')">Dettaglio</button>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8"><div class="empty-state">
+      <div class="empty-icon">🤝</div>
+      <h3>Nessun ambassador</h3>
+      <p>Aggiungi il primo ambassador dopo la call di selezione.</p>
+    </div></td></tr>`;
+}
+
+function copyLink(code) {
+  const link = refLink(code);
+  const done = () => ui.showToast('Link copiato', 'success');
+  if (navigator.clipboard) navigator.clipboard.writeText(link).then(done).catch(() => ui.showToast(link));
+  else ui.showToast(link);
+}
+
+// ── Nuovo ambassador ────────────────────────────────────────
+function slugCode(name) {
+  const base = String(name || 'amb').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 18) || 'amb';
+  return base + '-' + Math.random().toString(36).slice(2, 6);
+}
+function randomPwd() {
+  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function openNew() {
+  ['n-name','n-email','n-phone','n-social','n-code'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('n-mult').value = '1';
+  document.getElementById('n-account').checked = true;
+  document.getElementById('n-pwd').value = randomPwd();
+  document.getElementById('pwd-group').style.display = 'block';
+  document.getElementById('new-err').style.display = 'none';
+  document.getElementById('modal-new').style.display = 'flex';
+}
+function closeNew() { document.getElementById('modal-new').style.display = 'none'; }
+
+async function saveNew() {
+  const err = document.getElementById('new-err');
+  const btn = document.getElementById('btn-save-new');
+  const name = document.getElementById('n-name').value.trim();
+  const email = document.getElementById('n-email').value.trim().toLowerCase();
+  const withAccount = document.getElementById('n-account').checked;
+  const pwd = document.getElementById('n-pwd').value.trim();
+
+  const fail = m => { err.textContent = m; err.style.display = 'block'; };
+  err.style.display = 'none';
+
+  if (name.length < 2) return fail('Inserisci nome e cognome.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return fail('Email non valida.');
+  if (withAccount && pwd.length < 8) return fail('La password deve avere almeno 8 caratteri.');
+
+  let code = document.getElementById('n-code').value.trim().toLowerCase() || slugCode(name);
+  code = code.replace(/[^a-z0-9-]/g, '-').replace(/^-|-$/g, '');
+  if (code.length < 3) return fail('Il codice link deve avere almeno 3 caratteri.');
+
+  btn.disabled = true; btn.textContent = 'Creo...';
+  let created = null;
+  try {
+    created = await sb.db.insert('ambassadors', {
+      full_name: name,
+      email,
+      phone: document.getElementById('n-phone').value.trim() || null,
+      instagram: document.getElementById('n-social').value.trim() || null,
+      ref_code: code,
+      commission_multiplier: Number(document.getElementById('n-mult').value) || 1,
+      status: 'active',
+    });
+    created = Array.isArray(created) ? created[0] : created;
+
+    if (withAccount) {
+      const res = await fetch('/api/create-ambassador-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + sb.getSession().access_token,
+        },
+        body: JSON.stringify({ ambassador_id: created.id, email, password: pwd }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Creazione accesso fallita');
+    }
+
+    try { await sb.db.log('ambassador_created', null, { ambassador_id: created.id, name }); } catch (_) {}
+    closeNew();
+    ui.showToast(withAccount ? 'Ambassador creato, credenziali inviate' : 'Ambassador creato', 'success');
+    loadAll();
+  } catch (e) {
+    if (/duplicate key|already exists/i.test(e.message)) {
+      fail('Codice link o email già in uso. Cambia il codice e riprova.');
+    } else {
+      fail(e.message);
+    }
+    btn.disabled = false; btn.textContent = 'Crea Ambassador';
+    return;
+  }
+  btn.disabled = false; btn.textContent = 'Crea Ambassador';
+}
+
+async function createAccess(id, email) {
+  const pwd = prompt('Password iniziale per ' + email + ':', randomPwd());
+  if (!pwd) return;
+  if (pwd.length < 8) return ui.showToast('Password troppo corta (min. 8)', 'error');
+  try {
+    const res = await fetch('/api/create-ambassador-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sb.getSession().access_token },
+      body: JSON.stringify({ ambassador_id: id, email, password: pwd }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Errore');
+    ui.showToast('Accesso creato, credenziali inviate', 'success');
+    loadAll();
+  } catch (e) {
+    ui.showToast(e.message, 'error');
+  }
+}
+
+// ── Dettaglio ───────────────────────────────────────────────
+async function openDet(id) {
+  const r = rows.find(x => x.id === id);
+  document.getElementById('det-title').textContent = r ? r.full_name : 'Dettaglio';
+  document.getElementById('det-body').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('modal-det').style.display = 'flex';
+  try {
+    const [refs, coms] = await Promise.all([
+      sb.db.select('ambassador_referrals', {
+        filter: `ambassador_id=eq.${id}`,
+        columns: '*,ambassador_services(name)',
+        order: 'created_at.desc',
+      }),
+      sb.db.select('ambassador_commissions', {
+        filter: `ambassador_id=eq.${id}`,
+        columns: '*,ambassador_referrals(full_name)',
+        order: 'earned_at.desc',
+      }),
+    ]);
+    renderDet(r, refs || [], coms || []);
+  } catch (e) {
+    document.getElementById('det-body').innerHTML = `<div class="alert alert-danger">${ui.escapeHtml(e.message)}</div>`;
+  }
+}
+function closeDet() { document.getElementById('modal-det').style.display = 'none'; }
+
+function renderDet(r, refs, coms) {
+  const link = refLink(r.ref_code);
+  const refsHTML = refs.length ? refs.map(x => {
+    const st = REF_STATUS[x.status] || ['badge-pending', x.status];
+    const srv = x.ambassador_services ? x.ambassador_services.name : 'Servizio da definire';
+    return `<div class="det-row">
+      <div>
+        <div class="t">${ui.escapeHtml(x.full_name)}</div>
+        <div class="s">${ui.escapeHtml(srv)} · ${ui.formatDate(x.created_at)} · ${ui.escapeHtml(x.email)}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="badge ${st[0]}">${st[1]}</span>
+        ${x.client_id ? `<a class="btn btn-ghost btn-sm" href="/client-detail.html?id=${x.client_id}">Apri</a>` : ''}
+      </div>
+    </div>`;
+  }).join('') : '<p style="font-size:13px;color:var(--text-muted)">Nessuna segnalazione.</p>';
+
+  const comsHTML = coms.length ? coms.map(c => {
+    const st = COM_STATUS[c.status] || ['badge-pending', c.status];
+    const who = c.ambassador_referrals ? c.ambassador_referrals.full_name : '—';
+    return `<div class="det-row">
+      <div>
+        <div class="t">${ui.escapeHtml(c.service_name)}</div>
+        <div class="s">${ui.escapeHtml(who)} · maturata il ${ui.formatDate(c.earned_at)}${c.paid_at ? ' · pagata il ' + ui.formatDate(c.paid_at) : ''}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="det-amount">${ui.formatAED(c.commission_amount_aed)}</span>
+        <span class="badge ${st[0]}">${st[1]}</span>
+        ${c.status === 'maturata' ? `<button class="btn btn-accent btn-sm" onclick="payCommission('${c.id}','${r.id}')">Segna pagata</button>` : ''}
+      </div>
+    </div>`;
+  }).join('') : '<p style="font-size:13px;color:var(--text-muted)">Nessuna commissione.</p>';
+
+  document.getElementById('det-body').innerHTML = `
+    <div class="det-sec">
+      <h4>Link personale</h4>
+      <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+        <span class="reflink" style="max-width:100%" onclick="copyLink('${r.ref_code}')">${link}</span>
+        <button class="btn btn-ghost btn-sm" onclick="copyLink('${r.ref_code}')">Copia</button>
+      </div>
+    </div>
+    <div class="det-sec">
+      <h4>Segnalazioni (${refs.length})</h4>
+      ${refsHTML}
+    </div>
+    <div class="det-sec">
+      <h4>Commissioni (${coms.length})</h4>
+      ${comsHTML}
+    </div>`;
+}
+
+async function payCommission(commissionId, ambId) {
+  if (!confirm('Confermi il pagamento della commissione? All\'ambassador arriva una email di conferma.')) return;
+  try {
+    const res = await fetch('/api/ambassador-commission', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sb.getSession().access_token },
+      body: JSON.stringify({ action: 'pay', commission_id: commissionId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Errore');
+    ui.showToast('Commissione segnata come pagata', 'success');
+    await loadAll();
+    openDet(ambId);
+  } catch (e) {
+    ui.showToast(e.message, 'error');
+  }
+}
+
+// ── Servizi ─────────────────────────────────────────────────
+function openSrv() { renderSrv(); document.getElementById('modal-srv').style.display = 'flex'; }
+function closeSrv() { document.getElementById('modal-srv').style.display = 'none'; }
+
+function renderSrv() {
+  document.getElementById('srv-list').innerHTML = services.map((s, i) => `
+    <div class="srv-row" data-i="${i}">
+      <input type="text" class="form-control s-name" value="${ui.escapeHtml(s.name)}" placeholder="Nome servizio">
+      <input type="number" class="form-control s-price" value="${s.price_aed ?? ''}" placeholder="0" step="100">
+      <select class="form-control s-type">
+        <option value="fixed" ${s.commission_type === 'fixed' ? 'selected' : ''}>Fisso AED</option>
+        <option value="percent" ${s.commission_type === 'percent' ? 'selected' : ''}>% contratto</option>
+      </select>
+      <input type="number" class="form-control s-val" value="${s.commission_value ?? 0}" step="0.5">
+      <label style="display:flex;align-items:center;justify-content:center">
+        <input type="checkbox" class="s-active" ${s.active ? 'checked' : ''} style="width:16px;height:16px">
+      </label>
+      <button class="icon-btn" onclick="removeSrv(${i})" title="Elimina">✕</button>
+    </div>`).join('');
+}
+
+function removeSrv(i) {
+  const s = services[i];
+  if (s.id && !confirm(`Eliminare "${s.name}"? Le commissioni già maturate restano invariate.`)) return;
+  services[i]._deleted = true;
+  services = services.filter(x => !x._deleted);
+  renderSrv();
+}
+
+function addSrv() {
+  services.push({ name: '', description: '', price_aed: null, commission_type: 'fixed', commission_value: 0, active: true });
+  renderSrv();
+}
+
+async function saveSrv() {
+  const btn = document.getElementById('btn-srv-save');
+  btn.disabled = true; btn.textContent = 'Salvo...';
+  try {
+    const nodes = Array.from(document.querySelectorAll('#srv-list .srv-row'));
+    const wanted = nodes.map((n, pos) => {
+      const i = Number(n.dataset.i);
+      const s = services[i] || {};
+      return {
+        ...(s.id ? { id: s.id } : {}),
+        name: n.querySelector('.s-name').value.trim(),
+        description: s.description || null,
+        price_aed: n.querySelector('.s-price').value === '' ? null : Number(n.querySelector('.s-price').value),
+        commission_type: n.querySelector('.s-type').value,
+        commission_value: Number(n.querySelector('.s-val').value) || 0,
+        active: n.querySelector('.s-active').checked,
+        position: pos + 1,
+      };
+    }).filter(s => s.name);
+
+    // Elimina quelli rimossi dalla lista
+    const keep = new Set(wanted.filter(s => s.id).map(s => s.id));
+    const original = await sb.db.select('ambassador_services', { columns: 'id' });
+    for (const o of (original || [])) {
+      if (!keep.has(o.id)) await sb.db.delete('ambassador_services', `id=eq.${o.id}`);
+    }
+
+    for (const s of wanted) {
+      if (s.id) await sb.db.update('ambassador_services', `id=eq.${s.id}`, s);
+      else await sb.db.insert('ambassador_services', s);
+    }
+
+    ui.showToast('Servizi aggiornati', 'success');
+    closeSrv();
+    loadAll();
+  } catch (e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Salva servizi';
+}
+
+// ── Init ────────────────────────────────────────────────────
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('btn-new').addEventListener('click', openNew);
+document.getElementById('btn-save-new').addEventListener('click', saveNew);
+document.getElementById('btn-services').addEventListener('click', openSrv);
+document.getElementById('btn-srv-add').addEventListener('click', addSrv);
+document.getElementById('btn-srv-save').addEventListener('click', saveSrv);
+document.getElementById('n-account').addEventListener('change', e => {
+  document.getElementById('pwd-group').style.display = e.target.checked ? 'block' : 'none';
+});
+document.getElementById('n-name').addEventListener('blur', () => {
+  const codeEl = document.getElementById('n-code');
+  if (!codeEl.value.trim()) codeEl.value = slugCode(document.getElementById('n-name').value);
+});
+
+loadAll();
+</script>
+</body>
+</html>

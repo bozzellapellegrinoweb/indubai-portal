@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Richiedi una consulenza — InDubai</title>
+<meta name="description" content="Compila il modulo: un consulente InDubai ti contatta per una consulenza gratuita su società, visti e fiscalità negli Emirati.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#47ee74; --accent-dim:#33c95c;
+    --dark:#000; --light:#f4f2ef; --line-dark:rgba(244,242,239,.16);
+    --ink-soft:rgba(0,0,0,.58); --line:rgba(0,0,0,.13);
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  body{margin:0;background:var(--light);color:var(--dark);
+    font-family:'DM Sans',system-ui,-apple-system,sans-serif;font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:640px;margin:0 auto;padding:0 24px;}
+  .mono{font-family:'DM Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;font-weight:500;}
+
+  .hero{background:var(--dark);color:var(--light);padding:26px 0 58px;
+    background-image:radial-gradient(58% 48% at 92% -6%, rgba(71,238,116,.22) 0%, rgba(71,238,116,0) 64%);}
+  .brand{font-weight:700;font-size:20px;letter-spacing:-.02em;}
+  .brand span{color:var(--accent);}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:48px;}
+  .topbar .mono{color:rgba(244,242,239,.55);font-size:10px;}
+  h1{font-size:clamp(30px,7vw,46px);line-height:1.05;letter-spacing:-.03em;font-weight:900;margin:0 0 16px;}
+  .hero-lead{color:rgba(244,242,239,.72);max-width:46ch;margin:0;font-size:clamp(15px,2vw,18px);}
+  .ref-chip{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line-dark);
+    border-radius:999px;padding:7px 15px;margin-bottom:22px;font-size:13px;color:rgba(244,242,239,.85);}
+  .ref-chip b{color:var(--accent);font-weight:700;}
+  .ref-chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent);flex:0 0 auto;}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:4px;padding:32px 28px;
+    margin:-34px auto 0;position:relative;z-index:2;}
+  .card h2{font-size:20px;margin:0 0 4px;letter-spacing:-.02em;}
+  .card .sub{color:var(--ink-soft);font-size:14px;margin:0 0 24px;}
+  .field{margin-bottom:16px;}
+  label{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--ink-soft);margin-bottom:6px;}
+  input,select,textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:3px;
+    font-family:inherit;font-size:16px;background:#fff;color:var(--dark);outline:none;}
+  input:focus,select:focus,textarea:focus{border-color:var(--dark);box-shadow:0 0 0 3px rgba(71,238,116,.22);}
+  textarea{resize:vertical;min-height:88px;}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
+  .btn{display:block;width:100%;background:var(--accent);color:var(--dark);border:0;border-radius:2px;
+    font-family:inherit;font-weight:700;font-size:16px;padding:17px 28px;cursor:pointer;
+    transition:background .2s,transform .2s;}
+  .btn:hover:not(:disabled){background:var(--dark);color:var(--accent);transform:translateY(-1px);}
+  .btn:disabled{opacity:.55;cursor:not-allowed;}
+  .note{font-size:12.5px;color:var(--ink-soft);margin:14px 0 0;text-align:center;}
+  .msg{border-radius:3px;padding:12px 14px;font-size:14px;margin-bottom:18px;display:none;}
+  .msg.err{background:#fee2e2;color:#b91c1c;}
+  .points{display:grid;gap:14px;margin:38px 0 0;padding:0;list-style:none;}
+  .points li{display:flex;gap:12px;font-size:14.5px;color:var(--ink-soft);align-items:flex-start;}
+  .points b{color:var(--dark);font-weight:700;}
+  .points .n{font-family:'DM Mono',monospace;color:var(--accent-dim);font-weight:500;flex:0 0 auto;}
+  footer{padding:44px 0 40px;text-align:center;color:var(--ink-soft);font-size:13px;}
+
+  .done{display:none;text-align:center;padding:10px 0 6px;}
+  .done .tick{width:62px;height:62px;border-radius:50%;background:var(--accent);color:var(--dark);
+    display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;margin:0 auto 18px;}
+  .done h2{font-size:24px;margin:0 0 10px;}
+  .done p{color:var(--ink-soft);font-size:15px;margin:0 auto;max-width:42ch;}
+  .skeleton{color:var(--ink-soft);text-align:center;padding:30px 0;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">In<span>Dubai</span></div>
+      <div class="mono">Platinum Tower · JLT · Dubai</div>
+    </div>
+    <div id="ref-chip-slot"></div>
+    <h1>Apri la tua strada<br>negli Emirati.</h1>
+    <p class="hero-lead">
+      Società, visti, conti bancari e fiscalità UAE. Compila il modulo:
+      un consulente ti chiama per una prima consulenza, senza impegno.
+    </p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="card">
+    <div id="loading" class="skeleton">Caricamento…</div>
+
+    <div id="form-wrap" style="display:none">
+      <h2>Richiedi la consulenza</h2>
+      <p class="sub">Ti ricontattiamo entro un giorno lavorativo.</p>
+      <div class="msg err" id="err"></div>
+
+      <div class="field">
+        <label for="name">Nome e cognome</label>
+        <input id="name" type="text" autocomplete="name" placeholder="Mario Rossi">
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" placeholder="mario@esempio.com">
+      </div>
+      <div class="field">
+        <label for="phone">Telefono / WhatsApp</label>
+        <input id="phone" type="tel" autocomplete="tel" placeholder="+39 333 1234567">
+      </div>
+      <div class="field">
+        <label for="service">Di cosa hai bisogno</label>
+        <select id="service"><option value="">Seleziona un servizio</option></select>
+      </div>
+      <div class="field">
+        <label for="message">Raccontaci in due righe</label>
+        <textarea id="message" maxlength="1000" placeholder="Es. Ho una società in Italia e vorrei aprire una Free Zone a Dubai entro fine anno."></textarea>
+      </div>
+      <input class="hp" id="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+      <button class="btn" id="submit">Richiedi la consulenza</button>
+      <p class="note">Nessun costo, nessun impegno. I tuoi dati restano a InDubai.</p>
+    </div>
+
+    <div class="done" id="done">
+      <div class="tick">✓</div>
+      <h2>Richiesta ricevuta</h2>
+      <p>Ti abbiamo mandato una email di conferma. Un consulente InDubai ti contatta entro un giorno lavorativo per fissare la call.</p>
+    </div>
+  </div>
+
+  <ul class="points">
+    <li><span class="n">01</span><span><b>Studio con sede a Dubai dal 2021.</b> Platinum Tower, JLT. Oltre 450 realtà italiane accompagnate negli Emirati.</span></li>
+    <li><span class="n">02</span><span><b>Una sola interfaccia.</b> Società, visti, banca, contabilità e VAT gestiti dallo stesso team.</span></li>
+    <li><span class="n">03</span><span><b>Prima call gratuita.</b> Capiamo insieme se il progetto ha senso prima di parlare di preventivi.</span></li>
+  </ul>
+</main>
+
+<footer>InDubai — Platinum Tower, Unit 2503, JLT, Dubai</footer>
+
+<script>
+(function () {
+  // Il codice arriva da /r/<code> (rewrite Vercel) oppure da ?code=<code>
+  var params = new URLSearchParams(location.search);
+  var fromPath = (location.pathname.match(/^\/r\/([^/?#]+)/) || [])[1];
+  var CODE = (params.get('code') || fromPath || '').toLowerCase();
+
+  var $ = function (id) { return document.getElementById(id); };
+  var loading = $('loading'), formWrap = $('form-wrap'), done = $('done'), err = $('err');
+
+  function fail(msg) {
+    loading.innerHTML = '<strong>' + msg + '</strong>';
+  }
+  function showErr(msg) {
+    err.textContent = msg;
+    err.style.display = 'block';
+    err.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  if (!CODE) { fail('Link non valido. Chiedi il link corretto a chi te l\'ha inviato.'); return; }
+
+  fetch('/api/ambassador-lead?code=' + encodeURIComponent(CODE))
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (!res.ok) { fail(res.d.error || 'Link non valido.'); return; }
+
+      var chip = document.createElement('div');
+      chip.className = 'ref-chip';
+      chip.innerHTML = 'Segnalato da <b></b>';
+      chip.querySelector('b').textContent = res.d.ambassador.full_name;
+      $('ref-chip-slot').appendChild(chip);
+
+      var sel = $('service');
+      (res.d.services || []).forEach(function (s) {
+        var o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = s.name;
+        sel.appendChild(o);
+      });
+
+      loading.style.display = 'none';
+      formWrap.style.display = 'block';
+    })
+    .catch(function () { fail('Connessione non riuscita. Riprova fra qualche istante.'); });
+
+  $('submit').addEventListener('click', function () {
+    var btn = this;
+    err.style.display = 'none';
+
+    var payload = {
+      code: CODE,
+      full_name: $('name').value.trim(),
+      email: $('email').value.trim(),
+      phone: $('phone').value.trim(),
+      service_id: $('service').value,
+      message: $('message').value.trim(),
+      website: $('website').value,
+    };
+    if (payload.full_name.length < 2) return showErr('Inserisci nome e cognome.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(payload.email)) return showErr('Inserisci un indirizzo email valido.');
+
+    btn.disabled = true;
+    btn.textContent = 'Invio in corso…';
+
+    fetch('/api/ambassador-lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.d.error || 'Invio non riuscito');
+        formWrap.style.display = 'none';
+        done.style.display = 'block';
+        done.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      })
+      .catch(function (e) {
+        showErr(e.message || 'Invio non riuscito. Riprova.');
+        btn.disabled = false;
+        btn.textContent = 'Richiedi la consulenza';
+      });
+  });
+})();
+</script>
+</body>
+</html>
