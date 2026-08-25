@@ -87,7 +87,6 @@
     { id: 'clients',    icon: 'users',         label: 'Clienti',        href: '/clients.html',    section: 'GESTIONE' },
     { id: 'zoho-setup', icon: '',   label: '↳ Setup Zoho',     href: '/zoho-setup.html' },
     { id: 'zoho-vat',   icon: '',   label: '↳ Monitor VAT',    href: '/zoho-vat.html' },
-    { id: 'ambassadors', icon: 'award',        label: 'Ambassador',     href: '/ambassadors.html' },
     { id: 'documents',  icon: 'folder',        label: 'Documenti',     href: '/documents.html' },
     { id: 'onboarding', icon: 'star',          label: 'Onboarding',     href: '/onboarding.html' },
     { id: 'statements', icon: 'file-text',     label: 'Estratti Conto', href: '/statements.html' },
@@ -113,6 +112,7 @@
     ] : []),
     ...(role === 'admin' ? [
       { id: 'attivita', icon: 'clipboard',     label: 'Attività Staff', href: '/attivita.html', section: 'ADMIN' },
+      { id: 'ambassadors', icon: 'award',    label: 'Ambassador',     href: '/ambassadors.html' },
       { id: 'users',    icon: 'users',         label: 'Utenti',         href: '/users.html' },
       { id: 'notifiche-admin', icon: 'bell',   label: 'Impostazioni Notifiche', href: '/notifiche-admin.html' },
     ] : []),
