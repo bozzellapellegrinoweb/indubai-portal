@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/r/:code",
-      "destination": "/ambassador-lead.html"
+      "destination": "/ambassador-lead"
     },
     {
       "source": "/",

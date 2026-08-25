@@ -9,7 +9,7 @@ personale, un'area riservata e un estratto delle commissioni maturate.
 
 | # | Chi | Cosa succede | Dove |
 |---|-----|--------------|------|
-| 1 | InDubai | Dopo la call di selezione crea l'ambassador dal portale e genera l'accesso | `/ambassadors.html` |
+| 1 | InDubai | Dopo la call di selezione crea l'ambassador dal portale (ADMIN → Ambassador) e genera l'accesso | `/ambassadors.html` |
 | 2 | Ambassador | Riceve email con credenziali + link personale | Resend |
 | 3 | Ambassador | Condivide `portal.indubai.it/r/<codice>` con il contatto interessato | — |
 | 4 | Lead | Compila il modulo (nome, email, telefono, servizio, messaggio) | `/r/<codice>` |
@@ -44,7 +44,7 @@ personale, un'area riservata e un estratto delle commissioni maturate.
 
 ## Servizi e commissioni
 
-Il catalogo è editabile da **Ambassador → ⚙ Servizi & commissioni**.
+Il catalogo è editabile da **ADMIN → Ambassador → ⚙ Servizi & commissioni** (voce visibile solo agli amministratori).
 Valori di partenza (inventati, da ritarare):
 
 | Servizio | Prezzo | Commissione | Guadagno ambassador |
