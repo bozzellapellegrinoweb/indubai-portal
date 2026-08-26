@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>La mia area — Ambassador InDubai</title>
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#14161a">
 <meta name="robots" content="noindex">
 <link rel="icon" href="/favicon.ico">
 <link rel="manifest" href="/ambassador/manifest.json">
@@ -12,141 +12,124 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="InDubai Ambassador">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
 <script src="/js/config.js"></script>
 <style>
-  :root{
-    --accent:#47ee74; --accent-dim:#33c95c; --light:#f4f2ef;
-    --line:rgba(244,242,239,.14); --soft:rgba(244,242,239,.58); --faint:rgba(244,242,239,.34);
-    --surface:rgba(244,242,239,.045);
-  }
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#000;color:var(--light);
-    font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;min-height:100vh;
-    background-image:radial-gradient(58% 34% at 92% -4%, rgba(71,238,116,.16) 0%, rgba(71,238,116,0) 60%);
-    background-repeat:no-repeat;padding-bottom:60px;}
-  .wrap{max-width:900px;margin:0 auto;padding:0 20px;}
-  .mono{font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.18em;
-    text-transform:uppercase;font-weight:500;}
+  /* Stessi token del portale (css/style.css): sfondo chiaro, nero e verde
+     usati come accenti. Solo la barra in alto resta scura, per il brand. */
+  body { background: var(--bg); color: var(--text); }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 20px; }
+  .mono { font-family: 'DM Mono', ui-monospace, monospace; font-size: 10.5px;
+    letter-spacing: .18em; text-transform: uppercase; font-weight: 500; }
 
-  /* header */
-  header{padding:max(18px,env(safe-area-inset-top)) 0 8px;}
-  .hrow{display:flex;align-items:center;justify-content:space-between;gap:12px;}
-  .brand{font-weight:700;font-size:19px;letter-spacing:-.03em;}
-  .brand span{color:var(--accent);}
-  .who{display:flex;align-items:center;gap:10px;}
-  .who-name{font-size:13px;color:var(--soft);text-align:right;line-height:1.25;}
-  .who-name b{display:block;color:var(--light);font-size:14px;font-weight:700;}
-  .ic{background:none;border:1px solid var(--line);border-radius:3px;width:34px;height:34px;
-    color:var(--soft);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
-  .ic:hover{color:var(--accent);border-color:rgba(71,238,116,.5);}
+  /* barra brand */
+  .topband { background: var(--primary); color: white; padding: max(14px, env(safe-area-inset-top)) 0 14px; }
+  .topband .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand { font-weight: 900; font-size: 19px; letter-spacing: -.03em; }
+  .brand span { color: var(--accent); }
+  .who { display: flex; align-items: center; gap: 10px; }
+  .who-name { font-size: 13px; text-align: right; line-height: 1.25; }
+  .who-name b { display: block; font-size: 14px; font-weight: 700; }
+  .who-name .mono { color: rgba(255,255,255,.5); }
+  .ic { background: none; border: 1px solid rgba(255,255,255,.22); border-radius: 8px;
+    width: 34px; height: 34px; color: rgba(255,255,255,.72); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; transition: var(--transition); }
+  .ic:hover { color: var(--accent); border-color: var(--accent); }
 
-  h1{font-size:clamp(26px,5.4vw,36px);line-height:1.08;letter-spacing:-.03em;font-weight:900;margin:26px 0 6px;}
-  .sub{color:var(--soft);font-size:14.5px;margin-bottom:26px;}
+  h1 { font-size: clamp(25px, 5vw, 34px); line-height: 1.1; letter-spacing: -.03em; font-weight: 900; margin: 26px 0 6px; }
+  .sub { color: var(--text-muted); font-size: 14.5px; margin-bottom: 24px; }
 
-  /* link card */
-  .linkcard{border:1px solid var(--line);border-radius:4px;padding:20px;background:var(--surface);margin-bottom:26px;}
-  .linkcard .mono{color:var(--accent);margin-bottom:12px;}
-  .linkbox{display:flex;align-items:center;gap:10px;background:#000;border:1px solid var(--line);
-    border-radius:3px;padding:12px 14px;margin-bottom:12px;overflow:hidden;}
-  .linkbox code{font-family:'DM Mono',monospace;font-size:13px;color:var(--light);
-    white-space:nowrap;overflow-x:auto;flex:1;scrollbar-width:none;}
-  .linkbox code::-webkit-scrollbar{display:none;}
-  .linkbtns{display:flex;gap:9px;flex-wrap:wrap;}
-  .btn{border:0;border-radius:2px;font-family:inherit;font-size:13.5px;font-weight:700;
-    padding:11px 18px;cursor:pointer;text-decoration:none;display:inline-block;transition:.18s;}
-  .btn-a{background:var(--accent);color:#000;}
-  .btn-a:hover{background:#fff;}
-  .btn-g{background:transparent;color:var(--light);border:1px solid var(--line);}
-  .btn-g:hover{border-color:var(--accent);color:var(--accent);}
-  .hint{color:var(--faint);font-size:12.5px;margin-top:12px;}
+  /* link personale */
+  .linkcard { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 24px; box-shadow: var(--shadow); }
+  .linkcard .mono { color: var(--accent-dark); margin-bottom: 12px; display: block; }
+  .linkbox { display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 9px; padding: 12px 14px; margin-bottom: 12px; overflow: hidden; }
+  .linkbox code { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text);
+    white-space: nowrap; overflow-x: auto; flex: 1; scrollbar-width: none; }
+  .linkbox code::-webkit-scrollbar { display: none; }
+  .linkbtns { display: flex; gap: 9px; flex-wrap: wrap; }
+  .hint { color: var(--text-muted); font-size: 12.5px; margin-top: 12px; }
 
   /* kpi */
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:30px;}
-  .kpi{border:1px solid var(--line);border-radius:4px;padding:16px 18px;background:var(--surface);}
-  .kpi.hi{background:linear-gradient(150deg,rgba(71,238,116,.16),rgba(71,238,116,.03));
-    border-color:rgba(71,238,116,.34);}
-  .kpi-l{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:7px;}
-  .kpi-v{font-size:27px;font-weight:900;letter-spacing:-.03em;line-height:1;}
-  .kpi.hi .kpi-v{color:var(--accent);}
-  .kpi-s{font-size:11.5px;color:var(--faint);margin-top:5px;}
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .kpi { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+  .kpi.hi { background: linear-gradient(135deg, #14161a, #2b2e35); border-color: transparent; }
+  .kpi-l { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 7px; }
+  .kpi-v { font-size: 26px; font-weight: 900; letter-spacing: -.03em; line-height: 1; }
+  .kpi-s { font-size: 11.5px; color: var(--text-muted); margin-top: 5px; }
+  .kpi.hi .kpi-l { color: rgba(255,255,255,.6); }
+  .kpi.hi .kpi-v { color: var(--accent); }
+  .kpi.hi .kpi-s { color: rgba(255,255,255,.5); }
 
-  /* tabs */
-  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto;}
-  .tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--soft);
-    font-family:inherit;font-size:13.5px;font-weight:700;padding:11px 14px;cursor:pointer;white-space:nowrap;}
-  .tab.on{color:var(--accent);border-bottom-color:var(--accent);}
+  /* tab */
+  .tabs { display: flex; gap: 4px; border-bottom: 1.5px solid var(--border); margin-bottom: 18px; overflow-x: auto; }
+  .tab { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--text-muted);
+    font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 11px 14px; cursor: pointer; white-space: nowrap; }
+  .tab:hover { color: var(--text); }
+  .tab.on { color: var(--text); border-bottom-color: var(--accent-dark); }
 
   /* liste */
-  .row{border:1px solid var(--line);border-radius:4px;padding:15px 17px;background:var(--surface);margin-bottom:10px;
-    display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;}
-  .row-main{min-width:0;flex:1;}
-  .row-t{font-weight:700;font-size:15px;letter-spacing:-.01em;}
-  .row-s{font-size:12.5px;color:var(--faint);margin-top:3px;}
-  .row-side{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
-  .amount{font-size:19px;font-weight:900;letter-spacing:-.02em;color:var(--accent);white-space:nowrap;}
-  .pill{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-    padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--soft);white-space:nowrap;}
-  .pill.ok{background:rgba(71,238,116,.14);border-color:rgba(71,238,116,.4);color:var(--accent);}
-  .pill.wait{background:rgba(217,119,6,.14);border-color:rgba(217,119,6,.4);color:#fbbf24;}
-  .pill.dead{background:rgba(220,38,38,.12);border-color:rgba(220,38,38,.35);color:#f87171;}
-  .empty{border:1px dashed var(--line);border-radius:4px;padding:38px 22px;text-align:center;color:var(--faint);font-size:14px;}
-  .empty b{display:block;color:var(--soft);font-size:15px;margin-bottom:5px;}
+  .row { background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 15px 17px;
+    margin-bottom: 10px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .row-main { min-width: 0; flex: 1; }
+  .row-t { font-weight: 700; font-size: 15px; letter-spacing: -.01em; }
+  .row-s { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
+  .row-side { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+  .amount { font-size: 19px; font-weight: 900; letter-spacing: -.02em; color: var(--accent-dark); white-space: nowrap; }
+  .empty { border: 1.5px dashed var(--border); border-radius: var(--radius); padding: 38px 22px;
+    text-align: center; color: var(--text-muted); font-size: 14px; background: var(--surface); }
+  .empty b { display: block; color: var(--text); font-size: 15px; margin-bottom: 5px; }
 
-  /* modale password */
-  .ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);align-items:center;justify-content:center;
-    padding:20px;z-index:50;}
-  .ov.on{display:flex;}
-  .mod{background:#0a0a0a;border:1px solid var(--line);border-radius:4px;padding:24px;width:100%;max-width:380px;}
-  .mod h3{font-size:17px;margin-bottom:16px;letter-spacing:-.02em;}
-  .mod input{width:100%;padding:13px 14px;background:rgba(244,242,239,.06);border:1px solid var(--line);
-    border-radius:3px;font-family:inherit;font-size:16px;color:var(--light);outline:none;margin-bottom:12px;}
-  .mod input:focus{border-color:rgba(71,238,116,.6);}
-  .mod-f{display:flex;gap:9px;justify-content:flex-end;margin-top:6px;}
-  .msg{font-size:13px;margin-bottom:12px;display:none;}
-  .msg.err{color:#f87171;} .msg.ok{color:var(--accent);}
+  .msg { font-size: 13px; margin-bottom: 12px; display: none; }
+  .msg.err { color: var(--danger); }
+  .msg.ok { color: var(--accent-dark); }
 
-  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:var(--accent);color:#000;
-    font-weight:700;font-size:13.5px;padding:11px 20px;border-radius:2px;opacity:0;pointer-events:none;
-    transition:opacity .2s,transform .2s;z-index:60;}
-  .toast.on{opacity:1;transform:translateX(-50%) translateY(-4px);}
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 26px;
+    background: var(--primary); color: var(--accent); font-weight: 700; font-size: 13.5px;
+    padding: 11px 20px; border-radius: 9px; opacity: 0; pointer-events: none;
+    transition: opacity .2s, transform .2s; z-index: 300; box-shadow: var(--shadow-lg); }
+  .toast.on { opacity: 1; transform: translateX(-50%) translateY(-4px); }
 
-  footer{color:var(--faint);font-size:12px;text-align:center;padding:40px 0 10px;}
-  @media(max-width:560px){
-    .kpis{grid-template-columns:repeat(2,1fr);}
-    .row{flex-direction:column;align-items:stretch;gap:10px;}
-    .row-side{flex-direction:row;align-items:center;justify-content:space-between;text-align:left;
-      border-top:1px solid var(--line);padding-top:9px;}
+  footer { color: var(--text-muted); font-size: 12px; text-align: center; padding: 40px 0 30px; }
+
+  @media (max-width: 560px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .row.has-amount { flex-direction: column; align-items: stretch; gap: 10px; }
+    .row.has-amount .row-side { flex-direction: row; align-items: center; justify-content: space-between;
+      text-align: left; border-top: 1px solid var(--border); padding-top: 9px; }
   }
 </style>
 </head>
 <body>
 
-<div class="wrap">
-  <header>
-    <div class="hrow">
-      <div class="brand">In<span>Dubai</span></div>
-      <div class="who">
-        <div class="who-name"><b id="me-name">—</b><span class="mono" style="letter-spacing:.14em">Ambassador</span></div>
-        <button class="ic" id="btn-pwd" title="Cambia password">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-        </button>
-        <button class="ic" id="btn-out" title="Esci">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        </button>
-      </div>
+<div class="topband">
+  <div class="wrap">
+    <div class="brand">In<span>Dubai</span></div>
+    <div class="who">
+      <div class="who-name"><b id="me-name">—</b><span class="mono">Ambassador</span></div>
+      <button class="ic" id="btn-pwd" title="Cambia password">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      </button>
+      <button class="ic" id="btn-out" title="Esci">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
     </div>
+  </div>
+</div>
 
-    <h1 id="hello">Ciao</h1>
-    <p class="sub">Qui trovi le persone che hai segnalato, quelle diventate clienti e quanto hai guadagnato.</p>
-  </header>
+<div class="wrap">
+  <h1 id="hello">Ciao</h1>
+  <p class="sub">Qui trovi le persone che hai segnalato, quelle diventate clienti e quanto hai guadagnato.</p>
 
   <section class="linkcard">
-    <div class="mono">Il tuo link personale</div>
+    <span class="mono">Il tuo link personale</span>
     <div class="linkbox"><code id="ref-link">—</code></div>
     <div class="linkbtns">
-      <button class="btn btn-a" id="btn-copy">Copia link</button>
-      <a class="btn btn-g" id="btn-wa" target="_blank" rel="noopener">Invia su WhatsApp</a>
-      <button class="btn btn-g" id="btn-share" style="display:none">Condividi</button>
+      <button class="btn btn-accent" id="btn-copy">Copia link</button>
+      <a class="btn btn-ghost" id="btn-wa" target="_blank" rel="noopener">Invia su WhatsApp</a>
+      <button class="btn btn-ghost" id="btn-share" style="display:none">Condividi</button>
     </div>
     <p class="hint">Chi compila il modulo da questo link entra automaticamente fra le tue segnalazioni.</p>
   </section>
@@ -166,15 +149,26 @@
   <footer>InDubai — Platinum Tower, Unit 2503, JLT, Dubai</footer>
 </div>
 
-<div class="ov" id="ov-pwd">
-  <div class="mod">
-    <h3>Cambia password</h3>
-    <div class="msg" id="pwd-msg"></div>
-    <input type="password" id="pwd1" placeholder="Nuova password (min. 8 caratteri)" autocomplete="new-password">
-    <input type="password" id="pwd2" placeholder="Ripeti la password" autocomplete="new-password">
-    <div class="mod-f">
-      <button class="btn btn-g" id="pwd-cancel">Annulla</button>
-      <button class="btn btn-a" id="pwd-save">Salva</button>
+<div class="modal-overlay" id="ov-pwd" style="display:none">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title">Cambia password</div>
+      <button class="btn btn-ghost btn-sm" id="pwd-x">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="msg" id="pwd-msg"></div>
+      <div class="form-group">
+        <label class="form-label">Nuova password</label>
+        <input type="password" class="form-control" id="pwd1" placeholder="Almeno 8 caratteri" autocomplete="new-password">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Ripeti la password</label>
+        <input type="password" class="form-control" id="pwd2" autocomplete="new-password">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="pwd-cancel">Annulla</button>
+      <button class="btn btn-accent" id="pwd-save">Salva</button>
     </div>
   </div>
 </div>
@@ -192,16 +186,16 @@
   var refLink = location.origin + '/r/' + A.ref_code;
 
   var STATUS_REF = {
-    nuovo:         ['wait', 'Da contattare'],
-    contattato:    ['wait', 'Contattata'],
-    in_trattativa: ['wait', 'In trattativa'],
-    cliente:       ['ok',   'Diventata cliente'],
-    perso:         ['dead', 'Non chiusa'],
+    nuovo:         ['badge-pending', 'Da contattare'],
+    contattato:    ['badge-info',    'Contattata'],
+    in_trattativa: ['badge-warn',    'In trattativa'],
+    cliente:       ['badge-ok',      'Diventata cliente'],
+    perso:         ['badge-fail',    'Non chiusa'],
   };
   var STATUS_COM = {
-    maturata:  ['wait', 'In pagamento'],
-    pagata:    ['ok',   'Pagata'],
-    annullata: ['dead', 'Annullata'],
+    maturata:  ['badge-warn', 'In pagamento'],
+    pagata:    ['badge-ok',   'Pagata'],
+    annullata: ['badge-fail', 'Annullata'],
   };
 
   // ── Testata ──────────────────────────────────────────────
@@ -290,25 +284,25 @@
 
     // Segnalazioni
     document.getElementById('pane-ref').innerHTML = refs.length ? refs.map(function (x) {
-      var st = STATUS_REF[x.status] || ['', x.status];
+      var st = STATUS_REF[x.status] || ['badge-pending', x.status];
       var srv = x.ambassador_services ? x.ambassador_services.name : 'Servizio da definire';
       return '<div class="row"><div class="row-main">' +
         '<div class="row-t">' + E(x.full_name) + '</div>' +
         '<div class="row-s">' + E(srv) + ' · segnalata il ' + amb.formatDate(x.created_at) + '</div>' +
-        '</div><div class="row-side"><span class="pill ' + st[0] + '">' + st[1] + '</span></div></div>';
+        '</div><div class="row-side"><span class="badge ' + st[0] + '">' + st[1] + '</span></div></div>';
     }).join('') : empty('Nessuna segnalazione, per ora',
       'Condividi il tuo link con chi ti chiede informazioni: le richieste compaiono qui in tempo reale.');
 
     // Commissioni
     document.getElementById('pane-com').innerHTML = coms.length ? coms.map(function (c) {
-      var st = STATUS_COM[c.status] || ['', c.status];
+      var st = STATUS_COM[c.status] || ['badge-pending', c.status];
       var who = c.ambassador_referrals ? c.ambassador_referrals.full_name : 'Cliente InDubai';
-      return '<div class="row"><div class="row-main">' +
+      return '<div class="row has-amount"><div class="row-main">' +
         '<div class="row-t">' + E(c.service_name) + '</div>' +
         '<div class="row-s">' + E(who) + ' · maturata il ' + amb.formatDate(c.earned_at) +
         (c.paid_at ? ' · pagata il ' + amb.formatDate(c.paid_at) : '') + '</div>' +
         '</div><div class="row-side"><div class="amount">' + amb.formatAED(c.commission_amount_aed) + '</div>' +
-        '<span class="pill ' + st[0] + '">' + st[1] + '</span></div></div>';
+        '<span class="badge ' + st[0] + '">' + st[1] + '</span></div></div>';
     }).join('') : empty('Ancora nessuna commissione',
       'Quando una persona che hai segnalato diventa cliente, la commissione compare qui e ti arriva una email.');
 
@@ -320,13 +314,13 @@
         ? amb.formatAED((Number(s.price_aed) || 0) * Number(s.commission_value) / 100 * mult)
         : amb.formatAED(Number(s.commission_value) * mult);
       var note = pct ? Number(s.commission_value) + '% del contratto' : 'per contratto chiuso';
-      return '<div class="row"><div class="row-main">' +
+      return '<div class="row has-amount"><div class="row-main">' +
         '<div class="row-t">' + E(s.name) + '</div>' +
         '<div class="row-s">' + E(s.description || '') + '</div>' +
         '</div><div class="row-side"><div class="amount">' + gain + '</div>' +
-        '<span class="pill">' + note + '</span></div></div>';
+        '<span class="badge badge-pending">' + note + '</span></div></div>';
     }).join('') : empty('Listino in aggiornamento', 'Il team InDubai sta configurando i servizi.')) +
-      '<p class="hint" style="margin-top:14px">Importi lordi indicativi: la commissione definitiva viene calcolata sul contratto effettivamente firmato.' +
+      '<p class="hint">Importi lordi indicativi: la commissione definitiva viene calcolata sul contratto effettivamente firmato.' +
       (mult !== 1 ? ' Sul tuo profilo è attivo un moltiplicatore ' + mult + '×.' : '') + '</p>';
   }).catch(function (e) {
     document.getElementById('pane-ref').innerHTML = empty('Caricamento non riuscito', E(e.message));
@@ -335,9 +329,11 @@
   // ── Cambio password ──────────────────────────────────────
   var ov = document.getElementById('ov-pwd');
   var pmsg = document.getElementById('pwd-msg');
-  document.getElementById('btn-pwd').addEventListener('click', function () { ov.classList.add('on'); });
-  document.getElementById('pwd-cancel').addEventListener('click', function () { ov.classList.remove('on'); });
-  ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('on'); });
+  function closePwd() { ov.style.display = 'none'; pmsg.style.display = 'none'; }
+  document.getElementById('btn-pwd').addEventListener('click', function () { ov.style.display = 'flex'; });
+  document.getElementById('pwd-cancel').addEventListener('click', closePwd);
+  document.getElementById('pwd-x').addEventListener('click', closePwd);
+  ov.addEventListener('click', function (e) { if (e.target === ov) closePwd(); });
 
   document.getElementById('pwd-save').addEventListener('click', function () {
     var p1 = document.getElementById('pwd1').value, p2 = document.getElementById('pwd2').value;
@@ -361,7 +357,7 @@
         say('ok', 'Password aggiornata.');
         document.getElementById('pwd1').value = '';
         document.getElementById('pwd2').value = '';
-        setTimeout(function () { ov.classList.remove('on'); pmsg.style.display = 'none'; }, 1200);
+        setTimeout(closePwd, 1200);
       })
       .catch(function (e) { say('err', e.message); })
       .finally(function () { btn.disabled = false; btn.textContent = 'Salva'; });
