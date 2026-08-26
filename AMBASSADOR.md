@@ -54,9 +54,14 @@ Valori di partenza (inventati, da ritarare):
 | Contabilità e VAT (annuale) | AED 14.400 | 10% | **AED 1.440** |
 | Apertura conto bancario aziendale | AED 7.500 | fissa | **AED 900** |
 
-- `fixed` → importo fisso in AED per contratto chiuso.
-- `percent` → percentuale sul valore del contratto (si usa `clients.service_cost`
-  se valorizzato, altrimenti il prezzo di listino).
+- `fixed` → importo fisso in AED per contratto chiuso. **Il prezzo di listino non
+  incide sul guadagno**: puoi lasciarlo vuoto o a 0, serve solo come cifra
+  indicativa mostrata all'ambassador.
+- `percent` → percentuale sul valore del contratto: si usa `clients.service_cost`
+  se valorizzato, altrimenti il prezzo di listino. Anche qui il prezzo è
+  facoltativo — senza, l'ambassador vede la percentuale invece di una cifra.
+  Se al momento della chiusura mancano sia `service_cost` sia il prezzo, la
+  commissione nasce a 0 e la pipeline lo segnala con un avviso.
 - `ambassadors.commission_multiplier` permette accordi personalizzati
   (es. `1.20` = +20% su tutto il listino). Default `1`.
 

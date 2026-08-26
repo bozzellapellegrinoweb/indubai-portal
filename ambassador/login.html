@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Area Ambassador — InDubai</title>
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#14161a">
 <meta name="robots" content="noindex">
 <link rel="icon" href="/favicon.ico">
 <link rel="manifest" href="/ambassador/manifest.json">
@@ -12,59 +12,47 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="InDubai Ambassador">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
 <script src="/js/config.js"></script>
 <style>
-  :root{--accent:#47ee74;--light:#f4f2ef;--line:rgba(244,242,239,.16);}
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#000;color:var(--light);
-    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-    padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));
-    -webkit-font-smoothing:antialiased;
-    background-image:radial-gradient(60% 45% at 90% -8%, rgba(71,238,116,.20) 0%, rgba(71,238,116,0) 62%),
-                     radial-gradient(48% 40% at -10% 106%, rgba(71,238,116,.10) 0%, rgba(71,238,116,0) 64%);}
-  .box{width:100%;max-width:400px;}
-  .brand{font-weight:700;font-size:26px;letter-spacing:-.03em;text-align:center;}
-  .brand span{color:var(--accent);}
-  .mono{font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.2em;
-    text-transform:uppercase;color:rgba(244,242,239,.5);text-align:center;margin:8px 0 36px;}
-  .card{border:1px solid var(--line);border-radius:4px;padding:28px 24px;background:rgba(244,242,239,.04);}
-  h1{font-size:19px;font-weight:700;letter-spacing:-.02em;margin-bottom:22px;}
-  label{display:block;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-    color:rgba(244,242,239,.5);margin-bottom:6px;}
-  .field{margin-bottom:15px;}
-  input{width:100%;padding:14px 15px;background:rgba(244,242,239,.06);border:1px solid var(--line);
-    border-radius:3px;font-family:inherit;font-size:16px;color:var(--light);outline:none;}
-  input::placeholder{color:rgba(244,242,239,.3);}
-  input:focus{border-color:rgba(71,238,116,.65);background:rgba(244,242,239,.09);}
-  button{width:100%;margin-top:8px;padding:15px;background:var(--accent);border:0;border-radius:2px;
-    font-family:inherit;font-size:16px;font-weight:700;color:#000;cursor:pointer;transition:background .2s;}
-  button:hover:not(:disabled){background:#fff;}
-  button:disabled{opacity:.5;cursor:not-allowed;}
-  .alert{display:none;background:rgba(220,38,38,.14);border:1px solid rgba(220,38,38,.35);border-radius:3px;
-    padding:11px 13px;font-size:13.5px;color:#ff8080;margin-bottom:16px;}
-  .foot{text-align:center;margin-top:22px;font-size:12px;color:rgba(244,242,239,.32);line-height:1.7;}
+  /* Stessa impostazione della login del portale: fondo scuro, card chiara. */
+  .login-page { padding: 24px; padding-top: max(24px, env(safe-area-inset-top)); }
+  .login-logo .mark span { color: var(--accent-dark); }
+  .login-logo .sub { font-family: 'DM Mono', ui-monospace, monospace; }
+  .login-title { font-size: 17px; font-weight: 700; margin-bottom: 22px; }
+  /* su fondo scuro il grigio del tema non si legge: schiarito solo qui */
+  .foot { text-align: center; margin-top: 20px; font-size: 12px; line-height: 1.7; color: rgba(255,255,255,.5); }
+  .foot a { color: rgba(255,255,255,.72); }
 </style>
 </head>
 <body>
-  <div class="box">
-    <div class="brand">In<span>Dubai</span></div>
-    <div class="mono">Area Ambassador</div>
-    <div class="card">
-      <h1>Accedi al tuo profilo</h1>
-      <div class="alert" id="alert"></div>
-      <div class="field">
-        <label for="email">Email</label>
-        <input id="email" type="email" placeholder="email@esempio.com" autocomplete="email" autocapitalize="off" autocorrect="off">
+  <div class="login-page">
+    <div>
+      <div class="login-card">
+        <div class="login-logo">
+          <div class="mark">In<span>Dubai</span></div>
+          <div class="sub">Area Ambassador</div>
+        </div>
+
+        <div class="login-title" style="text-align:center">Accedi al tuo profilo</div>
+        <div id="alert" class="alert alert-danger" style="display:none"></div>
+
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="email" class="form-control" placeholder="email@esempio.com"
+                 autocomplete="email" autocapitalize="off" autocorrect="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••" autocomplete="current-password">
+        </div>
+
+        <button class="btn btn-accent" style="width:100%;justify-content:center;padding:12px" id="btn">Accedi</button>
       </div>
-      <div class="field">
-        <label for="password">Password</label>
-        <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+      <div class="foot">
+        Hai perso le credenziali? Scrivi a <a href="mailto:segreteria@indubai.it">segreteria@indubai.it</a><br>
+        © InDubai — Platinum Tower, JLT, Dubai
       </div>
-      <button id="btn">Accedi</button>
-    </div>
-    <div class="foot">
-      Hai perso le credenziali? Scrivi a <span style="color:rgba(244,242,239,.6)">segreteria@indubai.it</span><br>
-      © InDubai — Platinum Tower, JLT, Dubai
     </div>
   </div>
 
