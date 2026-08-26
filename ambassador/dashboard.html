@@ -309,11 +309,20 @@
     // Listino
     var mult = Number(A.commission_multiplier) || 1;
     document.getElementById('pane-srv').innerHTML = (srvs.length ? srvs.map(function (s) {
-      var pct = s.commission_type === 'percent';
-      var gain = pct
-        ? amb.formatAED((Number(s.price_aed) || 0) * Number(s.commission_value) / 100 * mult)
-        : amb.formatAED(Number(s.commission_value) * mult);
-      var note = pct ? Number(s.commission_value) + '% del contratto' : 'per contratto chiuso';
+      var pct = s.commission_value ? s.commission_type === 'percent' : false;
+      var price = Number(s.price_aed) || 0;
+      var gain, note;
+      if (pct && !price) {
+        // Nessun prezzo di listino: mostro la percentuale, non un fuorviante "AED 0"
+        gain = Number(s.commission_value) + '%';
+        note = 'del contratto firmato';
+      } else if (pct) {
+        gain = amb.formatAED(price * Number(s.commission_value) / 100 * mult);
+        note = Number(s.commission_value) + '% del contratto';
+      } else {
+        gain = amb.formatAED(Number(s.commission_value) * mult);
+        note = 'per contratto chiuso';
+      }
       return '<div class="row has-amount"><div class="row-main">' +
         '<div class="row-t">' + E(s.name) + '</div>' +
         '<div class="row-s">' + E(s.description || '') + '</div>' +

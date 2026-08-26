@@ -341,9 +341,15 @@ async function accrueCommission(clientId) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Errore');
-    if (data.already) ui.showToast('Commissione ambassador gia\' registrata');
+    if (data.already) ui.showToast('Commissione ambassador già registrata');
     else if (data.commission) {
-      ui.showToast('Commissione ambassador: ' + ui.formatAED(data.commission.commission_amount_aed), 'success');
+      const amount = Number(data.commission.commission_amount_aed) || 0;
+      if (amount > 0) {
+        ui.showToast('Commissione ambassador: ' + ui.formatAED(amount), 'success');
+      } else {
+        // Tipico caso: commissione a percentuale senza costo servizio sul cliente
+        ui.showToast('Commissione ambassador registrata a 0 — controlla il costo del servizio sul cliente', 'error', 6000);
+      }
     }
   } catch (e) {
     ui.showToast('Commissione ambassador non registrata: ' + e.message, 'error');

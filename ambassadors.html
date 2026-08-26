@@ -29,10 +29,14 @@
       background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:3px 8px;
       cursor:pointer; display:inline-block; max-width:230px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
     .reflink:hover { color:var(--text); border-color:var(--accent-dark); }
-    .srv-row { display:grid; grid-template-columns:1.6fr .8fr .8fr .8fr auto auto; gap:8px; align-items:center;
-      padding:9px; border:1px solid var(--border); border-radius:9px; margin-bottom:8px; background:var(--surface2); }
+    .srv-block { border:1px solid var(--border); border-radius:9px; margin-bottom:8px; background:var(--surface2); padding:9px; }
+    .srv-row { display:grid; grid-template-columns:1.6fr .9fr .8fr .9fr auto auto; gap:8px; align-items:center; }
     .srv-row input, .srv-row select { padding:7px 9px; font-size:12.5px; }
-    .srv-head { display:grid; grid-template-columns:1.6fr .8fr .8fr .8fr auto auto; gap:8px; padding:0 9px 4px;
+    .srv-row .is-muted { color:var(--text-muted); background:var(--bg); }
+    .srv-note { font-size:11.5px; color:var(--text-muted); line-height:1.5; padding:7px 2px 0; }
+    .srv-note strong { color:var(--text); }
+    .srv-note .warn { color:var(--warning); font-weight:600; }
+    .srv-head { display:grid; grid-template-columns:1.6fr .9fr .8fr .9fr auto auto; gap:8px; padding:0 9px 4px;
       font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); }
     .icon-btn { background:none; border:1px solid var(--border); border-radius:7px; width:30px; height:30px;
       cursor:pointer; color:var(--text-muted); font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
@@ -44,7 +48,7 @@
     .det-row .t { font-weight:700; font-size:13.5px; }
     .det-row .s { font-size:11.5px; color:var(--text-muted); margin-top:2px; }
     .det-amount { font-weight:900; font-size:15px; }
-    @media (max-width:760px){ .srv-row, .srv-head { grid-template-columns:1fr 1fr; } .srv-head { display:none; } }
+    @media (max-width:760px){ .srv-row { grid-template-columns:1fr 1fr; } .srv-head { display:none; } }
   </style>
 </head>
 <body>
@@ -175,12 +179,15 @@
       <button class="btn btn-ghost btn-sm" onclick="closeSrv()">✕</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
+      <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:6px">
         Questi sono i servizi che l'ambassador vede nel suo link e nella sua area.
-        <strong>Fisso</strong> = importo in AED per contratto chiuso, <strong>%</strong> = percentuale sul valore del contratto.
       </p>
+      <ul style="font-size:12.5px;color:var(--text-muted);margin:0 0 14px;padding-left:18px;line-height:1.7">
+        <li><strong>Fisso AED</strong> — l'ambassador prende sempre quell'importo. Il prezzo di listino non incide sul guadagno: puoi lasciarlo vuoto o a 0.</li>
+        <li><strong>% contratto</strong> — la commissione si calcola sul valore reale del contratto (<em>Costo servizio</em> del cliente). Il prezzo di listino serve solo a mostrare una stima all'ambassador.</li>
+      </ul>
       <div class="srv-head">
-        <span>Servizio</span><span>Prezzo AED</span><span>Tipo</span><span>Commissione</span><span>Attivo</span><span></span>
+        <span>Servizio</span><span>Tipo</span><span>Commissione</span><span>Prezzo listino</span><span>Attivo</span><span></span>
       </div>
       <div id="srv-list"></div>
       <button class="btn btn-ghost btn-sm" id="btn-srv-add" style="margin-top:8px">+ Aggiungi servizio</button>
@@ -498,19 +505,58 @@ function closeSrv() { document.getElementById('modal-srv').style.display = 'none
 
 function renderSrv() {
   document.getElementById('srv-list').innerHTML = services.map((s, i) => `
-    <div class="srv-row" data-i="${i}">
-      <input type="text" class="form-control s-name" value="${ui.escapeHtml(s.name)}" placeholder="Nome servizio">
-      <input type="number" class="form-control s-price" value="${s.price_aed ?? ''}" placeholder="0" step="100">
-      <select class="form-control s-type">
-        <option value="fixed" ${s.commission_type === 'fixed' ? 'selected' : ''}>Fisso AED</option>
-        <option value="percent" ${s.commission_type === 'percent' ? 'selected' : ''}>% contratto</option>
-      </select>
-      <input type="number" class="form-control s-val" value="${s.commission_value ?? 0}" step="0.5">
-      <label style="display:flex;align-items:center;justify-content:center">
-        <input type="checkbox" class="s-active" ${s.active ? 'checked' : ''} style="width:16px;height:16px">
-      </label>
-      <button class="icon-btn" onclick="removeSrv(${i})" title="Elimina">✕</button>
+    <div class="srv-block" data-i="${i}">
+      <div class="srv-row">
+        <input type="text" class="form-control s-name" value="${ui.escapeHtml(s.name)}" placeholder="Nome servizio">
+        <select class="form-control s-type" onchange="previewSrv(${i})">
+          <option value="fixed" ${s.commission_type === 'fixed' ? 'selected' : ''}>Fisso AED</option>
+          <option value="percent" ${s.commission_type === 'percent' ? 'selected' : ''}>% contratto</option>
+        </select>
+        <input type="number" class="form-control s-val" value="${s.commission_value ?? 0}" step="any" min="0"
+               oninput="previewSrv(${i})">
+        <input type="number" class="form-control s-price" value="${s.price_aed ?? ''}" placeholder="facoltativo"
+               step="any" min="0" oninput="previewSrv(${i})">
+        <label style="display:flex;align-items:center;justify-content:center">
+          <input type="checkbox" class="s-active" ${s.active ? 'checked' : ''} style="width:16px;height:16px">
+        </label>
+        <button class="icon-btn" onclick="removeSrv(${i})" title="Elimina">✕</button>
+      </div>
+      <div class="srv-note" id="srv-note-${i}"></div>
     </div>`).join('');
+  services.forEach((_, i) => previewSrv(i));
+}
+
+// Spiega, riga per riga, quanto prende l'ambassador con i valori inseriti.
+function previewSrv(i) {
+  const block = document.querySelector(`.srv-block[data-i="${i}"]`);
+  const note = document.getElementById('srv-note-' + i);
+  if (!block || !note) return;
+
+  const type  = block.querySelector('.s-type').value;
+  const val   = Number(block.querySelector('.s-val').value) || 0;
+  const priceEl = block.querySelector('.s-price');
+  const priceRaw = priceEl.value.trim();
+  const price = Number(priceRaw) || 0;
+
+  // Con commissione fissa il prezzo non entra nel calcolo: lo smorzo.
+  priceEl.classList.toggle('is-muted', type === 'fixed');
+  priceEl.title = type === 'fixed'
+    ? 'Facoltativo: con commissione fissa non incide sul guadagno, appare solo come prezzo indicativo.'
+    : 'Facoltativo: serve a mostrare una stima all\'ambassador. Il calcolo usa il costo reale del contratto.';
+
+  let html;
+  if (!val) {
+    html = '<span class="warn">Commissione a 0: l\'ambassador non guadagna nulla su questo servizio.</span>';
+  } else if (type === 'fixed') {
+    html = `Guadagno ambassador: <strong>${ui.formatAED(val)}</strong> per ogni contratto chiuso.`
+         + (priceRaw && price ? ` Prezzo di listino mostrato: ${ui.formatAED(price)}.` : ' Nessun prezzo di listino mostrato.');
+  } else {
+    html = `Guadagno ambassador: <strong>${val}%</strong> del contratto firmato (campo <em>Costo servizio</em> del cliente).`;
+    html += price
+      ? ` Stima nel listino: ${ui.formatAED(price * val / 100)} su ${ui.formatAED(price)}.`
+      : ' <span class="warn">Senza prezzo di listino l\'ambassador vede solo la percentuale, non una cifra.</span>';
+  }
+  note.innerHTML = html;
 }
 
 function removeSrv(i) {
@@ -530,7 +576,7 @@ async function saveSrv() {
   const btn = document.getElementById('btn-srv-save');
   btn.disabled = true; btn.textContent = 'Salvo...';
   try {
-    const nodes = Array.from(document.querySelectorAll('#srv-list .srv-row'));
+    const nodes = Array.from(document.querySelectorAll('#srv-list .srv-block'));
     const wanted = nodes.map((n, pos) => {
       const i = Number(n.dataset.i);
       const s = services[i] || {};
