@@ -587,12 +587,12 @@
 <script>
 const SB_URL = window.ENV_SUPABASE_URL;
 const SB_KEY = window.ENV_SUPABASE_ANON_KEY;
-function H() {
-  const tok = sb.getSession()?.access_token || SB_KEY;
+async function H() {
+  const tok = await sb.getValidToken();
   return { apikey: SB_KEY, Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' };
 }
 async function GET(path) {
-  const r = await fetch(SB_URL + path, { headers: H() });
+  const r = await fetch(SB_URL + path, { headers: await H() });
   return r.json();
 }
 async function doLogout() {
@@ -612,7 +612,7 @@ async function loadFinancials(clientId) {
       const FN = 'https://gvdoqcgkzbziqufahhxh.supabase.co/functions/v1/zoho-proxy';
       const res = await fetch(FN, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (sb.getSession()?.access_token || SB_KEY) },
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await sb.getValidToken() },
         body: JSON.stringify({ action: 'client_summary', org_id: orgId }),
       });
       const d = await res.json();
@@ -629,7 +629,7 @@ async function loadFinancials(clientId) {
         };
         fetch(SB_URL + '/rest/v1/client_financials', {
           method: 'POST',
-          headers: { apikey: SB_KEY, Authorization: 'Bearer ' + (sb.getSession()?.access_token || SB_KEY), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+          headers: { apikey: SB_KEY, Authorization: 'Bearer ' + await sb.getValidToken(), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
           body: JSON.stringify(fin),
         }).catch(() => {});
         return fin;
@@ -1486,7 +1486,7 @@ function numeriHTML() {
 }
 
 async function fetchBlob(storagePath) {
-  const tok = sb.getSession()?.access_token || SB_KEY;
+  const tok = await sb.getValidToken();
   const r = await fetch(`${SB_URL}/storage/v1/object/authenticated/client-documents/${storagePath}`, {
     headers: { apikey: SB_KEY, Authorization: `Bearer ${tok}` }
   });
