@@ -13,6 +13,9 @@ export const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 export const SEGRETERIA_EMAIL = process.env.SEGRETERIA_EMAIL || 'segreteria@indubai.it';
 
 export const PORTAL_URL = 'https://portal.indubai.it';
+
+// Calendario su cui la lead può prenotare da sé la call di consulenza.
+export const BOOKING_URL = process.env.BOOKING_URL || 'https://pellegrinobozzella.com/prenota';
 export const AMBASSADOR_LOGIN_URL = `${PORTAL_URL}/ambassador/login.html`;
 
 export const SB_HEADERS = {
