@@ -14,8 +14,45 @@
 
 import {
   sbSelect, sbInsert, sbUpdate, sendEmail, notifyStaff,
-  escapeHtml, PORTAL_URL, AMBASSADOR_LOGIN_URL,
+  escapeHtml, PORTAL_URL, AMBASSADOR_LOGIN_URL, BOOKING_URL,
 } from './_ambassador-lib.js';
+
+/**
+ * Conferma alla lead che ha compilato il modulo.
+ * Esportata a parte così si può renderizzare per un invio di prova.
+ */
+export function leadAckEmail({ firstName, serviceName }) {
+  return `
+    <h2 style="margin:0 0 14px;color:#14161a;font-size:22px">Grazie ${escapeHtml(firstName)}</h2>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 14px">
+      Abbiamo ricevuto la tua richiesta di consulenza${serviceName ? ` per <strong>${escapeHtml(serviceName)}</strong>` : ''}.
+      Un consulente InDubai ti contatta entro un giorno lavorativo.
+    </p>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 8px">
+      <strong>Se preferisci non aspettare, scegli tu l'orario.</strong> Qui sotto trovi il calendario di
+      Pellegrino Bozzella, titolare dello studio: prenoti in trenta secondi e la call è confermata.
+    </p>
+
+    <div style="text-align:center;margin:26px 0 14px">
+      <a href="${BOOKING_URL}"
+         style="display:inline-block;background:#47ee74;color:#14161a;text-decoration:none;
+                padding:15px 36px;border-radius:8px;font-weight:700;font-size:16px">
+        Prenota la tua call
+      </a>
+    </div>
+    <p style="text-align:center;color:#6b7280;font-size:13px;margin:0 0 24px">
+      Non funziona il pulsante? Apri
+      <a href="${BOOKING_URL}" style="color:#16a34a">pellegrinobozzella.com/prenota</a>
+    </p>
+
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px">
+      Se nel frattempo hai domande o documenti da mandarci, scrivi a
+      <a href="mailto:segreteria@indubai.it" style="color:#16a34a">segreteria@indubai.it</a>.
+    </p>
+    <p style="color:#6b7280;font-size:13px;margin:0">
+      InDubai — Platinum Tower, Unit 2503, JLT, Dubai
+    </p>`;
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -179,19 +216,11 @@ export default async function handler(req, res) {
     // 5. Conferma alla lead
     await sendEmail({
       to: email,
-      subject: 'Abbiamo ricevuto la tua richiesta — InDubai',
-      html: `
-        <h2 style="margin:0 0 12px;color:#14161a;font-size:20px">Grazie ${escapeHtml(full_name.split(' ')[0])}</h2>
-        <p style="color:#374151;font-size:15px;line-height:1.7">
-          Abbiamo ricevuto la tua richiesta di consulenza${service ? ` per <strong>${escapeHtml(service.name)}</strong>` : ''}.
-          Un consulente InDubai ti contatta entro un giorno lavorativo per fissare la call.
-        </p>
-        <p style="color:#374151;font-size:15px;line-height:1.7">
-          Nel frattempo, se hai documenti o domande, rispondi pure a questa email.
-        </p>
-        <p style="color:#6b7280;font-size:13px;margin-top:24px">
-          InDubai — Platinum Tower, Unit 2503, JLT, Dubai
-        </p>`,
+      subject: 'Richiesta ricevuta — prenota la tua call con InDubai',
+      html: leadAckEmail({
+        firstName: full_name.split(' ')[0],
+        serviceName: service?.name || null,
+      }),
       event_type: 'ambassador_lead_ack',
       entity_id: referral.id,
       entity_type: 'ambassador_referral',
