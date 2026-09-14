@@ -169,6 +169,20 @@
         <label class="form-label">Data Avvio</label>
         <input type="date" class="form-control" id="f-start">
       </div>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Ambassador (facoltativo)</label>
+          <select class="form-control" id="f-amb"><option value="">— Nessuno —</option></select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Servizio segnalato</label>
+          <select class="form-control" id="f-amb-service"><option value="">— Nessuno —</option></select>
+        </div>
+      </div>
+      <p style="font-size:11.5px;color:var(--text-muted);margin-top:8px;line-height:1.6">
+        Collegando un ambassador, il cliente compare fra le sue segnalazioni e la commissione
+        matura quando lo sposti nella fase &quot;Cliente ha pagato&quot;.
+      </p>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeAdd()">Annulla</button>
@@ -179,6 +193,7 @@
 
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/ambassador.js"></script>
 <script src="/js/i18n.js"></script>
 <script src="/js/notify.js"></script>
 <script>
@@ -452,8 +467,26 @@ function openAdd() {
     `<option value="${UNASSIGNED}" selected>— Non assegnato —</option>` +
     stages.map(s => `<option value="${s.id}">${ui.escapeHtml(s.name)}</option>`).join('');
   ['f-company','f-contact','f-email','f-phone','f-cost','f-start'].forEach(id => document.getElementById(id).value = '');
+  fillAmbassadorSelects();
   document.getElementById('modal-add').style.display = 'flex';
   document.getElementById('f-company').focus();
+}
+
+// Tendine ambassador/servizio: se la migrazione non c'è, restano vuote e
+// il resto del modale funziona lo stesso.
+let ambCache = null, ambSrvCache = null;
+async function fillAmbassadorSelects() {
+  const selA = document.getElementById('f-amb');
+  const selS = document.getElementById('f-amb-service');
+  if (!selA || typeof ambRef === 'undefined') return;
+  try {
+    if (!ambCache)    ambCache    = await ambRef.listActive();
+    if (!ambSrvCache) ambSrvCache = await ambRef.listServices();
+    selA.innerHTML = '<option value="">— Nessuno —</option>' +
+      (ambCache || []).map(a => `<option value="${a.id}">${ui.escapeHtml(a.full_name)}</option>`).join('');
+    selS.innerHTML = '<option value="">— Nessuno —</option>' +
+      (ambSrvCache || []).map(x => `<option value="${x.id}">${ui.escapeHtml(x.name)}</option>`).join('');
+  } catch (_) { /* migrazione ambassador non eseguita */ }
 }
 function closeAdd() { document.getElementById('modal-add').style.display = 'none'; }
 
@@ -483,6 +516,20 @@ async function saveClient() {
     });
     const newId = result[0]?.id;
     try { await sb.db.log('client_created', newId, { company }); } catch(_){}
+
+    // Attribuzione all'ambassador: non deve far fallire la creazione del cliente
+    const ambId = document.getElementById('f-amb')?.value;
+    if (newId && ambId && typeof ambRef !== 'undefined') {
+      try {
+        await ambRef.assign({
+          client: { ...result[0], id: newId },
+          ambassadorId: ambId,
+          serviceId: document.getElementById('f-amb-service').value,
+        });
+      } catch (e) {
+        ui.showToast('Cliente creato, ma attribuzione ambassador non riuscita: ' + e.message, 'error', 6000);
+      }
+    }
 
     // Auto-crea righe vat_register e corporate_tax (come nella pagina Clienti)
     if (newId) {

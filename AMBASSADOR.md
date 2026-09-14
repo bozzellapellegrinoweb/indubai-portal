@@ -67,12 +67,46 @@ Valori di partenza (inventati, da ritarare):
 
 ---
 
+## Attribuzione manuale e cancellazione
+
+**Collegare un cliente inserito a mano a un ambassador.** Due strade:
+
+- alla creazione, dal modale **+ Nuovo Cliente** in Pipeline (campi *Ambassador* e
+  *Servizio segnalato*, entrambi facoltativi);
+- in qualsiasi momento, dalla **scheda cliente**: sotto l'intestazione c'è
+  *Collega a un ambassador*, e se il cliente è già collegato la fascia REFERRAL
+  offre *Cambia* e *Rimuovi*.
+
+In entrambi i casi viene creata una riga in `ambassador_referrals` con
+`source = 'manuale'`: commissioni, idempotenza e area riservata dell'ambassador
+funzionano identiche alle segnalazioni arrivate dal link.
+
+Se sul cliente esiste già una commissione non annullata, cambiare o togliere
+l'attribuzione è bloccato: prima si annulla la commissione da
+**ADMIN → Ambassador → Dettaglio → Annulla**.
+
+**Eliminare un ambassador.** Dal dettaglio, bottone *Elimina*. Le regole:
+
+| Situazione | Cosa succede |
+|---|---|
+| Nessuna segnalazione, nessuna commissione | Eliminato subito, insieme al suo utente di accesso |
+| Ha segnalazioni ma nessuna commissione | Seconda conferma che dice quante ne perde; i clienti restano |
+| Ha commissioni | **Eliminazione preclusa.** Si usa *Disattiva* |
+
+Il blocco non è prudenza eccessiva: `ambassador_referrals` e
+`ambassador_commissions` hanno `on delete cascade` sull'ambassador, quindi
+cancellarlo cancellerebbe anche lo storico dei guadagni. *Disattiva* invece
+spegne il link e l'accesso lasciando gli archivi intatti.
+
+---
+
 ## Struttura dati
 
 ```
 ambassador_services      catalogo servizi + regola di commissione
 ambassadors              anagrafica (ref_code univoco, user_id, status, moltiplicatore)
-ambassador_referrals     segnalazioni dal form  → collegate a clients
+ambassador_referrals     segnalazioni → collegate a clients
+                         source: 'form' (modulo pubblico) | 'manuale' (staff)
 ambassador_commissions   commissioni maturate/pagate (UNIQUE su referral_id)
 ambassador_summary       view di riepilogo per la pagina admin
 
@@ -90,6 +124,9 @@ cliente avanti e indietro nella pipeline non genera commissioni doppie.
 
 ```
 supabase/migrations/20260825_ambassador.sql   schema, RLS, seed
+supabase/migrations/20260914_ambassador_manuale.sql  attribuzione manuale
+js/ambassador.js                              collega/scollega cliente ↔ ambassador
+api/ambassador-delete.js                      eliminazione con le tutele sopra
 api/_ambassador-lib.js                        helper condivisi (non esposto come endpoint)
 api/ambassador-lead.js                        form pubblico: GET info + POST segnalazione
 api/ambassador-commission.js                  matura / paga / annulla una commissione
