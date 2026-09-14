@@ -194,6 +194,7 @@
 
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/ambassador.js"></script>
 <script src="/js/i18n.js"></script>
 <script src="/js/notify.js"></script>
 <script>
@@ -224,31 +225,109 @@ async function loadClient() {
   }
 }
 
-// Se il cliente arriva da un ambassador lo si deve vedere subito
+// Se il cliente arriva da un ambassador lo si deve vedere subito.
+// Se non ci arriva, si può collegare a mano da qui.
+let ambList = null, ambServices = null;
+
 async function renderReferralBanner(c) {
   const box = document.getElementById('referral-banner');
-  if (!box || !c.ambassador_id) return;
+  if (!box || typeof ambRef === 'undefined') return;
+  box.style.display = 'block';
+
+  if (!c.ambassador_id) {
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px;
+                  font-size:12.5px;color:var(--text-muted)">
+        <span>Nessun ambassador collegato a questo cliente.</span>
+        <button class="btn btn-ghost btn-sm" onclick="openAmbAssign()">Collega a un ambassador</button>
+      </div>`;
+    return;
+  }
+
   let who = 'un ambassador';
   let extra = '';
   try {
-    const rows = await sb.db.select('ambassadors', { filter: `id=eq.${c.ambassador_id}`, columns: 'full_name,email' });
+    const rows = await sb.db.select('ambassadors', { filter: `id=eq.${c.ambassador_id}`, columns: 'full_name' });
     if (rows && rows[0]) who = rows[0].full_name;
-    const com = await sb.db.select('ambassador_commissions', {
-      filter: `client_id=eq.${c.id}`, columns: 'commission_amount_aed,status,service_name',
-    });
+    const com = await ambRef.commissionsOf(c.id);
     if (com && com[0]) {
       extra = ` · Commissione ${ui.formatAED(com[0].commission_amount_aed)} (${com[0].status}) su ${ui.escapeHtml(com[0].service_name)}`;
     }
   } catch (_) { /* migrazione ambassador non ancora eseguita */ }
-  box.style.display = 'block';
+
   box.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent);
                 color:var(--primary);border-radius:12px;padding:11px 16px;margin-bottom:18px;font-weight:700;font-size:13px">
       <span style="font-size:10px;letter-spacing:.1em;background:var(--primary);color:var(--accent);
                    padding:3px 8px;border-radius:5px">REFERRAL</span>
       <span>Segnalato da ${ui.escapeHtml(who)}${extra}</span>
-      <a href="/ambassadors.html" style="margin-left:auto;color:var(--primary);text-decoration:underline;font-size:12px">Area Ambassador →</a>
+      <span style="margin-left:auto;display:flex;gap:10px;font-size:12px;font-weight:600">
+        <a href="#" onclick="openAmbAssign();return false" style="color:var(--primary);text-decoration:underline">Cambia</a>
+        <a href="#" onclick="removeAmbAssign();return false" style="color:var(--primary);text-decoration:underline">Rimuovi</a>
+        <a href="/ambassadors.html" style="color:var(--primary);text-decoration:underline">Area Ambassador →</a>
+      </span>
     </div>`;
+}
+
+async function openAmbAssign() {
+  const err = document.getElementById('amb-err');
+  err.style.display = 'none';
+  document.getElementById('modal-amb').style.display = 'flex';
+  const selA = document.getElementById('amb-who');
+  const selS = document.getElementById('amb-service');
+  selA.innerHTML = '<option>Caricamento…</option>';
+  try {
+    if (!ambList)     ambList     = await ambRef.listActive();
+    if (!ambServices) ambServices = await ambRef.listServices();
+    if (!ambList.length) {
+      err.textContent = 'Non ci sono ambassador attivi. Creane uno da ADMIN → Ambassador.';
+      err.style.display = 'block';
+    }
+    selA.innerHTML = '<option value="">— Scegli un ambassador —</option>' +
+      ambList.map(a => `<option value="${a.id}" ${a.id === clientData.ambassador_id ? 'selected' : ''}>${ui.escapeHtml(a.full_name)}</option>`).join('');
+    selS.innerHTML = '<option value="">— Nessun servizio specifico —</option>' +
+      ambServices.map(x => `<option value="${x.id}">${ui.escapeHtml(x.name)}</option>`).join('');
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+  }
+}
+function closeAmbAssign() { document.getElementById('modal-amb').style.display = 'none'; }
+
+async function saveAmbAssign() {
+  const err = document.getElementById('amb-err');
+  const btn = document.getElementById('amb-save');
+  const ambassadorId = document.getElementById('amb-who').value;
+  const serviceId = document.getElementById('amb-service').value;
+  err.style.display = 'none';
+  if (!ambassadorId) { err.textContent = 'Scegli un ambassador.'; err.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Collego…';
+  try {
+    await ambRef.assign({ client: clientData, ambassadorId, serviceId });
+    const fresh = await sb.db.select('clients', { filter: `id=eq.${clientData.id}`, columns: 'ambassador_id,ambassador_referral_id' });
+    Object.assign(clientData, fresh?.[0] || {});
+    closeAmbAssign();
+    ui.showToast('Cliente collegato all\'ambassador', 'success');
+    renderReferralBanner(clientData);
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Collega';
+}
+
+async function removeAmbAssign() {
+  if (!confirm('Togliere l\'attribuzione a questo cliente? L\'ambassador non lo vedrà più fra le sue segnalazioni.')) return;
+  try {
+    await ambRef.unassign(clientData);
+    clientData.ambassador_id = null;
+    clientData.ambassador_referral_id = null;
+    ui.showToast('Attribuzione rimossa', 'success');
+    renderReferralBanner(clientData);
+  } catch (e) {
+    ui.showToast(e.message, 'error');
+  }
 }
 
 function renderClient() {
@@ -1339,6 +1418,35 @@ init();
 </script>
 
 <!-- Edit Modal -->
+<!-- COLLEGA A UN AMBASSADOR -->
+<div class="modal-overlay" id="modal-amb" style="display:none">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <div class="modal-title">Collega a un ambassador</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeAmbAssign()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-danger" id="amb-err" style="display:none"></div>
+      <div class="form-group">
+        <label class="form-label">Ambassador</label>
+        <select class="form-control" id="amb-who"></select>
+      </div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label class="form-label">Servizio</label>
+        <select class="form-control" id="amb-service"></select>
+      </div>
+      <p style="font-size:11.5px;color:var(--text-muted);line-height:1.6">
+        Il servizio determina la commissione che matura quando sposti il cliente in
+        <strong>Cliente ha pagato</strong>. Il cliente comparirà fra le segnalazioni dell'ambassador.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAmbAssign()">Annulla</button>
+      <button class="btn btn-accent" id="amb-save" onclick="saveAmbAssign()">Collega</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-edit" style="display:none">
   <div class="modal" style="max-width:640px">
     <div class="modal-header">

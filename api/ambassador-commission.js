@@ -101,7 +101,14 @@ export default async function handler(req, res) {
     if (!client) return res.status(404).json({ error: 'Cliente non trovato' });
     if (!client.ambassador_id) return res.status(200).json({ ok: true, skipped: 'no_ambassador' });
 
-    // Gia' maturata? (idempotenza sul referral)
+    // Già maturata? Il controllo è sul cliente e non solo sulla segnalazione:
+    // un cliente attribuito a mano può non averne una, e in Postgres più NULL
+    // non collidono, quindi la UNIQUE su referral_id da sola non basterebbe.
+    const already = await sbSelect('ambassador_commissions',
+      `client_id=eq.${client.id}&select=*`);
+    if (already?.[0]) {
+      return res.status(200).json({ ok: true, already: true, commission: already[0] });
+    }
     if (client.ambassador_referral_id) {
       const existing = await sbSelect('ambassador_commissions',
         `referral_id=eq.${client.ambassador_referral_id}&select=*`);
@@ -152,9 +159,8 @@ export default async function handler(req, res) {
       });
     } catch (e) {
       // Corsa fra due spostamenti simultanei: la UNIQUE ha già fatto il lavoro.
-      if (/duplicate key|23505/i.test(e.message) && client.ambassador_referral_id) {
-        const rows = await sbSelect('ambassador_commissions',
-          `referral_id=eq.${client.ambassador_referral_id}&select=*`);
+      if (/duplicate key|23505/i.test(e.message)) {
+        const rows = await sbSelect('ambassador_commissions', `client_id=eq.${client.id}&select=*`);
         return res.status(200).json({ ok: true, already: true, commission: rows?.[0] || null });
       }
       throw e;

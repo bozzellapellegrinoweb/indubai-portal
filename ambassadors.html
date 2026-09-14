@@ -165,7 +165,11 @@
       <button class="btn btn-ghost btn-sm" onclick="closeDet()">✕</button>
     </div>
     <div class="modal-body" id="det-body"><div class="spinner"></div></div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="justify-content:space-between">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" id="det-toggle"></button>
+        <button class="btn btn-ghost btn-sm" id="det-delete" style="color:var(--danger)">Elimina</button>
+      </div>
       <button class="btn btn-ghost" onclick="closeDet()">Chiudi</button>
     </div>
   </div>
@@ -430,8 +434,68 @@ async function openDet(id) {
 }
 function closeDet() { document.getElementById('modal-det').style.display = 'none'; }
 
+// Lo stato "disattivato" è la via sicura: l'ambassador non compare più nelle
+// tendine e il suo link smette di funzionare, ma segnalazioni e commissioni
+// restano negli archivi.
+async function toggleAmbStatus(id, current) {
+  const next = current === 'active' ? 'disabled' : 'active';
+  const verbo = next === 'active' ? 'Riattivare' : 'Disattivare';
+  if (!confirm(`${verbo} questo ambassador?` + (next === 'disabled'
+      ? ' Il suo link smetterà di funzionare e non potrà più accedere alla sua area.' : ''))) return;
+  try {
+    await sb.db.update('ambassadors', `id=eq.${id}`, { status: next, updated_at: new Date().toISOString() });
+    ui.showToast(next === 'active' ? 'Ambassador riattivato' : 'Ambassador disattivato', 'success');
+    await loadAll();
+    openDet(id);
+  } catch (e) { ui.showToast(e.message, 'error'); }
+}
+
+async function deleteAmb(id, name) {
+  if (!confirm(`Eliminare definitivamente ${name}? L'operazione non si può annullare.`)) return;
+  try {
+    let res = await postDelete(id, false);
+    // Ha segnalazioni ma nessuna commissione: chiedo una seconda conferma
+    // che dica esattamente cosa va perso.
+    if (res.status === 409 && res.data.needs_force) {
+      if (!confirm(res.data.error + '\n\nProcedo comunque?')) return;
+      res = await postDelete(id, true);
+    }
+    if (!res.ok) throw new Error(res.data.error || 'Eliminazione non riuscita');
+    closeDet();
+    ui.showToast(`${res.data.deleted} eliminato`, 'success');
+    loadAll();
+  } catch (e) {
+    ui.showToast(e.message, 'error', 7000);
+  }
+}
+
+async function postDelete(ambassador_id, force) {
+  const r = await fetch('/api/ambassador-delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sb.getSession().access_token },
+    body: JSON.stringify({ ambassador_id, force }),
+  });
+  return { ok: r.ok, status: r.status, data: await r.json() };
+}
+
 function renderDet(r, refs, coms) {
   const link = refLink(r.ref_code);
+
+  const tgl = document.getElementById('det-toggle');
+  tgl.textContent = r.status === 'active' ? 'Disattiva' : 'Riattiva';
+  tgl.onclick = () => toggleAmbStatus(r.id, r.status);
+
+  // Con commissioni registrate l'eliminazione è preclusa: cancellarlo
+  // cancellerebbe anche quelle (vincolo di cascata sul database).
+  const del = document.getElementById('det-delete');
+  const hasComs = coms.length > 0;
+  del.disabled = hasComs;
+  del.style.opacity = hasComs ? '.45' : '1';
+  del.style.cursor = hasComs ? 'not-allowed' : 'pointer';
+  del.title = hasComs
+    ? 'Non eliminabile: ha commissioni registrate. Usa Disattiva.'
+    : 'Elimina definitivamente questo ambassador';
+  del.onclick = hasComs ? null : () => deleteAmb(r.id, r.full_name);
   const refsHTML = refs.length ? refs.map(x => {
     const st = REF_STATUS[x.status] || ['badge-pending', x.status];
     const srv = x.ambassador_services ? x.ambassador_services.name : 'Servizio da definire';
@@ -458,7 +522,8 @@ function renderDet(r, refs, coms) {
       <div style="display:flex;gap:8px;align-items:center">
         <span class="det-amount">${ui.formatAED(c.commission_amount_aed)}</span>
         <span class="badge ${st[0]}">${st[1]}</span>
-        ${c.status === 'maturata' ? `<button class="btn btn-accent btn-sm" onclick="payCommission('${c.id}','${r.id}')">Segna pagata</button>` : ''}
+        ${c.status === 'maturata' ? `<button class="btn btn-accent btn-sm" onclick="payCommission('${c.id}','${r.id}')">Segna pagata</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="cancelCommission('${c.id}','${r.id}')">Annulla</button>` : ''}
       </div>
     </div>`;
   }).join('') : '<p style="font-size:13px;color:var(--text-muted)">Nessuna commissione.</p>';
@@ -479,6 +544,26 @@ function renderDet(r, refs, coms) {
       <h4>Commissioni (${coms.length})</h4>
       ${comsHTML}
     </div>`;
+}
+
+// Una commissione annullata resta negli archivi con stato "annullata": non
+// sparisce, così i conti di un mese passato restano ricostruibili.
+async function cancelCommission(commissionId, ambId) {
+  if (!confirm('Annullare questa commissione? Resterà negli archivi come annullata e non verrà conteggiata nei totali.')) return;
+  try {
+    const res = await fetch('/api/ambassador-commission', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sb.getSession().access_token },
+      body: JSON.stringify({ action: 'cancel', commission_id: commissionId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Errore');
+    ui.showToast('Commissione annullata', 'success');
+    await loadAll();
+    openDet(ambId);
+  } catch (e) {
+    ui.showToast(e.message, 'error');
+  }
 }
 
 async function payCommission(commissionId, ambId) {
