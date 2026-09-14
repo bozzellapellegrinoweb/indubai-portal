@@ -58,6 +58,10 @@
       <div>
         <div class="topbar-title">Ambassador</div>
         <div class="topbar-subtitle" id="sub">Caricamento...</div>
+        <div style="margin-top:5px;font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+          <span>Accedono da</span>
+          <span class="reflink" style="max-width:none" title="Clicca per copiare" onclick="copyLogin()" id="login-url">—</span>
+        </div>
       </div>
       <div class="toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <div class="search-box">
@@ -153,6 +157,47 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeNew()">Annulla</button>
       <button class="btn btn-accent" id="btn-save-new">Crea Ambassador</button>
+    </div>
+  </div>
+</div>
+
+<!-- Crea accesso -->
+<div class="modal-overlay" id="modal-access" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title" id="acc-title">Crea accesso</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeAccess()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-danger" id="acc-err" style="display:none"></div>
+      <div class="alert alert-success" id="acc-ok" style="display:none"></div>
+      <div class="form-group">
+        <label class="form-label">Email di accesso</label>
+        <input type="email" class="form-control" id="acc-email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password iniziale</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" class="form-control" id="acc-pwd">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('acc-pwd').value = randomPwd()">Rigenera</button>
+        </div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px 14px">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">
+          Link di accesso da dare all'ambassador
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="reflink" style="max-width:100%" onclick="copyLogin()" id="acc-login-url">—</span>
+          <button class="btn btn-ghost btn-sm" onclick="copyLogin()">Copia</button>
+        </div>
+      </div>
+      <p style="font-size:11.5px;color:var(--text-muted);margin-top:10px;line-height:1.6">
+        Le credenziali partono via email. Se non arriva, puoi passargliele a mano insieme a questo link.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAccess()">Annulla</button>
+      <button class="btn btn-accent" id="acc-save" onclick="saveAccess()">Crea e invia</button>
     </div>
   </div>
 </div>
@@ -274,7 +319,7 @@ function render() {
         : '<span class="badge badge-fail">Disattivato</span>';
     const account = r.user_id
       ? ''
-      : `<button class="btn btn-ghost btn-sm" onclick="createAccess('${r.id}','${ui.escapeHtml(r.email)}')">Crea accesso</button>`;
+      : `<button class="btn btn-ghost btn-sm" onclick="createAccess('${r.id}','${ui.escapeHtml(r.email)}','${ui.escapeHtml(r.full_name).replace(/'/g, "\\'")}')">Crea accesso</button>`;
     return `<tr>
       <td>
         <div style="font-weight:700">${ui.escapeHtml(r.full_name)}</div>
@@ -389,23 +434,69 @@ async function saveNew() {
   btn.disabled = false; btn.textContent = 'Crea Ambassador';
 }
 
-async function createAccess(id, email) {
-  const pwd = prompt('Password iniziale per ' + email + ':', randomPwd());
-  if (!pwd) return;
-  if (pwd.length < 8) return ui.showToast('Password troppo corta (min. 8)', 'error');
+const LOGIN_URL = location.origin + '/ambassador/login';
+
+function copyLogin() {
+  const done = () => ui.showToast('Link di accesso copiato', 'success');
+  if (navigator.clipboard) navigator.clipboard.writeText(LOGIN_URL).then(done).catch(() => ui.showToast(LOGIN_URL));
+  else ui.showToast(LOGIN_URL);
+}
+
+let accessFor = null;   // { id, full_name }
+
+function createAccess(id, email, name) {
+  accessFor = { id, full_name: name };
+  document.getElementById('acc-title').textContent = 'Crea accesso — ' + name;
+  document.getElementById('acc-email').value = email || '';
+  document.getElementById('acc-pwd').value = randomPwd();
+  document.getElementById('acc-err').style.display = 'none';
+  document.getElementById('acc-ok').style.display = 'none';
+  document.getElementById('acc-login-url').textContent = LOGIN_URL;
+  document.getElementById('modal-access').style.display = 'flex';
+}
+function closeAccess() { document.getElementById('modal-access').style.display = 'none'; }
+
+async function saveAccess() {
+  const err = document.getElementById('acc-err');
+  const ok = document.getElementById('acc-ok');
+  const btn = document.getElementById('acc-save');
+  const email = document.getElementById('acc-email').value.trim().toLowerCase();
+  const pwd = document.getElementById('acc-pwd').value.trim();
+  err.style.display = 'none'; ok.style.display = 'none';
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    err.textContent = 'Email non valida.'; err.style.display = 'block'; return;
+  }
+  if (pwd.length < 8) {
+    err.textContent = 'La password deve avere almeno 8 caratteri.'; err.style.display = 'block'; return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Creo…';
   try {
     const res = await fetch('/api/create-ambassador-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sb.getSession().access_token },
-      body: JSON.stringify({ ambassador_id: id, email, password: pwd }),
+      body: JSON.stringify({ ambassador_id: accessFor.id, email, password: pwd }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Errore');
+
+    await loadAll();
+    if (data.linked) {
+      // L'errore da spiegare, non da nascondere: aveva già un account cliente.
+      ok.textContent = data.message;
+      ok.style.display = 'block';
+      btn.textContent = 'Fatto';
+      btn.disabled = true;
+      return;
+    }
+    closeAccess();
     ui.showToast('Accesso creato, credenziali inviate', 'success');
-    loadAll();
   } catch (e) {
-    ui.showToast(e.message, 'error');
+    err.textContent = e.message;
+    err.style.display = 'block';
   }
+  btn.disabled = false; btn.textContent = 'Crea e invia';
 }
 
 // ── Dettaglio ───────────────────────────────────────────────
@@ -530,10 +621,18 @@ function renderDet(r, refs, coms) {
 
   document.getElementById('det-body').innerHTML = `
     <div class="det-sec">
-      <h4>Link personale</h4>
+      <h4>Link personale — da condividere con i contatti</h4>
       <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
         <span class="reflink" style="max-width:100%" onclick="copyLink('${r.ref_code}')">${link}</span>
         <button class="btn btn-ghost btn-sm" onclick="copyLink('${r.ref_code}')">Copia</button>
+      </div>
+    </div>
+    <div class="det-sec">
+      <h4>Link di accesso — dove entra nella sua area</h4>
+      <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+        <span class="reflink" style="max-width:100%" onclick="copyLogin()">${LOGIN_URL}</span>
+        <button class="btn btn-ghost btn-sm" onclick="copyLogin()">Copia</button>
+        ${r.user_id ? '' : '<span style="font-size:11.5px;color:var(--warning);font-weight:600">Non ha ancora un accesso</span>'}
       </div>
     </div>
     <div class="det-sec">
@@ -699,6 +798,7 @@ async function saveSrv() {
 }
 
 // ── Init ────────────────────────────────────────────────────
+document.getElementById('login-url').textContent = LOGIN_URL;
 document.getElementById('search').addEventListener('input', render);
 document.getElementById('btn-new').addEventListener('click', openNew);
 document.getElementById('btn-save-new').addEventListener('click', saveNew);
