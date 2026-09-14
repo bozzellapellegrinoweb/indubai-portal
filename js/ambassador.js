@@ -53,7 +53,7 @@ const ambRef = {
       await this._detachReferral(client.ambassador_referral_id);
     }
 
-    const rows = await sb.db.insert('ambassador_referrals', {
+    const payload = {
       ambassador_id: ambassadorId,
       service_id: serviceId || null,
       client_id: client.id,
@@ -62,7 +62,21 @@ const ambRef = {
       phone: client.phone_uae || null,
       status: 'in_trattativa',
       source: 'manuale',
-    });
+    };
+
+    let rows;
+    try {
+      rows = await sb.db.insert('ambassador_referrals', payload);
+    } catch (e) {
+      // Finché la migrazione 20260914 non è stata eseguita, email è ancora
+      // obbligatoria: un cliente senza email farebbe fallire tutto. Ripiego su
+      // un segnaposto invece di lasciare a metà l'attribuzione.
+      if (/null value in column "email"|not-null constraint/i.test(e.message)) {
+        rows = await sb.db.insert('ambassador_referrals', { ...payload, email: 'non indicata' });
+      } else {
+        throw e;
+      }
+    }
     const referral = Array.isArray(rows) ? rows[0] : rows;
 
     await sb.db.update('clients', `id=eq.${client.id}`, {
