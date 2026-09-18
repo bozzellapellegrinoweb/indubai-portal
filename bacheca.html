@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ── Load users (for @mention) ──────────────────────────────────────────────
 async function loadUsers() {
   try {
-    allUsers = await sb.db.select('profiles', { columns: 'id,full_name,role', order: 'full_name.asc' });
+    allUsers = await sb.db.getStaffProfiles();
   } catch(e) {
     console.warn('loadUsers:', e);
     allUsers = [];

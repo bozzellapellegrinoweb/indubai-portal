@@ -164,7 +164,7 @@ async function loadData() {
   }
 
   try {
-    profiles = await sb.db.select('profiles', { columns:'id,full_name,role', filter:'role=neq.client' }) || [];
+    profiles = await sb.db.getStaffProfiles({ order: '' }) || [];
 
     const staffIds = profiles.map(p => p.id);
 

@@ -332,7 +332,7 @@ async function init() {
 }
 
 async function loadProfiles() {
-  profiles = await sb.db.select('profiles', {columns:'id,full_name'}) || [];
+  profiles = await sb.db.getStaffProfiles({ columns: 'id,full_name' }) || [];
   const sel = document.getElementById('t-assigned');
   sel.innerHTML = '<option value="">— Nessuno —</option>';
   profiles.forEach(p => sel.insertAdjacentHTML('beforeend', `<option value="${p.id}">${ui.escapeHtml(p.full_name)}</option>`));
