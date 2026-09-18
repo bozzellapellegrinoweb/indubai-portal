@@ -166,7 +166,9 @@ async function init() {
 
 async function loadUsers() {
   try {
-    const profiles = await sb.db.select('profiles', { columns: 'id,full_name,role,created_at', order: 'created_at.asc' }) || [];
+    // Gli ambassador si gestiscono da ADMIN → Ambassador, i clienti dalla loro
+    // scheda: qui restano solo gli utenti interni.
+    const profiles = await sb.db.getStaffProfiles({ columns: 'id,full_name,role,created_at', order: 'created_at.asc' }) || [];
     const myId = sb.getCurrentProfile()?.id;
     document.getElementById('users-list').innerHTML = profiles.map(p => `
       <div class="user-card">

@@ -180,6 +180,16 @@ const db = {
 
   // ── Specific queries ────────────────────────────────────────
 
+  // Profili dello staff interno: esclude clienti e ambassador, che hanno un
+  // profilo perché accedono alle loro aree ma non sono persone a cui si
+  // assegna una task o che si menzionano in bacheca.
+  async getStaffProfiles({ columns = 'id,full_name,role', order = 'full_name.asc' } = {}) {
+    return this.select('profiles', {
+      filter: 'role=not.in.(client,ambassador)',
+      columns, order,
+    });
+  },
+
   async getClients({ activeOnly = true, inBilancio = null } = {}) {
     let filter = '';
     if (activeOnly) filter += 'is_active=eq.true';
