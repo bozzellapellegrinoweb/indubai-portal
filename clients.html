@@ -38,6 +38,9 @@
           <option value="in_sospeso">In Sospeso</option>
           <option value="off">Solo Clienti Off</option>
         </select>
+        <select class="form-control" id="filter-ref" style="width:auto">
+          <option value="">Tutti i referenti</option>
+        </select>
         <button class="btn btn-accent" id="btn-add">+ Nuovo Cliente</button>
       </div>
     </div>
@@ -50,6 +53,7 @@
               <tr>
                 <th>Azienda</th>
                 <th>General Manager</th>
+                <th>Referente</th>
                 <th>Partner</th>
                 <th>Conti Bancari</th>
                 <th>Abbonamento</th>
@@ -60,7 +64,7 @@
               </tr>
             </thead>
             <tbody id="clients-tbody">
-              <tr><td colspan="9"><div class="loading-overlay"><div class="spinner"></div></div></td></tr>
+              <tr><td colspan="10"><div class="loading-overlay"><div class="spinner"></div></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -195,14 +199,69 @@ function orderClients(list) {
   return active.concat(off);
 }
 
+// ── Referente interno (portfolio clienti) ────────────────────
+// Lo staff a cui si può attribuire un cliente in gestione.
+const STAFF_ROLES = ['admin', 'mini_admin', 'senior', 'junior', 'staff'];
+let staff = [];
+let amAdmin = false;
+
+async function loadStaff() {
+  try {
+    const rows = await sb.db.select('profiles', { columns: 'id,full_name,role,clients_scope', order: 'full_name.asc' }) || [];
+    staff = rows.filter(p => STAFF_ROLES.includes(p.role));
+  } catch(e) { staff = []; }
+
+  const sel = document.getElementById('filter-ref');
+  if (sel) {
+    const keep = sel.value;
+    sel.innerHTML = '<option value="">Tutti i referenti</option>'
+      + '<option value="__none__">Senza referente</option>'
+      + staff.map(p => `<option value="${p.id}">${ui.escapeHtml(p.full_name)}</option>`).join('');
+    sel.value = keep;
+  }
+}
+
+function refCell(c) {
+  const current = c.assigned_to || '';
+  if (!amAdmin) {
+    const p = staff.find(x => x.id === current);
+    return p ? `<span style="font-size:12px">${ui.escapeHtml(p.full_name)}</span>`
+             : '<span style="color:var(--text-muted)">—</span>';
+  }
+  const opts = ['<option value="">— Nessuno —</option>']
+    .concat(staff.map(p => `<option value="${p.id}"${p.id === current ? ' selected' : ''}>${ui.escapeHtml(p.full_name)}</option>`))
+    .join('');
+  return `<select onchange="assignClient('${c.id}', this.value, this)"
+    style="max-width:150px;padding:4px 7px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface,#fff);color:inherit">${opts}</select>`;
+}
+
+async function assignClient(clientId, profileId, el) {
+  const prev = allClients.find(c => c.id === clientId)?.assigned_to || '';
+  if (el) el.disabled = true;
+  try {
+    await sb.db.update('clients', `id=eq.${clientId}`, { assigned_to: profileId || null });
+    const c = allClients.find(x => x.id === clientId);
+    if (c) c.assigned_to = profileId || null;
+    const name = staff.find(p => p.id === profileId)?.full_name;
+    ui.showToast(name ? `Referente: ${name}` : 'Referente rimosso', 'success');
+  } catch(e) {
+    if (el) el.value = prev;         // rollback visivo
+    ui.showToast('Errore: ' + e.message, 'error');
+  } finally {
+    if (el) el.disabled = false;
+  }
+}
+
 async function loadClients() {
   try {
+    amAdmin = sb.getCurrentProfile()?.role === 'admin';
+    await loadStaff();
     // activeOnly:false → include anche i clienti archiviati/non più in gestione
     allClients = orderClients(await sb.db.getClients({ activeOnly: false }));
     renderClients(getFilteredClients());
   } catch(e) {
     document.getElementById('clients-tbody').innerHTML =
-      `<tr><td colspan="9"><div class="alert alert-danger" style="margin:16px">${e.message}</div></td></tr>`;
+      `<tr><td colspan="10"><div class="alert alert-danger" style="margin:16px">${e.message}</div></td></tr>`;
   }
 }
 
@@ -223,7 +282,7 @@ function renderClients(clients) {
 
   if (!total) {
     document.getElementById('clients-tbody').innerHTML =
-      `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div><h3>Nessun cliente trovato</h3></div></td></tr>`;
+      `<tr><td colspan="10"><div class="empty-state"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div><h3>Nessun cliente trovato</h3></div></td></tr>`;
     document.getElementById('pagination').style.display = 'none';
     return;
   }
@@ -233,7 +292,7 @@ function renderClients(clients) {
     const off = c.is_active === false;
     // Intestazione della sezione "CLIENTI OFF" prima del primo cliente archiviato
     const divider = (absIdx === firstOffIdx)
-      ? `<tr class="section-divider"><td colspan="9" style="background:var(--surface-2,#1a1d23);padding:10px 16px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);border-top:2px solid var(--border)">Clienti Off · Non più in gestione (${offCount})</td></tr>`
+      ? `<tr class="section-divider"><td colspan="10" style="background:var(--surface-2,#1a1d23);padding:10px 16px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);border-top:2px solid var(--border)">Clienti Off · Non più in gestione (${offCount})</td></tr>`
       : '';
     return `${divider}
     <tr${off ? ' style="opacity:.62"' : ''}>
@@ -241,6 +300,7 @@ function renderClients(clients) {
         <div class="td-company">${ui.escapeHtml(c.company_name)}${off ? ' <span class="badge" style="background:#3f3f46;color:#e4e4e7;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;vertical-align:middle">OFF</span>' : ''}</div>
       </td>
       <td style="font-size:13px">${c.general_manager ? ui.escapeHtml(c.general_manager) : (c.contact_name ? '<span style="color:var(--text-muted);font-size:12px">'+ui.escapeHtml(c.contact_name)+'</span>' : '—')}</td>
+      <td>${refCell(c)}</td>
       <td>${ui.partnerLabel(c.accounting_partner)}</td>
       <td style="font-size:12px">${(c.bank_accounts || []).join(', ') || '—'}</td>
       <td>
@@ -303,6 +363,9 @@ function getFilteredClients() {
   );
   if (partner === 'off') filtered = filtered.filter(c => c.is_active === false);
   else if (partner) filtered = filtered.filter(c => c.accounting_partner === partner);
+  const ref = document.getElementById('filter-ref')?.value;
+  if (ref === '__none__') filtered = filtered.filter(c => !c.assigned_to);
+  else if (ref) filtered = filtered.filter(c => c.assigned_to === ref);
   // Mantiene gli attivi in alto e i "clienti off" in fondo anche dopo la ricerca/filtro
   return orderClients(filtered);
 }
@@ -314,6 +377,7 @@ function applyFilters() {
 
 document.getElementById('search').addEventListener('input', applyFilters);
 document.getElementById('filter-partner').addEventListener('change', applyFilters);
+document.getElementById('filter-ref').addEventListener('change', applyFilters);
 
 // Add client
 document.getElementById('btn-add').addEventListener('click', () => {

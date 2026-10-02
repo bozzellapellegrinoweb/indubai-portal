@@ -356,6 +356,7 @@
       }
       const typeIcons = {
         task_assigned: '📋', task_comment: '💬', task_completed: '✅',
+        task_mention: '🔔', leave_request_new: '🏖',
         vat_deadline: '📅', payment_failed: '⚠', statement_missing: '📂', default: '🔔'
       };
       listEl.innerHTML = notifs.map(n => `

@@ -111,6 +111,18 @@
           <option value="admin">Admin</option>
         </select>
       </div>
+      <div class="form-group" id="scope-group">
+        <label class="form-label">Visibilità clienti</label>
+        <select class="form-control" id="u-scope">
+          <option value="all">Tutti i clienti</option>
+          <option value="assigned">Solo i clienti assegnati a lui/lei</option>
+        </select>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5">
+          Con <strong>solo i clienti assegnati</strong> il membro vede esclusivamente i clienti
+          di cui è referente (campo <em>Referente</em> nella pagina Clienti) e può modificare solo quelli.
+          Gli admin vedono sempre tutto.
+        </div>
+      </div>
       <div class="form-group" id="newpwd-group" style="display:none">
         <label class="form-label">Nuova Password (lascia vuoto per non cambiare)</label>
         <input type="password" class="form-control" id="u-newpwd" placeholder="Nuova password...">
@@ -164,21 +176,40 @@ async function init() {
   loadUsers();
 }
 
+// Cache dei profili: openEdit/deleteUser risolvono per id, così un nome
+// con apostrofi o virgolette non rompe più l'handler inline.
+let allProfiles = [];
+
 async function loadUsers() {
   try {
-    const profiles = await sb.db.select('profiles', { columns: 'id,full_name,role,created_at', order: 'created_at.asc' }) || [];
+    const [profiles, assigned] = await Promise.all([
+      sb.db.select('profiles', { columns: 'id,full_name,role,created_at,clients_scope', order: 'created_at.asc' }),
+      sb.db.select('clients', { columns: 'assigned_to', filter: 'assigned_to=not.is.null' }).catch(() => []),
+    ]);
+    allProfiles = profiles || [];
+    // Quanti clienti ha in gestione ciascun membro
+    const portfolio = {};
+    (assigned || []).forEach(c => { portfolio[c.assigned_to] = (portfolio[c.assigned_to] || 0) + 1; });
+
     const myId = sb.getCurrentProfile()?.id;
-    document.getElementById('users-list').innerHTML = profiles.map(p => `
+    document.getElementById('users-list').innerHTML = allProfiles.map(p => {
+      const restricted = p.clients_scope === 'assigned' && p.role !== 'admin';
+      const n = portfolio[p.id] || 0;
+      return `
       <div class="user-card">
         <div class="u-av" style="background:${ROLE_COLORS[p.role]||'#9ca3af'}">${(p.full_name||'?').substring(0,2).toUpperCase()}</div>
         <div style="flex:1">
           <div style="font-size:14px;font-weight:700">${ui.escapeHtml(p.full_name)} ${p.id===myId?'<span style="font-size:11px;color:var(--text-muted)">(tu)</span>':''}</div>
-          <div style="font-size:12px;color:var(--text-muted)">Creato ${ui.formatDate(p.created_at)}</div>
+          <div style="font-size:12px;color:var(--text-muted)">
+            Creato ${ui.formatDate(p.created_at)}${n ? ` · ${n} client${n===1?'e':'i'} in gestione` : ''}
+          </div>
         </div>
+        ${restricted ? `<span class="role-badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d" title="Vede solo i clienti di cui è referente">Portfolio ${n}</span>` : ''}
         <span class="role-badge rb-${p.role}">${ROLE_LABELS[p.role]||p.role}</span>
-        <button class="btn btn-ghost btn-sm" onclick="openEdit('${p.id}','${ui.escapeHtml(p.full_name)}','${p.role}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Modifica</button>
-        ${p.id !== myId ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteUser('${p.id}','${ui.escapeHtml(p.full_name)}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>` : ''}
-      </div>`).join('');
+        <button class="btn btn-ghost btn-sm" onclick="openEdit('${p.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Modifica</button>
+        ${p.id !== myId ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteUser('${p.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>` : ''}
+      </div>`;
+    }).join('');
   } catch(e) {
     document.getElementById('users-list').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
@@ -191,6 +222,7 @@ function openNew() {
   document.getElementById('u-email').value = '';
   document.getElementById('u-pwd').value = '';
   document.getElementById('u-role').value = 'junior';
+  document.getElementById('u-scope').value = 'all';
   document.getElementById('email-group').style.display = 'block';
   document.getElementById('pwd-group').style.display = 'block';
   document.getElementById('newpwd-group').style.display = 'none';
@@ -198,11 +230,14 @@ function openNew() {
   document.getElementById('modal-user').style.display = 'flex';
 }
 
-function openEdit(id, name, role) {
+function openEdit(id) {
+  const p = allProfiles.find(x => x.id === id);
+  if (!p) return;
   editingId = id;
   document.getElementById('modal-title').textContent = 'Modifica Utente';
-  document.getElementById('u-name').value = name;
-  document.getElementById('u-role').value = role;
+  document.getElementById('u-name').value = p.full_name || '';
+  document.getElementById('u-role').value = p.role;
+  document.getElementById('u-scope').value = p.clients_scope || 'all';
   document.getElementById('email-group').style.display = 'none';
   document.getElementById('pwd-group').style.display = 'none';
   document.getElementById('newpwd-group').style.display = 'block';
@@ -222,7 +257,8 @@ async function saveUser() {
     try {
       await sb.db.update('profiles', `id=eq.${editingId}`, {
         full_name: document.getElementById('u-name').value.trim(),
-        role: document.getElementById('u-role').value
+        role: document.getElementById('u-role').value,
+        clients_scope: document.getElementById('u-scope').value
       });
       // Password change via SQL modal
       const newPwd = document.getElementById('u-newpwd').value;
@@ -243,13 +279,14 @@ async function saveUser() {
     const email = document.getElementById('u-email').value.trim();
     const pwd = document.getElementById('u-pwd').value;
     const role = document.getElementById('u-role').value;
+    const scope = document.getElementById('u-scope').value;
     if (!name || !email || !pwd) { ui.showToast('Compila tutti i campi', 'error'); return; }
     if (pwd.length < 8) { ui.showToast('Password minimo 8 caratteri', 'error'); return; }
-    showCreateSQL(name, email, pwd, role);
+    showCreateSQL(name, email, pwd, role, scope);
   }
 }
 
-function showCreateSQL(name, email, pwd, role) {
+function showCreateSQL(name, email, pwd, role, scope) {
   const sql = `DO $$
 DECLARE new_id uuid := gen_random_uuid();
 BEGIN
@@ -270,9 +307,9 @@ BEGIN
     '{"full_name":"${name}"}'::jsonb,
     now(), now(), '', '', '', ''
   );
-  INSERT INTO profiles (id, full_name, role)
-  VALUES (new_id, '${name}', '${role}')
-  ON CONFLICT (id) DO UPDATE SET role = '${role}', full_name = '${name}';
+  INSERT INTO profiles (id, full_name, role, clients_scope)
+  VALUES (new_id, '${name}', '${role}', '${scope}')
+  ON CONFLICT (id) DO UPDATE SET role = '${role}', full_name = '${name}', clients_scope = '${scope}';
 END $$;`;
   
   document.getElementById('sql-content').textContent = sql;
@@ -298,7 +335,8 @@ function copyAndOpenSQL() {
   });
 }
 
-async function deleteUser(id, name) {
+async function deleteUser(id) {
+  const name = allProfiles.find(x => x.id === id)?.full_name || 'questo utente';
   if (!confirm(`Eliminare "${name}"?`)) return;
   try {
     const r = await fetch('/api/delete-user', {

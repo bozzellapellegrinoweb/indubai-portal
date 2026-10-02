@@ -56,6 +56,15 @@
     .td-input { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
     .cmt-inp { flex: 1; padding: 9px 13px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; resize: none; outline: none; transition: border .15s; }
     .cmt-inp:focus { border-color: var(--primary); }
+    /* Menzioni @ */
+    .mention { background: #e0e7ff; color: #3730a3; font-weight: 700; border-radius: 5px; padding: 1px 5px; white-space: nowrap; }
+    .mention.me { background: #fde68a; color: #92400e; }
+    .mention-menu { position: fixed; z-index: 9999; background: var(--surface,#fff); border: 1.5px solid var(--border); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.18); padding: 5px; max-height: 232px; overflow-y: auto; display: none; }
+    .mention-opt { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+    .mention-opt.on, .mention-opt:hover { background: var(--surface2,#f3f4f6); }
+    .mention-av { width: 23px; height: 23px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; flex-shrink: 0; }
+    .mention-role { margin-left: auto; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
+    .mention-hint { font-size: 11px; color: var(--text-muted); padding: 6px 9px 2px; }
     .att-list { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
     .att-item { display:flex; align-items:center; gap:6px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12px; text-decoration:none; color:var(--text-primary); transition:border .15s; }
     .att-item:hover { border-color:var(--primary); }
@@ -277,9 +286,29 @@ let pendingFiles = []; // File in attesa di upload
 
 function isImageUrl(url) { return /\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(url); }
 
+// Formato di una menzione salvata nel commento: @[Nome Cognome](uuid)
+const MENTION_RE = /@\[([^\]]+)\]\(([0-9a-fA-F-]{36})\)/g;
+
+// Elenco degli id menzionati (deduplicati)
+function extractMentions(content) {
+  const ids = new Set();
+  let m;
+  MENTION_RE.lastIndex = 0;
+  while ((m = MENTION_RE.exec(content)) !== null) ids.add(m[2]);
+  return [...ids];
+}
+
+// Versione leggibile per email, push e anteprime: @[Nome](uuid) -> @Nome
+function mentionsToText(content) {
+  return content.replace(MENTION_RE, (_, name) => '@' + name);
+}
+
 function renderCommentContent(content) {
+  // Menzioni -> chip (quelle rivolte a me sono evidenziate)
+  const withMentions = ui.escapeHtml(content).replace(MENTION_RE, (_, name, id) =>
+    `<span class="mention${id === myId ? ' me' : ''}">@${name}</span>`);
   // Rileva URL allegati [FILE:url|nome] e li mostra come thumbnail/link
-  return ui.escapeHtml(content).replace(/\[FILE:(.*?)\|(.*?)\]/g, (_, url, name) => {
+  return withMentions.replace(/\[FILE:(.*?)\|(.*?)\]/g, (_, url, name) => {
     if (isImageUrl(url)) {
       return `<div class="att-list" style="margin-top:6px"><a href="${url}" target="_blank" class="att-item"><img src="${url}" alt="${name}"></a></div>`;
     }
@@ -332,7 +361,7 @@ async function init() {
 }
 
 async function loadProfiles() {
-  profiles = await sb.db.select('profiles', {columns:'id,full_name'}) || [];
+  profiles = await sb.db.select('profiles', {columns:'id,full_name,role'}) || [];
   const sel = document.getElementById('t-assigned');
   sel.innerHTML = '<option value="">— Nessuno —</option>';
   profiles.forEach(p => sel.insertAdjacentHTML('beforeend', `<option value="${p.id}">${ui.escapeHtml(p.full_name)}</option>`));
@@ -500,12 +529,136 @@ async function openTask(id) {
       <div id="upload-progress" class="upload-progress" style="display:none"></div>
     </div>
     <div class="td-input">
-      <textarea class="cmt-inp" id="cmt-text" rows="2" placeholder="Scrivi un commento... (Invio per inviare)"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addComment('${id}')}"></textarea>
+      <textarea class="cmt-inp" id="cmt-text" rows="2" placeholder="Scrivi un commento... @ per menzionare, Invio per inviare"
+        oninput="onCommentInput()" onblur="setTimeout(closeMentionMenu,120)"
+        onkeydown="onCommentKeyDown(event,'${id}')"></textarea>
       <input type="file" id="file-input" style="display:none" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip" multiple onchange="handleFileSelect(this.files)">
       <button class="upload-btn" onclick="document.getElementById('file-input').click()" title="Allega file"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>
       <button class="btn btn-accent" onclick="addComment('${id}')">Invia</button>
     </div>`;
+}
+
+// ── Menzioni @ nei commenti ──────────────────────────────────
+// Si possono menzionare tutti i membri dello staff, anche quelli a cui la
+// task non è assegnata: la menzione genera notifica, push ed email.
+const MENTION_ROLES = ['admin', 'mini_admin', 'senior', 'junior', 'staff'];
+let mentionState = null;   // { start, end, items, index }
+
+function mentionCandidates() {
+  return profiles.filter(p => MENTION_ROLES.includes(p.role) && p.id !== myId);
+}
+
+function onCommentInput() {
+  const ta = document.getElementById('cmt-text');
+  if (!ta) return closeMentionMenu();
+  const pos = ta.selectionStart;
+  // una @ a inizio testo o preceduta da spazio, seguita dall'inizio del nome
+  const m = ta.value.slice(0, pos).match(/(?:^|\s)@([\p{L}\p{N}._'-]*)$/u);
+  if (!m) return closeMentionMenu();
+  const q = m[1].toLowerCase();
+  const items = mentionCandidates()
+    .filter(p => (p.full_name || '').toLowerCase().includes(q))
+    .slice(0, 6);
+  if (!items.length) return closeMentionMenu();
+  mentionState = { start: pos - m[1].length - 1, end: pos, items, index: 0 };
+  renderMentionMenu();
+}
+
+function onCommentKeyDown(e, taskId) {
+  if (mentionState) {
+    const n = mentionState.items.length;
+    if (e.key === 'ArrowDown') { e.preventDefault(); mentionState.index = (mentionState.index + 1) % n; return renderMentionMenu(); }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); mentionState.index = (mentionState.index - 1 + n) % n; return renderMentionMenu(); }
+    if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); return pickMention(mentionState.index); }
+    if (e.key === 'Escape')    { e.preventDefault(); return closeMentionMenu(); }
+  }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addComment(taskId); }
+}
+
+function renderMentionMenu() {
+  if (!mentionState) return;
+  let el = document.getElementById('mention-menu');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'mention-menu';
+    el.className = 'mention-menu';
+    document.body.appendChild(el);
+  }
+  const ta = document.getElementById('cmt-text');
+  if (!ta) return closeMentionMenu();
+  const r = ta.getBoundingClientRect();
+  el.style.display = 'block';
+  el.style.left = r.left + 'px';
+  el.style.width = Math.max(230, r.width) + 'px';
+  el.innerHTML = '<div class="mention-hint">↑↓ per scegliere · Invio per confermare</div>'
+    + mentionState.items.map((p, i) => `
+      <div class="mention-opt${i === mentionState.index ? ' on' : ''}"
+           onmousedown="event.preventDefault();pickMention(${i})">
+        <span class="mention-av">${(p.full_name || '?').substring(0, 2).toUpperCase()}</span>
+        <span>${ui.escapeHtml(p.full_name)}</span>
+        <span class="mention-role">${p.role === 'mini_admin' ? 'mini admin' : p.role}</span>
+      </div>`).join('');
+  // sopra la textarea, così non copre il pulsante Invia
+  el.style.top = (r.top - el.offsetHeight - 6) + 'px';
+}
+
+function closeMentionMenu() {
+  mentionState = null;
+  const el = document.getElementById('mention-menu');
+  if (el) el.style.display = 'none';
+}
+
+function pickMention(i) {
+  if (!mentionState) return;
+  const p = mentionState.items[i];
+  const ta = document.getElementById('cmt-text');
+  if (!p || !ta) return closeMentionMenu();
+  const { start, end } = mentionState;
+  // le parentesi quadre/tonde nel nome romperebbero il formato del token
+  const safeName = (p.full_name || '').replace(/[\[\]()]/g, '').trim();
+  const token = `@[${safeName}](${p.id}) `;
+  ta.value = ta.value.slice(0, start) + token + ta.value.slice(end);
+  const caret = start + token.length;
+  closeMentionMenu();
+  ta.focus();
+  ta.setSelectionRange(caret, caret);
+}
+
+// Invia notifica in-app + push + email a un destinatario del commento.
+// `reason` = 'mention' | 'assigned' | 'created'
+function notifyComment(userId, reason, task, taskId, myName, preview) {
+  const mentioned = reason === 'mention';
+  const verbo = mentioned ? 'ti ha menzionato in' : 'ha commentato';
+  const titolo = mentioned ? 'Menzione: ' + task.title : 'Nuovo commento: ' + task.title;
+
+  sb.db.insert('notifications', {
+    user_id: userId,
+    type: mentioned ? 'task_mention' : 'task_comment',
+    title: titolo,
+    body: preview.substring(0, 80),
+    link: '/tasks.html',
+    entity_type: 'task',
+    entity_id: taskId,
+  }, { returning: false }).catch(() => {});
+
+  pushNotify({
+    action: 'send_to_user', user_id: userId,
+    title: mentioned ? '🔔 Ti hanno menzionato' : '💬 Nuovo commento',
+    message: myName + ': ' + preview.substring(0, 80),
+    url: 'https://portal.indubai.it/tasks.html',
+  });
+
+  emailNotify({
+    user_id: userId,
+    subject: (mentioned ? '🔔 Menzione su: ' : '💬 Nuovo commento su: ') + task.title,
+    html: `<h2 style="margin:0 0 16px;color:#1a2744;font-size:20px">${mentioned ? '🔔 Ti hanno menzionato' : '💬 Nuovo commento'}</h2>
+           <p style="color:#374151;font-size:15px"><strong>${ui.escapeHtml(myName)}</strong> ${verbo} la task <strong>${ui.escapeHtml(task.title)}</strong>:</p>
+           <div style="background:#f3f4f6;border-left:4px solid #1a2744;padding:14px 18px;margin:16px 0;border-radius:6px;font-size:14px;color:#374151">${ui.escapeHtml(preview)}</div>
+           <p style="text-align:center;margin-top:28px"><a href="https://portal.indubai.it/tasks.html" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri Tasks</a></p>`,
+    event_type: mentioned ? 'task_mention' : 'task_comment',
+    entity_id: taskId,
+    entity_type: 'task',
+  });
 }
 
 async function addComment(taskId) {
@@ -536,57 +689,23 @@ async function addComment(taskId) {
     await sb.db.insert('task_comments', {task_id:taskId, author_id:myId, content});
     const task = allTasks.find(t => t.id === taskId);
     const myName = profiles.find(p => p.id === myId)?.full_name || 'Un collega';
-    if (task?.assigned_to && task.assigned_to !== myId) {
-      await sb.db.insert('notifications', {
-        user_id: task.assigned_to, type:'task_comment',
-        title:'Nuovo commento: '+task.title, body:content.substring(0,80),
-        link:'/tasks.html', entity_type:'task', entity_id:taskId
-      }).catch(()=>{});
-      // Push OneSignal
-      pushNotify({
-        action: 'send_to_user', user_id: task.assigned_to,
-        title: '💬 Nuovo commento',
-        message: myName + ': ' + content.substring(0, 80),
-        url: 'https://portal.indubai.it/tasks.html'
-      });
-      // Email via Resend
-      emailNotify({
-        user_id: task.assigned_to,
-        subject: '💬 Nuovo commento su: ' + task.title,
-        html: `<h2 style="margin:0 0 16px;color:#1a2744;font-size:20px">💬 Nuovo commento</h2>
-               <p style="color:#374151;font-size:15px"><strong>${myName}</strong> ha commentato la task <strong>${task.title}</strong>:</p>
-               <div style="background:#f3f4f6;border-left:4px solid #1a2744;padding:14px 18px;margin:16px 0;border-radius:6px;font-size:14px;color:#374151">${content}</div>
-               <p style="text-align:center;margin-top:28px"><a href="https://portal.indubai.it/tasks.html" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri Tasks</a></p>`,
-        event_type: 'task_comment',
-        entity_id: taskId,
-        entity_type: 'task',
-      });
+    const preview = mentionsToText(content);
+
+    // Destinatari: i menzionati, più assegnatario e creatore della task.
+    // La Map deduplica (una menzione all'assegnatario produce una sola
+    // notifica, con il testo della menzione) e il commentatore è escluso.
+    const recipients = new Map();
+    extractMentions(content).forEach(id => recipients.set(id, 'mention'));
+    if (task?.assigned_to && !recipients.has(task.assigned_to)) recipients.set(task.assigned_to, 'assigned');
+    if (task?.created_by  && !recipients.has(task.created_by))  recipients.set(task.created_by, 'created');
+    recipients.delete(myId);
+
+    if (task) {
+      for (const [userId, reason] of recipients) {
+        notifyComment(userId, reason, task, taskId, myName, preview);
+      }
     }
-    // Notifica anche il creatore della task (se diverso dall'assegnatario e da chi commenta)
-    if (task?.created_by && task.created_by !== myId && task.created_by !== task.assigned_to) {
-      await sb.db.insert('notifications', {
-        user_id: task.created_by, type:'task_comment',
-        title:'Nuovo commento: '+task.title, body:content.substring(0,80),
-        link:'/tasks.html', entity_type:'task', entity_id:taskId
-      }).catch(()=>{});
-      pushNotify({
-        action: 'send_to_user', user_id: task.created_by,
-        title: '💬 Nuovo commento',
-        message: myName + ': ' + content.substring(0, 80),
-        url: 'https://portal.indubai.it/tasks.html'
-      });
-      emailNotify({
-        user_id: task.created_by,
-        subject: '💬 Nuovo commento su: ' + task.title,
-        html: `<h2 style="margin:0 0 16px;color:#1a2744;font-size:20px">💬 Nuovo commento</h2>
-               <p style="color:#374151;font-size:15px"><strong>${myName}</strong> ha commentato la task <strong>${task.title}</strong>:</p>
-               <div style="background:#f3f4f6;border-left:4px solid #1a2744;padding:14px 18px;margin:16px 0;border-radius:6px;font-size:14px;color:#374151">${content}</div>
-               <p style="text-align:center;margin-top:28px"><a href="https://portal.indubai.it/tasks.html" style="background:#1a2744;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Apri Tasks</a></p>`,
-        event_type: 'task_comment',
-        entity_id: taskId,
-        entity_type: 'task',
-      });
-    }
+
     await openTask(taskId);
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
 }
@@ -615,7 +734,7 @@ async function updateStatus(taskId, newStatus) {
           user_id: task.assigned_to, type:'task_completed',
           title: 'Task completata: '+task.title,
           link:'/tasks.html', entity_type:'task', entity_id:taskId
-        }).catch(()=>{});
+        }, { returning: false }).catch(()=>{});
         pushNotify({
           action: 'send_to_user', user_id: task.assigned_to,
           title: '✅ Task completata',
@@ -644,7 +763,7 @@ async function updateStatus(taskId, newStatus) {
           user_id: task.created_by, type:'task_completed',
           title: 'Task completata: '+task.title,
           link:'/tasks.html', entity_type:'task', entity_id:taskId
-        }).catch(()=>{});
+        }, { returning: false }).catch(()=>{});
         pushNotify({
           action: 'send_to_user', user_id: task.created_by,
           title: '✅ Task completata',
@@ -700,7 +819,7 @@ async function updateStatus(taskId, newStatus) {
           user_id: task.assigned_to, type:'task_status_changed',
           title: 'Task aggiornata: '+task.title,
           link:'/tasks.html', entity_type:'task', entity_id:taskId
-        }).catch(()=>{});
+        }, { returning: false }).catch(()=>{});
       }
     }
   } catch(e) { ui.showToast('Errore: '+e.message,'error'); }
@@ -772,7 +891,7 @@ async function saveTask() {
         user_id: data.assigned_to, type:'task_assigned',
         title: '📋 Nuova task: '+title, body: data.description?.substring(0,80)||'',
         link:'/tasks.html', entity_type:'task', entity_id:result?.[0]?.id
-      }).catch(()=>{});
+      }, { returning: false }).catch(()=>{});
     }
     closeModal();
     await loadTasks();

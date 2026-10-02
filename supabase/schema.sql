@@ -22,6 +22,9 @@ create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
   role user_role not null default 'staff',
+  -- Ambito di visibilità sui clienti: 'all' = tutti, 'assigned' = solo quelli
+  -- con clients.assigned_to = id (vedi 20261002_client_portfolio_scope.sql)
+  clients_scope text not null default 'all' check (clients_scope in ('all','assigned')),
   avatar_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -94,7 +97,18 @@ alter table clients enable row level security;
 
 drop policy if exists "Authenticated users can read clients" on clients;
 create policy "Authenticated users can read clients" on clients
-  for select using (auth.role() = 'authenticated');
+  for select using (
+    auth.role() = 'authenticated'
+    and (
+      not is_ambassador()
+      or exists (
+        select 1 from client_users cu
+        where cu.client_id = clients.id and cu.user_id = auth.uid()
+      )
+    )
+    -- portfolio: chi è limitato vede solo i clienti di cui è referente
+    and (not sees_only_assigned_clients() or assigned_to = auth.uid())
+  );
 
 drop policy if exists "Authenticated users can insert clients" on clients;
 create policy "Authenticated users can insert clients" on clients
@@ -102,7 +116,11 @@ create policy "Authenticated users can insert clients" on clients
 
 drop policy if exists "Authenticated users can update clients" on clients;
 create policy "Authenticated users can update clients" on clients
-  for update using (auth.role() = 'authenticated');
+  for update using (
+    auth.role() = 'authenticated'
+    and not is_ambassador()
+    and (not sees_only_assigned_clients() or assigned_to = auth.uid())
+  );
 
 drop policy if exists "Only admins can delete clients" on clients;
 create policy "Only admins can delete clients" on clients
