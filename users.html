@@ -198,16 +198,18 @@ async function loadUsers() {
       return `
       <div class="user-card">
         <div class="u-av" style="background:${ROLE_COLORS[p.role]||'#9ca3af'}">${(p.full_name||'?').substring(0,2).toUpperCase()}</div>
-        <div style="flex:1">
+        <div class="uc-main">
           <div style="font-size:14px;font-weight:700">${ui.escapeHtml(p.full_name)} ${p.id===myId?'<span style="font-size:11px;color:var(--text-muted)">(tu)</span>':''}</div>
           <div style="font-size:12px;color:var(--text-muted)">
             Creato ${ui.formatDate(p.created_at)}${n ? ` · ${n} client${n===1?'e':'i'} in gestione` : ''}
           </div>
         </div>
+        <div class="uc-actions">
         ${restricted ? `<span class="role-badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d" title="Vede solo i clienti di cui è referente">Portfolio ${n}</span>` : ''}
         <span class="role-badge rb-${p.role}">${ROLE_LABELS[p.role]||p.role}</span>
         <button class="btn btn-ghost btn-sm" onclick="openEdit('${p.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Modifica</button>
         ${p.id !== myId ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteUser('${p.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>` : ''}
+        </div>
       </div>`;
     }).join('');
   } catch(e) {

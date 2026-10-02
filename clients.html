@@ -52,14 +52,14 @@
             <thead>
               <tr>
                 <th>Azienda</th>
-                <th>General Manager</th>
+                <th class="hide-mobile">General Manager</th>
                 <th>Referente</th>
-                <th>Partner</th>
-                <th>Conti Bancari</th>
-                <th>Abbonamento</th>
-                <th>CT Scadenza</th>
-                <th>Lic. Aziendale</th>
-                <th>VAT</th>
+                <th class="hide-mobile">Partner</th>
+                <th class="hide-mobile">Conti Bancari</th>
+                <th class="hide-mobile">Abbonamento</th>
+                <th class="hide-mobile">CT Scadenza</th>
+                <th class="hide-mobile">Lic. Aziendale</th>
+                <th class="hide-mobile">VAT</th>
                 <th></th>
               </tr>
             </thead>
@@ -299,21 +299,21 @@ function renderClients(clients) {
       <td>
         <div class="td-company">${ui.escapeHtml(c.company_name)}${off ? ' <span class="badge" style="background:#3f3f46;color:#e4e4e7;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;vertical-align:middle">OFF</span>' : ''}</div>
       </td>
-      <td style="font-size:13px">${c.general_manager ? ui.escapeHtml(c.general_manager) : (c.contact_name ? '<span style="color:var(--text-muted);font-size:12px">'+ui.escapeHtml(c.contact_name)+'</span>' : '—')}</td>
+      <td class="hide-mobile" style="font-size:13px">${c.general_manager ? ui.escapeHtml(c.general_manager) : (c.contact_name ? '<span style="color:var(--text-muted);font-size:12px">'+ui.escapeHtml(c.contact_name)+'</span>' : '—')}</td>
       <td>${refCell(c)}</td>
-      <td>${ui.partnerLabel(c.accounting_partner)}</td>
-      <td style="font-size:12px">${(c.bank_accounts || []).join(', ') || '—'}</td>
-      <td>
+      <td class="hide-mobile">${ui.partnerLabel(c.accounting_partner)}</td>
+      <td class="hide-mobile" style="font-size:12px">${(c.bank_accounts || []).join(', ') || '—'}</td>
+      <td class="hide-mobile">
         ${c.service_cost ? `<strong>${ui.formatAED(c.service_cost)}</strong>` : '—'}
         ${c.subscription_day ? `<div style="font-size:11px;color:var(--text-muted)">Giorno ${c.subscription_day}</div>` : ''}
       </td>
-      <td>
+      <td class="hide-mobile">
         ${c.corporate_tax_expiry
           ? `<span class="${ui.deadlineClass(c.corporate_tax_expiry)}">${ui.formatDate(c.corporate_tax_expiry)}</span>`
           : '—'}
       </td>
-      <td>${licenseCell(c.trade_license_date)}</td>
-      <td>${c.vat_registered ? '<span class="badge badge-ok">VAT</span>' : '—'}</td>
+      <td class="hide-mobile">${licenseCell(c.trade_license_date)}</td>
+      <td class="hide-mobile">${c.vat_registered ? '<span class="badge badge-ok">VAT</span>' : '—'}</td>
       <td>
         <a href="/client-detail.html?id=${c.id}" class="btn btn-ghost btn-sm">Apri</a>
       </td>

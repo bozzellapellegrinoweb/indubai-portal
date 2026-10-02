@@ -322,6 +322,10 @@ td {
   vertical-align: middle;
 }
 .td-company { font-weight: 600; color: var(--primary); }
+
+/* Card utente: blocco nome e blocco azioni (badge ruolo + pulsanti) */
+.user-card .uc-main { flex: 1; min-width: 0; }
+.user-card .uc-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
 .td-contact { font-size: 12px; color: var(--text-muted); }
 
 /* ── BADGES ── */
@@ -623,6 +627,13 @@ td {
   .main-content { margin-left: 0; }
 }
 
+/* Tablet (es. iPad verticale, 820px): la sidebar è fuori schermo ma il guscio
+   mobile con la bottom nav parte solo sotto i 768px. Senza l'hamburger qui
+   non restava nessun modo di navigare. */
+@media (min-width: 769px) and (max-width: 900px) {
+  .hamburger { display: flex !important; }
+}
+
 /* ============================================================
    MOBILE RESPONSIVE — Complete overhaul
    ============================================================ */
@@ -796,8 +807,12 @@ html, body {
   }
   .tab-btn { white-space: nowrap; font-size: 12px; padding: 8px 12px; }
 
-  /* User cards */
-  .user-card { flex-wrap: wrap; gap: 10px; }
+  /* User cards: avatar + nome sulla prima riga, ruolo e pulsanti sulla seconda,
+     invece del nome spezzato in colonna con i pulsanti accavallati sopra */
+  .user-card { flex-wrap: wrap; gap: 10px; align-items: center; }
+  .user-card .u-av { flex: 0 0 auto; }
+  .user-card .uc-main { flex: 1 1 calc(100% - 70px); min-width: 0; }
+  .user-card .uc-actions { flex: 1 1 100%; justify-content: flex-start; flex-wrap: wrap; }
   .user-card .btn { font-size: 11px; padding: 5px 10px; }
 
   /* Hide non-essential columns on mobile */
@@ -1108,7 +1123,45 @@ html, body {
 @media (max-width: 768px) {
   /* Hide desktop elements */
   .hamburger { display: none !important; }
-  .topbar { display: none !important; }
+
+  /* La topbar resta visibile: contiene ricerca, filtri e azioni della pagina,
+     che la barra iOS non ha. Qui viene impilata su righe intere invece di
+     essere compressa accanto al titolo. */
+  .topbar {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    position: static;
+  }
+  /* Blocco titolo + sottotitolo: riga propria, testo che va a capo */
+  .topbar > div:first-of-type { flex: 1 1 100%; min-width: 0; }
+  .topbar-title { font-size: 17px; white-space: normal; overflow: visible; text-overflow: clip; }
+  .topbar-subtitle { white-space: normal; }
+  /* Toolbar e azioni: riga propria, controlli a tutta larghezza */
+  .toolbar, .topbar-actions { flex: 1 1 100%; width: 100%; gap: 8px; }
+  .toolbar .search-box { flex: 1 1 100%; }
+  .toolbar .search-box input,
+  .toolbar input.form-control { width: 100% !important; min-width: 0 !important; }
+  .toolbar select.form-control { flex: 1 1 42%; width: auto !important; min-width: 0; }
+  .topbar .btn { flex: 0 0 auto; }
+  /* La campanella è già nella barra iOS: qui sarebbe un doppione */
+  .topbar .notif-bell { display: none !important; }
+
+  /* Tabella Clienti: con le colonne secondarie nascoste restano 4 colonne,
+     che ci stanno nello schermo se il nome azienda può andare a capo.
+     Mirata su questa tabella: quelle larghe (VAT, Abbonamenti) continuano
+     a scorrere in orizzontale, che per loro è il comportamento giusto. */
+  #clients-table { min-width: 0 !important; width: 100% !important; table-layout: fixed; }
+  #clients-table th, #clients-table td { padding: 9px 7px; }
+  /* a capo sugli spazi; si spezza dentro la parola solo se davvero non ci sta */
+  #clients-table .td-company { white-space: normal; overflow-wrap: break-word; font-size: 12.5px; }
+  #clients-table th:first-child, #clients-table td:first-child { width: auto; }
+  #clients-table th:nth-child(3), #clients-table td:nth-child(3) { width: 112px; }
+  #clients-table th:last-child, #clients-table td:last-child { width: 58px; }
+  #clients-table select { width: 100% !important; max-width: 100% !important; font-size: 11px; }
+  #clients-table .btn { padding: 5px 8px; font-size: 11px; }
 
   /* Show iOS elements */
   .ios-admin-bar { display: flex; }
@@ -1155,16 +1208,21 @@ html, body {
   }
 }
 
-/* Topbar: sempre flex, no wrap */
-.topbar {
-  display: flex !important;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: nowrap;
-  box-sizing: border-box;
+/* Topbar: sempre flex, no wrap — SOLO da tablet in su.
+   Senza il media query queste regole vincevano (per ordine nel file) sul
+   guscio mobile, lasciando a video sia la barra iOS sia la topbar desktop:
+   due campanelle, titolo schiacciato su tre righe e filtri impilati. */
+@media (min-width: 769px) {
+  .topbar {
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+    box-sizing: border-box;
+  }
+  .topbar-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 }
-.topbar-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 /* KPI grid: usa tutto lo spazio disponibile */
 @media (min-width: 901px) {
