@@ -103,9 +103,10 @@
       </div>
       <div class="form-group">
         <label class="form-label">Ruolo</label>
-        <select class="form-control" id="u-role">
+        <select class="form-control" id="u-role" onchange="onRoleChange()">
           <option value="collaborator">Collaboratore</option>
           <option value="junior">Contabilità Junior</option>
+          <option value="commerciale">Commerciale</option>
           <option value="senior">Contabilità Senior</option>
           <option value="mini_admin">Mini Admin</option>
           <option value="admin">Admin</option>
@@ -164,8 +165,8 @@
 <script src="/js/i18n.js"></script>
 <script>
 let editingId = null;
-const ROLE_LABELS = {admin:'Admin', mini_admin:'Mini Admin', senior:'Contabilità Senior', junior:'Contabilità Junior', collaborator:'Collaboratore', staff:'Staff'};
-const ROLE_COLORS = {admin:'#14161a', mini_admin:'#47ee74', senior:'#2563a8', junior:'#6b7280', collaborator:'#059669', staff:'#9ca3af'};
+const ROLE_LABELS = {admin:'Admin', mini_admin:'Mini Admin', senior:'Contabilità Senior', junior:'Contabilità Junior', commerciale:'Commerciale', collaborator:'Collaboratore', staff:'Staff'};
+const ROLE_COLORS = {admin:'#14161a', mini_admin:'#47ee74', senior:'#2563a8', junior:'#6b7280', commerciale:'#b45309', collaborator:'#059669', staff:'#9ca3af'};
 
 async function init() {
   await sb.requireAuth();
@@ -215,6 +216,15 @@ async function loadUsers() {
   } catch(e) {
     document.getElementById('users-list').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
+}
+
+// Scegliendo "Commerciale" la visibilità clienti passa a "solo i suoi": è il
+// senso del ruolo. Resta modificabile, ma non parte mai aperta per distrazione.
+function onRoleChange() {
+  const role  = document.getElementById('u-role').value;
+  const scope = document.getElementById('u-scope');
+  if (role === 'commerciale' && scope.value === 'all') scope.value = 'assigned';
+  if (role === 'admin') scope.value = 'all';   // gli admin vedono sempre tutto
 }
 
 function openNew() {
@@ -384,13 +394,15 @@ async function changePassword() {
 }
 
 // ── Permissions Management ────────────────────────────────────
-const MANAGEABLE_ROLES = ['senior','junior','mini_admin','collaborator'];
+const MANAGEABLE_ROLES = ['senior','junior','mini_admin','commerciale','collaborator'];
 const ALL_PAGES = [
   { section:'OVERVIEW', pages: [
     { id:'index',      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>', label:'Dashboard' },
     { id:'tasks',      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>', label:'Task' },
     { id:'notifiche',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>', label:'Notifiche' },
+    { id:'pipeline',   icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>', label:'Pipeline' },
     { id:'broadcast',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>', label:'Broadcast' },
+    { id:'bacheca',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H5.2L4 17.4z"/></svg>', label:'Bacheca' },
   ]},
   { section:'GESTIONE', pages: [
     { id:'clients',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label:'Clienti' },
@@ -409,9 +421,13 @@ const ALL_PAGES = [
     { id:'vat',        icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>', label:'VAT Register' },
     { id:'corp-tax',   icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>', label:'Corporate Tax' },
     { id:'affinitas',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label:'Affinitas' },
+    { id:'vat-partner',icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>', label:'VAT Consultant' },
+    { id:'pw',         icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>', label:'P&amp;W' },
   ]},
   { section:'ANALYTICS', pages: [
     { id:'reports',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label:'Report' },
+    { id:'lead-analytics', icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', label:'Lead per Fonte' },
+    { id:'finance',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>', label:'Cashflow Gruppo' },
     { id:'news',       icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>', label:'UAE News' },
     { id:'search',     icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>', label:'Ricerca' },
   ]},
@@ -419,6 +435,8 @@ const ALL_PAGES = [
 
 const DEFAULTS = {
   senior:       null,
+  // Niente pipeline (vedrebbe le trattative altrui) e niente pagine economiche
+  commerciale:  ['index','tasks','clients','documents','search','news','notifiche'],
   junior:       ['index','tasks','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','documents','search','news','notifiche','reports'],
   mini_admin:   ['index','tasks','clients','documents','search','news','notifiche'],
   collaborator: ['index','tasks','clients','documents','search','news','notifiche'],

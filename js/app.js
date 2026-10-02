@@ -35,6 +35,11 @@
     junior:       ['index','tasks','pipeline','clients','zoho-setup','zoho-vat','onboarding','statements','reconciliation','expenses','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports','lead-analytics'],
     mini_admin:   ['index','tasks','pipeline','clients','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
     collaborator: ['index','tasks','pipeline','clients','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
+    // Commerciale: lavora i suoi clienti e le sue task. Niente pipeline (vedrebbe
+    // le trattative altrui), niente pagine economiche (abbonamenti, bilanci,
+    // riconciliazione, spese, report, cashflow). La Dashboard che vede è la
+    // versione ridotta sui suoi clienti (vedi index.html).
+    commerciale:  ['index','tasks','clients','documents','search','news','notifiche'],
   };
 
   function _getAllowed(r) {
@@ -44,6 +49,21 @@
     return ['index','tasks','notifiche']; // ruolo sconosciuto = accesso minimo
   }
   const allowed = _getAllowed(role);
+
+  // ── Dati economici ───────────────────────────────────────────
+  // Ruoli che non devono vedere quanto paga un cliente, margini, incassato e
+  // fatturato. Le pagine lo leggono da qui invece di ripetere l'elenco.
+  // NB: è un filtro dell'interfaccia, non una barriera del database: nasconde
+  // i campi e, dove possibile, evita di richiederli al server.
+  const ROLES_NO_FINANCIALS = ['commerciale'];
+  window.APP_ROLE = role;
+  window.canSeeFinancials = function () { return !ROLES_NO_FINANCIALS.includes(role); };
+  // Marcatore sul body: tutto ciò che ha classe .col-fin o .fin-only sparisce
+  // per questi ruoli, senza doverlo gestire pagina per pagina.
+  if (!window.canSeeFinancials()) {
+    document.addEventListener('DOMContentLoaded', () => document.body.classList.add('no-financials'));
+    if (document.body) document.body.classList.add('no-financials');
+  }
 
   // ── Icone SVG (stile Feather, stroke currentColor) — sostituiscono le emoji ──
   const ICON_PATHS = {
@@ -197,7 +217,7 @@
           <div class="avatar">${initials}</div>
           <div class="user-info">
             <div class="user-name">${escapeHtml(profile?.full_name || 'Utente')}</div>
-            <div class="user-role">${{admin:'Amministratore',senior:'Senior',junior:'Junior',mini_admin:'Mini Admin',collaborator:'Collaboratore'}[profile?.role] || 'Staff'}</div>
+            <div class="user-role">${{admin:'Amministratore',senior:'Senior',junior:'Junior',mini_admin:'Mini Admin',commerciale:'Commerciale',collaborator:'Collaboratore'}[profile?.role] || 'Staff'}</div>
           </div>
           <button id="lang-toggle-btn" class="btn-lang-toggle" title="${(localStorage.getItem('indubai_lang')||'it')==='en'?'Switch to Italian':'Switch to English'}" onclick="i18n.toggleLang()">${(localStorage.getItem('indubai_lang')||'it')==='en'?'🇬🇧':'🇮🇹'}</button>
           <button class="btn-logout" title="Logout" onclick="sb.signOut()">${navIcon('log-out')}</button>

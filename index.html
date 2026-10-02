@@ -594,9 +594,98 @@ async function loadRevenue() {
   } catch(e){}
 }
 
+// ── Dashboard ridotta (ruoli senza accesso ai dati economici) ──
+// Il commerciale non deve vedere incassato, abbonamenti, estratti e soglie VAT:
+// sono numeri aggregati su tutti i clienti dello studio. Qui vede solo ciò che
+// riguarda i clienti che gli sono stati assegnati — l'elenco è già ristretto dal
+// database (RLS), quindi questi conteggi sono per costruzione solo i suoi.
+async function loadDashboardRidotta() {
+  const content = document.querySelector('.page-content');
+  const myId = sb.getCurrentProfile()?.id;
+  content.innerHTML = '<div class="kpi-strip" id="kpi-grid"><div class="kpi-card"><div class="spinner"></div></div></div><div id="dash-ridotta"></div>';
+
+  const oggi = new Date();
+  const fra60 = new Date(oggi.getTime() + 60*86400000).toISOString().split('T')[0];
+  const oggiStr = oggi.toISOString().split('T')[0];
+
+  const [clienti, tasks] = await Promise.all([
+    sb.db.select('clients', {
+      columns: 'id,company_name,is_active,trade_license_date,corporate_tax_expiry',
+    }).catch(() => []),
+    sb.db.select('tasks', {
+      columns: 'id,title,status,due_date,client_id,clients(company_name)',
+      filter: `assigned_to=eq.${myId}&status=in.(open,in_progress)`,
+      order: 'due_date.asc',
+    }).catch(() => []),
+  ]);
+
+  const attivi = (clienti||[]).filter(c => c.is_active !== false);
+  const scadenze = [];
+  (clienti||[]).forEach(c => {
+    if (c.trade_license_date && c.trade_license_date >= oggiStr && c.trade_license_date <= fra60)
+      scadenze.push({ nome: c.company_name, tipo: 'Licenza aziendale', data: c.trade_license_date, id: c.id });
+    if (c.corporate_tax_expiry && c.corporate_tax_expiry >= oggiStr && c.corporate_tax_expiry <= fra60)
+      scadenze.push({ nome: c.company_name, tipo: 'Corporate Tax', data: c.corporate_tax_expiry, id: c.id });
+  });
+  scadenze.sort((a,b) => a.data.localeCompare(b.data));
+
+  const inRitardo = (tasks||[]).filter(t => t.due_date && t.due_date < oggiStr).length;
+
+  const ICO = {
+    users: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+    check: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>',
+    cal: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  };
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card" onclick="window.location='/clients.html'" style="cursor:pointer">
+      <div class="kpi-label">I miei clienti</div><div class="kpi-value">${attivi.length}</div>
+      <div class="kpi-sub">${(clienti||[]).length - attivi.length} non più in gestione</div>
+      <div class="kpi-icon">${ICO.users}</div></div>
+    <div class="kpi-card ${inRitardo ? 'c-danger' : ''}" onclick="window.location='/tasks.html'" style="cursor:pointer">
+      <div class="kpi-label">Task aperte</div><div class="kpi-value">${(tasks||[]).length}</div>
+      <div class="kpi-sub">${inRitardo ? inRitardo + ' in ritardo' : 'nessuna in ritardo'}</div>
+      <div class="kpi-icon">${ICO.check}</div></div>
+    <div class="kpi-card ${scadenze.length ? 'c-warn' : ''}">
+      <div class="kpi-label">Scadenze 60 giorni</div><div class="kpi-value">${scadenze.length}</div>
+      <div class="kpi-sub">dei tuoi clienti</div>
+      <div class="kpi-icon">${ICO.cal}</div></div>`;
+
+  const riga = (c1, c2, c3) =>
+    `<tr><td><strong>${ui.escapeHtml(c1)}</strong></td><td style="color:var(--text-muted)">${c2}</td><td>${c3}</td></tr>`;
+
+  document.getElementById('dash-ridotta').innerHTML = `
+    <div class="d2" style="margin-top:18px">
+      <div class="card">
+        <div class="chl"><div><div class="chl-t">Le mie task</div><div class="chl-s">Aperte e in corso</div></div>
+          <a href="/tasks.html" class="go-btn">Task →</a></div>
+        <div class="table-wrap"><table><tbody>
+          ${(tasks||[]).length
+            ? tasks.slice(0,8).map(t => riga(t.title, t.clients?.company_name || '—',
+                t.due_date ? `<span class="${ui.deadlineClass(t.due_date)}">${ui.formatDate(t.due_date)}</span>` : '—')).join('')
+            : '<tr><td style="padding:18px;color:var(--text-muted)">Nessuna task aperta</td></tr>'}
+        </tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="chl"><div><div class="chl-t">Scadenze dei miei clienti</div><div class="chl-s">Prossimi 60 giorni</div></div>
+          <a href="/clients.html" class="go-btn">Clienti →</a></div>
+        <div class="table-wrap"><table><tbody>
+          ${scadenze.length
+            ? scadenze.slice(0,8).map(d => riga(d.nome, d.tipo,
+                `<a href="/client-detail.html?id=${d.id}" class="${ui.deadlineClass(d.data)}">${ui.formatDate(d.data)}</a>`)).join('')
+            : '<tr><td style="padding:18px;color:var(--text-muted)">Nessuna scadenza nei prossimi 60 giorni</td></tr>'}
+        </tbody></table></div>
+      </div>
+    </div>`;
+}
+
 // ── INIT ──────────────────────────────────────────────────────
-loadKPIs();
-loadTab('overview');
+if (!canSeeFinancials()) {
+  loadDashboardRidotta();
+} else {
+  loadKPIs();
+  loadTab('overview');
+}
 </script>
 </body>
 </html>

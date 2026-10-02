@@ -211,7 +211,14 @@ async function init() {
 async function loadClient() {
   try {
     const rows = await sb.db.select('clients', {
-      columns: '*,vat_register(*),onboarding_checklist(*)',
+      columns: canSeeFinancials()
+        ? '*,vat_register(*),onboarding_checklist(*)'
+        // stesso set senza service_cost / subscription_day: non arrivano al browser
+        : 'id,company_name,contact_name,email,phone_uae,general_manager,accounting_partner,'
+          + 'vat_partner,vat_registered,bank_accounts,bank_notes,start_date,source,assigned_to,'
+          + 'license_issue_date,trade_license_date,corporate_tax_expiry,corporate_tax_registered,'
+          + 'eid_verified,is_active,in_bilancio,notes,whatsapp_group_created,ambassador_id,'
+          + 'vat_register(*),onboarding_checklist(*)',
       filter: `id=eq.${clientId}`
     });
     if (!rows?.length) { window.location.href = '/clients.html'; return; }
@@ -236,7 +243,7 @@ async function renderReferralBanner(c) {
     const com = await sb.db.select('ambassador_commissions', {
       filter: `client_id=eq.${c.id}`, columns: 'commission_amount_aed,status,service_name',
     });
-    if (com && com[0]) {
+    if (com && com[0] && canSeeFinancials()) {
       extra = ` · Commissione ${ui.formatAED(com[0].commission_amount_aed)} (${com[0].status}) su ${ui.escapeHtml(com[0].service_name)}`;
     }
   } catch (_) { /* migrazione ambassador non ancora eseguita */ }
@@ -275,8 +282,10 @@ function renderClient() {
     ['Telefono UAE', c.phone_uae||'—'],
     ['Partner Contabilità', ui.partnerLabel(c.accounting_partner)],
     ['Partner VAT', ui.partnerLabel(c.vat_partner)],
-    ['Costo Abbonamento', c.service_cost ? 'AED '+c.service_cost : '—'],
-    ['Giorno Addebito', c.subscription_day ? c.subscription_day+'° del mese' : '—'],
+    ...(canSeeFinancials() ? [
+      ['Costo Abbonamento', c.service_cost ? 'AED '+c.service_cost : '—'],
+      ['Giorno Addebito', c.subscription_day ? c.subscription_day+'° del mese' : '—'],
+    ] : []),
     ['Data Avvio', ui.formatDate(c.start_date)],
     ['General Manager', c.general_manager||'—'],
     ['Lic. Emissione', ui.formatDate(c.license_issue_date)],
@@ -1389,11 +1398,11 @@ init();
             <option value="altro">Altro</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group fin-only">
           <label class="form-label">Costo Abbonamento (AED)</label>
           <input type="number" class="form-control" id="e-cost" step="100">
         </div>
-        <div class="form-group">
+        <div class="form-group fin-only">
           <label class="form-label">Giorno Addebito</label>
           <input type="number" class="form-control" id="e-sub-day" min="1" max="31">
         </div>
@@ -1528,8 +1537,12 @@ async function saveEdit() {
       phone_uae: document.getElementById('e-phone').value.trim()||null,
       accounting_partner: document.getElementById('e-partner').value||null,
       vat_partner: document.getElementById('e-vat-partner').value||null,
-      service_cost: parseFloat(document.getElementById('e-cost').value)||null,
-      subscription_day: parseInt(document.getElementById('e-sub-day').value)||null,
+      // se il ruolo non vede gli importi i campi non sono compilati: non vanno
+      // inviati, altrimenti un suo salvataggio azzererebbe il costo del cliente
+      ...(canSeeFinancials() ? {
+        service_cost: parseFloat(document.getElementById('e-cost').value)||null,
+        subscription_day: parseInt(document.getElementById('e-sub-day').value)||null,
+      } : {}),
       start_date: document.getElementById('e-start').value||null,
       license_issue_date: document.getElementById('e-tl-issue').value||null,
       trade_license_date: document.getElementById('e-tl-date').value||null,

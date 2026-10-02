@@ -180,11 +180,13 @@ const db = {
 
   // ── Specific queries ────────────────────────────────────────
 
-  async getClients({ activeOnly = true, inBilancio = null } = {}) {
+  // `columns` permette di NON richiedere al server i campi economici per i ruoli
+  // che non devono vederli: così il dato non arriva nemmeno nella risposta.
+  async getClients({ activeOnly = true, inBilancio = null, columns = '*' } = {}) {
     let filter = '';
     if (activeOnly) filter += 'is_active=eq.true';
     if (inBilancio !== null) filter += (filter ? '&' : '') + `in_bilancio=eq.${inBilancio}`;
-    return this.select('clients', { filter, order: 'company_name.asc' });
+    return this.select('clients', { filter, columns, order: 'company_name.asc' });
   },
 
   async getClient(id) {

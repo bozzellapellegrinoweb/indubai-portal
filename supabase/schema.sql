@@ -10,6 +10,14 @@ create extension if not exists "uuid-ossp";
 -- ============================================================
 
 do $$ begin create type user_role as enum ('admin', 'staff'); exception when duplicate_object then null; end $$;
+-- Valori aggiunti dopo la creazione iniziale (vedi le migrazioni corrispondenti)
+alter type user_role add value if not exists 'mini_admin';
+alter type user_role add value if not exists 'senior';
+alter type user_role add value if not exists 'junior';
+alter type user_role add value if not exists 'client';
+alter type user_role add value if not exists 'ambassador';
+alter type user_role add value if not exists 'commerciale';
+alter type user_role add value if not exists 'collaborator';
 do $$ begin create type subscription_status as enum ('ok', 'failed', 'no_tentativo', 'pending', 'manual', 'annual'); exception when duplicate_object then null; end $$;
 do $$ begin create type partner_type as enum ('noi', 'vat_consultant', 'affinitas', 'in_sospeso', 'altro'); exception when duplicate_object then null; end $$;
 do $$ begin create type onboarding_source as enum ('pellegrino', 'giuseppe'); exception when duplicate_object then null; end $$;

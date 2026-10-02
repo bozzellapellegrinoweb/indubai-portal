@@ -56,7 +56,7 @@
                 <th>Referente</th>
                 <th class="hide-mobile">Partner</th>
                 <th class="hide-mobile">Conti Bancari</th>
-                <th class="hide-mobile">Abbonamento</th>
+                <th class="hide-mobile col-fin">Abbonamento</th>
                 <th class="hide-mobile">CT Scadenza</th>
                 <th class="hide-mobile">Lic. Aziendale</th>
                 <th class="hide-mobile">VAT</th>
@@ -126,7 +126,7 @@
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group">
+        <div class="form-group fin-only">
           <label class="form-label">Costo Servizio (AED)</label>
           <input type="number" class="form-control" id="f-cost" placeholder="1200" step="100">
         </div>
@@ -204,6 +204,7 @@ function orderClients(list) {
 const STAFF_ROLES = ['admin', 'mini_admin', 'senior', 'junior', 'staff'];
 let staff = [];
 let amAdmin = false;
+let vedeImporti = true;   // false per i ruoli senza accesso ai dati economici
 
 async function loadStaff() {
   try {
@@ -252,12 +253,22 @@ async function assignClient(clientId, profileId, el) {
   }
 }
 
+// Campi letti dalla tabella quando il ruolo non può vedere i dati economici:
+// `service_cost` e `subscription_day` restano fuori dalla richiesta.
+const COLS_NO_FIN = 'id,company_name,general_manager,contact_name,email,phone_uae,' +
+  'accounting_partner,bank_accounts,assigned_to,corporate_tax_expiry,trade_license_date,' +
+  'vat_registered,vat_partner,is_active,in_bilancio,start_date,source,notes';
+
 async function loadClients() {
   try {
     amAdmin = sb.getCurrentProfile()?.role === 'admin';
+    vedeImporti = canSeeFinancials();
     await loadStaff();
     // activeOnly:false → include anche i clienti archiviati/non più in gestione
-    allClients = orderClients(await sb.db.getClients({ activeOnly: false }));
+    allClients = orderClients(await sb.db.getClients({
+      activeOnly: false,
+      columns: vedeImporti ? '*' : COLS_NO_FIN,
+    }));
     renderClients(getFilteredClients());
   } catch(e) {
     document.getElementById('clients-tbody').innerHTML =
@@ -303,7 +314,7 @@ function renderClients(clients) {
       <td>${refCell(c)}</td>
       <td class="hide-mobile">${ui.partnerLabel(c.accounting_partner)}</td>
       <td class="hide-mobile" style="font-size:12px">${(c.bank_accounts || []).join(', ') || '—'}</td>
-      <td class="hide-mobile">
+      <td class="hide-mobile col-fin">
         ${c.service_cost ? `<strong>${ui.formatAED(c.service_cost)}</strong>` : '—'}
         ${c.subscription_day ? `<div style="font-size:11px;color:var(--text-muted)">Giorno ${c.subscription_day}</div>` : ''}
       </td>
