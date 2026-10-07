@@ -2,6 +2,10 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/mcp/:scope",
+      "destination": "/api/mcp?scope=:scope"
+    },
+    {
       "source": "/r/:code",
       "destination": "/ambassador-lead"
     },

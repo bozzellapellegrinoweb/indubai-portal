@@ -12,6 +12,7 @@ Portale di gestione clienti per **InDubai.it** — segreteria abbonati, estratti
 | Hosting | Vercel |
 | Database | Supabase (PostgreSQL) |
 | Auth | Supabase Auth (email/password) |
+| AI | Server MCP privato per Claude (vedi [MCP.md](MCP.md)) |
 | Repo | GitHub |
 
 ---
@@ -91,6 +92,27 @@ activity_log               ← audit trail di tutte le azioni
 | `dashboard_current_month` | KPIs aggregati per il mese corrente |
 | `clients_subscription_status` | Status pagamento per tutti i clienti del mese |
 | `clients_missing_bank_statements` | Clienti senza estratti conto nel mese corrente |
+
+---
+
+## MCP per Claude
+
+Il portale espone un **server MCP privato** su `/api/mcp`: collegandolo a Claude si
+leggono i dati e si eseguono operazioni dalla chat, dentro i permessi dell'utente a
+cui il token e' intestato (stessa matrice ruolo → pagine di `/users.html`).
+
+```
+supabase/migrations/20261007_mcp_server.sql   ← esegui una volta
+/mcp.html                                      ← ADMIN: crea e revoca i token, audit
+```
+
+68 tool, token personali con scadenza e revoca, scope per area
+(`/mcp/finance`, `/mcp/compliance`, `/mcp/hr`, ...), audit di ogni chiamata.
+Istruzioni complete, modello di permessi e riferimento dei tool: **[MCP.md](MCP.md)**.
+
+```bash
+node tests/mcp.test.mjs   # test del registro e dei permessi
+```
 
 ---
 

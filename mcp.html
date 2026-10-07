@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MCP per Claude — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <link rel="manifest" href="/manifest-admin.json">
+  <meta name="theme-color" content="#14161a">
+  <style>
+    .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; }
+    .trow { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid var(--border); }
+    .trow:last-child { border-bottom:0; }
+    .trow-main { flex:1; min-width:220px; }
+    .trow-name { font-weight:700; font-size:14px; color:var(--text); }
+    .trow-sub { font-size:11.5px; color:var(--text-muted); margin-top:3px; }
+    .chip { display:inline-block; font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:20px;
+            border:1.5px solid var(--border); color:var(--text-muted); margin-right:5px; letter-spacing:.02em; }
+    .chip.rw { background:#fef3c7; border-color:#fcd34d; color:#92400e; }
+    .chip.ro { background:#e0f2fe; border-color:#7dd3fc; color:#075985; }
+    .chip.off { background:#fee2e2; border-color:#fca5a5; color:#991b1b; }
+    .chip.scope { background:#ede9fe; border-color:#c4b5fd; color:#5b21b6; }
+    .codebox { background:#0f1419; color:#d6e2ea; border-radius:10px; padding:14px 16px; overflow-x:auto;
+               font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px; line-height:1.7;
+               white-space:pre; position:relative; }
+    .copy-btn { position:absolute; top:8px; right:8px; background:#243040; color:#d6e2ea; border:0;
+                border-radius:6px; padding:5px 10px; font-size:11px; font-weight:700; cursor:pointer; }
+    .copy-btn:hover { background:#31415a; }
+    .tokenout { background:#064e3b; color:#d1fae5; border-radius:10px; padding:16px; word-break:break-all;
+                font-family:ui-monospace,Menlo,monospace; font-size:12.5px; position:relative; }
+    .scope-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
+    .scope-card { border:1.5px solid var(--border); border-radius:10px; padding:11px 13px; cursor:pointer; }
+    .scope-card.sel { border-color:#6366f1; background:#eef2ff; }
+    .scope-card-name { font-weight:800; font-size:12.5px; color:var(--text); }
+    .scope-card-sub { font-size:11px; color:var(--text-muted); margin-top:3px; line-height:1.45; }
+    .audit-row { display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:12px; align-items:baseline; }
+    .audit-row:last-child { border-bottom:0; }
+    .audit-when { color:var(--text-muted); white-space:nowrap; font-size:11px; min-width:112px; }
+    .audit-tool { font-weight:700; min-width:170px; }
+    .audit-err { color:#dc2626; }
+    .field { margin-bottom:14px; }
+    .field label { display:block; font-size:12px; font-weight:700; color:var(--text); margin-bottom:5px; }
+    .hint { font-size:11.5px; color:var(--text-muted); margin-top:4px; line-height:1.5; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">MCP per Claude</div>
+        <div class="topbar-subtitle" id="sub">Caricamento...</div>
+      </div>
+    </div>
+
+    <div class="page-content" id="page">
+      <!-- ── Cos'è ─────────────────────────────────────────── -->
+      <div class="card" style="padding:20px 22px">
+        <div style="font-weight:800;font-size:15px;margin-bottom:6px">Come funziona</div>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;line-height:1.65">
+          Il portale espone un <strong>server MCP privato</strong> all'indirizzo
+          <span class="mono" id="endpoint-inline"></span>. Collegandolo a Claude puoi chiedere
+          dati e far eseguire operazioni sul portale a voce, dalla chat.
+        </p>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;line-height:1.65">
+          Ogni token è legato a <strong>un utente del portale</strong>: Claude vede ed è in grado di
+          fare esattamente quello che quella persona può fare dal portale, né più né meno. I permessi
+          arrivano dalla matrice ruolo → pagine di <a href="/users.html" style="font-weight:700">Utenti</a>.
+          Clienti e ambassador non possono usare questo server.
+        </p>
+        <p style="font-size:13px;color:var(--text-muted);margin:0;line-height:1.65">
+          Ogni chiamata finisce nell'audit log in fondo a questa pagina, con utente, tool e argomenti.
+        </p>
+      </div>
+
+      <!-- ── Nuovo token ───────────────────────────────────── -->
+      <div class="card" style="padding:20px 22px;margin-top:18px">
+        <div style="font-weight:800;font-size:15px;margin-bottom:14px">Nuovo token</div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+          <div class="field">
+            <label for="t-user">Utente del portale</label>
+            <select id="t-user" class="form-input"></select>
+            <div class="hint">Il ruolo di questa persona decide cosa Claude può vedere.</div>
+          </div>
+          <div class="field">
+            <label for="t-name">Nome del token</label>
+            <input id="t-name" class="form-input" placeholder="Es. Claude desktop — Pellegrino">
+            <div class="hint">Serve solo a riconoscerlo in questa lista.</div>
+          </div>
+          <div class="field">
+            <label for="t-exp">Scadenza</label>
+            <select id="t-exp" class="form-input">
+              <option value="90">90 giorni</option>
+              <option value="180">180 giorni</option>
+              <option value="365" selected>1 anno</option>
+              <option value="">Nessuna scadenza</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="t-write">Permessi</label>
+            <select id="t-write" class="form-input">
+              <option value="false" selected>Sola lettura</option>
+              <option value="true">Lettura e scrittura</option>
+            </select>
+            <div class="hint">In sola lettura Claude non vede nemmeno i tool che modificano dati.</div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:4px">
+          <label>Area di lavoro (scope)</label>
+          <div class="scope-grid" id="scopes"></div>
+          <div class="hint">
+            Lo scope restringe i tool a un'area, così Claude non si distrae con 60 strumenti quando
+            te ne servono 20. Resta comunque dentro i permessi del ruolo.
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btn-create" onclick="createToken()">Genera token</button>
+        <div id="created" style="margin-top:18px;display:none"></div>
+      </div>
+
+      <!-- ── Token esistenti ───────────────────────────────── -->
+      <div class="card" style="padding:20px 22px;margin-top:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+          <div style="font-weight:800;font-size:15px">Token emessi</div>
+          <label style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="show-revoked" onchange="loadTokens()"> mostra anche i revocati
+          </label>
+        </div>
+        <div id="tokens"><div class="spinner" style="margin:20px"></div></div>
+      </div>
+
+      <!-- ── Audit ────────────────────────────────────────── -->
+      <div class="card" style="padding:20px 22px;margin-top:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+          <div style="font-weight:800;font-size:15px">Ultime chiamate</div>
+          <label style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="only-errors" onchange="loadAudit()"> solo errori
+          </label>
+        </div>
+        <div id="audit"><div class="spinner" style="margin:20px"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/i18n.js"></script>
+<script>
+// Gli scope devono restare allineati a SCOPES in api/_mcp-catalog.js.
+const SCOPES = [
+  { id:'all',        name:'Tutto',          sub:'Ogni area che il ruolo consente' },
+  { id:'readonly',   name:'Sola lettura',   sub:'Tutte le aree, nessuna scrittura' },
+  { id:'clients',    name:'Segreteria',     sub:'Clienti, onboarding, documenti, pipeline, lead' },
+  { id:'compliance', name:'Compliance',     sub:'VAT, Corporate Tax, estratti, abbonamenti' },
+  { id:'finance',    name:'Finance',        sub:'Cashflow, spese, incassi, bilanci' },
+  { id:'hr',         name:'HR',             sub:'Ferie, permessi, dipendenti' },
+  { id:'growth',     name:'Growth',         sub:'Ambassador, lead, pipeline, Affinitas' },
+  { id:'ops',        name:'Operativo',      sub:'Task, bacheca, notifiche, documenti' },
+];
+
+const ROLE_LABELS = { admin:'Admin', senior:'Senior', junior:'Junior',
+                      mini_admin:'Mini Admin', collaborator:'Collaboratore', staff:'Staff' };
+
+let selectedScope = 'all';
+const ORIGIN = window.location.origin;
+
+async function init() {
+  if (!sb.requireAuth()) return;
+  if (sb.getCurrentProfile()?.role !== 'admin') {
+    document.getElementById('page').innerHTML =
+      '<div class="alert alert-danger" style="max-width:520px">Solo gli amministratori possono gestire i token MCP.</div>';
+    document.getElementById('sub').textContent = 'Accesso negato';
+    return;
+  }
+  document.getElementById('endpoint-inline').textContent = ORIGIN + '/api/mcp';
+  renderScopes();
+  await loadUsers();
+  await Promise.all([loadTokens(), loadAudit()]);
+}
+
+function renderScopes() {
+  document.getElementById('scopes').innerHTML = SCOPES.map(s => `
+    <div class="scope-card ${s.id === selectedScope ? 'sel' : ''}" onclick="pickScope('${s.id}')">
+      <div class="scope-card-name">${s.name}</div>
+      <div class="scope-card-sub">${s.sub}</div>
+    </div>`).join('');
+}
+
+function pickScope(id) { selectedScope = id; renderScopes(); }
+
+async function loadUsers() {
+  try {
+    const rows = await sb.db.getStaffProfiles();
+    document.getElementById('t-user').innerHTML = (rows || [])
+      .map(p => `<option value="${p.id}">${ui.escapeHtml(p.full_name)} — ${ROLE_LABELS[p.role] || p.role}</option>`)
+      .join('');
+  } catch (e) {
+    ui.showToast('Impossibile caricare gli utenti: ' + e.message, 'error');
+  }
+}
+
+// ── Generazione token ────────────────────────────────────────
+// Il token in chiaro non lascia mai il browser: in DB va solo il suo SHA-256.
+
+function randomToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const b64 = btoa(String.fromCharCode.apply(null, bytes))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return 'idb_mcp_' + b64;
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function createToken() {
+  const btn = document.getElementById('btn-create');
+  const profileId = document.getElementById('t-user').value;
+  const name = document.getElementById('t-name').value.trim();
+  const days = document.getElementById('t-exp').value;
+  const canWrite = document.getElementById('t-write').value === 'true';
+
+  if (!profileId) { ui.showToast('Scegli un utente', 'error'); return; }
+  if (!name) { ui.showToast('Dai un nome al token', 'error'); return; }
+  if (!window.crypto?.subtle) { ui.showToast('Serve una connessione HTTPS per generare il token', 'error'); return; }
+
+  btn.disabled = true; btn.textContent = 'Generazione...';
+  try {
+    const token = randomToken();
+    const row = {
+      profile_id: profileId,
+      name,
+      token_hash: await sha256Hex(token),
+      token_prefix: token.slice(0, 16),
+      scope: selectedScope,
+      can_write: canWrite,
+      allowed_tools: [],
+      created_by: sb.getCurrentUser()?.id || null,
+      expires_at: days
+        ? new Date(Date.now() + Number(days) * 86400000).toISOString()
+        : null,
+    };
+    await sb.db.insert('mcp_tokens', [row]);
+    showCreated(token, selectedScope, canWrite);
+    document.getElementById('t-name').value = '';
+    loadTokens();
+  } catch (e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Genera token';
+  }
+}
+
+function showCreated(token, scope, canWrite) {
+  const url = scope === 'all' ? `${ORIGIN}/api/mcp` : `${ORIGIN}/mcp/${scope}`;
+  const cli = `claude mcp add --transport http indubai ${url} \\\n  --header "Authorization: Bearer ${token}"`;
+  const desktop = JSON.stringify({
+    mcpServers: {
+      indubai: {
+        command: 'npx',
+        args: ['-y', 'mcp-remote', url, '--header', `Authorization: Bearer ${token}`],
+      },
+    },
+  }, null, 2);
+
+  // I valori da copiare restano in JS: negli attributi HTML finisce solo una chiave,
+  // così apici e virgolette nei token o nei nomi non possono rompere il markup.
+  clipboardStore = { token, cli, desktop };
+
+  const box = document.getElementById('created');
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div class="alert" style="background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;font-size:13px;margin-bottom:12px">
+      <strong>Token creato.</strong> Copialo adesso: non sarà più visibile.
+      In DB resta solo il suo hash, quindi non è recuperabile.
+    </div>
+    <div class="tokenout">
+      <button class="copy-btn" data-copy="token">Copia</button>
+      ${ui.escapeHtml(token)}
+    </div>
+    <div style="font-size:12.5px;font-weight:800;margin:16px 0 6px">Claude Code (terminale)</div>
+    <div class="codebox"><button class="copy-btn" data-copy="cli">Copia</button>${ui.escapeHtml(cli)}</div>
+    <div style="font-size:12.5px;font-weight:800;margin:16px 0 6px">Claude desktop — claude_desktop_config.json</div>
+    <div class="codebox"><button class="copy-btn" data-copy="desktop">Copia</button>${ui.escapeHtml(desktop)}</div>
+    <div style="font-size:12.5px;font-weight:800;margin:16px 0 6px">Claude.ai — connettore personalizzato</div>
+    <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6;margin:0">
+      Impostazioni → Connettori → Aggiungi connettore personalizzato.
+      URL: <span class="mono">${ui.escapeHtml(url)}</span> —
+      header <span class="mono">Authorization: Bearer &lt;token&gt;</span>.
+      Permessi: <strong>${canWrite ? 'lettura e scrittura' : 'sola lettura'}</strong>.
+    </p>`;
+}
+
+let clipboardStore = {};
+
+// Un solo listener delegato per copia e revoca: i dati viaggiano in dataset,
+// non dentro stringhe JS costruite nell'HTML.
+document.addEventListener('click', (ev) => {
+  const copy = ev.target.closest?.('[data-copy]');
+  if (copy) {
+    const text = clipboardStore[copy.dataset.copy];
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const old = copy.textContent;
+      copy.textContent = 'Copiato';
+      setTimeout(() => { copy.textContent = old; }, 1500);
+    }).catch(() => ui.showToast('Copia non riuscita', 'error'));
+    return;
+  }
+  const rev = ev.target.closest?.('[data-revoke]');
+  if (rev) revoke(rev.dataset.revoke, rev.dataset.tokenName);
+});
+
+// ── Lista token ─────────────────────────────────────────────
+
+async function loadTokens() {
+  const box = document.getElementById('tokens');
+  const showRevoked = document.getElementById('show-revoked')?.checked;
+  try {
+    const rows = await sb.db.select('mcp_tokens', {
+      columns: 'id,name,token_prefix,scope,can_write,allowed_tools,expires_at,last_used_at,'
+             + 'calls_count,revoked_at,created_at,profile:profiles(full_name,role)',
+      filter: showRevoked ? '' : 'revoked_at=is.null',
+      order: 'created_at.desc',
+    });
+    const attivi = (rows || []).filter(r => !r.revoked_at).length;
+    document.getElementById('sub').textContent =
+      `${attivi} token attiv${attivi === 1 ? 'o' : 'i'} · endpoint /api/mcp`;
+
+    if (!rows?.length) {
+      box.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nessun token. Generane uno qui sopra.</p>';
+      return;
+    }
+    box.innerHTML = rows.map(t => {
+      const scaduto = t.expires_at && new Date(t.expires_at) <= new Date();
+      const stato = t.revoked_at ? '<span class="chip off">revocato</span>'
+        : scaduto ? '<span class="chip off">scaduto</span>' : '';
+      return `
+      <div class="trow">
+        <div class="trow-main">
+          <div class="trow-name">${ui.escapeHtml(t.name)}</div>
+          <div class="trow-sub">
+            ${ui.escapeHtml(t.profile?.full_name || '—')}
+            · ${ROLE_LABELS[t.profile?.role] || t.profile?.role || '—'}
+            · <span class="mono">${ui.escapeHtml(t.token_prefix)}…</span>
+          </div>
+          <div class="trow-sub">
+            ${t.calls_count || 0} chiamate
+            ${t.last_used_at ? `· ultima ${ui.formatDate(t.last_used_at)}` : '· mai usato'}
+            ${t.expires_at ? `· scade ${ui.formatDate(t.expires_at)}` : '· senza scadenza'}
+          </div>
+        </div>
+        <div style="flex:0 0 auto">
+          <span class="chip scope">${ui.escapeHtml(t.scope)}</span>
+          <span class="chip ${t.can_write ? 'rw' : 'ro'}">${t.can_write ? 'scrittura' : 'lettura'}</span>
+          ${stato}
+        </div>
+        ${t.revoked_at ? '' : `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5"
+            data-revoke="${t.id}" data-token-name="${ui.escapeHtml(t.name)}">Revoca</button>`}
+      </div>`;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = `<div class="alert alert-danger">${ui.escapeHtml(e.message)}
+      <div style="margin-top:8px;font-size:12px">Se la tabella non esiste, esegui
+      <span class="mono">supabase/migrations/20261007_mcp_server.sql</span> nel SQL Editor.</div></div>`;
+  }
+}
+
+async function revoke(id, name) {
+  if (!confirm(`Revocare "${name}"? Chi lo sta usando perde subito l'accesso e non è reversibile.`)) return;
+  try {
+    await sb.db.update('mcp_tokens', `id=eq.${id}`, { revoked_at: new Date().toISOString() });
+    ui.showToast('Token revocato', 'success');
+    loadTokens();
+  } catch (e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  }
+}
+
+// ── Audit ───────────────────────────────────────────────────
+
+async function loadAudit() {
+  const box = document.getElementById('audit');
+  const onlyErrors = document.getElementById('only-errors')?.checked;
+  try {
+    const rows = await sb.db.select('mcp_audit_log', {
+      columns: 'id,tool,ok,error,rows_affected,duration_ms,created_at,role,scope,args,profile:profiles(full_name)',
+      filter: onlyErrors ? 'ok=is.false' : '',
+      order: 'created_at.desc',
+      limit: 60,
+    });
+    if (!rows?.length) {
+      box.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${
+        onlyErrors ? 'Nessun errore registrato.' : 'Nessuna chiamata ancora.'}</p>`;
+      return;
+    }
+    box.innerHTML = rows.map(r => `
+      <div class="audit-row">
+        <div class="audit-when">${new Date(r.created_at).toLocaleString('it-IT',
+          { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}</div>
+        <div class="audit-tool ${r.ok ? '' : 'audit-err'}">${r.ok ? '' : '⚠ '}${ui.escapeHtml(r.tool)}</div>
+        <div style="flex:1;min-width:140px;color:var(--text-muted)">
+          ${ui.escapeHtml(r.profile?.full_name || '—')}
+          ${r.scope && r.scope !== 'all' ? ` · ${ui.escapeHtml(r.scope)}` : ''}
+          ${r.rows_affected ? ` · ${r.rows_affected} righe` : ''}
+          ${r.duration_ms ? ` · ${r.duration_ms}ms` : ''}
+          ${r.error ? `<div class="audit-err" style="font-size:11px;margin-top:2px">${ui.escapeHtml(r.error)}</div>` : ''}
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    box.innerHTML = `<div class="alert alert-danger">${ui.escapeHtml(e.message)}</div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
