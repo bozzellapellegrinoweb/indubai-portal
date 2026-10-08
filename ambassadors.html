@@ -16,6 +16,24 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="InDubai">
   <style>
+    /* Candidature dalla landing /diventa-ambassador */
+    .appl { border-bottom:1px solid var(--border); padding:16px 0; }
+    .appl:last-child { border-bottom:0; }
+    .appl-top { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 12px; margin-bottom:7px; }
+    .appl-name { font-weight:800; font-size:15px; color:var(--text); }
+    .appl-when { font-size:11.5px; color:var(--text-muted); margin-left:auto; white-space:nowrap; }
+    .appl-meta { font-size:12.5px; color:var(--text-muted); margin-bottom:9px; line-height:1.6; }
+    .appl-meta a { color:var(--text); font-weight:600; text-decoration:none; }
+    .appl-meta a:hover { text-decoration:underline; }
+    .appl-msg { font-size:13px; color:var(--text-muted); font-style:italic; background:var(--surface2);
+                border-radius:8px; padding:10px 12px; margin:0 0 10px; line-height:1.55; }
+    .appl-acts { display:flex; flex-wrap:wrap; gap:8px; }
+    .st { display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+          padding:3px 9px; border-radius:20px; }
+    .st-nuova { background:#e5fbec; color:#16a34a; }
+    .st-in_valutazione { background:#fef3c7; color:#92400e; }
+    .st-approvata { background:#e0f2fe; color:#075985; }
+    .st-rifiutata { background:#f1efe8; color:#6b6f76; }
     .kpi-strip { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:14px; margin-bottom:22px; }
     .kpi-card { background:var(--surface); border:1.5px solid var(--border); border-radius:14px; padding:16px 18px; }
     .kpi-card.c-accent { background:linear-gradient(135deg,#14161a,#2b2e35); border-color:transparent; }
@@ -75,6 +93,23 @@
 
     <div class="page-content">
       <div class="kpi-strip" id="kpis"></div>
+
+      <!-- Candidature dalla landing pubblica: non sono ancora ambassador -->
+      <div class="card" id="card-appl" style="display:none;padding:20px 22px;margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">
+          <div>
+            <div style="font-weight:800;font-size:15px">Candidature <span id="appl-count"></span></div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:3px">
+              Arrivate da <a href="/diventa-ambassador" target="_blank" style="font-weight:600">/diventa-ambassador</a>.
+              Nessun accesso creato: valuti il profilo e, se va bene, crei tu l'ambassador.
+            </div>
+          </div>
+          <label style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="appl-all"> mostra anche quelle chiuse
+          </label>
+        </div>
+        <div id="appl-list"></div>
+      </div>
 
       <div class="card">
         <div class="table-wrap">
@@ -253,6 +288,8 @@
 <script src="/js/i18n.js"></script>
 <script src="/js/notify.js"></script>
 <script>
+let applications = [];   // ambassador_applications (candidature dalla landing)
+let pendingApplId = null; // candidatura che stiamo trasformando in ambassador
 let rows = [];       // ambassador_summary
 let services = [];   // ambassador_services
 
@@ -273,13 +310,17 @@ function refLink(code) { return location.origin + '/r/' + code; }
 
 async function loadAll() {
   try {
-    const [amb, srv] = await Promise.all([
+    const [amb, srv, appl] = await Promise.all([
       sb.db.select('ambassador_summary', { order: 'created_at.desc' }),
       sb.db.select('ambassador_services', { order: 'position.asc' }),
+      // La tabella e' recente: se manca, la pagina deve funzionare lo stesso.
+      sb.db.select('ambassador_applications', { order: 'created_at.desc' }).catch(() => []),
     ]);
     rows = amb || [];
     services = srv || [];
+    applications = appl || [];
     render();
+    renderAppl();
   } catch (e) {
     document.getElementById('tbody').innerHTML =
       `<tr><td colspan="8"><div class="alert alert-danger">${ui.escapeHtml(e.message)}</div></td></tr>`;
@@ -418,6 +459,19 @@ async function saveNew() {
       if (!res.ok) throw new Error(data.error || 'Creazione accesso fallita');
     }
 
+    // Se nasce da una candidatura, la segniamo approvata e la colleghiamo.
+    if (pendingApplId) {
+      try {
+        await sb.db.update('ambassador_applications', `id=eq.${pendingApplId}`, {
+          status: 'approvata',
+          ambassador_id: created.id,
+          reviewed_by: sb.getCurrentUser()?.id || null,
+          reviewed_at: new Date().toISOString(),
+        });
+      } catch (_) { /* l'ambassador c'e' comunque: la candidatura si chiude a mano */ }
+      pendingApplId = null;
+    }
+
     try { await sb.db.log('ambassador_created', null, { ambassador_id: created.id, name }); } catch (_) {}
     closeNew();
     ui.showToast(withAccount ? 'Ambassador creato, credenziali inviate' : 'Ambassador creato', 'success');
@@ -433,6 +487,111 @@ async function saveNew() {
   }
   btn.disabled = false; btn.textContent = 'Crea Ambassador';
 }
+
+// ── Candidature dalla landing ───────────────────────────────
+// Una candidatura non e' un ambassador: diventa tale solo quando lo crei,
+// e la creazione passa dal solito modale "Nuovo Ambassador".
+
+const APPL_LABEL = { nuova:'Nuova', in_valutazione:'In valutazione',
+                     approvata:'Approvata', rifiutata:'Scartata' };
+
+/** Handle o URL -> link cliccabile al profilo. */
+function socialUrl(value, base) {
+  const v = String(value || '').trim();
+  if (!v) return '';
+  const url = v.includes('/') ? 'https://' + v.replace(/^https?:\/\//i, '')
+                              : 'https://' + base + '/' + v.replace(/^@/, '');
+  return `<a href="${ui.escapeHtml(url)}" target="_blank" rel="noopener">${ui.escapeHtml(v)}</a>`;
+}
+
+function renderAppl() {
+  const card = document.getElementById('card-appl');
+  if (!applications.length) { card.style.display = 'none'; return; }
+
+  const showAll = document.getElementById('appl-all').checked;
+  const aperte = applications.filter(a => a.status === 'nuova' || a.status === 'in_valutazione');
+  const list = showAll ? applications : aperte;
+
+  card.style.display = 'block';
+  document.getElementById('appl-count').innerHTML = aperte.length
+    ? `<span class="st st-nuova" style="margin-left:6px">${aperte.length} da valutare</span>`
+    : '<span style="font-weight:500;font-size:12px;color:var(--text-muted);margin-left:6px">nessuna in attesa</span>';
+
+  if (!list.length) {
+    document.getElementById('appl-list').innerHTML =
+      '<p style="color:var(--text-muted);font-size:13px;margin:14px 0 0">Nessuna candidatura da valutare.</p>';
+    return;
+  }
+
+  document.getElementById('appl-list').innerHTML = list.map(a => {
+    const social = [
+      socialUrl(a.instagram, 'instagram.com'),
+      socialUrl(a.tiktok, 'tiktok.com/@'),
+      a.other_social ? ui.escapeHtml(a.other_social) : '',
+    ].filter(Boolean).join(' · ');
+    const aperta = a.status === 'nuova' || a.status === 'in_valutazione';
+    return `
+      <div class="appl">
+        <div class="appl-top">
+          <span class="appl-name">${ui.escapeHtml(a.full_name)}</span>
+          <span class="st st-${a.status}">${APPL_LABEL[a.status] || a.status}</span>
+          ${a.niche ? `<span style="font-size:12px;color:var(--text-muted)">${ui.escapeHtml(a.niche)}</span>` : ''}
+          <span class="appl-when">${ui.formatDate(a.created_at)}</span>
+        </div>
+        <div class="appl-meta">
+          <a href="mailto:${ui.escapeHtml(a.email)}">${ui.escapeHtml(a.email)}</a>
+          ${a.phone ? ' · ' + ui.escapeHtml(a.phone) : ''}
+          ${a.city ? ' · ' + ui.escapeHtml(a.city) : ''}
+          ${social ? '<br>' + social : ''}
+          ${a.audience ? `<br><span style="font-size:12px">Pubblico: ${ui.escapeHtml(a.audience)}</span>` : ''}
+        </div>
+        ${a.message ? `<p class="appl-msg">"${ui.escapeHtml(a.message)}"</p>` : ''}
+        ${aperta ? `<div class="appl-acts">
+          <button class="btn btn-accent btn-sm" data-appl-new="${a.id}">Crea ambassador</button>
+          <button class="btn btn-ghost btn-sm" data-appl-rej="${a.id}">Scarta</button>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+/** Apre il modale "Nuovo Ambassador" precompilato con la candidatura. */
+function applToAmbassador(id) {
+  const a = applications.find(x => x.id === id);
+  if (!a) return;
+  pendingApplId = a.id;
+  openNew();
+  document.getElementById('n-name').value = a.full_name || '';
+  document.getElementById('n-email').value = a.email || '';
+  document.getElementById('n-phone').value = a.phone || '';
+  document.getElementById('n-social').value = a.instagram || a.tiktok || '';
+  document.getElementById('n-code').value = slugCode(a.full_name || '');
+}
+
+async function rejectAppl(id) {
+  const a = applications.find(x => x.id === id);
+  if (!a) return;
+  if (!confirm(`Scartare la candidatura di ${a.full_name}?\n\nResta negli archivi, ma esce dalla lista di quelle da valutare. Non viene mandata nessuna email.`)) return;
+  try {
+    await sb.db.update('ambassador_applications', `id=eq.${id}`, {
+      status: 'rifiutata',
+      reviewed_by: sb.getCurrentUser()?.id || null,
+      reviewed_at: new Date().toISOString(),
+    });
+    a.status = 'rifiutata';
+    renderAppl();
+    ui.showToast('Candidatura scartata', 'default');
+  } catch (e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  }
+}
+
+document.getElementById('appl-all').addEventListener('change', renderAppl);
+document.getElementById('appl-list').addEventListener('click', ev => {
+  const nuovo = ev.target.closest('[data-appl-new]');
+  if (nuovo) return applToAmbassador(nuovo.dataset.applNew);
+  const scarta = ev.target.closest('[data-appl-rej]');
+  if (scarta) return rejectAppl(scarta.dataset.applRej);
+});
 
 const LOGIN_URL = location.origin + '/ambassador/login';
 
@@ -800,7 +959,7 @@ async function saveSrv() {
 // ── Init ────────────────────────────────────────────────────
 document.getElementById('login-url').textContent = LOGIN_URL;
 document.getElementById('search').addEventListener('input', render);
-document.getElementById('btn-new').addEventListener('click', openNew);
+document.getElementById('btn-new').addEventListener('click', () => { pendingApplId = null; openNew(); });
 document.getElementById('btn-save-new').addEventListener('click', saveNew);
 document.getElementById('btn-services').addEventListener('click', openSrv);
 document.getElementById('btn-srv-add').addEventListener('click', addSrv);
