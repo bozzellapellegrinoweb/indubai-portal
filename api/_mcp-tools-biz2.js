@@ -1348,7 +1348,7 @@ const adminTools = [
       const filters = args?.include_revoked ? {} : { revoked_at: null };
       const rows = await sbSelect('mcp_tokens', {
         select: 'id,name,token_prefix,scope,can_write,allowed_tools,expires_at,last_used_at,'
-              + 'calls_count,revoked_at,created_at,profile:profiles(full_name,role)',
+              + 'calls_count,revoked_at,created_at,profile:profiles!mcp_tokens_profile_id_fkey(full_name,role)',
         filters, order: 'created_at.desc', limit: 200,
       });
       return { token: rows };

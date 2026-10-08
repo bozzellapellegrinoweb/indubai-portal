@@ -298,7 +298,9 @@ export async function authenticate(req, { scope } = {}) {
   if (!raw) throw unauthorized('Token MCP mancante: usa l\'header "Authorization: Bearer <token>"');
 
   const rows = await sbSelect('mcp_tokens', {
-    select: '*,profile:profiles(id,full_name,role)',
+    // mcp_tokens ha due FK verso profiles (profile_id e created_by):
+    // senza il nome del vincolo PostgREST non sa quale usare e rifiuta l'embed.
+    select: '*,profile:profiles!mcp_tokens_profile_id_fkey(id,full_name,role)',
     filters: { token_hash: hashToken(raw) },
     limit: 1,
   });

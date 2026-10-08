@@ -326,7 +326,7 @@ async function loadTokens() {
   try {
     const rows = await sb.db.select('mcp_tokens', {
       columns: 'id,name,token_prefix,scope,can_write,allowed_tools,expires_at,last_used_at,'
-             + 'calls_count,revoked_at,created_at,profile:profiles(full_name,role)',
+             + 'calls_count,revoked_at,created_at,profile:profiles!mcp_tokens_profile_id_fkey(full_name,role)',
       filter: showRevoked ? '' : 'revoked_at=is.null',
       order: 'created_at.desc',
     });
