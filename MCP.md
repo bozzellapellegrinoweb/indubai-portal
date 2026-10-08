@@ -38,6 +38,10 @@ Crea `mcp_tokens`, `mcp_audit_log`, la funzione `mcp_readonly_query()` usata dal
 MCP leggono i permessi. Non inserisce righe: i ruoli senza riga continuano a usare i
 default del codice, quindi nulla cambia per chi usa il portale oggi.
 
+Concede anche `select` sulle view al `service_role`: il portale le legge con il token
+dell'utente, l'MCP con il service_role, e senza quel grant i tool che le usano
+rispondono «permission denied for view».
+
 ### Deploy
 
 Nessuna variabile d'ambiente nuova: `api/mcp.js` riusa `SUPABASE_URL` e

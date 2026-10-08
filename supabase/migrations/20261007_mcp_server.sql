@@ -200,6 +200,20 @@ create policy "admin_manage_role_permissions" on role_permissions
 grant select, insert, update, delete on role_permissions to authenticated;
 grant all on role_permissions to service_role;
 
+-- ============================================================
+-- GRANT SULLE VIEW
+-- Le view del portale danno SELECT solo ad "authenticated": il frontend le
+-- legge con il token dell'utente, l'MCP con il service_role. Senza questi
+-- grant i tool che le usano (dashboard_kpis, finance_summary,
+-- ambassadors_list, ...) falliscono con "permission denied for view".
+-- ============================================================
+
+grant select on dashboard_current_month        to service_role;
+grant select on clients_subscription_status    to service_role;
+grant select on clients_missing_bank_statements to service_role;
+grant select on finance_monthly_summary        to service_role;
+grant select on ambassador_summary             to service_role;
+
 revoke all on function mcp_readonly_query(text, integer) from public;
 revoke all on function mcp_readonly_query(text, integer) from anon, authenticated;
 grant execute on function mcp_readonly_query(text, integer) to service_role;
