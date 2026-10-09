@@ -19,9 +19,53 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: CORS });
 }
 
+// Il token Zoho vive un'ora, ma ogni istanza della funzione partiva con la
+// cache vuota: approvando piu' spese di fila si chiedeva un refresh per
+// ciascuna, e Zoho limita quell'endpoint ("Token refresh failed" a meta'
+// lavoro). La cache sta quindi nel database, condivisa fra le istanze, e un
+// refresh all'ora basta per tutti. La tabella ha RLS senza policy: solo il
+// service_role la vede, e il token non e' leggibile dal portale.
 let cachedToken: { token: string; expires: number } | null = null;
+
+async function readSharedToken(): Promise<{ token: string; expires: number } | null> {
+  try {
+    const r = await fetch(SB_URL + '/rest/v1/zoho_token_cache?id=eq.zoho&select=access_token,expires_at', {
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY },
+    });
+    const rows = await r.json();
+    const row = rows?.[0];
+    if (!row) return null;
+    return { token: row.access_token, expires: new Date(row.expires_at).getTime() };
+  } catch (_) { return null; }
+}
+
+async function writeSharedToken(token: string, expires: number) {
+  try {
+    await fetch(SB_URL + '/rest/v1/zoho_token_cache', {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify({
+        id: 'zoho', access_token: token,
+        expires_at: new Date(expires).toISOString(), updated_at: new Date().toISOString(),
+      }),
+    });
+  } catch (_) { /* la cache e' un'ottimizzazione: se non si scrive, si rifara' */ }
+}
+
 async function getAccessToken(): Promise<string> {
-  if (cachedToken && Date.now() < cachedToken.expires - 60000) return cachedToken.token;
+  const MARGINE = 120000;  // non usiamo un token che scade fra meno di 2 minuti
+  if (cachedToken && Date.now() < cachedToken.expires - MARGINE) return cachedToken.token;
+
+  const shared = await readSharedToken();
+  if (shared && Date.now() < shared.expires - MARGINE) {
+    cachedToken = shared;
+    return shared.token;
+  }
+
   const res = await fetch('https://accounts.zoho.com/oauth/v2/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -31,9 +75,19 @@ async function getAccessToken(): Promise<string> {
     }),
   });
   const data = await res.json();
-  if (!data.access_token) throw new Error('Token refresh failed');
-  cachedToken = { token: data.access_token, expires: Date.now() + data.expires_in * 1000 };
-  return cachedToken.token;
+  if (!data.access_token) {
+    // Zoho ci ha limitati. Se in cache c'e' ancora un token valido, anche se
+    // vicino alla scadenza, meglio quello che fermare un'approvazione.
+    if (shared && Date.now() < shared.expires) {
+      cachedToken = shared;
+      return shared.token;
+    }
+    throw new Error('Token refresh failed');
+  }
+  const expires = Date.now() + Number(data.expires_in || 3600) * 1000;
+  cachedToken = { token: data.access_token, expires };
+  await writeSharedToken(data.access_token, expires);
+  return data.access_token;
 }
 
 // Cache del tax_id 5% per organizzazione (chiave: percentuale = 5, tipo "tax")
