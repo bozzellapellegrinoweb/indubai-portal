@@ -32,10 +32,34 @@
     .capture-btn .t2 { font-size:12.5px; color:var(--muted); margin-top:3px; }
     .alt { text-align:center; margin-top:12px; font-size:13px; color:var(--muted); }
     .alt a { color:var(--ink); font-weight:700; text-decoration:underline; cursor:pointer; }
+    /* Coda: una riga per scontrino, con il suo stato */
+    .queue { margin-top:14px; display:flex; flex-direction:column; gap:8px; }
+    .qitem { display:flex; align-items:center; gap:11px; background:#f7f9fc; border:1px solid var(--line);
+             border-radius:12px; padding:9px 11px; }
+    .qitem.done  { background:#f0fdf4; border-color:#86efac; }
+    .qitem.error { background:#fef2f2; border-color:#fca5a5; }
+    .qthumb { width:42px; height:42px; flex:0 0 auto; border-radius:8px; overflow:hidden; background:#e8ecf3;
+              display:flex; align-items:center; justify-content:center; font-size:19px; }
+    .qthumb img { width:100%; height:100%; object-fit:cover; }
+    .qinfo { flex:1; min-width:0; }
+    .qname { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .qstate { font-size:11.5px; color:var(--muted); margin-top:2px; }
+    .qitem.done .qstate  { color:#15803d; font-weight:600; }
+    .qitem.error .qstate { color:#b91c1c; font-weight:600; }
+    .qdel { flex:0 0 auto; background:none; border:0; color:var(--muted); font-size:19px; line-height:1;
+            cursor:pointer; padding:5px 3px; font-family:inherit; }
+    .qdel:hover { color:#b91c1c; }
+    .qspin { width:15px; height:15px; border:2px solid var(--line); border-top-color:var(--gold);
+             border-radius:50%; animation:spin .7s linear infinite; flex:0 0 auto; }
+    /* Il trascinamento: solo da desktop, ma il riquadro si accende comunque */
+    .capture-btn.drag { border-color:var(--accent); background:#f0fdf4; }
+    .dnd { display:none; }
+    @media (hover:hover) and (pointer:fine) { .dnd { display:inline; } }
     .preview { margin-top:4px; }
     .preview img { width:100%; border-radius:12px; max-height:320px; object-fit:contain; background:#f2f4f8; }
     .preview .pdf { background:#f2f4f8; border-radius:12px; padding:22px; text-align:center; font-weight:700; color:var(--ink); }
     .field { margin-top:18px; }
+    .hint-all { font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.45; }
     .field label { display:block; font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; }
     select, input[type=text], textarea { width:100%; border:1.5px solid var(--line); border-radius:12px; padding:13px 14px; font-size:15px; font-family:inherit; color:var(--ink); outline:none; background:#fff; }
     select:focus, input:focus, textarea:focus { border-color:var(--gold); }
@@ -80,17 +104,17 @@
 
     <!-- FORM -->
     <div class="card hidden" id="view-form">
-      <div class="step-label">1 · Scontrino</div>
-      <div class="capture-btn" id="pick-photo">
+      <div class="step-label">1 · Scontrini</div>
+      <div class="capture-btn" id="drop-zone">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         <div class="t1">Scatta foto scontrino</div>
-        <div class="t2">Inquadra e scatta</div>
+        <div class="t2">Inquadra e scatta<span class="dnd">, oppure trascina qui i file</span></div>
       </div>
-      <div class="alt">oppure <a id="pick-file">carica una foto o un PDF</a></div>
+      <div class="alt">oppure <a id="pick-file">carica foto o PDF</a> — anche più di uno insieme</div>
       <input type="file" id="in-photo" accept="image/*" capture="environment" class="hidden">
-      <input type="file" id="in-file" accept="image/*,application/pdf" class="hidden">
+      <input type="file" id="in-file" accept="image/*,application/pdf" multiple class="hidden">
 
-      <div class="preview hidden" id="preview"></div>
+      <div class="queue" id="queue"></div>
 
       <div class="field hidden" id="field-card">
         <label>2 · Pagato con</label>
@@ -100,17 +124,11 @@
       <div class="field">
         <label>Nota (facoltativa)</label>
         <input type="text" id="in-note" placeholder="Es. pranzo di lavoro con cliente">
+        <div class="hint-all hidden" id="hint-all">Nota e carta valgono per tutti gli scontrini di questo invio.</div>
       </div>
 
       <div class="err hidden" id="form-err"></div>
       <button class="btn btn-go" id="btn-send" disabled>Invia spesa</button>
-    </div>
-
-    <!-- INVIO IN CORSO -->
-    <div class="card center hidden" id="view-sending">
-      <div class="spinner"></div>
-      <div style="margin-top:14px;font-weight:700">Invio in corso…</div>
-      <div style="margin-top:4px;color:var(--muted);font-size:13px">Lettura scontrino con AI</div>
     </div>
 
     <!-- SUCCESSO -->
@@ -118,8 +136,8 @@
       <div class="ok-ico">
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
-      <h2 style="font-size:19px;margin-bottom:4px">Spesa inviata!</h2>
-      <p style="color:var(--muted);font-size:14px">La contabilità la verificherà e la registrerà.</p>
+      <h2 style="font-size:19px;margin-bottom:4px" id="done-title">Spesa inviata!</h2>
+      <p style="color:var(--muted);font-size:14px">La contabilità le verificherà e le registrerà.</p>
       <div class="summary" id="done-summary"></div>
       <button class="btn btn-ghost" id="btn-again">Carica un'altra spesa</button>
     </div>
@@ -138,10 +156,8 @@ let token = params.get('t') || params.get('token');
 if (token) localStorage.setItem('spese_token', token);
 else token = localStorage.getItem('spese_token');
 
-let picked = null; // { b64, mime, previewUrl, isPdf }
-
 function show(id) {
-  ['view-loading','view-error','view-form','view-sending','view-done'].forEach(v =>
+  ['view-loading','view-error','view-form','view-done'].forEach(v =>
     document.getElementById(v).classList.toggle('hidden', v !== id));
 }
 async function api(payload) {
@@ -170,13 +186,101 @@ async function init() {
   } catch(e) { show('view-error'); }
 }
 
-// ── selezione file ──
-document.getElementById('pick-photo').onclick = () => document.getElementById('in-photo').click();
-document.getElementById('pick-file').onclick  = () => document.getElementById('in-file').click();
-document.getElementById('in-photo').onchange = e => handleFile(e.target.files[0]);
-document.getElementById('in-file').onchange  = e => handleFile(e.target.files[0]);
+// ── Coda degli scontrini ────────────────────────────────────
+// Si possono caricare piu' file insieme: ognuno diventa una spesa a se',
+// inviata in sequenza cosi' un errore su uno non fa perdere gli altri.
 
-// Legge il file come data: URL (compatibile con CSP img-src 'data:'; niente blob:)
+const MAX_FILES = 20;
+const MAX_BYTES = 15 * 1024 * 1024;
+let queue = [];
+let sending = false;
+let seq = 0;
+
+const qEl = () => document.getElementById('queue');
+
+// Su telefono il pulsante grande apre la fotocamera; su desktop non c'e'
+// niente da inquadrare, quindi apre direttamente il selettore multiplo.
+const isDesktop = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+document.getElementById('drop-zone').onclick = () =>
+  document.getElementById(isDesktop ? 'in-file' : 'in-photo').click();
+if (isDesktop) {
+  document.querySelector('#drop-zone .t1').textContent = 'Trascina qui gli scontrini';
+  document.querySelector('#drop-zone .t2').innerHTML = 'Foto o PDF, anche più di uno — oppure clicca per sceglierli';
+}
+document.getElementById('pick-file').onclick = (e) => { e.stopPropagation(); document.getElementById('in-file').click(); };
+document.getElementById('in-photo').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
+document.getElementById('in-file').onchange  = e => { addFiles(e.target.files); e.target.value = ''; };
+
+// ── Trascinamento (desktop) ──
+const dropZone = document.getElementById('drop-zone');
+const formCard = document.getElementById('view-form');
+['dragenter','dragover'].forEach(ev => formCard.addEventListener(ev, e => {
+  if (!e.dataTransfer?.types?.includes('Files')) return;
+  e.preventDefault(); dropZone.classList.add('drag');
+}));
+['dragleave','drop'].forEach(ev => formCard.addEventListener(ev, e => {
+  e.preventDefault();
+  // dragleave scatta anche passando sui figli: togliamo l'evidenza solo se si esce davvero
+  if (ev === 'dragleave' && formCard.contains(e.relatedTarget)) return;
+  dropZone.classList.remove('drag');
+}));
+formCard.addEventListener('drop', e => {
+  if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files);
+});
+
+// Evita che un file trascinato fuori dal riquadro venga aperto dal browser
+['dragover','drop'].forEach(ev => window.addEventListener(ev, e => {
+  if (e.dataTransfer?.types?.includes('Files')) e.preventDefault();
+}));
+
+async function addFiles(list) {
+  if (sending) return;
+  const files = Array.from(list || []);
+  if (!files.length) return;
+  document.getElementById('form-err').classList.add('hidden');
+
+  const spazio = MAX_FILES - queue.length;
+  if (spazio <= 0) return formErr(`Massimo ${MAX_FILES} scontrini per invio.`);
+  const daFare = files.slice(0, spazio);
+  if (files.length > spazio) formErr(`Ne ho presi ${spazio}: il massimo e' ${MAX_FILES} per invio.`);
+
+  for (const f of daFare) {
+    const item = { id: ++seq, name: f.name || 'scontrino', state: 'reading' };
+    queue.push(item);
+    renderQueue();
+    try {
+      if (f.size > MAX_BYTES) throw new Error('File troppo grande (max 15 MB)');
+      const tipoOk = f.type === 'application/pdf' || (f.type || '').startsWith('image/');
+      if (!tipoOk) throw new Error('Serve una foto o un PDF');
+      Object.assign(item, await readFile(f), { state: 'pending' });
+    } catch (err) {
+      Object.assign(item, { state: 'error', msg: err.message || 'File non leggibile' });
+    }
+    renderQueue();
+  }
+  syncSendBtn();
+}
+
+/** Legge il file: i PDF come sono, le immagini rimpicciolite per non appesantire l'invio. */
+async function readFile(file) {
+  const du = await readDataUrl(file);
+  if (file.type === 'application/pdf') {
+    return { b64: du.split(',')[1], mime: 'application/pdf', isPdf: true };
+  }
+  try {
+    const img = await loadImg(du);
+    const max = 1600; let w = img.width, h = img.height;
+    if (w > max || h > max) { const s = Math.min(max / w, max / h); w = Math.round(w * s); h = Math.round(h * s); }
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(img, 0, 0, w, h);
+    const url = cv.toDataURL('image/jpeg', 0.85);
+    return { b64: url.split(',')[1], mime: 'image/jpeg', isPdf: false, thumb: url };
+  } catch (_) {
+    // es. HEIC che il canvas non sa decodificare: mandiamo l'originale
+    return { b64: du.split(',')[1], mime: file.type || 'image/jpeg', isPdf: false, thumb: du };
+  }
+}
+
 function readDataUrl(file) {
   return new Promise((res, rej) => {
     const fr = new FileReader();
@@ -194,39 +298,52 @@ function loadImg(dataUrl) {
   });
 }
 
-async function handleFile(file) {
-  if (!file) return;
-  const prev = document.getElementById('preview');
-  const isPdf = file.type === 'application/pdf';
-  try {
-    if (isPdf) {
-      const du = await readDataUrl(file);
-      picked = { b64: du.split(',')[1], mime:'application/pdf', isPdf:true };
-      prev.innerHTML = '<div class="pdf">📄 ' + (file.name || 'documento.pdf') + '</div>';
-    } else {
-      const du = await readDataUrl(file);
-      let b64, mime = 'image/jpeg', url;
-      try {
-        // downscale immagine per payload leggero
-        const img = await loadImg(du);
-        const max = 1600; let w = img.width, h = img.height;
-        if (w > max || h > max) { const s = Math.min(max/w, max/h); w = Math.round(w*s); h = Math.round(h*s); }
-        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-        cv.getContext('2d').drawImage(img, 0, 0, w, h);
-        url = cv.toDataURL('image/jpeg', 0.85);
-        b64 = url.split(',')[1];
-      } catch(_) {
-        // fallback: file originale (es. HEIC non decodificabile dal canvas)
-        b64 = du.split(',')[1]; mime = file.type || 'image/jpeg'; url = du;
-      }
-      picked = { b64, mime, isPdf:false };
-      prev.innerHTML = '<img src="' + url + '">';
-    }
-    prev.classList.remove('hidden');
-    document.getElementById('btn-send').disabled = false;
-  } catch(e) {
-    formErr('Impossibile leggere il file. Riprova.');
-  }
+const STATI = {
+  reading: 'Lettura…',
+  pending: 'Pronto',
+  sending: 'Invio e lettura AI…',
+};
+
+function renderQueue() {
+  qEl().innerHTML = queue.map(it => {
+    const stato = it.state === 'done' ? ('✓ ' + it.msg)
+      : it.state === 'error' ? ('✕ ' + it.msg)
+      : (STATI[it.state] || '');
+    const thumb = it.isPdf ? '📄' : (it.thumb ? `<img src="${it.thumb}" alt="">` : '🧾');
+    const busy = it.state === 'reading' || it.state === 'sending';
+    return `
+      <div class="qitem ${it.state === 'done' ? 'done' : it.state === 'error' ? 'error' : ''}">
+        <div class="qthumb">${thumb}</div>
+        <div class="qinfo">
+          <div class="qname">${esc(it.name)}</div>
+          <div class="qstate">${esc(stato)}</div>
+        </div>
+        ${busy ? '<div class="qspin"></div>'
+               : it.state === 'done' ? ''
+               : `<button class="qdel" data-del="${it.id}" title="Togli">&times;</button>`}
+      </div>`;
+  }).join('');
+  document.getElementById('hint-all').classList.toggle('hidden', queue.length < 2);
+}
+
+function esc(x) {
+  return String(x ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+}
+
+qEl().addEventListener('click', e => {
+  const b = e.target.closest('[data-del]');
+  if (!b || sending) return;
+  queue = queue.filter(x => String(x.id) !== b.dataset.del);
+  renderQueue(); syncSendBtn();
+});
+
+function daInviare() { return queue.filter(x => x.state === 'pending'); }
+
+function syncSendBtn() {
+  const n = daInviare().length;
+  const btn = document.getElementById('btn-send');
+  btn.disabled = n === 0 || sending;
+  btn.textContent = n > 1 ? `Invia ${n} spese` : 'Invia spesa';
 }
 
 function formErr(msg) {
@@ -234,38 +351,86 @@ function formErr(msg) {
   el.textContent = msg; el.classList.remove('hidden');
 }
 
+// ── Invio ───────────────────────────────────────────────────
+
 document.getElementById('btn-send').onclick = async () => {
-  if (!picked) return;
+  const lista = daInviare();
+  if (!lista.length || sending) return;
+  sending = true;
   document.getElementById('form-err').classList.add('hidden');
-  show('view-sending');
-  try {
-    const d = await api({
-      action:'upload',
-      file_base64: picked.b64,
-      mime: picked.mime,
-      paid_with: document.getElementById('sel-card')?.value || '',
-      note: document.getElementById('in-note').value || '',
-    });
-    if (!d.ok) { show('view-form'); formErr('Errore: ' + (d.error || 'riprova')); return; }
-    const x = d.extracted || {};
-    const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2 }));
-    document.getElementById('done-summary').innerHTML =
-      row('Fornitore', x.vendor || '—') +
-      row('Data', x.date || '—') +
-      row('Importo', (x.amount != null ? fmt(x.amount) + ' ' + (x.currency || '') : '—'));
-    show('view-done');
-  } catch(e) {
-    show('view-form'); formErr('Errore di rete. Riprova.');
+  const btn = document.getElementById('btn-send');
+  btn.disabled = true;
+
+  const paid = document.getElementById('sel-card')?.value || '';
+  const note = document.getElementById('in-note').value || '';
+  const fmt = n => (n == null ? '—' : Number(n).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2 }));
+
+  for (let i = 0; i < lista.length; i++) {
+    const it = lista[i];
+    it.state = 'sending'; renderQueue();
+    btn.textContent = lista.length > 1 ? `Invio ${i + 1} di ${lista.length}…` : 'Invio…';
+    try {
+      const d = await api({ action:'upload', file_base64: it.b64, mime: it.mime, paid_with: paid, note });
+      if (!d.ok) throw new Error(d.error || 'errore');
+      const x = d.extracted || {};
+      it.state = 'done';
+      it.extracted = x;
+      it.msg = [x.vendor || 'Letto', x.amount != null ? fmt(x.amount) + ' ' + (x.currency || '') : null]
+        .filter(Boolean).join(' · ');
+      it.b64 = null; // liberiamo memoria: puo' essere un batch pesante
+    } catch (err) {
+      it.state = 'error';
+      it.msg = err.message === 'Failed to fetch' ? 'Rete assente, riprova' : (err.message || 'errore');
+    }
+    renderQueue();
   }
+
+  sending = false;
+  const inviate = queue.filter(x => x.state === 'done');
+  const falliti = queue.filter(x => x.state === 'error');
+  syncSendBtn();
+
+  if (falliti.length) {
+    formErr(falliti.length === 1
+      ? 'Uno scontrino non e\' passato: togli o riprova quello in rosso.'
+      : `${falliti.length} scontrini non sono passati: riprova quelli in rosso.`);
+    return; // restiamo sul form: si vede quale ha fallito
+  }
+  mostraRiepilogo(inviate);
 };
+
+function mostraRiepilogo(inviate) {
+  const fmt = n => (n == null ? '—' : Number(n).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2 }));
+  document.getElementById('done-title').textContent =
+    inviate.length > 1 ? `${inviate.length} spese inviate!` : 'Spesa inviata!';
+
+  if (inviate.length === 1) {
+    const x = inviate[0].extracted || {};
+    document.getElementById('done-summary').innerHTML =
+      row('Fornitore', esc(x.vendor || '—')) +
+      row('Data', esc(x.date || '—')) +
+      row('Importo', x.amount != null ? fmt(x.amount) + ' ' + esc(x.currency || '') : '—');
+  } else {
+    const tot = inviate.reduce((a, it) => a + (Number(it.extracted?.amount) || 0), 0);
+    const valute = new Set(inviate.map(it => it.extracted?.currency).filter(Boolean));
+    document.getElementById('done-summary').innerHTML =
+      inviate.map(it => row(esc(it.extracted?.vendor || it.name),
+        it.extracted?.amount != null ? fmt(it.extracted.amount) + ' ' + esc(it.extracted.currency || '') : '—')).join('')
+      + (valute.size === 1 ? `<div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:9px">
+           <span class="k" style="font-weight:700;color:var(--ink)">Totale</span>
+           <span class="v">${fmt(tot)} ${esc([...valute][0])}</span></div>` : '');
+  }
+  show('view-done');
+}
+
 function row(k, v) { return '<div class="row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'; }
 
 document.getElementById('btn-again').onclick = () => {
-  picked = null;
-  document.getElementById('preview').classList.add('hidden');
-  document.getElementById('preview').innerHTML = '';
+  queue = [];
+  renderQueue();
   document.getElementById('in-note').value = '';
-  document.getElementById('btn-send').disabled = true;
+  document.getElementById('form-err').classList.add('hidden');
+  syncSendBtn();
   show('view-form');
 };
 
