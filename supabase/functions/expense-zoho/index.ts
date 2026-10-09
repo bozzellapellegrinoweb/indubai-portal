@@ -210,15 +210,25 @@ Deno.serve(async (req: Request) => {
     }
 
     // Clienti dell'organizzazione: per attribuire una spesa da riaddebitare.
+    // Zoho ne da' al massimo 200 per pagina: senza impaginare, i clienti oltre
+    // il duecentesimo sparirebbero dall'elenco senza dirlo a nessuno.
     if (action === 'list_customers' && body.org_id) {
-      const r = await fetch(ZOHO_API_BASE + '/contacts?organization_id=' + body.org_id
-        + '&contact_type=customer&status=active&per_page=200', {
-        headers: { Authorization: 'Zoho-oauthtoken ' + token },
-      });
-      const d = await r.json();
-      return json({ ok: d.code === 0, message: d.message, customers: (d.contacts || []).map((c: any) => ({
-        id: c.contact_id, name: c.contact_name,
-      })) });
+      const customers: any[] = [];
+      let page = 1, hasMore = true, lastMsg = 'success';
+      while (hasMore && page <= 10) {
+        const r = await fetch(ZOHO_API_BASE + '/contacts?organization_id=' + body.org_id
+          + '&contact_type=customer&status=active&per_page=200&page=' + page, {
+          headers: { Authorization: 'Zoho-oauthtoken ' + token },
+        });
+        const d = await r.json();
+        if (d.code !== 0) return json({ ok: false, message: d.message || 'errore', customers });
+        lastMsg = d.message || 'success';
+        for (const c of (d.contacts || [])) customers.push({ id: c.contact_id, name: c.contact_name });
+        hasMore = !!d.page_context?.has_more_page;
+        page++;
+      }
+      customers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'it'));
+      return json({ ok: true, message: lastMsg, customers, truncated: hasMore });
     }
 
     // Registra il documento in Zoho Books e vi allega il file.
