@@ -144,6 +144,65 @@ async function resolveExpenseAccount(oid: string, token: string, guess: string |
   return generico || accts[0];
 }
 
+/**
+ * Conto da cui e' uscito il denaro, dedotto dal "pagato con" del cliente.
+ * I conti si chiamano "WIO - AED ***7129", "mamopay", "CrediumPay": basta il
+ * nome piu' la valuta per azzeccarlo. Senza, Zoho userebbe "Fondi non
+ * depositati", che non e' dove il cliente ha pagato davvero.
+ */
+const payAcctCache: Record<string, any[]> = {};
+async function resolvePaymentAccount(oid: string, token: string, paidWith: string | null, currency: string | null) {
+  if (!paidWith) return null;
+  if (!(oid in payAcctCache)) {
+    try {
+      const r = await fetch(ZOHO_API_BASE + '/chartofaccounts?organization_id=' + oid + '&per_page=200', {
+        headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const d = await r.json();
+      const PAY = ['bank', 'credit_card', 'cash'];
+      payAcctCache[oid] = (d.chartofaccounts || [])
+        .filter((a: any) => PAY.includes(a.account_type) && !a.is_deleted)
+        .map((a: any) => ({ id: String(a.account_id), name: String(a.account_name || '') }));
+    } catch (_) { payAcctCache[oid] = []; }
+  }
+  const accts = payAcctCache[oid];
+  if (!accts.length) return null;
+
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const chiave = norm(paidWith);
+  if (!chiave) return null;
+  const candidati = accts.filter((a: any) => norm(a.name).includes(chiave));
+  if (!candidati.length) return null;
+  // Stesso nome ma valute diverse (WIO AED / USD / EUR): scegliamo la valuta giusta.
+  if (currency && candidati.length > 1) {
+    const perValuta = candidati.find((a: any) => norm(a.name).includes(norm(currency)));
+    if (perValuta) return perValuta;
+  }
+  return candidati[0];
+}
+
+/**
+ * Registra il pagamento della Bill: quello che il cliente carica l'ha gia'
+ * pagato, quindi lasciarla "open" la farebbe risultare da pagare per sempre.
+ */
+async function payBill(oid: string, token: string, billId: string, vendorId: string, exp: any, acct: any, importo: number) {
+  const body: any = {
+    vendor_id: vendorId,
+    date: exp.expense_date,
+    amount: importo,
+    paid_through_account_id: acct.id,
+    bills: [{ bill_id: billId, amount: importo }],
+    description: 'Pagata al caricamento' + (exp.paid_with ? ' — ' + exp.paid_with : ''),
+  };
+  const r = await fetch(ZOHO_API_BASE + '/vendorpayments?organization_id=' + oid, {
+    method: 'POST',
+    headers: { Authorization: 'Zoho-oauthtoken ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  return { ok: d.code === 0, error: d.code === 0 ? null : (d.message || 'pagamento non registrato') };
+}
+
 /** Nome leggibile per l'allegato: sullo storage e' un UUID, su Zoho non si capirebbe. */
 function attachmentName(exp: any) {
   const ext = (exp.storage_path || '').split('.').pop() || 'pdf';
@@ -417,6 +476,23 @@ Deno.serve(async (req: Request) => {
         const att = await attachReceipt('bills', bid, oid, token, exp);
         if (!att.attached) note.push('Allegato non caricato: ' + att.error);
 
+        // Quello che il cliente carica l'ha gia' pagato: senza registrare il
+        // pagamento la Bill resterebbe "da pagare" per sempre.
+        let pagata = false;
+        if (body.mark_paid !== false) {
+          const acct = paid
+            ? { id: paid, name: 'conto scelto' }
+            : await resolvePaymentAccount(oid, token, exp.paid_with, exp.currency);
+          if (acct) {
+            const pay = await payBill(oid, token, bid, vend.id, exp, acct, Number(bd.bill.total));
+            pagata = pay.ok;
+            if (pay.ok) note.push('Segnata pagata da "' + acct.name + '"');
+            else note.push('Pagamento non registrato: ' + pay.error);
+          } else {
+            note.push('Conto di pagamento non riconosciuto da "' + (exp.paid_with || '—') + '": Bill lasciata da pagare');
+          }
+        }
+
         await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, {
           status: 'posted', zoho_doc_type: 'bill', zoho_bill_id: bid, zoho_vendor_id: vend.id,
           tax_applied: taxApplied, is_billable: isBillable,
@@ -425,7 +501,7 @@ Deno.serve(async (req: Request) => {
           approved_at: new Date().toISOString(),
         });
         return json({ ok: true, doc_type: 'bill', zoho_bill_id: bid, attached: att.attached,
-                      tax_applied: taxApplied, notes: note });
+                      tax_applied: taxApplied, paid: pagata, notes: note });
       }
 
       // ── Scontrino: Expense ───────────────────────────────────────────
@@ -436,7 +512,13 @@ Deno.serve(async (req: Request) => {
         reference_number: exp.paid_with ? ('Paid with: ' + exp.paid_with) : '',
       };
       if (cat) expenseBody.account_id = cat;
-      if (paid) expenseBody.paid_through_account_id = paid;
+      // Senza conto, Zoho usa "Fondi non depositati": lo deduciamo dal "pagato con".
+      let expPaid = paid;
+      if (!expPaid) {
+        const acct = await resolvePaymentAccount(oid, token, exp.paid_with, exp.currency);
+        if (acct) { expPaid = acct.id; note.push('Pagata da "' + acct.name + '"'); }
+      }
+      if (expPaid) expenseBody.paid_through_account_id = expPaid;
       // Riaddebito: Zoho vuole il cliente, altrimenti la spesa resta non fatturabile.
       if (isBillable && customerId) {
         expenseBody.customer_id = customerId;
