@@ -265,6 +265,28 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, message: lastMsg, customers, truncated: hasMore });
     }
 
+    // Rilegge un documento registrato: per controllare com'e' venuto davvero
+    // (righe, imposte, allegato) senza aprire Zoho.
+    if (action === 'get_doc' && body.org_id && body.doc_id) {
+      const kind = body.doc_type === 'bill' ? 'bills' : 'expenses';
+      const r = await fetch(ZOHO_API_BASE + '/' + kind + '/' + body.doc_id + '?organization_id=' + body.org_id, {
+        headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const d = await r.json();
+      if (d.code !== 0) return json({ ok: false, error: d.message || 'non trovato' }, 404);
+      const doc = d.bill || d.expense || {};
+      return json({ ok: true, doc: {
+        numero: doc.bill_number, data: doc.date, fornitore: doc.vendor_name,
+        totale: doc.total, imponibile: doc.sub_total, imposta: doc.tax_total,
+        stato: doc.status, cliente: doc.customer_name, fatturabile: doc.is_billable,
+        allegato: doc.attachment_name || doc.documents?.[0]?.file_name || null,
+        righe: (doc.line_items || []).map((l: any) => ({
+          descrizione: l.name || l.description, importo: l.rate,
+          imposta: l.tax_name || (l.tax_percentage != null ? l.tax_percentage + '%' : null),
+        })),
+      } });
+    }
+
     // Registra il documento in Zoho Books e vi allega il file.
     //
     // Fattura fornitore (TRN + IVA)  -> Bill, con l'IVA a credito per riga:
