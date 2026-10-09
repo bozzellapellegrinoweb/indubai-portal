@@ -31,6 +31,24 @@
           "value": "default-src 'self' https://*.onesignal.com https://onesignal.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.onesignal.com https://onesignal.com https://api.onesignal.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.onesignal.com https://onesignal.com; font-src 'self' https://fonts.gstatic.com https://cdn.onesignal.com https://onesignal.com; connect-src 'self' https://*.supabase.co https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.onesignal.com https://onesignal.com https://*.onesignal.com https://api.onesignal.com wss://*.onesignal.com; img-src 'self' data: https:; worker-src 'self' blob: https://cdn.onesignal.com https://onesignal.com; frame-src https://onesignal.com https://api.onesignal.com https://docs.google.com https://drive.google.com;"
         }
       ]
+    },
+    {
+      "source": "/diventa-ambassador",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/diventa-ambassador.html",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
     }
   ],
   "buildCommand": "echo skip",
