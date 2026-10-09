@@ -257,31 +257,34 @@ async function payBill(oid: string, token: string, billId: string, vendorId: str
   const d = await r.json();
   return {
     ok: d.code === 0,
-    id: d.payment?.payment_id ? String(d.payment.payment_id) : null,
+    id: d.vendorpayment?.payment_id ? String(d.vendorpayment.payment_id) : null,
     error: d.code === 0 ? null : (d.message || 'pagamento non registrato'),
   };
 }
 
 /**
- * Ritrova un pagamento creato da noi per una spesa, quando non ne abbiamo
- * l'id (Bill registrate prima che lo salvassimo). I criteri sono tutti
- * insieme — fornitore, data, importo e il nostro marcatore nella descrizione —
- * perche' cancellare il pagamento sbagliato sarebbe peggio di non cancellarlo.
+ * I pagamenti applicati a una Bill, chiesti alla Bill stessa: e' l'unica
+ * fonte certa, e vale anche per le Bill registrate prima che tenessimo l'id.
+ * Di ognuno guardiamo la descrizione, perche' cancellare il pagamento messo
+ * a mano dalla contabilita' sarebbe peggio di non cancellare niente: se la
+ * descrizione non porta il nostro marcatore, lo lasciamo stare e lo diciamo.
  */
-async function findOurPayment(oid: string, token: string, vendorId: string, exp: any, importo: number) {
+async function paymentsOfBill(oid: string, token: string, billId: string, attesoId: string | null) {
+  const nostri: string[] = [];
+  const altrui: string[] = [];
   try {
-    const r = await fetch(ZOHO_API_BASE + '/vendorpayments?organization_id=' + oid
-      + '&vendor_id=' + vendorId + '&per_page=200', {
+    const r = await fetch(ZOHO_API_BASE + '/bills/' + billId + '?organization_id=' + oid, {
       headers: { Authorization: 'Zoho-oauthtoken ' + token },
     });
     const d = await r.json();
-    if (d.code !== 0) return null;
-    const hit = (d.vendorpayments || []).find((p: any) =>
-      String(p.description || '').startsWith(PAY_MARKER)
-      && p.date === exp.expense_date
-      && Math.abs(Number(p.amount) - importo) < 0.01);
-    return hit ? String(hit.payment_id) : null;
-  } catch (_) { return null; }
+    for (const p of (d.bill?.payments || [])) {
+      const pid = String(p.payment_id);
+      const descr = String(p.description || '');
+      if (pid === attesoId || descr.startsWith(PAY_MARKER)) nostri.push(pid);
+      else altrui.push(pid);
+    }
+  } catch (_) { /* senza elenco non cancelliamo niente */ }
+  return { nostri, altrui };
 }
 
 /** Nome leggibile per l'allegato: sullo storage e' un UUID, su Zoho non si capirebbe. */
@@ -650,19 +653,26 @@ Deno.serve(async (req: Request) => {
       // Prima il pagamento, poi il documento: Zoho rifiuta di cancellare una
       // Bill con pagamenti applicati. E se restasse, sarebbe un acconto al
       // fornitore di cui nessuno saprebbe l'origine.
-      let payDeleted = null as string | null;
-      let payId = exp.zoho_payment_id as string | null;
-      if (!payId && exp.zoho_doc_type === 'bill' && exp.zoho_vendor_id) {
-        payId = await findOurPayment(exp.zoho_org_id, token, exp.zoho_vendor_id, exp, Number(exp.amount));
-      }
-      if (payId) {
-        const rp = await fetch(ZOHO_API_BASE + '/vendorpayments/' + payId
-          + '?organization_id=' + exp.zoho_org_id, {
-          method: 'DELETE', headers: { Authorization: 'Zoho-oauthtoken ' + token },
-        });
-        const dp = await rp.json();
-        if (dp.code === 0) payDeleted = String(payId);
-        else return json({ ok: false, error: 'Pagamento non annullato: ' + (dp.message || 'errore') }, 400);
+      const payDeleted: string[] = [];
+      if (exp.zoho_doc_type === 'bill') {
+        const { nostri, altrui } = await paymentsOfBill(
+          exp.zoho_org_id, token, zid, exp.zoho_payment_id || null);
+        if (altrui.length) {
+          return json({ ok: false, error: 'Sulla fattura c' + String.fromCharCode(39)
+            + 'e' + String.fromCharCode(39) + ' un pagamento registrato a mano: '
+            + 'annullalo in Zoho prima di disfare la registrazione.' }, 400);
+        }
+        for (const pid of nostri) {
+          const rp = await fetch(ZOHO_API_BASE + '/vendorpayments/' + pid
+            + '?organization_id=' + exp.zoho_org_id, {
+            method: 'DELETE', headers: { Authorization: 'Zoho-oauthtoken ' + token },
+          });
+          const dp = await rp.json();
+          if (dp.code !== 0) {
+            return json({ ok: false, error: 'Pagamento non annullato: ' + (dp.message || 'errore') }, 400);
+          }
+          payDeleted.push(pid);
+        }
       }
 
       const r = await fetch(ZOHO_API_BASE + '/' + kind + '/' + zid + '?organization_id=' + exp.zoho_org_id, {
@@ -676,7 +686,7 @@ Deno.serve(async (req: Request) => {
         zoho_payment_id: null,
         tax_applied: null, post_notes: null, error_msg: null, approved_at: null,
       });
-      return json({ ok: true, deleted: zid, payment_deleted: payDeleted });
+      return json({ ok: true, deleted: zid, payments_deleted: payDeleted });
     }
 
     return json({ ok: false, error: 'unknown_action' }, 400);
