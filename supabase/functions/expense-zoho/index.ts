@@ -150,6 +150,7 @@ async function resolveExpenseAccount(oid: string, token: string, guess: string |
  * nome piu' la valuta per azzeccarlo. Senza, Zoho userebbe "Fondi non
  * depositati", che non e' dove il cliente ha pagato davvero.
  */
+const PAY_MARKER = 'Pagata al caricamento';
 const payAcctCache: Record<string, any[]> = {};
 async function resolvePaymentAccount(oid: string, token: string, paidWith: string | null, currency: string | null) {
   if (!paidWith) return null;
@@ -191,8 +192,8 @@ async function payBill(oid: string, token: string, billId: string, vendorId: str
     date: exp.expense_date,
     amount: importo,
     paid_through_account_id: acct.id,
-    bills: [{ bill_id: billId, amount: importo }],
-    description: 'Pagata al caricamento' + (exp.paid_with ? ' — ' + exp.paid_with : ''),
+    bills: [{ bill_id: billId, amount_applied: importo }],
+    description: PAY_MARKER + (exp.paid_with ? ' — ' + exp.paid_with : ''),
   };
   const r = await fetch(ZOHO_API_BASE + '/vendorpayments?organization_id=' + oid, {
     method: 'POST',
@@ -200,7 +201,33 @@ async function payBill(oid: string, token: string, billId: string, vendorId: str
     body: JSON.stringify(body),
   });
   const d = await r.json();
-  return { ok: d.code === 0, error: d.code === 0 ? null : (d.message || 'pagamento non registrato') };
+  return {
+    ok: d.code === 0,
+    id: d.payment?.payment_id ? String(d.payment.payment_id) : null,
+    error: d.code === 0 ? null : (d.message || 'pagamento non registrato'),
+  };
+}
+
+/**
+ * Ritrova un pagamento creato da noi per una spesa, quando non ne abbiamo
+ * l'id (Bill registrate prima che lo salvassimo). I criteri sono tutti
+ * insieme — fornitore, data, importo e il nostro marcatore nella descrizione —
+ * perche' cancellare il pagamento sbagliato sarebbe peggio di non cancellarlo.
+ */
+async function findOurPayment(oid: string, token: string, vendorId: string, exp: any, importo: number) {
+  try {
+    const r = await fetch(ZOHO_API_BASE + '/vendorpayments?organization_id=' + oid
+      + '&vendor_id=' + vendorId + '&per_page=200', {
+      headers: { Authorization: 'Zoho-oauthtoken ' + token },
+    });
+    const d = await r.json();
+    if (d.code !== 0) return null;
+    const hit = (d.vendorpayments || []).find((p: any) =>
+      String(p.description || '').startsWith(PAY_MARKER)
+      && p.date === exp.expense_date
+      && Math.abs(Number(p.amount) - importo) < 0.01);
+    return hit ? String(hit.payment_id) : null;
+  } catch (_) { return null; }
 }
 
 /** Nome leggibile per l'allegato: sullo storage e' un UUID, su Zoho non si capirebbe. */
@@ -376,6 +403,7 @@ Deno.serve(async (req: Request) => {
         numero: doc.bill_number, data: doc.date, fornitore: doc.vendor_name,
         totale: doc.total, imponibile: doc.sub_total, imposta: doc.tax_total,
         stato: doc.status, cliente: doc.customer_name, fatturabile: doc.is_billable,
+        da_pagare: doc.balance, pagato: doc.payment_made ?? doc.total_credits_used,
         allegato: doc.attachment_name || doc.documents?.[0]?.file_name || null,
         righe: (doc.line_items || []).map((l: any) => ({
           descrizione: l.name || l.description, importo: l.rate,
@@ -479,6 +507,7 @@ Deno.serve(async (req: Request) => {
         // Quello che il cliente carica l'ha gia' pagato: senza registrare il
         // pagamento la Bill resterebbe "da pagare" per sempre.
         let pagata = false;
+        let payId: string | null = null;
         if (body.mark_paid !== false) {
           const acct = paid
             ? { id: paid, name: 'conto scelto' }
@@ -486,6 +515,7 @@ Deno.serve(async (req: Request) => {
           if (acct) {
             const pay = await payBill(oid, token, bid, vend.id, exp, acct, Number(bd.bill.total));
             pagata = pay.ok;
+            payId = pay.id;
             if (pay.ok) note.push('Segnata pagata da "' + acct.name + '"');
             else note.push('Pagamento non registrato: ' + pay.error);
           } else {
@@ -495,6 +525,7 @@ Deno.serve(async (req: Request) => {
 
         await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, {
           status: 'posted', zoho_doc_type: 'bill', zoho_bill_id: bid, zoho_vendor_id: vend.id,
+          zoho_payment_id: payId,
           tax_applied: taxApplied, is_billable: isBillable,
           zoho_customer_id: customerId, zoho_customer_name: customerName,
           error_msg: null, post_notes: note.join(' · ') || null,
@@ -562,16 +593,36 @@ Deno.serve(async (req: Request) => {
       const kind = exp.zoho_doc_type === 'bill' ? 'bills' : 'expenses';
       const zid = exp.zoho_doc_type === 'bill' ? exp.zoho_bill_id : exp.zoho_expense_id;
       if (!zid) return json({ ok: false, error: 'nessun documento Zoho da annullare' }, 400);
+      // Prima il pagamento, poi il documento: Zoho rifiuta di cancellare una
+      // Bill con pagamenti applicati. E se restasse, sarebbe un acconto al
+      // fornitore di cui nessuno saprebbe l'origine.
+      let payDeleted = null as string | null;
+      let payId = exp.zoho_payment_id as string | null;
+      if (!payId && exp.zoho_doc_type === 'bill' && exp.zoho_vendor_id) {
+        payId = await findOurPayment(exp.zoho_org_id, token, exp.zoho_vendor_id, exp, Number(exp.amount));
+      }
+      if (payId) {
+        const rp = await fetch(ZOHO_API_BASE + '/vendorpayments/' + payId
+          + '?organization_id=' + exp.zoho_org_id, {
+          method: 'DELETE', headers: { Authorization: 'Zoho-oauthtoken ' + token },
+        });
+        const dp = await rp.json();
+        if (dp.code === 0) payDeleted = String(payId);
+        else return json({ ok: false, error: 'Pagamento non annullato: ' + (dp.message || 'errore') }, 400);
+      }
+
       const r = await fetch(ZOHO_API_BASE + '/' + kind + '/' + zid + '?organization_id=' + exp.zoho_org_id, {
         method: 'DELETE', headers: { Authorization: 'Zoho-oauthtoken ' + token },
       });
       const d = await r.json();
       if (d.code !== 0) return json({ ok: false, error: d.message || 'Zoho delete failed' }, 400);
+
       await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, {
         status: 'pending', zoho_expense_id: null, zoho_bill_id: null, zoho_doc_type: null,
+        zoho_payment_id: null,
         tax_applied: null, post_notes: null, error_msg: null, approved_at: null,
       });
-      return json({ ok: true, deleted: zid });
+      return json({ ok: true, deleted: zid, payment_deleted: payDeleted });
     }
 
     return json({ ok: false, error: 'unknown_action' }, 400);

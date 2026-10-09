@@ -25,3 +25,9 @@ alter table client_expenses add column if not exists zoho_customer_name text;
 
 comment on column client_expenses.post_notes is
   'Cosa e'' successo registrando su Zoho (fornitore creato, IVA non applicata, allegato fallito). Prima questi casi passavano in silenzio.';
+
+-- Id del pagamento registrato sulla Bill: quello che il cliente carica l'ha
+-- gia' pagato, quindi la Bill nasce pagata. L'id serve ad annullare anche il
+-- pagamento quando si disfa la registrazione, altrimenti resterebbe appeso
+-- come acconto al fornitore.
+alter table client_expenses add column if not exists zoho_payment_id text;
