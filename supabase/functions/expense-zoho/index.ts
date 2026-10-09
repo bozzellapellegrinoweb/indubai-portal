@@ -106,6 +106,44 @@ async function findOrCreateVendor(oid: string, token: string, name: string, trn:
   return { id: String(d.contact.contact_id), created: true };
 }
 
+/**
+ * Conto di spesa da usare sulle righe della Bill.
+ * A differenza delle Expense, dove Zoho ripiega sul conto di default, le Bill
+ * pretendono un account_id su ogni riga: senza, rifiuta con "The account
+ * field cannot be empty". Se chi approva non ha scelto la categoria, la
+ * deduciamo dal suggerimento dell'AI, altrimenti prendiamo un conto generico.
+ */
+const accountsCache: Record<string, any[]> = {};
+async function resolveExpenseAccount(oid: string, token: string, guess: string | null) {
+  if (!(oid in accountsCache)) {
+    try {
+      const r = await fetch(ZOHO_API_BASE + '/chartofaccounts?organization_id=' + oid + '&per_page=200', {
+        headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const d = await r.json();
+      const EXP = ['expense', 'cost_of_goods_sold', 'other_expense'];
+      accountsCache[oid] = (d.chartofaccounts || [])
+        .filter((a: any) => EXP.includes(a.account_type) && !a.is_deleted)
+        .map((a: any) => ({ id: String(a.account_id), name: String(a.account_name || '') }));
+    } catch (_) { accountsCache[oid] = []; }
+  }
+  const accts = accountsCache[oid];
+  if (!accts.length) return { id: null, name: null };
+
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (guess) {
+    const g = new Set(norm(guess).split(' ').filter(w => w.length > 2));
+    let best: any = null, score = 0;
+    for (const a of accts) {
+      const n = norm(a.name).split(' ').filter(w => w.length > 2).filter(w => g.has(w)).length;
+      if (n > score) { score = n; best = a; }
+    }
+    if (best) return best;
+  }
+  const generico = accts.find((a: any) => /other expense|altre spese|miscellaneous|general expense/i.test(a.name));
+  return generico || accts[0];
+}
+
 /** Nome leggibile per l'allegato: sullo storage e' un UUID, su Zoho non si capirebbe. */
 function attachmentName(exp: any) {
   const ext = (exp.storage_path || '').split('.').pop() || 'pdf';
@@ -325,15 +363,24 @@ Deno.serve(async (req: Request) => {
         }
         if (vend.created) note.push('Fornitore creato in anagrafica Zoho');
 
+        // Le Bill vogliono un conto su ogni riga: se manca, lo deduciamo.
+        let billAcct = cat;
+        if (!billAcct) {
+          const scelto = await resolveExpenseAccount(oid, token, exp.ai_raw?.category_guess || null);
+          billAcct = scelto.id;
+          if (billAcct) note.push('Categoria non scelta: usato il conto "' + scelto.name + '"');
+          else note.push('Nessun conto di spesa disponibile in Zoho');
+        }
+
         // Righe lette dal documento se i conti tornano, altrimenti stimate dall'IVA.
-        const fromDoc = linesFromDocument(exp.ai_raw, total, vat, cat, taxes);
+        const fromDoc = linesFromDocument(exp.ai_raw, total, vat, billAcct, taxes);
         if (!fromDoc && vat > 0) note.push('Righe non leggibili dal documento: imponibile stimato dall' + String.fromCharCode(39) + 'IVA');
 
         const billBody: any = {
           vendor_id: vend.id,
           date: exp.expense_date,
           is_inclusive_tax: false,
-          line_items: fromDoc || buildBillLines(total, vat, cat, taxes, label),
+          line_items: fromDoc || buildBillLines(total, vat, billAcct, taxes, label),
           notes: exp.note || '',
           reference_number: exp.paid_with ? ('Paid with: ' + exp.paid_with) : '',
         };
