@@ -16,8 +16,9 @@ dell'utente a cui il token è intestato.
 | Endpoint | `https://portal.indubai.it/api/mcp` |
 | Per area | `https://portal.indubai.it/mcp/<scope>` (es. `/mcp/finance`) |
 | Transport | Streamable HTTP (JSON-RPC 2.0 su POST) |
-| Auth | `Authorization: Bearer idb_mcp_…` |
-| Gestione token | `/mcp.html` nel portale (sezione ADMIN) |
+| Auth CLI/desktop | `Authorization: Bearer idb_mcp_…` (token personale) |
+| Auth claude.ai | OAuth 2.1 + PKCE, login col portale (nessun token) |
+| Gestione | `/mcp.html` nel portale (sezione ADMIN) |
 | Tool | 68, filtrati per ruolo e scope |
 | Audit | tabella `mcp_audit_log` + pannello in `/mcp.html` |
 
@@ -31,6 +32,7 @@ Nel **SQL Editor** di Supabase esegui:
 
 ```
 supabase/migrations/20261007_mcp_server.sql
+supabase/migrations/20261009_mcp_oauth.sql
 ```
 
 Crea `mcp_tokens`, `mcp_audit_log`, la funzione `mcp_readonly_query()` usata dal tool
@@ -72,6 +74,19 @@ di claude.ai.
 ---
 
 ## 3. Collegare Claude
+
+### claude.ai — login, senza token  ← la via normale
+
+Impostazioni → Connettori → **Aggiungi connettore personalizzato**. Nome a piacere,
+URL `https://portal.indubai.it/api/mcp`, **lascia vuoti i campi OAuth**: Claude si
+registra da solo (RFC 7591). Poi *Connetti* e login con le credenziali del portale.
+
+Non serve nessun token. Chi fa login decide i permessi: il ruolo del suo profilo
+vale esattamente come nel portale, e al login sceglie se concedere anche la scrittura.
+
+> I "Request headers" di claude.ai, dove si incollerebbe un bearer token, sono una
+> beta non attiva su tutti gli account: su molti il dialogo mostra solo i campi OAuth.
+> Per questo il percorso supportato è OAuth.
 
 ### Claude Code (terminale)
 
@@ -223,7 +238,39 @@ di Vercel: chi legge il repo ha pieno accesso al database.
 
 ---
 
-## 7. Diagnostica
+## 7. OAuth, in dettaglio
+
+Il server è un *resource server* OAuth 2.1 e si fa anche da *authorization server*.
+
+| Endpoint | Cosa fa |
+|---|---|
+| `/.well-known/oauth-protected-resource` | RFC 9728: dice qual è la risorsa e chi la autorizza |
+| `/.well-known/oauth-authorization-server` | RFC 8414: authorize, token, register, PKCE |
+| `/oauth/register` | RFC 7591: Claude si registra da solo, niente Client ID a mano |
+| `/oauth/authorize` | pagina di login del portale, poi codice di autorizzazione |
+| `/oauth/token` | scambio codice → token, e rinnovo |
+| `/oauth/revoke` | RFC 7009 |
+
+Scelte di sicurezza:
+
+- **PKCE S256 obbligatorio.** Senza `code_challenge` la richiesta è rifiutata: un
+  codice intercettato non è spendibile.
+- **Codici usa e getta**, 5 minuti di vita, legati a `redirect_uri` e client. Un
+  riuso cancella il codice: se riappare, la concessione è compromessa.
+- **`redirect_uri` esatto** contro quelli registrati; in registrazione si accetta
+  solo https (o localhost).
+- **Refresh con rotazione**: il vecchio access token smette subito di funzionare.
+- Le concessioni vivono in `mcp_tokens` con `kind = 'oauth'`, accanto ai token
+  personali, così l'autenticazione del server MCP resta una sola query. Si revocano
+  dallo stesso elenco in `/mcp.html`.
+- `client` e `ambassador` sono respinti al login, come per i token personali.
+
+Il `401` del server include `WWW-Authenticate: Bearer resource_metadata="…"`, che è
+ciò che permette al client di trovare la discovery. Senza, il collegamento si ferma lì.
+
+---
+
+## 8. Diagnostica
 
 | Sintomo | Causa |
 |---|---|
@@ -234,6 +281,9 @@ di Vercel: chi legge il repo ha pieno accesso al database.
 | `"…" scrive dati, ma questo token è di sola lettura` | rigenera il token con lettura e scrittura |
 | `relation "mcp_tokens" does not exist` | migrazione non eseguita |
 | `429 Troppe chiamate` | rate limit: attendi un minuto |
+| claude.ai non aggiunge il connettore | controlla che `/.well-known/oauth-protected-resource` risponda 200 |
+| `Client non riconosciuto` | rimuovi e riaggiungi il connettore: Claude si ri-registra |
+| `Verifica PKCE fallita` | il collegamento è stato interrotto a metà, rifallo |
 
 Debug rapido:
 
@@ -250,11 +300,12 @@ curl -s https://portal.indubai.it/api/mcp \
 
 ---
 
-## 8. Struttura del codice
+## 9. Struttura del codice
 
 ```
 api/
 ├── mcp.js                 ← endpoint HTTP: JSON-RPC, CORS, auth, dispatch
+├── mcp-oauth.js           ← OAuth 2.1: discovery, registrazione, login, token
 ├── _mcp-lib.js            ← REST Supabase, token, permessi, audit, rate limit
 ├── _mcp-catalog.js        ← domini, scope, tabelle: QUI stanno i permessi
 ├── _mcp-tools.js          ← registro, risorse, prompt
@@ -294,7 +345,7 @@ Restituisci `_rows: n` dal handler per registrare le righe toccate nell'audit
 
 ---
 
-## 9. Riferimento dei tool
+## 10. Riferimento dei tool
 
 ### Sessione e metadati (`core`)
 
