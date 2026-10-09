@@ -55,6 +55,113 @@ async function getFivePctTaxId(oid: string, token: string): Promise<string | nul
   return taxIdCache[oid];
 }
 
+// Aliquote dell'organizzazione: ci servono la 5% (IVA a credito) e la 0%
+// per la parte fuori campo, tipica delle pratiche con tasse governative.
+const taxesCache: Record<string, { five: string | null; zero: string | null }> = {};
+async function getTaxes(oid: string, token: string) {
+  if (oid in taxesCache) return taxesCache[oid];
+  let five: string | null = null, zero: string | null = null;
+  try {
+    const r = await fetch(ZOHO_API_BASE + '/settings/taxes?organization_id=' + oid, {
+      headers: { Authorization: 'Zoho-oauthtoken ' + token },
+    });
+    const d = await r.json();
+    for (const t of (d.taxes || [])) {
+      if (t.is_deleted) continue;
+      const pct = Number(t.tax_percentage);
+      if (pct === 5 && !five) five = String(t.tax_id);
+      if (pct === 0 && !zero) zero = String(t.tax_id);
+    }
+  } catch (_) { /* restano null: lo segnaliamo a chi approva */ }
+  taxesCache[oid] = { five, zero };
+  return taxesCache[oid];
+}
+
+/** Trova il fornitore per nome, altrimenti lo crea. Le Bill richiedono un vendor_id. */
+async function findOrCreateVendor(oid: string, token: string, name: string, trn: string | null) {
+  const H = { Authorization: 'Zoho-oauthtoken ' + token };
+  const clean = (name || '').trim().slice(0, 200);
+  if (!clean) return { id: null, error: 'fornitore senza nome' };
+  try {
+    const r = await fetch(ZOHO_API_BASE + '/contacts?organization_id=' + oid
+      + '&contact_type=vendor&search_text=' + encodeURIComponent(clean) + '&per_page=50', { headers: H });
+    const d = await r.json();
+    const hit = (d.contacts || []).find((c: any) =>
+      (c.contact_name || '').trim().toLowerCase() === clean.toLowerCase());
+    if (hit) return { id: String(hit.contact_id), created: false };
+  } catch (_) { /* proviamo comunque a crearlo */ }
+
+  const payload: any = { contact_name: clean, contact_type: 'vendor' };
+  if (trn) payload.tax_reg_no = trn;
+  const post = async (b: any) => {
+    const r = await fetch(ZOHO_API_BASE + '/contacts?organization_id=' + oid, {
+      method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify(b),
+    });
+    return r.json();
+  };
+  let d = await post(payload);
+  // Se il TRN non e' accettato (formato, o campo non previsto), creiamo senza
+  if (d.code !== 0 && trn) d = await post({ contact_name: clean, contact_type: 'vendor' });
+  if (d.code !== 0) return { id: null, error: d.message || 'creazione fornitore fallita' };
+  return { id: String(d.contact.contact_id), created: true };
+}
+
+/** Nome leggibile per l'allegato: sullo storage e' un UUID, su Zoho non si capirebbe. */
+function attachmentName(exp: any) {
+  const ext = (exp.storage_path || '').split('.').pop() || 'pdf';
+  const base = [exp.vendor || 'Documento', exp.expense_date || '']
+    .filter(Boolean).join(' ')
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 90);
+  return base + '.' + ext;
+}
+
+/** Allega il file del documento. Best-effort: non blocca mai la registrazione. */
+async function attachReceipt(kind: 'expenses' | 'bills', zid: string, oid: string, token: string, exp: any) {
+  try {
+    const fileRes = await fetch(SB_URL + '/storage/v1/object/expense-receipts/' + exp.storage_path, {
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY },
+    });
+    if (!fileRes.ok) return { attached: false, error: 'receipt download failed (' + fileRes.status + ')' };
+    const buf = new Uint8Array(await fileRes.arrayBuffer());
+    const fd = new FormData();
+    fd.append('attachment', new Blob([buf], { type: exp.mime_type || 'application/octet-stream' }), attachmentName(exp));
+    const ar = await fetch(ZOHO_API_BASE + '/' + kind + '/' + zid + '/attachment?organization_id=' + oid, {
+      method: 'POST', headers: { Authorization: 'Zoho-oauthtoken ' + token }, body: fd,
+    });
+    const ad = await ar.json();
+    return { attached: ad.code === 0, error: ad.code === 0 ? null : (ad.message || 'attach failed') };
+  } catch (e) { return { attached: false, error: (e as Error).message }; }
+}
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Righe della Bill a partire da totale lordo e IVA letta dal documento.
+ * Non assumiamo che l'IVA sia il 5% del totale: su molte fatture UAE una
+ * parte e' fuori campo (tasse governative) e il 5% colpisce solo il servizio.
+ */
+function buildBillLines(total: number, vat: number, accountId: string | null, taxes: { five: string | null; zero: string | null }, label: string) {
+  const lines: any[] = [];
+  const base = (rate: number, taxId: string | null, suffix: string) => {
+    const li: any = { name: (label + suffix).slice(0, 100), rate: r2(rate), quantity: 1 };
+    if (accountId) li.account_id = accountId;
+    if (taxId) li.tax_id = taxId;
+    return li;
+  };
+  if (vat > 0 && taxes.five) {
+    const imponibile = r2(vat / 0.05);
+    const fuoriCampo = r2(total - imponibile - vat);
+    lines.push(base(imponibile, taxes.five, ''));
+    if (fuoriCampo >= 0.01) lines.push(base(fuoriCampo, taxes.zero, ' — fuori campo IVA'));
+  } else {
+    lines.push(base(total, taxes.zero, ''));
+  }
+  return lines;
+}
+
 async function sbGet(path: string) {
   const r = await fetch(SB_URL + path, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
   return r.json();
@@ -114,86 +221,151 @@ Deno.serve(async (req: Request) => {
       })) });
     }
 
-    // Crea la spesa in Zoho Books + allega lo scontrino
+    // Registra il documento in Zoho Books e vi allega il file.
+    //
+    // Fattura fornitore (TRN + IVA)  -> Bill, con l'IVA a credito per riga:
+    //   e' da li' che entra nel VAT return come input tax.
+    // Scontrino senza TRN            -> Expense, come prima.
     if (action === 'create_expense_with_receipt' && body.expense_id) {
       const rows = await sbGet('/rest/v1/client_expenses?id=eq.' + body.expense_id + '&select=*');
       const exp = rows?.[0];
       if (!exp) return json({ ok: false, error: 'expense not found' }, 404);
       const oid = exp.zoho_org_id;
-      // Conti opzionali: se non forniti, Zoho usa i conti di default (come la Riconciliazione).
       const cat = body.category_account_id || exp.category_account_id || null;
       const paid = body.paid_through_account_id || exp.paid_through_account_id || null;
       if (!oid) return json({ ok: false, error: 'client has no Zoho org' }, 400);
       if (!exp.amount || !exp.expense_date) return json({ ok: false, error: 'amount and date required' }, 400);
 
+      // Riaddebito: lo decide chi approva, non il cliente che carica.
+      const isBillable = body.is_billable === true;
+      const customerId = body.zoho_customer_id || null;
+      const customerName = body.zoho_customer_name || null;
+
+      const note: string[] = [];
+      const label = [exp.vendor, exp.note].filter(Boolean).join(' — ') || 'Expense';
+      const total = Number(exp.amount);
+      const vat = Number(exp.vat_amount) || 0;
+
+      // ── Fattura: Bill ────────────────────────────────────────────────
+      if (exp.is_tax_invoice) {
+        const taxes = await getTaxes(oid, token);
+        if (!taxes.five && vat > 0) note.push("Aliquota 5% non trovata nell'organizzazione: IVA non applicata");
+
+        const vend = await findOrCreateVendor(oid, token, exp.vendor || '', exp.supplier_trn || null);
+        if (!vend.id) {
+          await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id,
+            { status: 'error', error_msg: 'Fornitore Zoho: ' + (vend.error || 'non creato') });
+          return json({ ok: false, error: 'Fornitore Zoho: ' + (vend.error || 'non creato') }, 400);
+        }
+        if (vend.created) note.push('Fornitore creato in anagrafica Zoho');
+
+        const billBody: any = {
+          vendor_id: vend.id,
+          date: exp.expense_date,
+          is_inclusive_tax: false,
+          line_items: buildBillLines(total, vat, cat, taxes, label),
+          notes: exp.note || '',
+          reference_number: exp.paid_with ? ('Paid with: ' + exp.paid_with) : '',
+        };
+        if (exp.invoice_number) billBody.bill_number = String(exp.invoice_number).slice(0, 50);
+
+        const postBill = async (payload: any) => {
+          const r = await fetch(ZOHO_API_BASE + '/bills?organization_id=' + oid, {
+            method: 'POST',
+            headers: { Authorization: 'Zoho-oauthtoken ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          return r.json();
+        };
+        let bd = await postBill(billBody);
+        // Numero gia' usato per quel fornitore: lo rendiamo unico invece di fallire
+        if (bd.code !== 0 && /bill number|already exists|duplicate/i.test(bd.message || '')) {
+          note.push("Numero fattura gia' presente: aggiunto un suffisso");
+          bd = await postBill({ ...billBody, bill_number: (billBody.bill_number || 'BILL') + '-' + String(Date.now()).slice(-5) });
+        }
+        if (bd.code !== 0) {
+          const msg = bd.message || 'Zoho bill failed';
+          await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, { status: 'error', error_msg: msg });
+          return json({ ok: false, error: msg }, 400);
+        }
+        const bid = String(bd.bill.bill_id);
+        const taxApplied = vat > 0 && !!taxes.five;
+        const att = await attachReceipt('bills', bid, oid, token, exp);
+        if (!att.attached) note.push('Allegato non caricato: ' + att.error);
+
+        await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, {
+          status: 'posted', zoho_doc_type: 'bill', zoho_bill_id: bid, zoho_vendor_id: vend.id,
+          tax_applied: taxApplied, is_billable: isBillable,
+          zoho_customer_id: customerId, zoho_customer_name: customerName,
+          error_msg: null, post_notes: note.join(' · ') || null,
+          approved_at: new Date().toISOString(),
+        });
+        return json({ ok: true, doc_type: 'bill', zoho_bill_id: bid, attached: att.attached,
+                      tax_applied: taxApplied, notes: note });
+      }
+
+      // ── Scontrino: Expense ───────────────────────────────────────────
       const expenseBody: any = {
         date: exp.expense_date,
-        amount: Number(exp.amount),
-        description: [exp.vendor, exp.note].filter(Boolean).join(' — ') || 'Expense',
+        amount: total,
+        description: label,
         reference_number: exp.paid_with ? ('Paid with: ' + exp.paid_with) : '',
       };
       if (cat) expenseBody.account_id = cat;
       if (paid) expenseBody.paid_through_account_id = paid;
+      // Riaddebito: Zoho vuole il cliente, altrimenti la spesa resta non fatturabile.
+      if (isBillable && customerId) {
+        expenseBody.customer_id = customerId;
+        expenseBody.is_billable = true;
+      } else if (isBillable && !customerId) {
+        note.push('Da riaddebitare ma senza cliente Zoho: registrata non fatturabile');
+      }
 
-      // IVA 5% recuperabile: SOLO su tax invoice valida. L'importo è lordo →
-      // is_inclusive_tax così Zoho scorpora il 5% invece di sommarlo.
-      // Best-effort: se il tax_id non si trova, la spesa si registra comunque al lordo.
-      let taxApplied = false;
-      if (exp.is_tax_invoice) {
-        const taxId = await getFivePctTaxId(oid, token);
-        if (taxId) {
-          expenseBody.tax_id = taxId;
-          expenseBody.is_inclusive_tax = true;
-          taxApplied = true;
-        }
-      }
-      const postExpense = async (payload: any) => {
-        const cr = await fetch(ZOHO_API_BASE + '/expenses?organization_id=' + oid, {
-          method: 'POST',
-          headers: { Authorization: 'Zoho-oauthtoken ' + token, 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        return cr.json();
-      };
-      let cd = await postExpense(expenseBody);
-      // Se Zoho rifiuta la creazione con l'IVA, ritenta al lordo (non blocchiamo mai la spesa).
-      if (cd.code !== 0 && taxApplied) {
-        const { tax_id: _t, is_inclusive_tax: _i, ...gross } = expenseBody;
-        taxApplied = false;
-        cd = await postExpense(gross);
-      }
+      const r = await fetch(ZOHO_API_BASE + '/expenses?organization_id=' + oid, {
+        method: 'POST',
+        headers: { Authorization: 'Zoho-oauthtoken ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(expenseBody),
+      });
+      const cd = await r.json();
       if (cd.code !== 0) {
-        await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, { status: 'error', error_msg: cd.message || 'Zoho create failed' });
-        return json({ ok: false, error: cd.message || 'Zoho create failed' }, 400);
+        const msg = cd.message || 'Zoho create failed';
+        await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, { status: 'error', error_msg: msg });
+        return json({ ok: false, error: msg }, 400);
       }
       const zid = cd.expense?.expense_id;
-
-      // allega lo scontrino (best-effort)
-      let attached = false; let attachErr: string | null = null;
-      try {
-        const fileRes = await fetch(SB_URL + '/storage/v1/object/expense-receipts/' + exp.storage_path, {
-          headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY },
-        });
-        if (fileRes.ok) {
-          const buf = new Uint8Array(await fileRes.arrayBuffer());
-          const fname = exp.storage_path.split('/').pop() || 'receipt';
-          const fd = new FormData();
-          fd.append('attachment', new Blob([buf], { type: exp.mime_type || 'application/octet-stream' }), fname);
-          const ar = await fetch(ZOHO_API_BASE + '/expenses/' + zid + '/attachment?organization_id=' + oid, {
-            method: 'POST', headers: { Authorization: 'Zoho-oauthtoken ' + token }, body: fd,
-          });
-          const ad = await ar.json();
-          attached = ad.code === 0;
-          if (!attached) attachErr = ad.message || 'attach failed';
-        } else {
-          attachErr = 'receipt download failed (' + fileRes.status + ')';
-        }
-      } catch (e) { attachErr = (e as Error).message; }
+      const att = await attachReceipt('expenses', zid, oid, token, exp);
+      if (!att.attached) note.push('Allegato non caricato: ' + att.error);
 
       await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, {
-        status: 'posted', zoho_expense_id: zid, error_msg: attachErr, approved_at: new Date().toISOString(),
+        status: 'posted', zoho_doc_type: 'expense', zoho_expense_id: zid,
+        tax_applied: false, is_billable: isBillable && !!customerId,
+        zoho_customer_id: customerId, zoho_customer_name: customerName,
+        error_msg: null, post_notes: note.join(' · ') || null,
+        approved_at: new Date().toISOString(),
       });
-      return json({ ok: true, zoho_expense_id: zid, attached, attach_error: attachErr, tax_applied: taxApplied });
+      return json({ ok: true, doc_type: 'expense', zoho_expense_id: zid, attached: att.attached,
+                    tax_applied: false, notes: note });
+    }
+
+    // Annulla una registrazione sbagliata: cancella il documento su Zoho e
+    // riporta la spesa in attesa, cosi' si puo' ri-approvare corretta.
+    if (action === 'undo_posting' && body.expense_id) {
+      const rows = await sbGet('/rest/v1/client_expenses?id=eq.' + body.expense_id + '&select=*');
+      const exp = rows?.[0];
+      if (!exp) return json({ ok: false, error: 'expense not found' }, 404);
+      const kind = exp.zoho_doc_type === 'bill' ? 'bills' : 'expenses';
+      const zid = exp.zoho_doc_type === 'bill' ? exp.zoho_bill_id : exp.zoho_expense_id;
+      if (!zid) return json({ ok: false, error: 'nessun documento Zoho da annullare' }, 400);
+      const r = await fetch(ZOHO_API_BASE + '/' + kind + '/' + zid + '?organization_id=' + exp.zoho_org_id, {
+        method: 'DELETE', headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const d = await r.json();
+      if (d.code !== 0) return json({ ok: false, error: d.message || 'Zoho delete failed' }, 400);
+      await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, {
+        status: 'pending', zoho_expense_id: null, zoho_bill_id: null, zoho_doc_type: null,
+        tax_applied: null, post_notes: null, error_msg: null, approved_at: null,
+      });
+      return json({ ok: true, deleted: zid });
     }
 
     return json({ ok: false, error: 'unknown_action' }, 400);

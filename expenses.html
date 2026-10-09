@@ -18,6 +18,10 @@
     .exp-search { flex:1; min-width:180px; max-width:320px; }
     .exp-search input { width:100%; }
     .exp-summary { margin-left:auto; font-size:13px; font-weight:700; color:var(--text-muted); white-space:nowrap; }
+    .dest { font-size:12.5px; font-weight:700; padding:7px 11px; border-radius:8px; display:inline-block; }
+    .dest.bill { background:#e0f2fe; color:#075985; }
+    .dest.exp  { background:#f1efe8; color:#4b5563; }
+    .hidden-row { display:none; }
     .exp-grid { display:grid; grid-template-columns:1fr; gap:14px; }
     @media (min-width:900px){ .exp-grid { grid-template-columns:1fr 1fr; } }
     .exp-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
@@ -223,6 +227,19 @@ function cardHTML(e) {
           <label>Categoria Zoho ${e.is_tax_invoice ? '<span class="tax-badge ok">IVA 5% recuperabile</span>' : ''}</label>
           <select id="f-cat-${e.id}"><option value="">Caricamento categorie…</option></select>
         </div>
+        <div>
+          <label>In Zoho diventa</label>
+          <div class="dest" id="dest-${e.id}">${destLabel(e.is_tax_invoice)}</div>
+        </div>
+        <div>
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600">
+            <input type="checkbox" id="f-bill-${e.id}" onchange="toggleBillable('${e.id}')">
+            Da riaddebitare a un cliente
+          </label>
+          <select id="f-cust-${e.id}" class="hidden-row" style="margin-top:7px">
+            <option value="">Caricamento clienti…</option>
+          </select>
+        </div>
         ${!e.zoho_org_id ? '<div class="exp-msg err">⚠ Cliente senza Zoho collegato</div>' : ''}
       </div>
     </div>
@@ -280,6 +297,54 @@ function onTrn(id){
   if (b){ b.className = 'tax-badge '+(ok?'ok':'no'); b.textContent = ok?'Tax invoice ✓':'No tax invoice'; }
 }
 function isTaxInvoice(id){ return (val('f-trn-'+id)||'').replace(/\D/g,'').length >= 15; }
+// Correggendo il TRN a mano cambia anche il tipo di documento: lo si deve vedere.
+document.addEventListener('input', ev => {
+  const m = /^f-trn-(.+)$/.exec(ev.target.id || '');
+  if (m) refreshDest(m[1]);
+});
+
+// Una fattura con TRN va in Purchases > Bills, da dove l'IVA a credito
+// entra nel VAT return. Uno scontrino resta una spesa.
+function destLabel(isTaxInvoice) {
+  return isTaxInvoice
+    ? '<span class="dest bill">Bill (fattura fornitore) · IVA a credito</span>'
+    : '<span class="dest exp">Expense (spesa)</span>';
+}
+
+/** Il badge segue le correzioni sul TRN fatte a mano. */
+function refreshDest(id) {
+  const el = document.getElementById('dest-' + id);
+  if (el) el.innerHTML = destLabel(isTaxInvoice(id));
+}
+
+const customersCache = {};
+async function toggleBillable(id) {
+  const e = items.find(x => x.id === id);
+  const on = document.getElementById('f-bill-' + id).checked;
+  const sel = document.getElementById('f-cust-' + id);
+  sel.classList.toggle('hidden-row', !on);
+  if (!on || !e?.zoho_org_id) return;
+  try {
+    let list = customersCache[e.zoho_org_id];
+    if (!list) {
+      const tok = sb.getSession()?.access_token || AK;
+      const r = await fetch(FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
+        body: JSON.stringify({ action: 'list_customers', org_id: e.zoho_org_id }),
+      });
+      const d = await r.json();
+      list = (d.ok && d.customers) ? d.customers : [];
+      customersCache[e.zoho_org_id] = list;
+    }
+    sel.innerHTML = list.length
+      ? '<option value="">Scegli il cliente…</option>'
+        + list.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')
+      : '<option value="">Nessun cliente in anagrafica Zoho</option>';
+  } catch (_) {
+    sel.innerHTML = '<option value="">Elenco clienti non disponibile</option>';
+  }
+}
 
 async function approve(id) {
   const btn = document.getElementById('ok-'+id); const msg = document.getElementById('msg-'+id);
@@ -304,12 +369,22 @@ async function approve(id) {
     const r = await fetch(FN, {
       method:'POST',
       headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+tok },
-      body: JSON.stringify({ action:'create_expense_with_receipt', expense_id: id }),
+      body: JSON.stringify({
+        action:'create_expense_with_receipt',
+        expense_id: id,
+        is_billable: document.getElementById('f-bill-'+id)?.checked || false,
+        zoho_customer_id: val('f-cust-'+id) || null,
+        zoho_customer_name: document.getElementById('f-cust-'+id)?.selectedOptions?.[0]?.textContent?.trim() || null,
+      }),
     });
     const d = await r.json();
     if (d.ok) {
       msg.className='exp-msg ok';
-      msg.textContent = '✓ Registrata in Zoho' + (d.attached ? ' con allegato' : ' (allegato non riuscito)') + (d.tax_applied ? ' · IVA 5% recuperabile' : '');
+      // Diciamo sempre cosa e' stato creato davvero: niente fallback silenziosi.
+      msg.textContent = '✓ ' + (d.doc_type === 'bill' ? 'Fattura registrata (Bill)' : 'Spesa registrata (Expense)')
+        + (d.attached ? ' con allegato' : ' — allegato non riuscito')
+        + (d.tax_applied ? ' · IVA a credito applicata' : '')
+        + ((d.notes && d.notes.length) ? ' · ' + d.notes.join(' · ') : '');
       setTimeout(() => removeExpense(id), 1200);
     } else {
       msg.className='exp-msg err';
