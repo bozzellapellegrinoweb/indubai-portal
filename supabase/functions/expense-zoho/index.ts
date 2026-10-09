@@ -89,6 +89,31 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, expense_accounts, paid_accounts });
     }
 
+    // Imposte configurate nell'organizzazione: serve per capire con quale
+    // aliquota registrare l'IVA a credito di una fattura.
+    if (action === 'list_taxes' && body.org_id) {
+      const r = await fetch(ZOHO_API_BASE + '/settings/taxes?organization_id=' + body.org_id, {
+        headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const d = await r.json();
+      return json({ ok: d.code === 0, message: d.message, taxes: (d.taxes || []).map((t: any) => ({
+        tax_id: t.tax_id, name: t.tax_name, percentage: t.tax_percentage,
+        type: t.tax_type, specific_type: t.tax_specific_type, deleted: t.is_deleted,
+      })) });
+    }
+
+    // Clienti dell'organizzazione: per attribuire una spesa da riaddebitare.
+    if (action === 'list_customers' && body.org_id) {
+      const r = await fetch(ZOHO_API_BASE + '/contacts?organization_id=' + body.org_id
+        + '&contact_type=customer&status=active&per_page=200', {
+        headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const d = await r.json();
+      return json({ ok: d.code === 0, message: d.message, customers: (d.contacts || []).map((c: any) => ({
+        id: c.contact_id, name: c.contact_name,
+      })) });
+    }
+
     // Crea la spesa in Zoho Books + allega lo scontrino
     if (action === 'create_expense_with_receipt' && body.expense_id) {
       const rows = await sbGet('/rest/v1/client_expenses?id=eq.' + body.expense_id + '&select=*');
