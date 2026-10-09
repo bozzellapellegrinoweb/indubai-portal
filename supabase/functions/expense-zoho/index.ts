@@ -139,6 +139,40 @@ async function attachReceipt(kind: 'expenses' | 'bills', zid: string, oid: strin
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
+ * Righe prese dal documento, quando l'AI le ha lette e i conti tornano.
+ * E' la via preferita: la Bill rispecchia la fattura riga per riga, e la base
+ * imponibile e' quella stampata invece di una stima ricavata dall'IVA.
+ * Torna null se qualcosa non quadra, cosi' si ricade sulla stima.
+ */
+function linesFromDocument(ai: any, total: number, vat: number, accountId: string | null, taxes: { five: string | null; zero: string | null }) {
+  const raw = Array.isArray(ai?.line_items) ? ai.line_items : [];
+  if (!raw.length || !taxes.five || !taxes.zero) return null;
+
+  const items = raw.map((i: any) => ({
+    desc: String(i?.description || '').trim().slice(0, 100),
+    amount: r2(Number(i?.amount) || 0),
+    taxable: i?.taxable === true,
+  }));
+  if (items.some((i: any) => !(i.amount > 0) || !i.desc)) return null;
+
+  const netto = r2(items.reduce((s: number, i: any) => s + i.amount, 0));
+  const imponibile = r2(items.filter((i: any) => i.taxable).reduce((s: number, i: any) => s + i.amount, 0));
+
+  // Le righe devono ricostruire il totale, e l'IVA sulla parte imponibile
+  // deve combaciare con quella stampata. Un centesimo di tolleranza per gli
+  // arrotondamenti del fornitore.
+  if (Math.abs(r2(netto + vat) - total) > 0.02) return null;
+  if (Math.abs(r2(imponibile * 0.05) - vat) > 0.02) return null;
+
+  return items.map((i: any) => {
+    const li: any = { name: i.desc, rate: i.amount, quantity: 1 };
+    if (accountId) li.account_id = accountId;
+    li.tax_id = i.taxable ? taxes.five : taxes.zero;
+    return li;
+  });
+}
+
+/**
  * Righe della Bill a partire da totale lordo e IVA letta dal documento.
  * Non assumiamo che l'IVA sia il 5% del totale: su molte fatture UAE una
  * parte e' fuori campo (tasse governative) e il 5% colpisce solo il servizio.
@@ -269,11 +303,15 @@ Deno.serve(async (req: Request) => {
         }
         if (vend.created) note.push('Fornitore creato in anagrafica Zoho');
 
+        // Righe lette dal documento se i conti tornano, altrimenti stimate dall'IVA.
+        const fromDoc = linesFromDocument(exp.ai_raw, total, vat, cat, taxes);
+        if (!fromDoc && vat > 0) note.push('Righe non leggibili dal documento: imponibile stimato dall' + String.fromCharCode(39) + 'IVA');
+
         const billBody: any = {
           vendor_id: vend.id,
           date: exp.expense_date,
           is_inclusive_tax: false,
-          line_items: buildBillLines(total, vat, cat, taxes, label),
+          line_items: fromDoc || buildBillLines(total, vat, cat, taxes, label),
           notes: exp.note || '',
           reference_number: exp.paid_with ? ('Paid with: ' + exp.paid_with) : '',
         };

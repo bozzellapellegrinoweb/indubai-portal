@@ -44,6 +44,8 @@ async function extractReceipt(base64: string, mime: string) {
   "currency": "AED/EUR/USD/...",
   "supplier_trn": "",
   "invoice_number": "",
+  "subtotal": 0.00,
+  "line_items": [{ "description": "", "amount": 0.00, "taxable": false }],
   "is_tax_invoice": false,
   "vat_amount": 0.00,
   "category_guess": ""
@@ -52,6 +54,8 @@ Rules:
 - vendor = the actual shop/restaurant/business (trading name) where the purchase was made, usually the biggest name/logo at the top of the receipt. Do NOT use the payment processor, acquiring bank, POS/terminal descriptor or gateway (ignore names such as Merchant Services, ADCB, Mashreq, Network International, Payment Gateway, POS). If both a processor descriptor and a store name appear, always use the store name.
 - amount = grand total actually paid (numbers only).
 - date in YYYY-MM-DD; if unclear use empty string.
+- subtotal = the net total before VAT exactly as printed (the "Subtotal" line). 0 if the document does not show one.
+- line_items = one entry per product/service row printed on the document, in order, with "amount" = that row's NET line amount as printed. "taxable" = true only for the rows the VAT is charged on; false for rows that are exempt, zero-rated or out of scope (typical for UAE government fees, visa/ID charges and disbursements, where VAT applies only to the agency's own service fee). If the document shows no breakdown, return an empty array rather than guessing.
 - invoice_number = the document number printed by the supplier (Invoice No, Tax Invoice No, Receipt No, Bill No). Keep it exactly as printed, letters and separators included. Empty string if none is printed.
 - supplier_trn = the SUPPLIER's Tax Registration Number: a ~15-digit number, usually labelled TRN, Tax Reg. No, TRN No, or VATIN. Digits only. Empty string if none is printed.
 - is_tax_invoice = true ONLY if BOTH are present: (a) a supplier TRN is printed, AND (b) VAT/tax is evidenced — either an explicit VAT/Tax line, or wording that the total is inclusive of VAT / 5%. The words "Tax Invoice" support this but the TRN is mandatory. A plain sales receipt / slip with no TRN is NOT a tax invoice.
