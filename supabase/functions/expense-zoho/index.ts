@@ -660,6 +660,45 @@ Deno.serve(async (req: Request) => {
                     tax_applied: false, notes: note });
     }
 
+    // Segna pagata una Bill gia' registrata, senza rifare la registrazione.
+    // Serve in due casi: le fatture messe su Zoho prima che il pagamento
+    // fosse automatico, e quelle lasciate da pagare perche' il "pagato con"
+    // del cliente non corrispondeva a nessun conto. In entrambi disfare e
+    // rifare la registrazione cambierebbe il numero del documento e
+    // ricaricherebbe l'allegato: troppo per una cosa che e' solo un pagamento
+    // mancante.
+    if (action === 'mark_bill_paid' && body.expense_id) {
+      const rows = await sbGet('/rest/v1/client_expenses?id=eq.' + body.expense_id + '&select=*');
+      const exp = rows?.[0];
+      if (!exp) return json({ ok: false, error: 'expense not found' }, 404);
+      if (exp.zoho_doc_type !== 'bill' || !exp.zoho_bill_id) {
+        return json({ ok: false, error: 'Questa spesa non e' + String.fromCharCode(39)
+          + ' una fattura registrata su Zoho' }, 400);
+      }
+      const oid = exp.zoho_org_id;
+
+      const rb = await fetch(ZOHO_API_BASE + '/bills/' + exp.zoho_bill_id + '?organization_id=' + oid, {
+        headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const db = await rb.json();
+      if (db.code !== 0) return json({ ok: false, error: db.message || 'fattura non trovata' }, 404);
+      const saldo = Number(db.bill?.balance ?? 0);
+      if (saldo <= 0) return json({ ok: true, already_paid: true, bill_id: String(exp.zoho_bill_id) });
+
+      const acct = body.paid_through_account_id
+        ? { id: String(body.paid_through_account_id), name: 'conto scelto' }
+        : await resolvePaymentAccount(oid, token, exp.paid_with, exp.currency);
+      if (!acct) {
+        return json({ ok: false, error: 'Conto di pagamento non riconosciuto da "'
+          + (exp.paid_with || '—') + '": scegline uno.' }, 400);
+      }
+
+      const pay = await payBill(oid, token, String(exp.zoho_bill_id), exp.zoho_vendor_id, exp, acct, saldo);
+      if (!pay.ok) return json({ ok: false, error: pay.error }, 400);
+      await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, { zoho_payment_id: pay.id });
+      return json({ ok: true, bill_id: String(exp.zoho_bill_id), payment_id: pay.id, account: acct.name, amount: saldo });
+    }
+
     // Cancella un pagamento registrato da noi. Solo i nostri: quelli messi a
     // mano dalla contabilita' si annullano in Zoho, non da qui.
     if (action === 'delete_vendor_payment' && body.org_id && body.payment_id) {
