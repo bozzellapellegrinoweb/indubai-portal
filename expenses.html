@@ -384,6 +384,7 @@ async function approve(id) {
       msg.textContent = '✓ ' + (d.doc_type === 'bill' ? 'Fattura registrata (Bill)' : 'Spesa registrata (Expense)')
         + (d.attached ? ' con allegato' : ' — allegato non riuscito')
         + (d.tax_applied ? ' · IVA a credito applicata' : '')
+        + (d.doc_type === 'bill' ? (d.paid ? ' · segnata pagata' : ' · da pagare') : '')
         + ((d.notes && d.notes.length) ? ' · ' + d.notes.join(' · ') : '');
       setTimeout(() => removeExpense(id), 1200);
     } else {
