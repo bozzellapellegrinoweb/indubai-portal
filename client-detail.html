@@ -171,6 +171,9 @@
         <!-- Accesso Cliente Tab -->
         <div class="tab-panel" id="tab-accesso" style="padding:20px">
           <div id="accesso-content"><div class="spinner"></div></div>
+          <!-- Link per caricare le spese: vive a parte dall'accesso al portale,
+               perche' funziona anche per i clienti che non hanno credenziali. -->
+          <div id="spese-link-content" style="margin-top:24px"></div>
         </div>
 
         <!-- Visti Tab -->
@@ -192,6 +195,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
 <script src="/js/ambassador.js"></script>
@@ -404,7 +408,7 @@ function switchTab(name, el) {
   if (name === 'tasks') loadClientTasks();
   if (name === 'documents') loadDocumentsPanel();
   if (name === 'zoho') loadZohoTab();
-  if (name === 'accesso') loadAccessTab();
+  if (name === 'accesso') { loadAccessTab(); loadExpenseLink(); }
   if (name === 'visti') loadVistiTab();
   if (name === 'pratiche') loadPraticheTab();
   if (name === 'notifiche') loadNotificheTab();
@@ -959,6 +963,105 @@ async function loadZohoTab() {
 
   } catch(e) {
     el.innerHTML = `<div class="alert alert-danger" style="margin:16px">${e.message}</div>`;
+  }
+}
+
+// ── Link "Spese Indubai" ────────────────────────────────────
+// Il cliente apre il link, fotografa lo scontrino e la spesa arriva in
+// /expenses.html gia' letta dall'AI. Non serve che abbia un accesso al
+// portale: il link stesso e' la credenziale.
+
+function expenseAppUrl(token) {
+  return `${location.origin}/expense-app/?t=${token}`;
+}
+
+/** Token nuovo: 24 byte casuali in esadecimale, come fa il database. */
+function newExpenseToken() {
+  const b = crypto.getRandomValues(new Uint8Array(24));
+  return Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+function loadExpenseLink() {
+  const el = document.getElementById('spese-link-content');
+  if (!el || !clientData) return;
+  const token = clientData.expense_token;
+
+  if (!token) {
+    el.innerHTML = `
+      <div style="max-width:520px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:12px;padding:18px">
+        <div style="font-weight:700;color:#92400e;font-size:14px;margin-bottom:6px">Link spese non ancora attivo</div>
+        <p style="font-size:13px;color:#92400e;margin:0 0 14px;line-height:1.6">
+          Questo cliente non ha ancora un link per caricare gli scontrini.
+        </p>
+        <button class="btn btn-accent" id="btn-gen-expense">Genera il link</button>
+      </div>`;
+    document.getElementById('btn-gen-expense').onclick = () => regenExpenseToken(false);
+    return;
+  }
+
+  const url = expenseAppUrl(token);
+  el.innerHTML = `
+    <div style="max-width:520px;background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:20px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:4px">Link spese del cliente</div>
+      <p style="font-size:13px;color:#6b7a95;margin:0 0 16px;line-height:1.6">
+        Il cliente apre questo link, fotografa lo scontrino o carica la fattura, e la spesa
+        arriva in <strong>Spese</strong> già letta dall'AI, in attesa della tua approvazione.
+        Può installarlo sul telefono come app. Non serve che abbia un accesso al portale.
+      </p>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+        <input type="text" class="form-control" id="expense-url" readonly value="${url}"
+               style="font-family:ui-monospace,Menlo,monospace;font-size:12px;flex:1"
+               onclick="this.select()">
+        <button class="btn btn-ghost btn-sm" id="btn-copy-expense">Copia</button>
+      </div>
+
+      <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+        <div id="expense-qr" style="width:132px;height:132px;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:8px"></div>
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:12.5px;color:#6b7a95;line-height:1.6;margin-bottom:12px">
+            Inquadra il QR dal telefono del cliente: è il modo più veloce in call.
+          </div>
+          <button class="btn btn-ghost btn-sm" id="btn-regen-expense"
+                  style="color:#dc2626;border-color:#fca5a5">Rigenera link</button>
+          <div style="font-size:11.5px;color:#94a3b8;margin-top:6px;line-height:1.5">
+            Il link vecchio smette di funzionare: usalo se il cliente lo ha girato a qualcuno.
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('btn-copy-expense').onclick = () => {
+    navigator.clipboard.writeText(url)
+      .then(() => ui.showToast('Link copiato', 'success'))
+      .catch(() => ui.showToast('Copia non riuscita', 'error'));
+  };
+  document.getElementById('btn-regen-expense').onclick = () => regenExpenseToken(true);
+
+  try {
+    const qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    document.getElementById('expense-qr').innerHTML = qr.createSvgTag({ cellSize: 3, margin: 0, scalable: true });
+    const svg = document.querySelector('#expense-qr svg');
+    if (svg) { svg.style.width = '100%'; svg.style.height = '100%'; }
+  } catch (e) {
+    document.getElementById('expense-qr').innerHTML =
+      '<div style="font-size:11px;color:#94a3b8;text-align:center;padding-top:50px">QR non disponibile</div>';
+  }
+}
+
+async function regenExpenseToken(isRegen) {
+  if (isRegen && !confirm('Rigenerare il link?\n\nQuello attuale smette subito di funzionare: se il cliente lo ha salvato o aggiunto alla home, dovrai mandargli il nuovo.')) return;
+  try {
+    const token = newExpenseToken();
+    await sb.db.update('clients', `id=eq.${clientId}`, { expense_token: token });
+    clientData.expense_token = token;
+    loadExpenseLink();
+    ui.showToast(isRegen ? 'Link rigenerato' : 'Link creato', 'success');
+    try { await sb.db.log(isRegen ? 'expense_token_regenerated' : 'expense_token_created', clientId, {}); } catch (_) {}
+  } catch (e) {
+    ui.showToast('Errore: ' + e.message, 'error');
   }
 }
 
