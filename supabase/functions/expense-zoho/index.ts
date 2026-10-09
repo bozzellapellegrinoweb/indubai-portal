@@ -376,11 +376,18 @@ Deno.serve(async (req: Request) => {
         const fromDoc = linesFromDocument(exp.ai_raw, total, vat, billAcct, taxes);
         if (!fromDoc && vat > 0) note.push('Righe non leggibili dal documento: imponibile stimato dall' + String.fromCharCode(39) + 'IVA');
 
+        // Riaddebito: su una Bill il cliente si segna riga per riga, non sul
+        // documento. Senza questo la spunta in approvazione non arriverebbe
+        // mai a Zoho.
+        const righe = fromDoc || buildBillLines(total, vat, billAcct, taxes, label);
+        if (isBillable && customerId) for (const l of righe) l.customer_id = customerId;
+        else if (isBillable) note.push('Da riaddebitare ma senza cliente Zoho: registrata non fatturabile');
+
         const billBody: any = {
           vendor_id: vend.id,
           date: exp.expense_date,
           is_inclusive_tax: false,
-          line_items: fromDoc || buildBillLines(total, vat, billAcct, taxes, label),
+          line_items: righe,
           notes: exp.note || '',
           reference_number: exp.paid_with ? ('Paid with: ' + exp.paid_with) : '',
         };
