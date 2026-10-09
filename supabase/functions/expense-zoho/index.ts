@@ -446,6 +446,25 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, message: lastMsg, customers, truncated: hasMore });
     }
 
+    // Pagamenti a fornitore registrati nell'organizzazione. Serve in
+    // riconciliazione per rispondere a "il pagamento e' arrivato?" e per
+    // accorgersi degli acconti non applicati, che sono soldi usciti senza una
+    // fattura a cui si riferiscono.
+    if (action === 'list_vendor_payments' && body.org_id) {
+      const qs = new URLSearchParams({ organization_id: body.org_id, per_page: '200' });
+      if (body.vendor_id) qs.set('vendor_id', String(body.vendor_id));
+      const r = await fetch(ZOHO_API_BASE + '/vendorpayments?' + qs.toString(), {
+        headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const d = await r.json();
+      if (d.code !== 0) return json({ ok: false, error: d.message || 'errore' }, 400);
+      return json({ ok: true, payments: (d.vendorpayments || []).map((x: any) => ({
+        id: x.payment_id, data: x.date, fornitore: x.vendor_name,
+        importo: x.amount, non_applicato: x.unused_amount,
+        conto: x.paid_through_account_name, descrizione: x.description,
+      })) });
+    }
+
     // Rilegge un documento registrato: per controllare com'e' venuto davvero
     // (righe, imposte, allegato) senza aprire Zoho.
     if (action === 'get_doc' && body.org_id && body.doc_id) {
@@ -639,6 +658,28 @@ Deno.serve(async (req: Request) => {
       });
       return json({ ok: true, doc_type: 'expense', zoho_expense_id: zid, attached: att.attached,
                     tax_applied: false, notes: note });
+    }
+
+    // Cancella un pagamento registrato da noi. Solo i nostri: quelli messi a
+    // mano dalla contabilita' si annullano in Zoho, non da qui.
+    if (action === 'delete_vendor_payment' && body.org_id && body.payment_id) {
+      const rg = await fetch(ZOHO_API_BASE + '/vendorpayments/' + body.payment_id
+        + '?organization_id=' + body.org_id, {
+        headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const dg = await rg.json();
+      const descr = String(dg.vendorpayment?.description || '');
+      if (dg.code !== 0) return json({ ok: false, error: dg.message || 'pagamento non trovato' }, 404);
+      if (!descr.startsWith(PAY_MARKER)) {
+        return json({ ok: false, error: 'Pagamento non registrato dal portale: annullalo in Zoho.' }, 400);
+      }
+      const r = await fetch(ZOHO_API_BASE + '/vendorpayments/' + body.payment_id
+        + '?organization_id=' + body.org_id, {
+        method: 'DELETE', headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const d = await r.json();
+      if (d.code !== 0) return json({ ok: false, error: d.message || 'errore' }, 400);
+      return json({ ok: true, deleted: String(body.payment_id) });
     }
 
     // Annulla una registrazione sbagliata: cancella il documento su Zoho e
