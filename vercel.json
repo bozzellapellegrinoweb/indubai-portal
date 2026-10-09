@@ -2,6 +2,42 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/.well-known/oauth-protected-resource",
+      "destination": "/api/mcp-oauth?action=resource-metadata"
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource/api/mcp",
+      "destination": "/api/mcp-oauth?action=resource-metadata"
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server",
+      "destination": "/api/mcp-oauth?action=as-metadata"
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server/api/mcp",
+      "destination": "/api/mcp-oauth?action=as-metadata"
+    },
+    {
+      "source": "/.well-known/openid-configuration",
+      "destination": "/api/mcp-oauth?action=as-metadata"
+    },
+    {
+      "source": "/oauth/register",
+      "destination": "/api/mcp-oauth?action=register"
+    },
+    {
+      "source": "/oauth/authorize",
+      "destination": "/api/mcp-oauth?action=authorize"
+    },
+    {
+      "source": "/oauth/token",
+      "destination": "/api/mcp-oauth?action=token"
+    },
+    {
+      "source": "/oauth/revoke",
+      "destination": "/api/mcp-oauth?action=revoke"
+    },
+    {
       "source": "/mcp/:scope",
       "destination": "/api/mcp?scope=:scope"
     },

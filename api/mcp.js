@@ -297,7 +297,11 @@ export default async function handler(req, res) {
   } catch (e) {
     const status = e?.http || 401;
     if (status === 401) {
-      res.setHeader('WWW-Authenticate', 'Bearer realm="indubai-mcp"');
+      // RFC 9728: senza resource_metadata il client non sa dove fare OAuth
+      // e si ferma. E' quello che impediva a claude.ai di aggiungere il server.
+      const origin = `https://${req.headers?.host || 'portal.indubai.it'}`;
+      res.setHeader('WWW-Authenticate',
+        `Bearer realm="indubai-mcp", resource_metadata="${origin}/.well-known/oauth-protected-resource"`);
     }
     console.error('[mcp] auth:', e?.message, 'ip:', clientIp(req));
     return sendJson(res, status, rpcError(requests[0]?.id ?? null, e?.code || -32001,
