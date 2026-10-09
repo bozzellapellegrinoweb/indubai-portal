@@ -82,7 +82,7 @@ async function getAccessToken(): Promise<string> {
       cachedToken = shared;
       return shared.token;
     }
-    throw new Error('Token refresh failed');
+    throw new Error('Token refresh failed: ' + (data.error || res.status));
   }
   const expires = Date.now() + Number(data.expires_in || 3600) * 1000;
   cachedToken = { token: data.access_token, expires };
