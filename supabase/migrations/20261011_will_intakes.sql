@@ -1,7 +1,11 @@
 -- ============================================================
 -- Scheda Testamento — raccolta dati per il testamento a Dubai
 -- ============================================================
--- Additiva e ri-eseguibile: non tocca nessuna tabella esistente.
+-- Additiva e ri-eseguibile. Non cambia lo schema di nessuna tabella esistente.
+-- L'unica scrittura fuori da will_intakes e' una riga in notification_settings
+-- (solo dati, nessuna modifica di struttura) che registra l'evento dell'invio:
+-- serve perche' l'email finisca in email_log con un event_type riconosciuto e
+-- si possa spegnere da /notifiche-admin senza toccare il codice.
 --
 -- Il cliente compila la scheda da client-portal/testamento.html e la invia.
 -- L'invio scrive una riga qui con status 'submitted'; da quel momento la riga
