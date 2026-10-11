@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Scheda Testamento</title>
+<meta name="theme-color" content="#f4f2ef">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Testamento">
+<link rel="icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script>
+// Per entrare serve il login, come nelle altre pagine dell'area clienti.
+// Qui in testa, cosi' chi non ha sessione non vede nemmeno comparire la pagina.
+(function () {
+  var s = null;
+  try { s = sb.getSession(); } catch (e) {}
+  if (!s || !s.access_token) window.location.replace('login.html');
+})();
+</script>
+<style>
+:root{--bg:#f4f2ef;--card:#ffffff;--fg:#000;--mut:#5c5a55;--line:#e3dfd6;--acc:#000;--pop:#47ee74;--popink:#000;--btn:#000;--btnfg:#47ee74;--acc2:#b4452b;--logofx:none;--ok:#1b6b34;--okbg:#e4f9ea;--warn:#8a5a00;--warnbg:#fbf0d2;--bad:#9b2c1f;--badbg:#f8e1dc;--inp:#faf9f6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0d0b;--card:#151815;--fg:#f4f2ef;--mut:#a3a39b;--line:#2a2e2a;--acc:#47ee74;--pop:#47ee74;--popink:#000;--btn:#47ee74;--btnfg:#000;--logofx:brightness(0) invert(1);--acc2:#f08a6c;--ok:#47ee74;--okbg:#10301a;--warn:#f1c35a;--warnbg:#38300f;--bad:#f2a091;--badbg:#3b1d18;--inp:#10161a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b0d0b;--card:#151815;--fg:#f4f2ef;--mut:#a3a39b;--line:#2a2e2a;--acc:#47ee74;--pop:#47ee74;--popink:#000;--btn:#47ee74;--btnfg:#000;--logofx:brightness(0) invert(1);--acc2:#f08a6c;--ok:#47ee74;--okbg:#10301a;--warn:#f1c35a;--warnbg:#38300f;--bad:#f2a091;--badbg:#3b1d18;--inp:#10161a;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 'DM Sans',system-ui,sans-serif;padding-inline:16px;padding-block:24px}
+.wrap{max-width:820px;margin:0 auto}
+h1,h2,h3{font-family:'DM Sans',system-ui,sans-serif;font-weight:700;letter-spacing:-.02em;line-height:1.1;text-wrap:balance;margin:0}
+h1{font-size:2rem}h2{font-size:1.4rem}h3{font-size:1.1rem}
+.lead{color:var(--mut);margin:.5rem 0 0}
+.top{display:flex;flex-direction:column;gap:12px;padding-bottom:20px}
+.logo{height:44px;width:auto;align-self:flex-start;filter:var(--logofx)}
+.top h1 span{background:var(--pop);color:var(--popink);padding:0 .25em;border-radius:12px}
+.kick{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:700}
+nav.steps{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:8px;z-index:5}
+nav.steps button{flex:1 1 auto;min-width:0;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 12px;border-radius:99px;font:inherit;font-size:.82rem;cursor:pointer}
+nav.steps button.on{background:var(--pop);color:var(--popink);border-color:var(--pop);font-weight:700}
+nav.steps button.done::after{content:" ✓"}
+section.pane{display:none;flex-direction:column;gap:16px}
+section.pane.on{display:flex}
+.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:22px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(max-width:560px){.grid{grid-template-columns:minmax(0,1fr)}h1{font-size:1.6rem}}
+label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;font-weight:500;min-width:0}
+label small{font-weight:400;color:var(--mut)}
+input,select,textarea{font:inherit;font-size:1rem;color:var(--fg);background:var(--inp);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%;min-width:0}
+textarea{min-height:76px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--pop);outline-offset:1px}
+.full{grid-column:1/-1}
+.help{background:var(--warnbg);color:var(--warn);border-radius:16px;padding:10px 12px;font-size:.88rem}
+.help.ok{background:var(--okbg);color:var(--ok)}
+.help.bad{background:var(--badbg);color:var(--bad)}
+.help b{font-weight:600}
+.btn{border:0;background:var(--btn);color:var(--btnfg);padding:12px 22px;border-radius:99px;font:inherit;font-weight:700;cursor:pointer}
+.btn.sec{background:transparent;color:var(--fg);border:1.5px solid var(--fg)}
+.btn.sm{padding:7px 11px;font-size:.85rem}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.item{border:1px dashed var(--line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.item header{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:.9rem}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(max-width:620px){.cols{grid-template-columns:minmax(0,1fr)}}
+.opt{border:2px solid var(--line);border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.opt.rec{border-color:var(--pop);box-shadow:0 0 0 3px var(--pop)}
+.opt h3{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.tag{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;background:var(--pop);color:var(--popink);padding:3px 8px;border-radius:99px;}
+ul.pc{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:.92rem}
+ul.pc li{padding-left:22px;position:relative}
+ul.pc li.p::before{content:"+";position:absolute;left:0;color:var(--ok);font-weight:700}
+ul.pc li.c::before{content:"–";position:absolute;left:2px;color:var(--bad);font-weight:700}
+.price{font-weight:700;font-size:1.5rem;color:var(--acc)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+td,th{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+.tw{overflow-x:auto}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--inp);border:1px solid var(--line);border-radius:8px;padding:14px;font:.84rem/1.5 ui-monospace,Menlo,Consolas,monospace;margin:0}
+.chk{display:flex;gap:10px;align-items:flex-start;font-weight:400}
+.chk input{width:auto;margin-top:4px}
+.scheme{display:flex;flex-direction:column;gap:6px;font-size:.9rem}
+.scheme div{display:flex;gap:10px;align-items:flex-start}
+.scheme span.n{flex:0 0 28px;height:28px;border-radius:50%;background:var(--pop);color:var(--popink);display:grid;place-items:center;font-weight:600;font-size:.8rem}
+.foot{color:var(--mut);font-size:.8rem;border-top:1px solid var(--line);padding-top:14px;margin-top:8px}
+.bar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.hid{display:none!important}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.back{align-self:flex-start;color:var(--mut);font-size:.88rem;text-decoration:none;font-weight:500}
+.back:hover{color:var(--fg)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<div class="top">
+  <a class="back" href="dashboard.html">&larr; Torna al portale</a>
+  <img class="logo" alt="InDubai" src="assets/logo-dark-transparent.png" width="932" height="336">
+  <span class="kick">PB TAX International Tax Consultants FZCO</span>
+  <h1>La tua <span>Scheda Testamento</span></h1>
+  <p class="lead">Rispondi con calma, ci vogliono circa 20 minuti. Alla fine ottieni una scheda ordinata e ti diciamo quale strada fa per te, il testamento DIFC (Dubai) o quello di Abu Dhabi (ADGM). Se non sai una risposta, scrivi "da verificare" e andiamo avanti.</p>
+</div>
+
+<nav class="steps" id="nav"></nav>
+
+<!-- 0 PERCORSO -->
+<section class="pane on" id="p0">
+ <div class="card">
+  <h2>Prima di iniziare, come funziona</h2>
+  <div class="scheme">
+   <div><span class="n">1</span><span><b>Compili questa scheda</b> (famiglia, beni, desideri). Tutto quello che scrivi resta nel tuo browser fino a quando decidi di inviarlo.</span></div>
+   <div><span class="n">2</span><span><b>Ti diciamo la strada giusta</b>, DIFC (completo, per chi ha società, più beni, crypto) oppure Abu Dhabi ADGM (più semplice ed economico, per chi ha solo conti e case).</span></div>
+   <div><span class="n">3</span><span><b>Un professionista abilitato scrive il testamento</b> (nel DIFC si chiama "Wills Draftsman" ed è iscritto al registro ufficiale). PB TAX organizza i dati e coordina, ma non scrive il testamento e non dà consulenza legale.</span></div>
+   <div><span class="n">4</span><span><b>Tu rileggi e firmi</b> in videochiamata con 2 testimoni, davanti al registro (DIFC) oppure davanti al notaio digitale (Abu Dhabi).</span></div>
+   <div><span class="n">5</span><span><b>Il testamento viene depositato</b> e conservato. Dopo, ogni anno controlliamo se qualcosa è cambiato (figli, casa nuova, società).</span></div>
+  </div>
+  <div class="help"><b>Importante.</b> Questo strumento raccoglie informazioni e dà un'indicazione di massima. Non è un parere legale. La scelta finale e la stesura spettano al professionista abilitato.</div>
+  <div class="row"><button class="btn" data-go="1">Inizio</button><button class="btn sec" id="resetBtn">Cancella tutto e ricomincio</button></div>
+ </div>
+</section>
+
+<!-- 1 ANAGRAFICA -->
+<section class="pane" id="p1">
+ <div class="card">
+  <h2>1. Chi sei</h2>
+  <div class="grid">
+   <label>Nome e cognome (come sul passaporto)<input data-k="nome"></label>
+   <label>Data di nascita<input type="date" data-k="nascita"></label>
+   <label>Luogo di nascita<input data-k="luogoNascita"></label>
+   <label>Cittadinanza<input data-k="cittadinanza" placeholder="Es. Italiana"></label>
+   <label>Numero passaporto<input data-k="passaporto"></label>
+   <label>Numero Emirates ID<input data-k="eid"></label>
+   <label>Indirizzo a Dubai (o negli Emirati)<input data-k="indirizzoUAE"></label>
+   <label>Residente negli Emirati?<select data-k="residenteUAE"><option value="">Scegli</option><option>Sì, residente</option><option>No, non residente</option></select></label>
+   <label>Residenza fiscale / AIRE<small>Sei iscritto all'AIRE? In quale Paese sei residente per il fisco?</small><input data-k="aire"></label>
+   <label>Telefono / WhatsApp<input data-k="tel"></label>
+   <label>Email<input type="email" data-k="email"></label>
+   <label>Professione<input data-k="professione"></label>
+  </div>
+ </div>
+ <div class="card">
+  <h2>2. Religione</h2>
+  <label>Sei musulmano, o lo sei stato in passato?<select data-k="musulmano" id="musulmano"><option value="">Scegli</option><option value="no">No, non lo sono e non lo sono mai stato</option><option value="si">Sì, lo sono oppure lo sono stato</option><option value="nr">Preferisco non rispondere</option></select></label>
+  <div class="help" id="muslimHelp" hidden><b>Attenzione.</b> Il testamento DIFC è solo per i non musulmani (e chi non lo è mai stato). In questo caso non possiamo proporti questa strada e serve una valutazione a parte con il professionista.</div>
+  <div class="help ok">In parole semplici. Il DIFC applica regole stile inglese, nelle quali scegli tu chi eredita. Se invece sei musulmano, negli Emirati si applica di regola la Sharia, che decide le quote degli eredi.</div>
+  <label class="chk"><input type="checkbox" data-k="dichiaraNonMusulmano"> Dichiaro che non sono musulmano e che non lo sono mai stato.</label>
+  <p class="lead" style="margin:0">Se in futuro diventi musulmano, il testamento DIFC non vale più. Va tenuto presente.</p>
+ </div>
+ <div class="card">
+  <h2>3. Stato civile</h2>
+  <div class="grid">
+   <label>Stato civile<select data-k="stato" id="stato"><option value="">Scegli</option><option>Celibe/Nubile</option><option>Fidanzato/a (non sposati)</option><option>Sposato/a</option><option>Separato/a</option><option>Divorziato/a</option><option>Vedovo/a</option><option>Convivente</option></select></label>
+   <label>Dove è stato celebrato il matrimonio? Regime patrimoniale<small>Es. Italia, comunione o separazione dei beni</small><input data-k="regime"></label>
+  </div>
+  <div class="grid" id="partnerBox">
+   <label>Nome del/della partner<input data-k="partner"></label>
+   <label>Data di nascita del/della partner<input type="date" data-k="partnerNascita"></label>
+   <label>Anche il/la partner vuole fare il testamento?<select data-k="partnerTest" id="partnerTest"><option value="">Scegli</option><option value="si">Sì, anche lui/lei</option><option value="no">No, solo io</option></select></label>
+   <label>Il/la partner è musulmano/a?<select data-k="partnerMusulmano"><option value="">Scegli</option><option>No</option><option>Sì</option></select></label>
+  </div>
+  <div class="help" id="fidHelp" hidden><b>Fidanzati, non sposati.</b> In caso di matrimonio il testamento normalmente si annulla, a meno che dentro ci sia scritto che lo hai fatto "in vista del matrimonio" con quella persona. Per questo prepariamo una clausola dedicata. Dato che il/la partner non è ancora coniuge, per la legge non è automaticamente erede, quindi va nominato espressamente.</div>
+  <div class="help ok" id="coppiaHelp" hidden><b>Coppia sposata.</b> Anche il/la partner deve compilare la propria scheda.  Si fanno due testamenti "specchio" (uno a testa) a prezzo pensato per la coppia. Il DIFC costa meno che fare due testamenti singoli.</div>
+  <div class="help" id="divHelp" hidden><b>Divorzio.</b> Per il DIFC l'ex coniuge viene trattato come se fosse già morto. Se non vuoi che il nuovo testamento lo escluda, dillo al professionista.</div>
+  <label>Eventuali matrimoni o convivenze precedenti con figli o accordi<textarea data-k="precedenti"></textarea></label>
+ </div>
+ <div class="bar"><button class="btn sec" data-go="0">Indietro</button><button class="btn" data-go="2">Avanti</button></div>
+</section>
+
+<!-- 2 FAMIGLIA -->
+<section class="pane" id="p2">
+ <div class="card">
+  <h2>4. Figli</h2>
+  <label>Hai figli?<select data-k="figli" id="figli"><option value="">Scegli</option><option value="no">No</option><option value="si">Sì</option></select></label>
+  <div id="figliBox" hidden>
+   <div id="list-figli"></div>
+   <button class="btn sec sm" data-add="figli">+ Aggiungi figlio/a</button>
+   <div class="help ok" style="margin-top:10px">In parole semplici. Per i figli minorenni puoi indicare un tutore (la persona che li cresce se ti succede qualcosa e non c'è l'altro genitore). Nel DIFC il tutore vale solo per figli minorenni che vivono con te a Dubai o a Ras Al Khaimah, ne puoi scegliere massimo due, e deve accettare per iscritto. Anche il testamento di Abu Dhabi può prevedere la tutela dei figli, ma conferma con il partner come viene applicata.</div>
+  </div>
+  <div class="help" id="figliItalia" hidden><b>Italia.</b> Se hai figli, la legge italiana protegge una quota di eredità per loro (la "legittima"). Se sei residente a Dubai, di regola si applica la legge del Paese dove vivi, ma per i beni in Italia e per l'eventuale rischio di contestazioni va coinvolto il nostro corrispondente in Italia.</div>
+ </div>
+ <div class="card">
+  <h2>5. Genitori, fratelli e altre persone a carico</h2>
+  <label>Genitori, fratelli o altre persone che dipendono da te o a cui tieni<textarea data-k="altriFamiliari" placeholder="Nome, rapporto, e se vuoi lasciare qualcosa"></textarea></label>
+  <label>Animali domestici<small>Un animale non può ereditare. Puoi lasciare i soldi a una persona che se ne prende cura.</small><input data-k="animali"></label>
+ </div>
+ <div class="card">
+  <h2>6. Chi esegue il testamento (esecutori)</h2>
+  <div class="help ok">In parole semplici. L'esecutore è la persona di fiducia che dopo la tua morte va in tribunale, chiude i conti, vende o intesta i beni e distribuisce tutto agli eredi. Ne servono due, uno principale e uno di riserva. Può essere anche un testimone.</div>
+  <h3>Primo esecutore</h3><div class="grid">
+   <label>Nome e cognome<input data-k="es1"></label>
+   <label>Rapporto con te<input data-k="es1rel" placeholder="Es. coniuge, amico, commercialista"></label>
+   <label>Data di nascita<input type="date" data-k="es1nasc"></label>
+   <label>Nazionalità<input data-k="es1naz"></label>
+   <label>Numero passaporto o ID<input data-k="es1doc"></label>
+   <label>Indirizzo di residenza<input data-k="es1ind"></label>
+   <label>Telefono ed email<input data-k="es1tel"></label>
+   <label>Dove vive (Emirati o estero)<input data-k="es1paese"></label>
+  </div>
+  <h3>Secondo esecutore (di riserva)</h3><div class="grid">
+   <label>Nome e cognome<input data-k="es2"></label>
+   <label>Rapporto con te<input data-k="es2rel" placeholder="Es. coniuge, amico, commercialista"></label>
+   <label>Data di nascita<input type="date" data-k="es2nasc"></label>
+   <label>Nazionalità<input data-k="es2naz"></label>
+   <label>Numero passaporto o ID<input data-k="es2doc"></label>
+   <label>Indirizzo di residenza<input data-k="es2ind"></label>
+   <label>Telefono ed email<input data-k="es2tel"></label>
+   <label>Dove vive (Emirati o estero)<input data-k="es2paese"></label>
+  </div>
+  <label class="chk"><input type="checkbox" data-k="esAccetta"> Gli esecutori sono stati informati e hanno accettato (serve la loro disponibilità).</label>
+  <div class="help"><b>Posso nominare il mio consulente?</b> Si può nominare anche un professionista o una società, ma ci sono due cautele. Primo, chi riceve un lascito non dovrebbe essere anche testimone. Secondo, chi fa l'esecutore con compenso deve verificare di poterlo fare per i propri obblighi professionali. Meglio nominare una persona di famiglia o di fiducia come primo esecutore, e il professionista come riserva, se il partner lo conferma.</div>
+ </div>
+ <div class="bar"><button class="btn sec" data-go="1">Indietro</button><button class="btn" data-go="3">Avanti</button></div>
+</section>
+
+<!-- 3 BENI -->
+<section class="pane" id="p3">
+ <div class="card">
+  <h2>7. Immobili</h2>
+  <div class="help ok">In parole semplici. Qui servono tutte le case, uffici e terreni di tua proprietà, a Dubai, negli altri Emirati e all'estero. Gli immobili su carta (off plan) si indicano con il contratto Oqood. <b>Se la casa è intestata in comune con altri</b> (ad esempio coniuge) controlla se il titolo prevede il passaggio automatico al sopravvissuto, perché in quel caso il testamento non cambia nulla su quella quota.</div>
+  <label>Hai immobili?<select data-k="immobili" id="immobili"><option value="">Scegli</option><option value="no">No</option><option value="si">Sì</option></select></label>
+  <div id="immBox" hidden>
+   <div id="list-imm"></div>
+   <button class="btn sec sm" data-add="imm">+ Aggiungi immobile</button>
+   <p class="lead" style="margin:0">Documenti da avere pronti per ogni immobile, titolo di proprietà (title deed) oppure contratto Oqood se off plan.</p>
+  </div>
+ </div>
+ <div class="card">
+  <h2>8. Conti bancari e investimenti</h2>
+  <div class="help ok">In parole semplici. Indica banche, broker e conti, anche negli altri Emirati. Non scrivere password o PIN. Servono nome banca, tipo conto e numero. <b>Attenzione ai conti cointestati</b> perché di solito passano al cointestatario senza testamento. Dopo la morte i conti si bloccano, quindi conviene lasciare liquidità agli eredi per le spese urgenti (ad esempio un conto del coniuge o una polizza).</div>
+  <label>Hai conti o investimenti?<select data-k="conti" id="conti"><option value="">Scegli</option><option value="no">No</option><option value="si">Sì</option></select></label>
+  <div id="contiBox" hidden>
+   <div id="list-conti"></div>
+   <button class="btn sec sm" data-add="conti">+ Aggiungi conto</button>
+  </div>
+ </div>
+ <div class="card">
+  <h2>9. Società e quote</h2>
+  <div class="help ok">In parole semplici. Se hai quote di una società (free zone, mainland, FZCO, RAK ICC, holding), il testamento deve dire a chi vanno le quote. Attenzione, lo statuto o i soci possono avere regole proprie (clausole di successione, diritto di prelazione).</div>
+  <label>Hai società o quote in società?<select data-k="societa" id="societa"><option value="">Scegli</option><option value="no">No</option><option value="si">Sì</option></select></label>
+  <div id="socBox" hidden>
+   <div id="list-soc"></div>
+   <button class="btn sec sm" data-add="soc">+ Aggiungi società</button>
+   <label>Chi deve gestire le società dopo di te? Ci sono soci?<textarea data-k="gestioneSoc" placeholder="Soci, accordi tra soci, chi dovrebbe prendere il comando"></textarea></label>
+  </div>
+ </div>
+ <div class="card">
+  <h2>10. Crypto e beni digitali</h2>
+  <div class="help ok">In parole semplici. Se hai bitcoin o altre crypto, gli eredi non possono prenderle se non sanno dove sono e come accedere. Nel DIFC esiste un portafoglio (wallet) del Tribunale dove si possono depositare crypto compatibili. Non scrivere mai password o frasi segrete (seed phrase) nel testamento, perché il testamento diventa un documento che altri possono leggere.</div>
+  <label>Hai crypto o altri beni digitali?<select data-k="crypto" id="crypto"><option value="">Scegli</option><option value="no">No</option><option value="si">Sì</option></select></label>
+  <div id="cryBox" hidden>
+   <div id="list-cry"></div>
+   <button class="btn sec sm" data-add="cry">+ Aggiungi wallet o piattaforma</button>
+   <label>Dove tieni le istruzioni di accesso?<small>Non scrivere le chiavi qui. Basta dire dove sono, ad esempio cassaforte, notaio, persona di fiducia.</small><input data-k="cryAccesso"></label>
+  </div>
+ </div>
+ <div class="card">
+  <h2>11. Altri beni</h2>
+  <div class="grid">
+   <label>Assicurazioni sulla vita, polizze<small>Compagnia e beneficiario già indicato</small><input data-k="assic"></label>
+   <label>Fine servizio (EOSB) o pensione<small>Se hai un contratto di lavoro con un datore</small><input data-k="eosb"></label>
+   <label>Veicoli, orologi, gioielli, arte<input data-k="mobili"></label>
+   <label>Crediti, prestiti dati o ricevuti, debiti<input data-k="debiti"></label>
+   <label>Diritti d'autore, marchi, siti, app, domini<input data-k="ip"></label>
+   <label>Account digitali (email, cloud, social)<small>Non scrivere le password</small><input data-k="cdigi"></label>
+   <label>Altro<input data-k="altriBeni"></label>
+  </div>
+  <label>Mutui o finanziamenti su immobili, auto o altro<textarea data-k="mutui"></textarea></label>
+ </div>
+ <div class="card">
+  <h2>12. Beni fuori dagli Emirati e testamenti già fatti</h2>
+  <div class="grid">
+   <label>Hai beni in Italia o in altri Paesi?<select data-k="estero" id="estero"><option value="">Scegli</option><option value="no">No</option><option value="si">Sì</option></select></label>
+   <label>Hai già un testamento, in qualsiasi Paese?<select data-k="vecchioTest" id="vecchioTest"><option value="">Scegli</option><option value="no">No</option><option value="si">Sì</option></select></label>
+  </div>
+  <div id="esteroBox" hidden><label>Elenca i beni fuori dagli Emirati (Paese, tipo, valore indicativo)<textarea data-k="esteroDett"></textarea></label>
+   <div class="help">Per i beni in Italia di regola serve un testamento italiano separato, e coordinato con questo. Lo gestisce il corrispondente in Italia, con un costo notarile a parte.</div></div>
+  <div id="vecchioBox" hidden><label>Dove, quando e davanti a chi l'hai fatto?<textarea data-k="vecchioDett"></textarea></label>
+   <div class="help">Un nuovo testamento può cancellare il vecchio, oppure convivere con lui se si occupano di beni diversi. Va deciso con il professionista per non fare confusione.</div></div>
+ </div>
+ <div class="bar"><button class="btn sec" data-go="2">Indietro</button><button class="btn" data-go="4">Avanti</button></div>
+</section>
+
+<!-- 4 EREDI -->
+<section class="pane" id="p4">
+ <div class="card">
+  <h2>13. A chi vuoi lasciare i beni</h2>
+  <div class="help ok">In parole semplici. Per ogni persona (o ente) scrivi cosa riceve, in percentuale o per bene preciso. Puoi anche indicare un sostituto, se la persona muore prima di te. Nel DIFC, se lasci tutto al coniuge, il coniuge prende tutto e i figli restano esclusi, anche se erano nominati. Nel DIFC puoi lasciare beni anche a società o associazioni (serve il numero di licenza).</div>
+  <div class="help hid" id="spouseWarn"><b>Attenzione.</b> Nel DIFC, se lasci tutto al coniuge, il lascito è assoluto. Se il coniuge muore poco dopo o cambia idea, i figli non hanno diritti sui tuoi beni. Per proteggere i figli si usano soluzioni diverse (quote, sostituti, condizioni), da decidere con il professionista.</div>
+  <label>Come vuoi dividere? (idea generale)<select data-k="schema"><option value="">Scegli</option><option>Tutto al coniuge, poi ai figli</option><option>Tutto ai figli in parti uguali</option><option>Quote diverse tra più persone</option><option>Voglio lasciare beni precisi a persone precise</option><option>Non lo so ancora, voglio essere aiutato</option></select></label>
+  <div id="list-ben"></div>
+  <button class="btn sec sm" data-add="ben">+ Aggiungi beneficiario</button>
+  <div class="help" id="pctWarn" hidden></div>
+  <label>Se un beneficiario è minorenne, chi gestisce i beni e a che età li riceve?<small>Per esempio a 21 o 25 anni, con un fiduciario scelto da te.</small><input data-k="minori"></label>
+  <label>Cosa succede se tutti i beneficiari muoiono prima di te? Chi eredita in ultima istanza?<input data-k="ultimo"></label>
+ </div>
+ <div class="card">
+  <h2>14. Desideri particolari</h2>
+  <div class="grid">
+   <label>Lasciti a enti o beneficenza<input data-k="charity"></label>
+   <label>Dove vuoi essere sepolto o cremato<input data-k="funerale"></label>
+   <label>Rimpatrio della salma<input data-k="rimpatrio"></label>
+   <label>Lasciti in somma di denaro a persone<input data-k="legati"></label>
+  </div>
+  <label>Tempi o condizioni (es. figli ricevono a 25 anni)<textarea data-k="condizioni"></textarea></label>
+  <label>Altri desideri<textarea data-k="desideri"></textarea></label>
+ </div>
+ <div class="bar"><button class="btn sec" data-go="3">Indietro</button><button class="btn" data-go="5">Avanti</button></div>
+</section>
+
+<!-- 5 TESTIMONI E DOC -->
+<section class="pane" id="p5">
+ <div class="card">
+  <h2>15. Testimoni</h2>
+  <div class="help ok">In parole semplici. Servono 2 testimoni maggiorenni presenti alla firma in videochiamata. Meglio se non sono beneficiari, perché un lascito a un testimone (o al suo coniuge) è nullo. Possono essere anche l'esecutore o il Wills Draftsman.</div>
+  <div class="grid">
+   <label>Testimone 1, nome<input data-k="t1"></label>
+   <label>Passaporto o Emirates ID<input data-k="t1id"></label>
+   <label>Testimone 2, nome<input data-k="t2"></label>
+   <label>Passaporto o Emirates ID<input data-k="t2id"></label>
+  </div>
+  <label class="chk"><input type="checkbox" data-k="testimoniNo"> Non ho testimoni, vorrei che li fornisse il partner (da verificare con il professionista).</label>
+ </div>
+ <div class="card">
+  <h2>16. Documenti da preparare</h2>
+  <div id="docs"></div>
+ </div>
+ <div class="card">
+  <h2>17. Consenso</h2>
+  <label class="chk"><input type="checkbox" data-k="consenso"> Confermo che i dati sono veritieri e autorizzo PB TAX a trasmetterli a un professionista abilitato (Wills Draftsman o notaio) esclusivamente per redigere e depositare il mio testamento.</label>
+  <label class="chk"><input type="checkbox" data-k="capacita"> Dichiaro di essere in piena capacità di intendere e volere e di fare questo testamento liberamente, senza pressioni di nessuno.</label>
+  <label class="chk"><input type="checkbox" data-k="consenso2"> Ho capito che PB TAX non è uno studio legale, non redige il testamento e non dà consulenza legale.</label>
+ </div>
+ <div class="bar"><button class="btn sec" data-go="4">Indietro</button><button class="btn" data-go="6">Vedi risultato</button></div>
+</section>
+
+<!-- 6 RISULTATO -->
+<section class="pane" id="p6">
+ <div class="card"><h2>Quale testamento fa per te</h2><div id="verdict"></div></div>
+ <div class="cols" id="compare"></div>
+ <div class="card"><h2>Prezzo</h2><div id="costi"></div></div>
+ <div class="card"><h2>Quando aggiornare il testamento</h2><ul class="pc"><li class="p">Ti sposi o divorzi (il matrimonio può annullare il testamento).</li><li class="p">Nasce un figlio o cambia chi vuoi come tutore.</li><li class="p">Compri o vendi una casa, apri o chiudi una società, compri crypto.</li><li class="p">Cambi Paese di residenza.</li><li class="p">Un beneficiario o un esecutore muore o non è più di fiducia.</li><li class="p">Anche senza cambiamenti, una verifica ogni anno.</li></ul></div>
+ <div class="card"><h2>Cose da controllare ancora</h2><div id="todo"></div></div>
+ <div class="card">
+  <h2>Scheda finale da inviare</h2>
+  <p class="lead" style="margin:0">Copia il testo e mandalo a PB TAX per email o WhatsApp.</p>
+  <pre id="scheda"></pre>
+  <div class="row"><button class="btn" id="copyBtn">Copia la scheda</button><span id="copyMsg" class="lead"></span></div>
+  <div class="row"><button class="btn" id="sendBtn" disabled>Invia la scheda a PB TAX</button></div>
+  <div id="sendMsg"></div>
+  <div class="row"><span>Email PB TAX</span><b id="mail">bozzellapellegrino@gmail.com</b></div>
+ </div>
+ <div class="bar"><button class="btn sec" data-go="5">Indietro</button></div>
+</section>
+
+<div class="foot">Strumento di raccolta dati di InDubai e PB TAX International Tax Consultants FZCO (Platinum Tower, JLT, Dubai). Non costituisce consulenza legale. Le cifre dei costi ufficiali derivano dal tariffario DIFC Courts e dal servizio notarile di Abu Dhabi e vanno riconfermate al momento dell'incarico.</div>
+</div>
+
+<script>
+const PRICE={difc:28000,adgm:19000};
+const STEPS=["Inizio","Chi sei","Famiglia","Beni","Eredi","Testimoni","Risultato"];
+const S={data:{},lists:{figli:[],imm:[],conti:[],soc:[],cry:[],ben:[]},step:0};
+const KEY="pbtax-testamento-v1";
+function load(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);S.data=o.data||{};S.lists=Object.assign(S.lists,o.lists||{});S.step=0}}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({data:S.data,lists:S.lists}))}catch(e){}}
+
+const DEF={
+ figli:{t:"Figlio/a",f:[["nome","Nome e cognome"],["nascita","Data di nascita","date"],["rel","Figlio di (se di altra relazione)"],["abita","Dove vive e con chi"],["tutore","Tutore proposto (se minorenne)"],["tutoreC","Contatto del tutore"],["tutoreDoc","Passaporto o ID del tutore"],["tutoreInd","Indirizzo del tutore"]]},
+ imm:{t:"Immobile",f:[["ind","Indirizzo o nome progetto"],["emirato","Emirato (Dubai, Abu Dhabi, Sharjah, RAK...) o Paese"],["plot","Numero plot / unità"],["acq","Data di acquisto","date"],["quota","Tua quota di proprietà %"],["cointest","Intestato insieme ad altre persone?",["No","Sì, in comune con altri"]],["mutuo","Mutuo (banca, importo residuo)"],["off","Off plan (Oqood)?",["No","Sì"]],["dest","A chi va (se vuoi un bene preciso)"]]},
+ conti:{t:"Conto",f:[["banca","Banca o broker"],["tipo","Tipo (corrente, risparmio, titoli)"],["num","Numero conto / IBAN"],["intest","Intestatari"],["emirato","Emirato o Paese"],["quota","Tua quota %"],["cointest","Conto cointestato?",["No","Sì, cointestato"]],["val","Valore indicativo"]]},
+ soc:{t:"Società",f:[["nome","Nome società"],["lic","Numero di licenza / registrazione"],["aut","Autorità (IFZA, DMCC, DED, RAK ICC...)"],["emirato","Emirato"],["quota","Tua quota %"],["soci","Altri soci"],["attivita","Attività"],["dest","A chi vanno le quote"]]},
+ cry:{t:"Wallet / piattaforma",f:[["tipo","Tipo (hardware, app, exchange)"],["nome","Nome (Ledger, Binance, MetaMask...)"],["asset","Cosa contiene (BTC, ETH, USDT...)"],["val","Valore indicativo"],["note","Chi sa come accedere"]]},
+ ben:{t:"Beneficiario",f:[["nome","Nome e cognome (o ente con licenza)"],["nascita","Data di nascita","date"],["rel","Rapporto con te"],["naz","Nazionalità"],["doc","Numero passaporto o ID"],["ind","Indirizzo di residenza"],["tel","Telefono ed email"],["quota","Quota %"],["sost","Sostituto se muore prima (nome e data di nascita)"],["note","Beni precisi o condizioni"]]}
+};
+
+const DOCS=[
+ "Passaporto del testatore (copia chiara)","Emirates ID (fronte e retro), se residente","Passaporti o Emirates ID dei 2 testimoni","Passaporto o ID di ogni beneficiario e sostituto (copia chiara)","Passaporto o ID del primo e del secondo esecutore","Passaporto o ID del tutore, se nominato","Passaporto del/della partner (se testamento di coppia)",
+ "Titoli di proprietà (title deed) o Oqood degli immobili","Certificati di quote, memorandum e statuti delle società","Estratti dei conti bancari o dei titoli (solo le pagine con intestazione)",
+ "Eventuali testamenti già fatti","Certificato di matrimonio o di nascita dei figli, se richiesto","Dichiarazione firmata del tutore (se nominato)","Elenco crypto e luogo delle istruzioni (senza password)","Eventuali accordi tra soci, polizze, contratti di mutuo"
+];
+
+function $(s,r){return (r||document).querySelector(s)}
+function $$(s,r){return [...(r||document).querySelectorAll(s)]}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function val(k){return S.data[k]||""}
+
+function renderNav(){const n=$("#nav");n.innerHTML="";STEPS.forEach((t,i)=>{const b=document.createElement("button");b.textContent=i+" "+t;if(i===S.step)b.className="on";else if(i<S.step)b.className="done";b.onclick=()=>go(i);n.appendChild(b)})}
+function go(i){S.step=i;$$("section.pane").forEach((p,j)=>p.classList.toggle("on",j===i));renderNav();if(i===6)renderResult();window.scrollTo({top:0,behavior:"smooth"})}
+
+function renderList(name){
+ const box=$("#list-"+name);const d=DEF[name];box.innerHTML="";
+ S.lists[name].forEach((row,idx)=>{
+  const it=document.createElement("div");it.className="item";it.style.marginBottom="10px";
+  let h='<header><span>'+d.t+' '+(idx+1)+'</span><button class="btn sec sm" data-del="'+name+':'+idx+'">Togli</button></header><div class="grid">';
+  d.f.forEach(f=>{
+   const k=f[0],l=f[1],t=f[2];
+   if(Array.isArray(t)){h+='<label>'+l+'<select data-l="'+name+':'+idx+':'+k+'">'+t.map(o=>'<option'+((row[k]||t[0])===o?' selected':'')+'>'+o+'</option>').join("")+'</select></label>'}
+   else h+='<label>'+l+'<input '+(t==="date"?'type="date" ':'')+'data-l="'+name+':'+idx+':'+k+'" value="'+esc(row[k])+'"></label>';
+  });
+  it.innerHTML=h+'</div>';box.appendChild(it);
+ });
+}
+function renderAll(){Object.keys(DEF).forEach(renderList)}
+
+function bind(){
+ $$("[data-k]").forEach(el=>{
+  const k=el.dataset.k;
+  if(el.type==="checkbox")el.checked=!!S.data[k];else if(S.data[k]!=null)el.value=S.data[k];
+ });
+ document.addEventListener("input",ev=>{
+  const el=ev.target;
+  if(el.dataset&&el.dataset.k){S.data[el.dataset.k]=el.type==="checkbox"?el.checked:el.value;save();toggles()}
+  else if(el.dataset&&el.dataset.l){const[n,i,k]=el.dataset.l.split(":");S.lists[n][+i][k]=el.value;save();if(n==="ben")pctCheck()}
+ });
+ document.addEventListener("change",ev=>{const el=ev.target;if(el.dataset&&el.dataset.k){S.data[el.dataset.k]=el.type==="checkbox"?el.checked:el.value;save();toggles()}else if(el.dataset&&el.dataset.l){const[n,i,k]=el.dataset.l.split(":");S.lists[n][+i][k]=el.value;save()}});
+ document.addEventListener("click",ev=>{
+  const b=ev.target.closest("button");if(!b)return;
+  if(b.dataset.go!=null){go(+b.dataset.go)}
+  else if(b.dataset.add){S.lists[b.dataset.add].push({});save();renderList(b.dataset.add)}
+  else if(b.dataset.del){const[n,i]=b.dataset.del.split(":");S.lists[n].splice(+i,1);save();renderList(n);if(n==="ben")pctCheck()}
+ });
+ $("#resetBtn").onclick=()=>{if(!$("#resetBtn").dataset.sure){$("#resetBtn").dataset.sure=1;$("#resetBtn").textContent="Sicuro? Clicca di nuovo per cancellare";return}
+  S.data={};S.lists={figli:[],imm:[],conti:[],soc:[],cry:[],ben:[]};save();location.reload()};
+}
+function toggles(){
+ const show=(id,c)=>{const e=$(id);if(e)e.hidden=!c};
+ show("#muslimHelp",val("musulmano")==="si");
+ const st=val("stato");
+ show("#fidHelp",st==="Fidanzato/a (non sposati)"||st==="Convivente");
+ show("#coppiaHelp",st==="Sposato/a"&&val("partnerTest")==="si");
+ show("#divHelp",st==="Divorziato/a"||st==="Separato/a");
+ $("#partnerBox").classList.toggle("hid",!["Fidanzato/a (non sposati)","Sposato/a","Convivente"].includes(st));
+ show("#figliBox",val("figli")==="si");show("#figliItalia",val("figli")==="si"&&(val("cittadinanza")||"").toLowerCase().includes("ital"));
+ show("#immBox",val("immobili")==="si");show("#contiBox",val("conti")==="si");show("#socBox",val("societa")==="si");show("#cryBox",val("crypto")==="si");
+ $("#spouseWarn").classList.toggle("hid",!(val("stato")==="Sposato/a"&&val("schema")==="Tutto al coniuge, poi ai figli"));
+ show("#esteroBox",val("estero")==="si");show("#vecchioBox",val("vecchioTest")==="si");
+ if(S.lists.figli.length===0&&val("figli")==="si"){S.lists.figli.push({});save();renderList("figli")}
+ if(val("immobili")==="si"&&!S.lists.imm.length){S.lists.imm.push({});save();renderList("imm")}
+ if(val("conti")==="si"&&!S.lists.conti.length){S.lists.conti.push({});save();renderList("conti")}
+ if(val("societa")==="si"&&!S.lists.soc.length){S.lists.soc.push({});save();renderList("soc")}
+ if(val("crypto")==="si"&&!S.lists.cry.length){S.lists.cry.push({});save();renderList("cry")}
+}
+function pctCheck(){
+ const w=$("#pctWarn");const tot=S.lists.ben.reduce((a,b)=>a+(parseFloat(b.quota)||0),0);
+ if(!S.lists.ben.length){w.hidden=true;return}
+ w.hidden=false;w.className="help"+(tot===100?" ok":" bad");
+ w.textContent=tot===100?"Le quote fanno 100%. Perfetto.":"Le quote indicate fanno "+tot+"%. Devono fare 100% (se invece assegni beni precisi, spiegalo nelle note).";
+}
+function docs(){
+ const box=$("#docs");box.innerHTML=DOCS.map((d,i)=>'<label class="chk"><input type="checkbox" data-k="doc'+i+'"> '+esc(d)+'</label>').join("");
+ $$("[data-k^=doc]",box).forEach(el=>{el.checked=!!S.data[el.dataset.k]});
+}
+
+/* ROUTING */
+function route(){
+ const why=[],blocks=[];let diffc=0;
+ const nSoc=S.lists.soc.length,cry=val("crypto")==="si";
+ const emSet=new Set();[...S.lists.imm,...S.lists.conti,...S.lists.soc].forEach(x=>{const e=(x.emirato||"").trim().toLowerCase();if(e)emSet.add(e)});
+ const nonDubai=[...emSet].filter(e=>!e.includes("dubai")&&!e.includes("dxb")&&!e.includes("dubay"));
+ const abroad=val("estero")==="si";
+ const muslim=val("musulmano")==="si"||val("partnerMusulmano")==="Sì"||val("musulmano")==="nr";
+ if(val("societa")==="si"){why.push("Hai società o quote, solo il DIFC ha moduli e tutele pensati per le quote societarie.");diffc+=3}
+ if(cry){why.push("Hai crypto, il DIFC ha un wallet del Tribunale e un testamento dedicato ai beni digitali.");diffc+=3}
+ if(S.lists.imm.length>1||nonDubai.length>0){why.push("Hai più immobili o beni in più Emirati. Il DIFC copre tutti i beni, ma per altri Emirati (es. Sharjah) l'esecuzione va verificata.");diffc+=1}
+ if(S.lists.figli.some(f=>f.tutore)){why.push("Vuoi nominare un tutore. Nel DIFC ha valore giuridico per i figli che vivono con te a Dubai o RAK.");diffc+=2}
+ if(S.lists.conti.length>3){why.push("Hai molti conti e investimenti.");diffc+=1}
+ const simple=val("societa")!=="si"&&!cry;
+ let kind;
+ if(muslim){kind="stop"}
+ else if(!val("musulmano")||!val("societa")||!val("crypto")){kind="wait"}
+ else if(simple&&diffc<=2)kind="adgm";
+ else kind="difc";
+ return{kind,why,diffc,nonDubai,abroad,muslim,simple};
+}
+
+const DIFC={name:"Testamento DIFC (Dubai) — Full Will",
+ p:["Copre tutti i tuoi beni, anche quelli comprati dopo, e puoi estenderlo al mondo intero.","Scegli tu a chi vanno i beni, senza regole di quote fisse.","Ha moduli per società, immobili, conti e beni digitali (crypto).","Firmi in videochiamata, testo in inglese, senza traduttori.","Puoi nominare un tutore per i figli minorenni (a Dubai o RAK).","Dopo la morte, la procedura (probate) è veloce nei tribunali di Dubai e RAK.","Si può modificare in modo semplice (nuovo testamento, 550 AED)."],
+ c:["Costa di più del testamento di Abu Dhabi.","Solo per non musulmani.","Per beni in altri Emirati (es. Sharjah) la procedura dopo la morte passa dal tribunale locale ed è meno provata.","Una persona che diventa musulmana perde il testamento.","Serve un professionista iscritto come Wills Draftsman (non lo scrive PB TAX).","Se ti sposi, il testamento si annulla se non c'è la clausola per il matrimonio."]};
+const ADGM={name:"Testamento Abu Dhabi (ADGM)",
+ p:["Costa molto meno del DIFC.","Va bene per chi ha conti in banca e case di proprietà, senza società.","Un solo testamento può coprire sia i beni sia la tutela dei figli minorenni.","Testo in inglese, stile common law, registrato con l'ADGM e in videochiamata.","È molto solido per i beni che hai ad Abu Dhabi."],
+ c:["Non ha moduli pensati per società e quote, né per crypto e beni digitali.","Le fonti non sono tutte d'accordo su quanto sia solido per i beni in altri Emirati, in particolare Dubai. Il partner lo conferma.","Dopo la morte la pratica (probate) passa dal tribunale di Abu Dhabi.","Meno esperienza pratica con stranieri che vivono a Dubai.","Se hai già un testamento DIFC, i due non devono sovrapporsi. Ciascuno deve dire che vale solo per i propri beni."]};
+
+function opt(o,rec){return '<div class="opt'+(rec?' rec':'')+'"><h3>'+o.name+(rec?'<span class="tag">Consigliato</span>':'')+'</h3><ul class="pc">'+o.p.map(x=>'<li class="p">'+x+'</li>').join("")+o.c.map(x=>'<li class="c">'+x+'</li>').join("")+'</ul></div>'}
+
+/* Le "Cose da controllare ancora". Estratte in una funzione perche' gli stessi
+   punti finiscono anche nell'email a PB TAX: calcolarli due volte vorrebbe
+   dire vederli prima o poi divergere. L'elenco e' identico a prima. */
+function buildTodo(r){
+ const t=[];
+ if(r.nonDubai.length)t.push("Hai beni in altri Emirati ("+r.nonDubai.join(", ")+"). Chiediamo al partner come funziona l'esecuzione del DIFC in quei luoghi.");
+ if(r.abroad)t.push("Hai beni fuori dagli Emirati. Serve coordinamento con un testamento locale, ad esempio in Italia con il notaio.");
+ if(val("vecchioTest")==="si")t.push("Esiste un testamento precedente. Va deciso se revocarlo o farlo convivere con il nuovo.");
+ if(val("stato")==="Fidanzato/a (non sposati)")t.push("Serve la clausola di matrimonio futuro con nome del/della partner.");
+ if(S.lists.figli.some(f=>f.nascita&&(new Date()-new Date(f.nascita))/31557600000<18))t.push("Hai figli minorenni. Il tutore deve firmare la dichiarazione di accettazione.");
+ if(val("crypto")==="si")t.push("Per le crypto, il partner conferma quali asset e quali procedure si usano per il wallet del Tribunale DIFC.");
+ t.push("Età minima per testare nel DIFC. Le fonti indicano 18 oppure 21, il partner conferma.");
+ const eta=val("nascita")?(new Date()-new Date(val("nascita")))/31557600000:null;
+ if(eta!==null&&eta<21)t.push("Hai meno di 21 anni. Nel DIFC l'età minima per testare è 18 o 21 secondo le fonti, il partner conferma.");
+ if(val("musulmano")==="nr")t.push("Non hai risposto sulla religione. Senza questa risposta non si può scegliere la strada.");
+ if(val("stato")==="Sposato/a"&&val("schema")==="Tutto al coniuge, poi ai figli")t.push("Hai scelto tutto al coniuge. Nel DIFC il lascito al coniuge è assoluto, valuta con il professionista come proteggere i figli.");
+ if(S.lists.figli.some(f=>f.tutore&&!/dubai|ras|rak|r\.a\.k/i.test(f.abita||"")))t.push("Il tutore nel DIFC vale solo per figli che vivono con te a Dubai o RAK. Controlla dove vivono i figli.");
+ const wn=[val("t1"),val("t2")].filter(Boolean).map(x=>x.trim().toLowerCase());
+ const bn=S.lists.ben.map(b=>(b.nome||"").trim().toLowerCase()).filter(Boolean);
+ if(wn.some(w=>bn.includes(w)))t.push("Un testimone è anche beneficiario. Il lascito a un testimone è nullo, scegli un altro testimone.");
+ if(S.lists.imm.some(i=>(i.cointest||"").startsWith("Sì"))||S.lists.conti.some(c=>(c.cointest||"").startsWith("Sì")))t.push("Hai beni cointestati. Possono passare al cointestatario senza testamento, verifica con il professionista.");
+ if(r.kind==="adgm"&&S.lists.imm.some(i=>/dubai/i.test(i.emirato||"")))t.push("Hai immobili a Dubai. Per questi il DIFC è di solito più solido, il partner conferma se l'ADGM basta.");
+ if(S.lists.ben.some(b=>!b.nascita))t.push("Per alcuni beneficiari manca la data di nascita.");
+ if(val("stato")==="Sposato/a"&&val("partnerTest")==="si")t.push("Anche il/la partner deve compilare la propria scheda.");
+ if(!val("capacita"))t.push("Manca la dichiarazione di capacità e libera volontà.");
+ t.push("Invia i documenti per un canale sicuro (email o area riservata) e non in chat aperte.");
+ t.push("Nessuna password o seed phrase nel testamento, né qui sopra.");
+ if(!val("consenso")||!val("consenso2"))t.push("Mancano le due caselle di consenso (punto 17).");
+ if(!val("nome")||!val("nascita")||!val("passaporto"))t.push("Mancano dati base (nome, data di nascita, passaporto).");
+ if(!val("es1"))t.push("Manca il primo esecutore.");else if(!val("es1doc")||!val("es1ind"))t.push("Per il primo esecutore mancano documento o indirizzo.");if(!val("esAccetta"))t.push("Conferma che gli esecutori sono stati informati e accettano.");if(S.lists.ben.some(b=>!b.doc||!b.ind))t.push("Per alcuni beneficiari mancano documento o indirizzo.");if(S.lists.figli.some(f=>f.tutore&&!f.tutoreDoc))t.push("Per il tutore proposto manca il documento.");
+ if(!S.lists.ben.length)t.push("Non hai indicato nessun beneficiario.");
+ if(!val("t1")||!val("t2"))t.push("Mancano i testimoni (puoi indicarli dopo).");
+ return t;
+}
+
+function renderResult(){
+ const r=route();const v=$("#verdict");
+ const couple=val("partnerTest")==="si";
+ const msgs={
+  stop:'<div class="help bad"><b>Il DIFC non è possibile.</b> Il testamento DIFC è riservato a chi non è e non è mai stato musulmano. Serve una valutazione a parte con il professionista, perché cambia l\'intera strategia.</div>',
+  wait:'<div class="help"><b>Mancano delle risposte.</b> Per darti una indicazione completa servono almeno le risposte sulla religione (punto 2), sulle società (punto 9) e sulle crypto (punto 10). Intanto ti mostriamo le due strade.</div>',
+  difc:'<div class="help ok"><b>Ti consigliamo il testamento DIFC.</b></div>',
+  adgm:'<div class="help ok"><b>Ti consigliamo il testamento di Abu Dhabi.</b> Hai solo conti e case, quindi puoi risparmiare. Se un domani apri una società o compri crypto, conviene passare al DIFC.</div>'
+ };
+ v.innerHTML=msgs[r.kind]+(r.why.length?'<p style="margin:12px 0 4px"><b>Perché</b></p><ul class="pc">'+r.why.map(x=>'<li class="p">'+x+'</li>').join("")+'</ul>':"");
+ $("#compare").innerHTML=opt(DIFC,r.kind==="difc"||r.kind==="wait")+opt(ADGM,r.kind==="adgm");
+ const couple2=couple;
+ const pr=n=>n.toLocaleString("it-IT")+" AED";
+ const box=(t,n)=>'<div class="opt rec"><span class="kick">'+t+'</span><div class="price">'+pr(n)+'</div></div>';
+ let c="";
+ if(r.kind==="difc")c=box("Testamento DIFC",PRICE.difc);
+ else if(r.kind==="adgm")c=box("Testamento Abu Dhabi (ADGM)",PRICE.adgm);
+ else if(r.kind==="wait")c='<div class="cols">'+box("Testamento DIFC",PRICE.difc)+box("Testamento Abu Dhabi (ADGM)",PRICE.adgm)+'</div>';
+ else c='<div class="help">Prezzo su preventivo dopo la valutazione.</div>';
+ c+='<p class="lead" style="margin:10px 0 0">Prezzo unico per una persona. Comprende la tassa governativa, la redazione da parte del professionista abilitato, la registrazione e il coordinamento di PB TAX.'+(couple2?' Per la coppia (due testamenti specchio) il prezzo viene definito su preventivo.':'')+' Non comprende le pratiche dopo la morte e le future modifiche del testamento.</p>';
+ $("#costi").innerHTML=c;
+ const t=buildTodo(r);
+ $("#todo").innerHTML='<ul class="pc">'+t.map(x=>'<li class="c">'+x+'</li>').join("")+'</ul>';
+ $("#scheda").textContent=buildScheda(r);
+}
+
+const NM={nome:"Nome",nascita:"Data di nascita",luogoNascita:"Luogo di nascita",cittadinanza:"Cittadinanza",passaporto:"Passaporto",eid:"Emirates ID",indirizzoUAE:"Indirizzo UAE",residenteUAE:"Residente UAE",aire:"AIRE / residenza fiscale",tel:"Telefono",email:"Email",professione:"Professione",stato:"Stato civile",regime:"Regime patrimoniale",partner:"Partner",partnerNascita:"Nascita partner",partnerTest:"Partner fa testamento",partnerMusulmano:"Partner musulmano",precedenti:"Relazioni precedenti",assic:"Assicurazioni",eosb:"Fine servizio / pensione",mobili:"Beni mobili",debiti:"Crediti e debiti",ip:"Proprietà intellettuale",altriBeni:"Altri beni",mutui:"Mutui",schema:"Schema di divisione",ultimo:"Erede finale",minori:"Gestione beni per minori",cdigi:"Account digitali",charity:"Beneficenza",funerale:"Sepoltura",rimpatrio:"Rimpatrio salma",legati:"Lasciti in denaro",condizioni:"Condizioni",desideri:"Altri desideri"};
+function L(label,v){return (NM[label]||label)+": "+(v||"—")}
+function buildScheda(r){
+ const o=[];const add=x=>o.push(x);
+ const rl={stop:"DIFC NON POSSIBILE (musulmano). Valutazione a parte.",wait:"Indicazione da completare",difc:"DIFC Full Will",adgm:"Testamento Abu Dhabi (ADGM)"}[r.kind];
+ add("SCHEDA TESTAMENTO — PB TAX");add("Data compilazione: "+new Date().toLocaleDateString("it-IT"));add("Strada indicata: "+rl);
+ if(r.why.length)add("Motivi: "+r.why.join(" | "));
+ add("");add("1. TESTATORE");
+ ["nome","nascita","luogoNascita","cittadinanza","passaporto","eid","indirizzoUAE","residenteUAE","aire","tel","email","professione"].forEach(k=>add(L(k,val(k))));
+ add("");add("2. RELIGIONE");add(L("musulmano/stato",val("musulmano")));add(L("dichiarazione non musulmano",val("dichiaraNonMusulmano")?"sì":"no"));
+ add("");add("3. STATO CIVILE");["stato","regime","partner","partnerNascita","partnerTest","partnerMusulmano","precedenti"].forEach(k=>add(L(k,val(k))));
+ add("");add("4. FIGLI");S.lists.figli.forEach((f,i)=>add((i+1)+") "+Object.values(f).join(" | ")));if(!S.lists.figli.length)add(val("figli")==="no"?"Nessun figlio":"—");
+ add("");add("5. ALTRI FAMILIARI E ANIMALI");add(L("altri",val("altriFamiliari")));add(L("animali",val("animali")));
+ add("");add("6. ESECUTORI");[1,2].forEach(n=>{add(n+"° esecutore: "+["","rel","nasc","naz","doc","ind","tel","paese"].map((k,i)=>(["Nome","Rapporto","Nascita","Nazionalità","Documento","Indirizzo","Contatti","Paese"][i])+"="+(val("es"+n+k)||"—")).join(" | "))});add(L("esecutori informati e accettano",val("esAccetta")?"sì":"no"));
+ const dump=(t,n)=>{add("");add(t);if(!S.lists[n].length)add("—");S.lists[n].forEach((f,i)=>add((i+1)+") "+DEF[n].f.map(x=>x[1]+"="+(f[x[0]]||"—")).join(" | ")))};
+ dump("7. IMMOBILI","imm");dump("8. CONTI E INVESTIMENTI","conti");dump("9. SOCIETÀ","soc");if(val("gestioneSoc"))add("Gestione: "+val("gestioneSoc"));dump("10. CRYPTO","cry");if(val("cryAccesso"))add("Istruzioni accesso conservate: "+val("cryAccesso"));
+ add("");add("11. ALTRI BENI");["assic","eosb","cdigi","mobili","debiti","ip","altriBeni","mutui"].forEach(k=>add(L(k,val(k))));
+ add("");add("12. ESTERO E TESTAMENTI ESISTENTI");add(L("beni estero",val("estero")+" "+val("esteroDett")));add(L("testamento esistente",val("vecchioTest")+" "+val("vecchioDett")));
+ dump("13. BENEFICIARI","ben");["schema","minori","ultimo"].forEach(k=>add(L(k,val(k))));
+ add("");add("14. DESIDERI");["charity","funerale","rimpatrio","legati","condizioni","desideri"].forEach(k=>add(L(k,val(k))));
+ add("");add("15. TESTIMONI");add(L("1",val("t1")+" "+val("t1id")));add(L("2",val("t2")+" "+val("t2id")));if(val("testimoniNo"))add("Richiesti testimoni dal partner");
+ add("");add("16. DOCUMENTI PRONTI");DOCS.forEach((d,i)=>add((S.data["doc"+i]?"[x] ":"[ ] ")+d));
+ add("");add("17. CONSENSI");add(L("dati veritieri",val("consenso")?"sì":"no"));add(L("PB TAX non studio legale",val("consenso2")?"sì":"no"));add(L("capacità e libera volontà",val("capacita")?"sì":"no"));
+ return o.join("\n");
+}
+
+let started=false;
+document.addEventListener("DOMContentLoaded",init);
+if(document.readyState!=="loading")init();
+function init(){
+ if(started)return;started=true;
+ load();renderNav();renderAll();docs();bind();toggles();pctCheck();
+ $("#copyBtn").onclick=async()=>{
+  const t=$("#scheda").textContent;
+  try{await navigator.clipboard.writeText(t);$("#copyMsg").textContent="Copiato."}
+  catch(e){const r=document.createRange();r.selectNodeContents($("#scheda"));const s=getSelection();s.removeAllRanges();s.addRange(r);$("#copyMsg").textContent="Testo selezionato, copialo a mano."}
+ };
+}
+</script>
+
+<script>
+// ── Invio della scheda a PB TAX ──────────────────────────────────────────────
+// Il salvataggio automatico resta nel localStorage del browser. Qui si aggiunge
+// l'invio: una riga in will_intakes con stato "submitted" e una email allo
+// studio. Dopo l'invio la scheda e' congelata: la riapre il personale.
+(function () {
+  const SB = window.ENV_SUPABASE_URL, AK = window.ENV_SUPABASE_ANON_KEY;
+  const EMAIL_FN = SB + '/functions/v1/send-email';
+  const DEST = 'info@pellegrinobozzella.com';
+
+  const ETICHETTA = 'Invia la scheda a PB TAX';
+  const btn = document.getElementById('sendBtn');
+  const msgBox = document.getElementById('sendMsg');
+  let clientId = null, clientName = '', rowId = null;
+
+  function tok() { try { return sb.getSession()?.access_token || AK; } catch (e) { return AK; } }
+  function H() { return { apikey: AK, Authorization: 'Bearer ' + tok(), 'Content-Type': 'application/json' }; }
+
+  function say(testo, tipo) {
+    msgBox.innerHTML = '<div class="help' + (tipo ? ' ' + tipo : '') + '">' + testo + '</div>';
+  }
+  function blocca(testo) {
+    btn.disabled = true;
+    btn.textContent = 'Scheda già inviata';
+    say(testo, 'ok');
+  }
+
+  async function GET(path) {
+    const r = await fetch(SB + path, { headers: H() });
+    const t = await r.text();
+    let d = null; try { d = t ? JSON.parse(t) : null; } catch (e) { d = t; }
+    if (!r.ok) throw new Error(d?.message || d?.hint || ('HTTP ' + r.status));
+    return d;
+  }
+
+  // Prezzo: quello che il tool mostra, non uno ricalcolato a mano.
+  function prezzoDi(kind) {
+    if (kind === 'difc') return PRICE.difc;
+    if (kind === 'adgm') return PRICE.adgm;
+    return null;   // stop / wait: nessun prezzo, si fa un preventivo
+  }
+  const ROTTE = {
+    difc: 'DIFC (Dubai)', adgm: 'Abu Dhabi (ADGM)',
+    stop: 'DIFC non possibile, valutazione a parte', wait: 'Indicazione da completare',
+  };
+
+  function siNo(v) { return v === 'si' ? 'Sì' : v === 'no' ? 'No' : 'non indicato'; }
+
+  // Corpo dell'email. Volutamente senza passaporti, Emirates ID, indirizzi e
+  // numeri di conto: chi legge deve sapere che e' arrivata e cosa manca, i dati
+  // sensibili stanno nel portale dietro il login.
+  function corpoEmail(r, prezzo, mancanti, link) {
+    const E = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const righe = [
+      ['Cliente', clientName || '—'],
+      ['Strada indicata', ROTTE[r.kind] || r.kind],
+      ['Prezzo', prezzo != null ? prezzo.toLocaleString('it-IT') + ' AED' : 'Su preventivo'],
+      ['Stato civile', val('stato') || 'non indicato'],
+      ['Ha società', siNo(val('societa'))],
+      ['Ha crypto', siNo(val('crypto'))],
+      ['Ha immobili', siNo(val('immobili'))],
+    ].map(([k, v]) =>
+      '<tr><td style="padding:7px 0;color:#6b7280;font-size:13px;width:150px">' + E(k) + '</td>'
+      + '<td style="padding:7px 0;color:#111827;font-size:14px;font-weight:600">' + E(v) + '</td></tr>'
+    ).join('');
+
+    return '<h2 style="margin:0 0 6px;color:#14161a;font-size:20px">Nuova Scheda Testamento</h2>'
+      + '<p style="color:#374151;font-size:14px;margin:0 0 16px">Un cliente ha inviato la Scheda Testamento dall\'area clienti.</p>'
+      + '<table style="width:100%;border-collapse:collapse">' + righe + '</table>'
+      + '<p style="margin:20px 0 6px;color:#14161a;font-size:15px;font-weight:600">Punti ancora da controllare ('
+      + mancanti.length + ')</p>'
+      + '<ul style="margin:0;padding-left:20px;color:#374151;font-size:13px;line-height:1.7">'
+      + mancanti.map(x => '<li>' + E(x) + '</li>').join('') + '</ul>'
+      + '<p style="text-align:center;margin-top:26px">'
+      + '<a href="' + E(link) + '" style="background:#14161a;color:#47ee74;padding:12px 28px;'
+      + 'border-radius:8px;text-decoration:none;font-size:14px;font-weight:700">Apri la scheda nel portale</a></p>'
+      + '<p style="color:#6b7280;font-size:12px;margin:16px 0 0">I dati completi (documenti, indirizzi, conti) '
+      + 'sono nel portale, non in questa email.</p>';
+  }
+
+  async function invia() {
+    const r = route();
+    const scheda = buildScheda(r);
+    const mancanti = buildTodo(r);
+    const prezzo = prezzoDi(r.kind);
+
+    if (!val('nome')) {
+      say('Prima di inviare scrivi almeno il tuo nome e cognome al punto 1.', 'bad');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Invio in corso...';
+    msgBox.innerHTML = '';
+
+    const riga = {
+      client_id: clientId,
+      status: 'submitted',
+      route: r.kind,
+      price_aed: prezzo,
+      scheda_text: scheda,
+      payload: {
+        data: S.data,
+        lists: S.lists,
+        // Cosa aveva concluso il tool al momento dell'invio: se un domani le
+        // regole cambiano, resta scritto cosa aveva visto il cliente.
+        derivato: { route: r.kind, prezzo: prezzo, motivi: r.why, mancanti: mancanti },
+      },
+    };
+
+    let salvata;
+    try {
+      salvata = await sb.db.upsert('will_intakes', riga, 'client_id');
+    } catch (e) {
+      // I dati restano nel localStorage: nulla di compilato va perso.
+      btn.disabled = false;
+      btn.textContent = ETICHETTA;
+      say('<b>Invio non riuscito.</b> ' + String(e.message || e)
+        + '<br>Quello che hai compilato è salvo nel browser: riprova fra poco, oppure copia la scheda e mandala per email.', 'bad');
+      return;
+    }
+
+    rowId = salvata?.[0]?.id || null;
+
+    // L'email e' la notifica, non il dato: se non parte la scheda e' comunque
+    // registrata, e lo diciamo invece di far credere che sia andato tutto.
+    let emailOk = true;
+    try {
+      const link = 'https://portal.indubai.it/client-detail.html?id=' + clientId;
+      const res = await fetch(EMAIL_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok() },
+        body: JSON.stringify({
+          to: DEST,
+          subject: 'Nuova Scheda Testamento da ' + (clientName || 'cliente'),
+          html: corpoEmail(r, prezzo, mancanti, link),
+          event_type: 'will_intake_submitted',
+          entity_id: rowId,
+          entity_type: 'will_intake',
+        }),
+      });
+      const d = await res.json().catch(() => ({}));
+      emailOk = !!d.ok;
+    } catch (e) { emailOk = false; }
+
+    blocca('<b>Scheda inviata.</b> PB TAX l\'ha ricevuta e ti contatta per valutare il profilo. '
+      + 'Da ora la scheda è bloccata: se devi correggere qualcosa, scrivi allo studio e la riaprono per te.'
+      + (emailOk ? '' : '<br><br>La scheda è registrata, ma l\'email di avviso allo studio non è partita: '
+        + 'scrivi a segreteria@indubai.it per segnalarlo.'));
+  }
+
+  async function avvio() {
+    try {
+      const links = await GET('/rest/v1/client_users?user_id=eq.' + sb.getSession().user.id + '&select=client_id');
+      if (!links?.length) {
+        say('Il tuo account non è collegato a nessuna scheda cliente. Scrivi al tuo consulente.', 'bad');
+        return;
+      }
+      clientId = links[0].client_id;
+
+      const cl = await GET('/rest/v1/clients?id=eq.' + clientId + '&select=company_name');
+      clientName = cl?.[0]?.company_name || '';
+
+      const esistenti = await GET('/rest/v1/will_intakes?client_id=eq.' + clientId + '&select=id,status');
+      const w = esistenti?.[0];
+      if (w && w.status !== 'draft') {
+        rowId = w.id;
+        blocca('<b>Hai già inviato la scheda.</b> PB TAX l\'ha ricevuta. '
+          + 'Se devi correggere qualcosa, scrivi allo studio e la riaprono per te.');
+        return;
+      }
+
+      btn.disabled = false;
+      btn.onclick = invia;
+    } catch (e) {
+      say('Non riesco a preparare l\'invio: ' + String(e.message || e)
+        + '<br>Puoi comunque copiare la scheda e mandarla per email.', 'bad');
+    }
+  }
+
+  avvio();
+})();
+</script>
+</body>
+</html>
