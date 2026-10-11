@@ -94,6 +94,7 @@
           <button class="tab" onclick="switchTab('accesso',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg> Accesso Cliente</button>
           <button class="tab" onclick="switchTab('visti',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5L3.3 8c-.2.4-.1.8.2 1.1L9.7 14 6 17.6a3.5 3.5 0 00-1 3.4L2.1 22l.9-2.9a3.5 3.5 0 003.4-1L10 15.3l5.3 5.3c.3.3.7.4 1.1.2l1.3-.5c.4-.2.6-.6.5-1.1z"/></svg> Visti</button>
           <button class="tab" onclick="switchTab('pratiche',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Pratiche</button>
+          <button class="tab" onclick="switchTab('testamento',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg> Testamento</button>
           <button class="tab" onclick="switchTab('notifiche',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> Notifiche</button>
         </div>
 
@@ -184,6 +185,10 @@
         <!-- Pratiche Tab -->
         <div class="tab-panel" id="tab-pratiche" style="padding:20px">
           <div id="pratiche-content"><div class="spinner"></div></div>
+        </div>
+
+        <div class="tab-panel" id="tab-testamento" style="padding:20px">
+          <div id="testamento-content"><div class="spinner"></div></div>
         </div>
 
         <div class="tab-panel" id="tab-notifiche" style="padding:20px">
@@ -411,6 +416,7 @@ function switchTab(name, el) {
   if (name === 'accesso') { loadAccessTab(); loadExpenseLink(); }
   if (name === 'visti') loadVistiTab();
   if (name === 'pratiche') loadPraticheTab();
+  if (name === 'testamento') loadTestamentoTab();
   if (name === 'notifiche') loadNotificheTab();
 }
 
@@ -1359,6 +1365,110 @@ const PRACTICE_STATUSES = {
   annullato:     { label: 'Annullato',        color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
 };
 const PRACTICE_CATEGORIES = ['Company Formation','VAT','Corporate Tax','Golden Visa','Contabilità','Banking','Real Estate','Visa/Permesso','Licenza','Altro'];
+
+// ── Scheda Testamento ───────────────────────────────────────────────────────
+// Il cliente la compila da client-portal/testamento.html. Qui si legge come
+// l'ha inviata e si cambia lo stato della lavorazione.
+const WILL_STATUSES = {
+  draft:           { label: 'In compilazione', bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' },
+  submitted:       { label: 'Inviata',         bg: '#e0f2fe', color: '#0369a1', border: '#7dd3fc' },
+  in_review:       { label: 'In valutazione',  bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+  sent_to_partner: { label: 'Allo studio',     bg: '#ede9fe', color: '#6d28d9', border: '#c4b5fd' },
+  completed:       { label: 'Completata',      bg: '#dcfce7', color: '#15803d', border: '#86efac' },
+};
+
+async function loadTestamentoTab() {
+  const el = document.getElementById('testamento-content');
+  el.innerHTML = '<div class="spinner"></div>';
+
+  let rows;
+  try {
+    rows = await sb.db.select('will_intakes', {
+      filter: 'client_id=eq.' + clientId,
+      columns: 'id,status,route,price_aed,payload,scheda_text,created_at,updated_at',
+      limit: 1,
+    });
+  } catch (e) {
+    // Finche' la migration non e' applicata la tabella non esiste: lo diciamo,
+    // invece di mostrare un errore che sembra un guasto.
+    const msg = String(e.message || e);
+    const mancante = /does not exist|schema cache|relation/i.test(msg);
+    el.innerHTML = '<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:12px;padding:16px 20px;font-size:13px;color:#92400e">'
+      + (mancante
+          ? 'La tabella <code>will_intakes</code> non c&rsquo;&egrave; ancora: va applicata la migration <code>20261011_will_intakes.sql</code>.'
+          : 'Non riesco a leggere la scheda: ' + ui.escapeHtml(msg))
+      + '</div>';
+    return;
+  }
+
+  const w = rows && rows[0];
+  if (!w) {
+    el.innerHTML = '<div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:28px 20px;text-align:center">'
+      + '<div style="font-size:14px;font-weight:600;margin-bottom:6px">Nessuna scheda</div>'
+      + '<div style="font-size:13px;color:var(--text-muted)">Il cliente non ha ancora inviato la Scheda Testamento dall&rsquo;area clienti.</div>'
+      + '</div>';
+    return;
+  }
+
+  const st = WILL_STATUSES[w.status] || WILL_STATUSES.draft;
+  const fmt = d => d ? new Date(d).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+  const rotta = { difc: 'DIFC', adgm: 'Abu Dhabi ADGM', stop: 'Da fermare', wait: 'Da attendere' }[w.route] || '—';
+  // L'elenco comprende "Inviata" perche' e' lo stato in cui la scheda arriva:
+  // senza, il selettore mostrerebbe uno stato diverso da quello vero e un
+  // salvataggio distratto la riaprirebbe al cliente.
+  const opzioni = ['draft', 'submitted', 'in_review', 'sent_to_partner', 'completed']
+    .map(k => '<option value="' + k + '"' + (k === w.status ? ' selected' : '') + '>' + WILL_STATUSES[k].label + '</option>')
+    .join('');
+
+  el.innerHTML = `
+    <div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="font-size:14px;font-weight:600">Scheda Testamento</div>
+        <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;background:${st.bg};color:${st.color};border:1px solid ${st.border}">${st.label}</span>
+      </div>
+      <div class="info-grid" style="margin-bottom:16px">
+        <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Strada</div><div style="font-weight:600;font-size:14px">${rotta}</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Prezzo</div><div style="font-weight:600;font-size:14px">${w.price_aed ? ui.formatAED(w.price_aed) : '—'}</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Inviata</div><div style="font-weight:600;font-size:14px">${fmt(w.created_at)}</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Ultimo aggiornamento</div><div style="font-weight:600;font-size:14px">${fmt(w.updated_at)}</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Stato</label>
+        <select id="will-status" class="form-control" style="width:auto;min-width:200px">${opzioni}</select>
+        <button class="btn btn-accent btn-sm" onclick="saveWillStatus('${w.id}')">Salva stato</button>
+        <span style="font-size:12px;color:var(--text-muted)">Riportandola in <strong>In compilazione</strong> il cliente pu&ograve; modificarla e rimandarla.</span>
+      </div>
+    </div>
+
+    <div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:18px 20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:600">Scheda inviata dal cliente</div>
+        <button class="btn btn-ghost btn-sm" onclick="copyWillScheda()">Copia il testo</button>
+      </div>
+      <pre id="will-scheda-text" style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.65;color:var(--text);background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px;max-height:460px;overflow:auto">${ui.escapeHtml(w.scheda_text || 'Nessun testo salvato.')}</pre>
+    </div>`;
+}
+
+async function saveWillStatus(id) {
+  const sel = document.getElementById('will-status');
+  if (!sel) return;
+  try {
+    await sb.db.update('will_intakes', 'id=eq.' + id, { status: sel.value });
+    ui.showToast('Stato aggiornato', 'success');
+    sb.db.log('will_intake_status', clientId, { will_intake_id: id, status: sel.value });
+    loadTestamentoTab();
+  } catch (e) {
+    ui.showToast('Non salvato: ' + (e.message || e), 'error');
+  }
+}
+
+function copyWillScheda() {
+  const pre = document.getElementById('will-scheda-text');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent)
+    .then(() => ui.showToast('Scheda copiata', 'success'))
+    .catch(() => ui.showToast('Copia non riuscita', 'error'));
+}
 
 async function loadPraticheTab() {
   const el = document.getElementById('pratiche-content');
