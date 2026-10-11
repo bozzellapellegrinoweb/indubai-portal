@@ -599,6 +599,14 @@ function init(){
   function tok() { try { return sb.getSession()?.access_token || AK; } catch (e) { return AK; } }
   function H() { return { apikey: AK, Authorization: 'Bearer ' + tok(), 'Content-Type': 'application/json' }; }
 
+  // Una sessione scaduta da' un errore sul JWT. Dirlo com'e' non aiuta chi ha
+  // appena passato venti minuti a compilare: serve sapere che basta rientrare.
+  function scaduta(e) {
+    return /jwt|expired|401|unauthor/i.test(String(e && e.message || e));
+  }
+  const RIENTRA = 'La tua sessione è scaduta. <a href="login.html" style="color:inherit">Rientra nel portale</a> '
+    + 'e torna qui: quello che hai compilato è salvo nel browser e lo ritrovi.';
+
   function say(testo, tipo) {
     msgBox.innerHTML = '<div class="help' + (tipo ? ' ' + tipo : '') + '">' + testo + '</div>';
   }
@@ -698,8 +706,9 @@ function init(){
       // I dati restano nel localStorage: nulla di compilato va perso.
       btn.disabled = false;
       btn.textContent = ETICHETTA;
-      say('<b>Invio non riuscito.</b> ' + String(e.message || e)
-        + '<br>Quello che hai compilato è salvo nel browser: riprova fra poco, oppure copia la scheda e mandala per email.', 'bad');
+      say(scaduta(e) ? '<b>Invio non riuscito.</b> ' + RIENTRA
+        : '<b>Invio non riuscito.</b> ' + String(e.message || e)
+          + '<br>Quello che hai compilato è salvo nel browser: riprova fra poco, oppure copia la scheda e mandala per email.', 'bad');
       return;
     }
 
@@ -756,8 +765,9 @@ function init(){
       btn.disabled = false;
       btn.onclick = invia;
     } catch (e) {
-      say('Non riesco a preparare l\'invio: ' + String(e.message || e)
-        + '<br>Puoi comunque copiare la scheda e mandarla per email.', 'bad');
+      say(scaduta(e) ? RIENTRA
+        : 'Non riesco a preparare l\'invio: ' + String(e.message || e)
+          + '<br>Puoi comunque copiare la scheda e mandarla per email.', 'bad');
     }
   }
 
