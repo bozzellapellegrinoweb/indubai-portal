@@ -446,6 +446,20 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, message: lastMsg, customers, truncated: hasMore });
     }
 
+    // Valute configurate nell'organizzazione, con la valuta base e i cambi.
+    // Serve a registrare una spesa in euro come euro e non come dirham.
+    if (action === 'list_currencies' && body.org_id) {
+      const r = await fetch(ZOHO_API_BASE + '/settings/currencies?organization_id=' + body.org_id, {
+        headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const d = await r.json();
+      if (d.code !== 0) return json({ ok: false, error: d.message || 'errore' }, 400);
+      return json({ ok: true, currencies: (d.currencies || []).map((c: any) => ({
+        id: c.currency_id, codice: c.currency_code, simbolo: c.currency_symbol,
+        base: c.is_base_currency, cambio: c.exchange_rate, formato: c.price_precision,
+      })) });
+    }
+
     // Pagamenti a fornitore registrati nell'organizzazione. Serve in
     // riconciliazione per rispondere a "il pagamento e' arrivato?" e per
     // accorgersi degli acconti non applicati, che sono soldi usciti senza una
