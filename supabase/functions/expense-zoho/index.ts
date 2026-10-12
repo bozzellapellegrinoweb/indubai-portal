@@ -167,7 +167,16 @@ async function resolveCurrency(oid: string, token: string, codice: string | null
   const ko = (m: string) => ({ errore: m, base: false, id: null, codice: null, cambio: 0, baseCodice: '' });
   if (!list.length) return ko('Valute non leggibili da Zoho');
   const base = list.find((c: any) => c.is_base_currency) || list[0];
-  const cod = String(codice || '').trim().toUpperCase();
+  // L'AI dovrebbe dare il codice ISO, ma se scrivesse il simbolo o il nome
+  // la spesa verrebbe rifiutata per un motivo che non c'entra niente.
+  const ALIAS: Record<string, string> = {
+    '€': 'EUR', 'EURO': 'EUR', 'EUROS': 'EUR',
+    '$': 'USD', 'US$': 'USD', 'USD$': 'USD', 'DOLLAR': 'USD', 'DOLLARI': 'USD',
+    '£': 'GBP', 'STERLINA': 'GBP', 'POUND': 'GBP',
+    'DHS': 'AED', 'DH': 'AED', 'DIRHAM': 'AED', 'DIRHAMS': 'AED', 'AED.': 'AED',
+  };
+  const grezzo = String(codice || '').trim().toUpperCase();
+  const cod = ALIAS[grezzo] || grezzo;
 
   // Nessuna valuta indicata, o gia' quella dell'organizzazione: niente da fare.
   if (!cod || cod === String(base.currency_code).toUpperCase())
