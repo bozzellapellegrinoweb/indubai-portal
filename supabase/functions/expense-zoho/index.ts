@@ -706,7 +706,17 @@ Deno.serve(async (req: Request) => {
         description: label,
         reference_number: exp.paid_with ? ('Paid with: ' + exp.paid_with) : '',
       };
-      if (cat) expenseBody.account_id = cat;
+      // Anche le Expense vogliono un conto di spesa valido: il ramo Bill lo
+      // deduceva gia', questo no, e si fermava con "Please enter valid
+      // expense account" senza che chi approva potesse farci niente.
+      let expAcct = cat;
+      if (!expAcct) {
+        const scelto = await resolveExpenseAccount(oid, token, exp.ai_raw?.category_guess || null);
+        expAcct = scelto.id;
+        if (expAcct) note.push('Categoria non scelta: usato il conto "' + scelto.name + '"');
+        else note.push('Nessun conto di spesa disponibile in Zoho');
+      }
+      if (expAcct) expenseBody.account_id = expAcct;
       // Senza conto, Zoho usa "Fondi non depositati": lo deduciamo dal "pagato con".
       let expPaid = paid;
       if (!expPaid) {
