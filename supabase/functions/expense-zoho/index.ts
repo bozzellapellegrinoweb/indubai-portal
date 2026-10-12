@@ -663,6 +663,19 @@ Deno.serve(async (req: Request) => {
           note.push("Numero fattura gia' presente: aggiunto un suffisso");
           bd = await postBill({ ...billBody, bill_number: (billBody.bill_number || 'BILL') + '-' + String(Date.now()).slice(-5) });
         }
+        // Fornitore estero: il suo trattamento IVA non ammette le aliquote UAE.
+        // E' corretto che sia cosi' — su una fattura estera non c'e' IVA a
+        // credito da recuperare qui, si applica il reverse charge — quindi
+        // registriamo le righe senza imposta e lo scriviamo, invece di
+        // fermare tutto.
+        if (bd.code !== 0 && /vat treatment|exemption cannot be applied|tax.*not applicable/i.test(bd.message || '')) {
+          const senzaImposta = righe.map((l: any) => { const c = { ...l }; delete c.tax_id; return c; });
+          const tentativo = await postBill({ ...billBody, line_items: senzaImposta });
+          if (tentativo.code === 0) {
+            note.push('Fornitore estero: righe senza aliquota UAE, da trattare in reverse charge');
+            bd = tentativo;
+          }
+        }
         if (bd.code !== 0) {
           const msg = bd.message || 'Zoho bill failed';
           await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, { status: 'error', error_msg: msg });
