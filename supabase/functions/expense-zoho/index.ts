@@ -132,7 +132,59 @@ async function getTaxes(oid: string, token: string) {
 }
 
 /** Trova il fornitore per nome, altrimenti lo crea. Le Bill richiedono un vendor_id. */
-async function findOrCreateVendor(oid: string, token: string, name: string, trn: string | null) {
+/**
+ * Valute dell'organizzazione. Gli id sono diversi per ogni organizzazione,
+ * quindi non si possono scrivere nel codice: vanno chiesti a Zoho.
+ */
+const currencyCache: Record<string, any[]> = {};
+async function getCurrencies(oid: string, token: string) {
+  if (!(oid in currencyCache)) {
+    try {
+      const r = await fetch(ZOHO_API_BASE + '/settings/currencies?organization_id=' + oid, {
+        headers: { Authorization: 'Zoho-oauthtoken ' + token },
+      });
+      const d = await r.json();
+      currencyCache[oid] = d.code === 0 ? (d.currencies || []) : [];
+    } catch (_) { currencyCache[oid] = []; }
+  }
+  return currencyCache[oid];
+}
+
+/**
+ * Da "EUR" all'id della valuta e al cambio da usare.
+ *
+ * Il cambio lo decide Zoho, non noi: inventarne uno vorrebbe dire mettere nei
+ * conti del cliente un numero che non ha scelto nessuno. Ma due valori vanno
+ * rifiutati, perche' non sono cambi veri:
+ *   0  -> mai impostato;
+ *   1  -> il valore che Zoho lascia di default. Per una valuta diversa dalla
+ *         base significherebbe "un euro vale un dirham", ed e' esattamente
+ *         l'errore che stiamo correggendo.
+ * In quei casi non registriamo niente e diciamo dove si imposta.
+ */
+async function resolveCurrency(oid: string, token: string, codice: string | null, cambioScelto?: number | null) {
+  const list = await getCurrencies(oid, token);
+  const ko = (m: string) => ({ errore: m, base: false, id: null, codice: null, cambio: 0, baseCodice: '' });
+  if (!list.length) return ko('Valute non leggibili da Zoho');
+  const base = list.find((c: any) => c.is_base_currency) || list[0];
+  const cod = String(codice || '').trim().toUpperCase();
+
+  // Nessuna valuta indicata, o gia' quella dell'organizzazione: niente da fare.
+  if (!cod || cod === String(base.currency_code).toUpperCase())
+    return { errore: '', base: true, id: null, codice: String(base.currency_code), cambio: 1, baseCodice: String(base.currency_code) };
+
+  const c = list.find((x: any) => String(x.currency_code).toUpperCase() === cod);
+  if (!c) return ko('La valuta ' + cod + " non e' configurata in Zoho (Impostazioni > Valute)");
+  const cambio = cambioScelto != null ? Number(cambioScelto) : Number(c.exchange_rate);
+  if (!(cambio > 0) || cambio === 1) {
+    return ko('Cambio ' + cod + '/' + base.currency_code + ' non impostato in Zoho'
+      + (cambio === 1 ? " (vale 1, cioe' il valore di default)" : '')
+      + '. Impostalo in Impostazioni > Valute, poi riprova.');
+  }
+  return { errore: '', base: false, id: String(c.currency_id), codice: cod, cambio, baseCodice: String(base.currency_code) };
+}
+
+async function findOrCreateVendor(oid: string, token: string, name: string, trn: string | null, currencyId?: string | null) {
   const H = { Authorization: 'Zoho-oauthtoken ' + token };
   const clean = (name || '').trim().slice(0, 200);
   if (!clean) return { id: null, error: 'fornitore senza nome' };
@@ -147,6 +199,9 @@ async function findOrCreateVendor(oid: string, token: string, name: string, trn:
 
   const payload: any = { contact_name: clean, contact_type: 'vendor' };
   if (trn) payload.tax_reg_no = trn;
+  // Su una Bill Zoho vuole che la valuta del documento sia quella del
+  // fornitore: se lo creiamo noi, nasce gia' nella valuta giusta.
+  if (currencyId) payload.currency_id = currencyId;
   const post = async (b: any) => {
     const r = await fetch(ZOHO_API_BASE + '/contacts?organization_id=' + oid, {
       method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify(b),
@@ -155,7 +210,11 @@ async function findOrCreateVendor(oid: string, token: string, name: string, trn:
   };
   let d = await post(payload);
   // Se il TRN non e' accettato (formato, o campo non previsto), creiamo senza
-  if (d.code !== 0 && trn) d = await post({ contact_name: clean, contact_type: 'vendor' });
+  if (d.code !== 0 && trn) {
+    const senzaTrn: any = { contact_name: clean, contact_type: 'vendor' };
+    if (currencyId) senzaTrn.currency_id = currencyId;
+    d = await post(senzaTrn);
+  }
   if (d.code !== 0) return { id: null, error: d.message || 'creazione fornitore fallita' };
   return { id: String(d.contact.contact_id), created: true };
 }
@@ -240,7 +299,7 @@ async function resolvePaymentAccount(oid: string, token: string, paidWith: strin
  * Registra il pagamento della Bill: quello che il cliente carica l'ha gia'
  * pagato, quindi lasciarla "open" la farebbe risultare da pagare per sempre.
  */
-async function payBill(oid: string, token: string, billId: string, vendorId: string, exp: any, acct: any, importo: number) {
+async function payBill(oid: string, token: string, billId: string, vendorId: string, exp: any, acct: any, importo: number, cambio?: number | null) {
   const body: any = {
     vendor_id: vendorId,
     date: exp.expense_date,
@@ -249,6 +308,9 @@ async function payBill(oid: string, token: string, billId: string, vendorId: str
     bills: [{ bill_id: billId, amount_applied: importo }],
     description: PAY_MARKER + (exp.paid_with ? ' — ' + exp.paid_with : ''),
   };
+  // Stesso cambio della fattura: con uno diverso Zoho la salderebbe per un
+  // importo che non corrisponde, e resterebbe un residuo.
+  if (cambio && cambio > 0) body.exchange_rate = cambio;
   const r = await fetch(ZOHO_API_BASE + '/vendorpayments?organization_id=' + oid, {
     method: 'POST',
     headers: { Authorization: 'Zoho-oauthtoken ' + token, 'Content-Type': 'application/json' },
@@ -523,6 +585,17 @@ Deno.serve(async (req: Request) => {
       const customerName = body.zoho_customer_name || null;
 
       const note: string[] = [];
+
+      // La valuta prima di tutto: un documento registrato nella valuta
+      // sbagliata e' un costo sbagliato, e non si vede guardandolo.
+      const valuta = await resolveCurrency(oid, token, exp.currency, body.exchange_rate);
+      if (valuta.errore) {
+        await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id,
+          { status: 'error', error_msg: valuta.errore });
+        return json({ ok: false, error: valuta.errore }, 400);
+      }
+      if (!valuta.base) note.push('Registrata in ' + valuta.codice + ' al cambio ' + valuta.cambio);
+
       const label = [exp.vendor, exp.note].filter(Boolean).join(' — ') || 'Expense';
       const total = Number(exp.amount);
       const vat = Number(exp.vat_amount) || 0;
@@ -532,7 +605,7 @@ Deno.serve(async (req: Request) => {
         const taxes = await getTaxes(oid, token);
         if (!taxes.five && vat > 0) note.push("Aliquota 5% non trovata nell'organizzazione: IVA non applicata");
 
-        const vend = await findOrCreateVendor(oid, token, exp.vendor || '', exp.supplier_trn || null);
+        const vend = await findOrCreateVendor(oid, token, exp.vendor || '', exp.supplier_trn || null, valuta.id || null);
         if (!vend.id) {
           await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id,
             { status: 'error', error_msg: 'Fornitore Zoho: ' + (vend.error || 'non creato') });
@@ -569,6 +642,7 @@ Deno.serve(async (req: Request) => {
           reference_number: exp.paid_with ? ('Paid with: ' + exp.paid_with) : '',
         };
         if (exp.invoice_number) billBody.bill_number = String(exp.invoice_number).slice(0, 50);
+        if (!valuta.base) { billBody.currency_id = valuta.id; billBody.exchange_rate = valuta.cambio; }
 
         const postBill = async (payload: any) => {
           const r = await fetch(ZOHO_API_BASE + '/bills?organization_id=' + oid, {
@@ -603,7 +677,7 @@ Deno.serve(async (req: Request) => {
             ? { id: paid, name: 'conto scelto' }
             : await resolvePaymentAccount(oid, token, exp.paid_with, exp.currency);
           if (acct) {
-            const pay = await payBill(oid, token, bid, vend.id, exp, acct, Number(bd.bill.total));
+            const pay = await payBill(oid, token, bid, vend.id, exp, acct, Number(bd.bill.total), valuta.base ? null : valuta.cambio);
             pagata = pay.ok;
             payId = pay.id;
             if (pay.ok) note.push('Segnata pagata da "' + acct.name + '"');
@@ -640,6 +714,7 @@ Deno.serve(async (req: Request) => {
         if (acct) { expPaid = acct.id; note.push('Pagata da "' + acct.name + '"'); }
       }
       if (expPaid) expenseBody.paid_through_account_id = expPaid;
+      if (!valuta.base) { expenseBody.currency_id = valuta.id; expenseBody.exchange_rate = valuta.cambio; }
       // Riaddebito: Zoho vuole il cliente, altrimenti la spesa resta non fatturabile.
       if (isBillable && customerId) {
         expenseBody.customer_id = customerId;
@@ -707,7 +782,10 @@ Deno.serve(async (req: Request) => {
           + (exp.paid_with || '—') + '": scegline uno.' }, 400);
       }
 
-      const pay = await payBill(oid, token, String(exp.zoho_bill_id), exp.zoho_vendor_id, exp, acct, saldo);
+      const valP = await resolveCurrency(oid, token, exp.currency, body.exchange_rate);
+      if (valP.errore) return json({ ok: false, error: valP.errore }, 400);
+      const pay = await payBill(oid, token, String(exp.zoho_bill_id), exp.zoho_vendor_id, exp, acct, saldo,
+                                valP.base ? null : valP.cambio);
       if (!pay.ok) return json({ ok: false, error: pay.error }, 400);
       await sbPatch('/rest/v1/client_expenses?id=eq.' + body.expense_id, { zoho_payment_id: pay.id });
       return json({ ok: true, bill_id: String(exp.zoho_bill_id), payment_id: pay.id, account: acct.name, amount: saldo });
