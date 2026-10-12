@@ -553,6 +553,11 @@ Deno.serve(async (req: Request) => {
       const doc = d.bill || d.expense || {};
       return json({ ok: true, doc: {
         numero: doc.bill_number, data: doc.date, fornitore: doc.vendor_name,
+        // Senza questi tre, "in che valuta e' finita?" si poteva rispondere
+        // solo aprendo Zoho: ed e' per questo che una spesa in euro
+        // registrata in dirham e' passata inosservata.
+        valuta: doc.currency_code, cambio: doc.exchange_rate,
+        totale_in_valuta_base: doc.bcy_total ?? doc.total_bcy ?? null,
         totale: doc.total, imponibile: doc.sub_total, imposta: doc.tax_total,
         stato: doc.status, cliente: doc.customer_name, fatturabile: doc.is_billable,
         da_pagare: doc.balance, pagato: doc.payment_made ?? doc.total_credits_used,
