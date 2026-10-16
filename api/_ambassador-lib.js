@@ -3,11 +3,8 @@
  * I file che iniziano con "_" non vengono esposti come function da Vercel.
  */
 
-export const SUPABASE_URL = process.env.SUPABASE_URL
-  || 'https://gvdoqcgkzbziqufahhxh.supabase.co';
-
-export const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAzMjA1MSwiZXhwIjoyMDg3NjA4MDUxfQ.oEzS7iIAiRW3pYjL-TwXtY4ZOwKwh4L8JZZ6Ztq6RgQ';
+import { SUPABASE_URL, SERVICE_KEY, requireRole } from './_auth.js';
+export { SUPABASE_URL, SERVICE_KEY };
 
 // Casella che riceve le richieste di consulenza dal form ambassador.
 export const SEGRETERIA_EMAIL = process.env.SEGRETERIA_EMAIL || 'segreteria@indubai.it';
@@ -56,35 +53,16 @@ export async function sbUpdate(table, query, patch) {
 
 // ── Auth ────────────────────────────────────────────────────────────────────
 
-export function decodeJWT(token) {
-  try {
-    return JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf8'));
-  } catch { return null; }
-}
-
-const STAFF_ROLES = ['admin', 'senior', 'mini_admin', 'junior', 'staff', 'collaborator'];
+const AMB_STAFF_ROLES = ['admin', 'senior', 'mini_admin', 'junior', 'staff', 'collaborator'];
 
 /**
  * Verifica che la richiesta arrivi da un membro dello staff loggato.
+ * Il token e' verificato da Supabase (prima veniva solo decodificato: un JWT
+ * costruito a mano con l'id di un admin passava il controllo).
  * Ritorna { ok:true, userId, role } oppure { ok:false, status, error }.
  */
 export async function requireStaff(req) {
-  const token = (req.headers.authorization || '').replace('Bearer ', '');
-  if (!token) return { ok: false, status: 401, error: 'Token mancante' };
-  const decoded = decodeJWT(token);
-  if (!decoded?.sub) return { ok: false, status: 401, error: 'Token non valido' };
-  if (decoded.exp && decoded.exp * 1000 < Date.now()) {
-    return { ok: false, status: 401, error: 'Sessione scaduta' };
-  }
-  let rows;
-  try {
-    rows = await sbSelect('profiles', `id=eq.${decoded.sub}&select=role`);
-  } catch {
-    return { ok: false, status: 500, error: 'Verifica ruolo fallita' };
-  }
-  const role = rows?.[0]?.role;
-  if (!STAFF_ROLES.includes(role)) return { ok: false, status: 403, error: 'Permessi insufficienti' };
-  return { ok: true, userId: decoded.sub, role };
+  return requireRole(req, AMB_STAFF_ROLES);
 }
 
 // ── Email ───────────────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { SUPABASE_URL, SERVICE_KEY, cronAuthorized } from './_auth.js';
 /**
  * /api/trigger-employee-report
  *
@@ -5,11 +6,11 @@
  * Invoca la Edge Function employee-report con service role key.
  */
 
-const SUPABASE_URL   = 'https://gvdoqcgkzbziqufahhxh.supabase.co';
-const SERVICE_KEY    = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAzMjA1MSwiZXhwIjoyMDg3NjA4MDUxfQ.oEzS7iIAiRW3pYjL-TwXtY4ZOwKwh4L8JZZ6Ztq6RgQ';
 const REPORT_FN_URL  = `${SUPABASE_URL}/functions/v1/employee-report`;
 
+
 export default async function handler(req, res) {
+  if (!cronAuthorized(req)) return res.status(401).json({ error: 'Unauthorized' });
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

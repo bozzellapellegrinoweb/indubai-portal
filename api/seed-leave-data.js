@@ -1,5 +1,4 @@
-const SUPABASE_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAzMjA1MSwiZXhwIjoyMDg3NjA4MDUxfQ.oEzS7iIAiRW3pYjL-TwXtY4ZOwKwh4L8JZZ6Ztq6RgQ';
+import { SUPABASE_URL, SERVICE_KEY, requireRole } from './_auth.js';
 
 const headers = {
   apikey: SERVICE_KEY,
@@ -11,10 +10,9 @@ const headers = {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  // Simple secret to prevent accidental calls
-  if (req.body?.secret !== 'indubai-seed-2026') {
-    return res.status(403).json({ error: 'Invalid secret' });
-  }
+  // Prima bastava un segreto scritto nel codice. Ora serve l'admin.
+  const auth = await requireRole(req, 'admin');
+  if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
   try {
     // 1. Find Mercedes employee_id — use RPC to bypass RLS

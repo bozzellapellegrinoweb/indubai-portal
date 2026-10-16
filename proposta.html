@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Proposta — PB TAX</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#f4f2ef">
+<link rel="icon" href="/client-portal/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<script src="/js/config.js"></script>
+<style>
+:root{--bg:#f4f2ef;--card:#fff;--fg:#000;--mut:#5c5a55;--line:#e3dfd6;--pop:#47ee74;--popink:#000;--btn:#000;--btnfg:#47ee74;--bad:#9b2c1f;--badbg:#f8e1dc;--ok:#1b6b34;--okbg:#e4f9ea;--warn:#8a5a00;--warnbg:#fbf0d2;--inp:#faf9f6}
+@media (prefers-color-scheme:dark){:root{--bg:#0b0d0b;--card:#151815;--fg:#f4f2ef;--mut:#a3a39b;--line:#2a2e2a;--btn:#47ee74;--btnfg:#000;--bad:#f2a091;--badbg:#3b1d18;--ok:#47ee74;--okbg:#10301a;--warn:#f1c35a;--warnbg:#38300f;--inp:#10161a;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 'DM Sans',system-ui,sans-serif;padding:16px;padding-top:max(16px,env(safe-area-inset-top));
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:12px;border-bottom:4px solid var(--pop)}
+.brand b{display:block;font-size:1.5rem;letter-spacing:-.02em;line-height:1}
+.brand span{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:700}
+.lang{display:flex;gap:4px}
+.lang button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:99px;padding:5px 10px;font:inherit;font-size:.8rem;cursor:pointer}
+.lang button.on{background:var(--pop);color:var(--popink);border-color:var(--pop);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:22px;display:flex;flex-direction:column;gap:14px}
+h1{font-size:1.5rem;letter-spacing:-.02em;line-height:1.15;margin:0;text-wrap:balance}
+h2{font-size:1.15rem;margin:0}
+p{margin:0}
+.mut{color:var(--mut)}
+.small{font-size:.85rem}
+label{display:flex;flex-direction:column;gap:6px;font-weight:500;font-size:.92rem}
+input[type=tel],input[type=text]{font:inherit;font-size:1.1rem;color:var(--fg);background:var(--inp);border:1px solid var(--line);border-radius:14px;padding:13px 14px;width:100%}
+input.code{font-size:1.8rem;letter-spacing:.4em;text-align:center;font-weight:700}
+input:focus,button:focus-visible,canvas:focus-visible{outline:2px solid var(--pop);outline-offset:1px}
+.btn{border:0;background:var(--btn);color:var(--btnfg);padding:14px 22px;border-radius:99px;font:inherit;font-weight:700;cursor:pointer;width:100%;font-size:1rem}
+.btn.sec{background:transparent;color:var(--fg);border:1.5px solid var(--fg)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.link{background:none;border:0;color:var(--fg);text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+.msg{border-radius:14px;padding:10px 12px;font-size:.9rem}
+.msg.bad{background:var(--badbg);color:var(--bad)}
+.msg.ok{background:var(--okbg);color:var(--ok)}
+.msg.warn{background:var(--warnbg);color:var(--warn)}
+.privacy{font-size:.78rem;color:var(--mut);border-top:1px solid var(--line);padding-top:12px;line-height:1.5}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.88rem;color:var(--mut)}
+.amount{font-size:1.6rem;font-weight:700}
+.pages{display:flex;flex-direction:column;gap:12px}
+.page{background:#fff;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.12);overflow:hidden;position:relative}
+.page canvas{display:block;width:100%;height:auto;pointer-events:none}
+.page .ph{position:absolute;inset:0;display:grid;place-items:center;color:#999;font-size:.85rem}
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:99px;padding:9px;font:inherit;cursor:pointer}
+.tabs button.on{background:var(--pop);color:var(--popink);border-color:var(--pop);font-weight:700}
+.pad{width:100%;height:180px;border:1.5px dashed var(--line);border-radius:14px;background:#fff;touch-action:none}
+.typed{font-family:'Segoe Script','Brush Script MT',cursive;font-size:2rem;color:#0b1a5c;min-height:56px;border-bottom:1px solid var(--line);padding:4px 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.chk{flex-direction:row;align-items:flex-start;gap:10px;font-weight:400;font-size:.88rem}
+.chk input{margin-top:4px;width:18px;height:18px;flex:0 0 auto}
+.sticky{position:sticky;bottom:0;padding:12px 0 max(12px,env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 30%)}
+.hid{display:none!important}
+.spin{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--fg);border-radius:50%;animation:s 1s linear infinite;margin:20px auto}
+@keyframes s{to{transform:rotate(360deg)}}
+.foot{font-size:.75rem;color:var(--mut);text-align:center;padding:8px 0 24px}
+@media print{body{display:none!important}}
+</style>
+</head>
+<body oncontextmenu="return false">
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><b>PB TAX</b><span>International Tax Consultants FZCO</span></div>
+    <div class="lang"><button data-lang="it">IT</button><button data-lang="en">EN</button></div>
+  </header>
+
+  <div id="v-loading" class="card"><div class="spin"></div></div>
+
+  <!-- Link non attivo -->
+  <section id="v-state" class="card hid">
+    <h1 id="state-title"></h1>
+    <p class="mut" id="state-body"></p>
+  </section>
+
+  <!-- 1. Numero -->
+  <section id="v-phone" class="card hid">
+    <h1 data-t="phone_title"></h1>
+    <p class="mut" data-t="phone_lead"></p>
+    <form id="f-phone" style="display:flex;flex-direction:column;gap:14px">
+      <label><span data-t="phone_label"></span>
+        <input type="tel" id="phone" autocomplete="tel" inputmode="tel" placeholder="+971 50 123 4567" required></label>
+      <div id="phone-msg" class="msg hid"></div>
+      <button class="btn" id="phone-btn" type="submit" data-t="phone_btn"></button>
+    </form>
+    <p class="privacy" data-t="privacy"></p>
+  </section>
+
+  <!-- 2. Codice -->
+  <section id="v-code" class="card hid">
+    <h1 data-t="code_title"></h1>
+    <p class="mut" id="code-lead"></p>
+    <form id="f-code" style="display:flex;flex-direction:column;gap:14px">
+      <input type="text" class="code" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required aria-label="Codice">
+      <div id="code-msg" class="msg hid"></div>
+      <button class="btn" id="code-btn" type="submit" data-t="code_btn"></button>
+    </form>
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap" class="small">
+      <button class="link" id="resend" type="button"></button>
+      <button class="link" id="change" type="button" data-t="change_number"></button>
+    </div>
+    <p class="privacy" data-t="privacy"></p>
+  </section>
+
+  <!-- 3. Proposta -->
+  <section id="v-doc" class="hid" style="display:flex;flex-direction:column;gap:16px">
+    <div class="card">
+      <p class="small mut" id="doc-for"></p>
+      <h1 id="doc-title"></h1>
+      <div class="amount" id="doc-amount"></div>
+      <div class="meta" id="doc-meta"></div>
+      <div id="doc-signed" class="msg ok hid"></div>
+    </div>
+    <div class="pages" id="pages"></div>
+
+    <div id="sign-cta" class="sticky hid"><button class="btn" id="open-sign" data-t="sign_cta"></button></div>
+
+    <div id="sign-box" class="card hid">
+      <h2 data-t="sign_title"></h2>
+      <div class="tabs"><button type="button" data-m="typed" class="on" data-t="sign_typed"></button><button type="button" data-m="drawn" data-t="sign_drawn"></button></div>
+      <div id="m-typed">
+        <label><span data-t="sign_name"></span><input type="text" id="typed-name" autocomplete="name"></label>
+        <div class="typed" id="typed-preview"></div>
+      </div>
+      <div id="m-drawn" class="hid">
+        <canvas class="pad" id="pad"></canvas>
+        <button class="link small" type="button" id="pad-clear" data-t="clear"></button>
+      </div>
+      <label class="chk"><input type="checkbox" id="consent"><span id="consent-text"></span></label>
+      <div id="sign-msg" class="msg hid"></div>
+      <button class="btn" id="sign-btn" disabled data-t="sign_confirm"></button>
+    </div>
+
+    <div class="foot"><span data-t="foot"></span> · <button class="link" id="logout" data-t="logout"></button></div>
+  </section>
+</div>
+<script src="/js/proposta.js"></script>
+</body>
+</html>

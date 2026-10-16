@@ -12,3 +12,8 @@ verify_jwt = false
 
 [functions.ghl-lead-analytics]
 verify_jwt = false
+
+# Link pubblico delle proposte: nessun login del portale, l'accesso e' con
+# link + numero registrato + codice (vedi la function).
+[functions.proposal-public]
+verify_jwt = false

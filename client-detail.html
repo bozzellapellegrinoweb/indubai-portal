@@ -95,6 +95,7 @@
           <button class="tab" onclick="switchTab('visti',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5L3.3 8c-.2.4-.1.8.2 1.1L9.7 14 6 17.6a3.5 3.5 0 00-1 3.4L2.1 22l.9-2.9a3.5 3.5 0 003.4-1L10 15.3l5.3 5.3c.3.3.7.4 1.1.2l1.3-.5c.4-.2.6-.6.5-1.1z"/></svg> Visti</button>
           <button class="tab" onclick="switchTab('pratiche',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Pratiche</button>
           <button class="tab" onclick="switchTab('testamento',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg> Testamento</button>
+          <button class="tab" id="tab-btn-proposte" onclick="switchTab('proposte',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg> Proposte</button>
           <button class="tab" onclick="switchTab('notifiche',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> Notifiche</button>
         </div>
 
@@ -191,6 +192,10 @@
           <div id="testamento-content"><div class="spinner"></div></div>
         </div>
 
+        <div class="tab-panel" id="tab-proposte" style="padding:20px">
+          <div id="proposte-content"><div class="spinner"></div></div>
+        </div>
+
         <div class="tab-panel" id="tab-notifiche" style="padding:20px">
           <div id="notifiche-content"></div>
         </div>
@@ -206,6 +211,7 @@
 <script src="/js/ambassador.js"></script>
 <script src="/js/i18n.js"></script>
 <script src="/js/notify.js"></script>
+<script src="/js/proposals-admin.js"></script>
 <script>
 let clientId = null;
 let clientData = null;
@@ -418,6 +424,7 @@ function switchTab(name, el) {
   if (name === 'pratiche') loadPraticheTab();
   if (name === 'testamento') loadTestamentoTab();
   if (name === 'notifiche') loadNotificheTab();
+  if (name === 'proposte') Proposte.load();
 }
 
 async function loadNotificheTab() {
@@ -1148,7 +1155,7 @@ async function createClientAccess() {
   try {
     const r = await fetch('/api/create-client-user', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sb.getSession()?.access_token },
       body: JSON.stringify({ email, password: pwd, client_id: clientId, company_name: clientData?.company_name })
     });
     const data = await r.json();
@@ -1182,7 +1189,7 @@ async function revokeClientAccess(userId) {
   try {
     const r = await fetch('/api/delete-client-user', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: {'Content-Type':'application/json', 'Authorization': 'Bearer ' + sb.getSession()?.access_token},
       body: JSON.stringify({ user_id: userId })
     });
     const d = await r.json();

@@ -4,3 +4,9 @@ android
 *.p8
 *.p12
 *.mobileprovision
+# Non pubblicare sul sito: migrazioni e seed (dati dei clienti), script,
+# test e la pagina di setup iniziale (conteneva la chiave di servizio).
+supabase
+scripts
+tests
+setup.html

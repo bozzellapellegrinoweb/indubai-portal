@@ -1,13 +1,5 @@
-const SUPABASE_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMzIwNTEsImV4cCI6MjA4NzYwODA1MX0.I0hB8POnRunvGyr7XXItp8E5H70i0slG-pqxqzCOBOg';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAzMjA1MSwiZXhwIjoyMDg3NjA4MDUxfQ.oEzS7iIAiRW3pYjL-TwXtY4ZOwKwh4L8JZZ6Ztq6RgQ';
+import { SUPABASE_URL, SERVICE_KEY, ANON_KEY, verifiedUser } from './_auth.js';
 
-function decodeJWT(token) {
-  try {
-    const payload = token.split('.')[1];
-    return JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
-  } catch { return null; }
-}
 
 async function getUserRole(userId, callerToken) {
   // Strategy 1: service key (bypasses RLS)
@@ -69,11 +61,11 @@ async function getEmployeeForUser(userId) {
 export default async function handler(req, res) {
   // Auth check
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-
-  const decoded = decodeJWT(token);
-  const callerId = decoded?.sub;
-  if (!callerId) return res.status(401).json({ error: 'Invalid token' });
+  if (!SERVICE_KEY) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY non configurata' });
+  // Token verificato da Supabase, non solo decodificato.
+  const caller = await verifiedUser(req);
+  if (!caller) return res.status(401).json({ error: 'Unauthorized' });
+  const callerId = caller.id;
 
   const headers = {
     apikey: SERVICE_KEY,

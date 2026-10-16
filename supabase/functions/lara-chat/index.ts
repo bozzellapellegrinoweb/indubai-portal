@@ -6,7 +6,8 @@ const cors = {
   "Content-Type": "application/json",
 };
 
-const GHL_TOKEN   = "pit-98c12ff9-94f7-46fe-93fc-7ba94db1c6e5";
+// Token GHL solo dai secret delle Edge Function (prima era scritto qui).
+const GHL_TOKEN   = Deno.env.get("GHL_API_TOKEN") || "";
 const LOCATION_ID = "KzCZHYcMDxOZMD7KBuZV";
 
 // ─── SYSTEM PROMPT LARA (fedele al prompt ufficiale GHL) ─────────────────────
