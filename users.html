@@ -111,6 +111,20 @@
           <option value="admin">Admin</option>
         </select>
       </div>
+      <div class="form-group">
+        <label class="form-label">Task che vede</label>
+        <select class="form-control" id="u-tasks">
+          <option value="all">Tutti i task dello studio</option>
+          <option value="own">Solo i propri</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dati finanziari</label>
+        <select class="form-control" id="u-fin">
+          <option value="si">Vede fatturato, incassi ed estratti conto</option>
+          <option value="no">Non vede i dati finanziari</option>
+        </select>
+      </div>
       <div class="form-group" id="newpwd-group" style="display:none">
         <label class="form-label">Nuova Password (lascia vuoto per non cambiare)</label>
         <input type="password" class="form-control" id="u-newpwd" placeholder="Nuova password...">
@@ -147,6 +161,11 @@
   </div>
 </div>
 
+<style>
+  .perm-chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:100px;
+    font-size:11px;font-weight:600;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;
+    white-space:nowrap}
+</style>
 <script src="/js/supabase.js"></script>
 <script src="/js/app.js"></script>
 <script src="/js/i18n.js"></script>
@@ -168,7 +187,7 @@ async function loadUsers() {
   try {
     // Gli ambassador si gestiscono da ADMIN → Ambassador, i clienti dalla loro
     // scheda: qui restano solo gli utenti interni.
-    const profiles = await sb.db.getStaffProfiles({ columns: 'id,full_name,role,created_at', order: 'created_at.asc' }) || [];
+    const profiles = await sb.db.getStaffProfiles({ columns: 'id,full_name,role,created_at,tasks_scope,can_see_financials', order: 'created_at.asc' }) || [];
     const myId = sb.getCurrentProfile()?.id;
     document.getElementById('users-list').innerHTML = profiles.map(p => `
       <div class="user-card">
@@ -178,7 +197,9 @@ async function loadUsers() {
           <div style="font-size:12px;color:var(--text-muted)">Creato ${ui.formatDate(p.created_at)}</div>
         </div>
         <span class="role-badge rb-${p.role}">${ROLE_LABELS[p.role]||p.role}</span>
-        <button class="btn btn-ghost btn-sm" onclick="openEdit('${p.id}','${ui.escapeHtml(p.full_name)}','${p.role}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Modifica</button>
+        ${p.tasks_scope === 'own' ? '<span class="perm-chip">solo i suoi task</span>' : ''}
+        ${p.can_see_financials === false ? '<span class="perm-chip">niente fatturato</span>' : ''}
+        <button class="btn btn-ghost btn-sm" onclick='openEdit(${JSON.stringify(p).replace(/'/g, "&apos;")})'><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Modifica</button>
         ${p.id !== myId ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteUser('${p.id}','${ui.escapeHtml(p.full_name)}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>` : ''}
       </div>`).join('');
   } catch(e) {
@@ -193,6 +214,8 @@ function openNew() {
   document.getElementById('u-email').value = '';
   document.getElementById('u-pwd').value = '';
   document.getElementById('u-role').value = 'junior';
+  document.getElementById('u-tasks').value = 'all';
+  document.getElementById('u-fin').value = 'si';
   document.getElementById('email-group').style.display = 'block';
   document.getElementById('pwd-group').style.display = 'block';
   document.getElementById('newpwd-group').style.display = 'none';
@@ -200,11 +223,13 @@ function openNew() {
   document.getElementById('modal-user').style.display = 'flex';
 }
 
-function openEdit(id, name, role) {
-  editingId = id;
+function openEdit(u) {
+  editingId = u.id;
   document.getElementById('modal-title').textContent = 'Modifica Utente';
-  document.getElementById('u-name').value = name;
-  document.getElementById('u-role').value = role;
+  document.getElementById('u-name').value = u.full_name || '';
+  document.getElementById('u-role').value = u.role;
+  document.getElementById('u-tasks').value = u.tasks_scope || 'all';
+  document.getElementById('u-fin').value = u.can_see_financials === false ? 'no' : 'si';
   document.getElementById('email-group').style.display = 'none';
   document.getElementById('pwd-group').style.display = 'none';
   document.getElementById('newpwd-group').style.display = 'block';
@@ -222,10 +247,18 @@ async function saveUser() {
     // Edit: update profile directly in DB (this works fine)
     btn.disabled = true; btn.textContent = '...';
     try {
-      await sb.db.update('profiles', `id=eq.${editingId}`, {
+      const righe = await sb.db.update('profiles', `id=eq.${editingId}`, {
         full_name: document.getElementById('u-name').value.trim(),
-        role: document.getElementById('u-role').value
+        role: document.getElementById('u-role').value,
+        tasks_scope: document.getElementById('u-tasks').value,
+        can_see_financials: document.getElementById('u-fin').value === 'si',
       });
+      // Le regole del database possono rifiutare la modifica senza dare
+      // errore: PostgREST risponde 200 con zero righe. Prima dicevamo
+      // "Utente aggiornato" anche quando non era cambiato niente.
+      if (!righe || !righe.length) {
+        throw new Error('Il database ha rifiutato la modifica: nessuna riga aggiornata. Controlla di essere admin.');
+      }
       // Password change via SQL modal
       const newPwd = document.getElementById('u-newpwd').value;
       if (newPwd) {

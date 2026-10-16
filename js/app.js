@@ -31,14 +31,20 @@
 
   const ROLE_PAGES_DEFAULT = {
     admin:        null,   // null = all pages
-    senior:       null,   // all pages (admin section hidden by nav filter)
+    senior:       ['index','tasks','pipeline','clients','zoho-setup','zoho-vat','onboarding','statements',
+                   'payments','reconciliation','expenses','bilanci','ferie','vat','corp-tax','affinitas',
+                   'vat-partner','pw','documents','search','news','notifiche','broadcast','bacheca'],
     junior:       ['index','tasks','pipeline','clients','zoho-setup','zoho-vat','onboarding','statements','reconciliation','expenses','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports','lead-analytics'],
     mini_admin:   ['index','tasks','pipeline','clients','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
     collaborator: ['index','tasks','pipeline','clients','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
   };
 
   function _getAllowed(r) {
-    if (r === 'admin' || r === 'senior') return null; // sempre tutte le pagine
+    // Solo l'admin vede tutto per definizione. 'senior' era cablato qui
+    // insieme a lui: qualunque elenco di pagine configurato da /users.html
+    // per i senior veniva ignorato, e la persona vedeva comunque tutto il
+    // portale, report sul fatturato compresi.
+    if (r === 'admin') return null;
     if (_dynPerms && r in _dynPerms) return _dynPerms[r];
     if (r in ROLE_PAGES_DEFAULT) return ROLE_PAGES_DEFAULT[r];
     return ['index','tasks','notifiche']; // ruolo sconosciuto = accesso minimo
