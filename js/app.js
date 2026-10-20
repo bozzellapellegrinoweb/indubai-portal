@@ -26,8 +26,14 @@
   }
 
   // ── Role-based page permissions (dynamic from DB, cached in sessionStorage) ──
+  // La cache dei permessi sta in sessionStorage (per scheda) con copia in
+  // localStorage (condivisa fra schede): così una scheda nuova costruisce il
+  // menu già sulla configurazione salvata, invece che sui predefiniti.
+  const PERMS_KEY = 'indubai_role_perms';
   let _dynPerms = null;
-  try { _dynPerms = JSON.parse(sessionStorage.getItem('indubai_role_perms')); } catch(e) {}
+  try {
+    _dynPerms = JSON.parse(sessionStorage.getItem(PERMS_KEY) || localStorage.getItem(PERMS_KEY));
+  } catch(e) {}
 
   const ROLE_PAGES_DEFAULT = {
     admin:        null,   // null = all pages
@@ -41,6 +47,11 @@
     // versione ridotta sui suoi clienti (vedi index.html).
     commerciale:  ['index','tasks','clients','documents','search','news','notifiche'],
   };
+
+  // Unica fonte dei valori predefiniti: la matrice permessi di users.html li
+  // rileggeva da una copia propria, andata alla deriva (le mancavano pipeline,
+  // bacheca, vat-partner, pw, lead-analytics). Esponendoli qui restano allineati.
+  window.ROLE_PAGES_DEFAULT = ROLE_PAGES_DEFAULT;
 
   function _getAllowed(r) {
     if (r === 'admin' || r === 'senior') return null; // sempre tutte le pagine
@@ -651,7 +662,32 @@
       if (rows?.length) {
         const perms = {};
         rows.forEach(r => { perms[r.role] = r.allowed_pages?.length ? r.allowed_pages : null; });
-        sessionStorage.setItem('indubai_role_perms', JSON.stringify(perms));
+        const serializzato = JSON.stringify(perms);
+        sessionStorage.setItem(PERMS_KEY, serializzato);
+        try { localStorage.setItem(PERMS_KEY, serializzato); } catch(e) {}
+
+        // La cache è per scheda del browser: al primo caricamento (subito dopo
+        // il login, o in una scheda nuova) era vuota, quindi menu e controllo
+        // di accesso erano stati costruiti sui predefiniti invece che sulla
+        // configurazione salvata. Qui la si applica appena arriva, senza
+        // aspettare il caricamento successivo.
+        _dynPerms = perms;
+        const aggiornato = _getAllowed(role);
+        const cambiato = JSON.stringify(aggiornato) !== JSON.stringify(allowed);
+        if (cambiato) {
+          // menu: toglie le voci non più concesse
+          if (aggiornato) {
+            document.querySelectorAll('.sidebar-nav a[href^="/"]').forEach(a => {
+              const id = a.getAttribute('href').replace(/^\//, '').replace(/\.html$/, '');
+              if (id && !aggiornato.includes(id)) a.closest('.nav-item, li, div')?.remove() || a.remove();
+            });
+          }
+          // accesso: se la pagina aperta non è concessa, si esce
+          if (aggiornato && !aggiornato.includes(currentPage)
+              && currentPage !== 'login' && currentPage !== 'client-detail') {
+            window.location.href = aggiornato.includes('index') ? '/index.html' : `/${aggiornato[0] || 'index'}.html`;
+          }
+        }
       }
     } catch(e) { /* table might not exist yet — use defaults */ }
   })();

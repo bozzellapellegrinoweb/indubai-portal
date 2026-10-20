@@ -427,22 +427,19 @@ const ALL_PAGES = [
   { section:'ANALYTICS', pages: [
     { id:'reports',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label:'Report' },
     { id:'lead-analytics', icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', label:'Lead per Fonte' },
-    { id:'finance',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>', label:'Cashflow Gruppo' },
     { id:'news',       icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>', label:'UAE News' },
     { id:'search',     icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>', label:'Ricerca' },
   ]},
 ];
 
-const DEFAULTS = {
-  senior:       null,
-  // Niente pipeline (vedrebbe le trattative altrui) e niente pagine economiche
-  commerciale:  ['index','tasks','clients','documents','search','news','notifiche'],
-  junior:       ['index','tasks','clients','zoho-setup','zoho-vat','onboarding','statements','ferie','vat','corp-tax','affinitas','documents','search','news','notifiche','reports'],
-  mini_admin:   ['index','tasks','clients','documents','search','news','notifiche'],
-  collaborator: ['index','tasks','clients','documents','search','news','notifiche'],
-};
+// Valori predefiniti: arrivano da app.js (window.ROLE_PAGES_DEFAULT), così non
+// possono più divergere. Prima qui c'era una copia a parte, a cui mancavano
+// pipeline, bacheca, vat-partner, pw e lead-analytics: bastava un salvataggio
+// per cancellarle a tutti i ruoli.
+const DEFAULTS = Object.assign({ senior: null }, window.ROLE_PAGES_DEFAULT || {});
 
-let permData = {}; // role -> allowed_pages array (or null = all)
+let permData = {};      // role -> allowed_pages array (or null = all)
+let permOriginali = {}; // come era salvato nel DB, per non perdere pagine fuori catalogo
 let permTableExists = false;
 
 async function loadPermissions() {
@@ -452,9 +449,10 @@ async function loadPermissions() {
     const rows = await sb.db.select('role_permissions', { columns: 'role,allowed_pages' });
     permTableExists = true;
     setup.style.display = 'none';
-    permData = {};
+    permData = {}; permOriginali = {};
     (rows || []).forEach(r => {
       permData[r.role] = r.allowed_pages?.length ? r.allowed_pages : null;
+      permOriginali[r.role] = r.allowed_pages || [];
     });
     // Ensure all manageable roles have an entry
     MANAGEABLE_ROLES.forEach(r => {
@@ -558,13 +556,21 @@ async function savePermissions() {
   try {
     const allPageIds = ALL_PAGES.flatMap(s => s.pages.map(p => p.id));
     for (const role of MANAGEABLE_ROLES) {
-      const pages = permData[role] === null ? [] : (permData[role] || []);
+      let pages = permData[role] === null ? [] : (permData[role] || []);
+      // Se una pagina è concessa ma non compare nella matrice (perché aggiunta
+      // al menu e non al catalogo), va conservata: altrimenti ogni salvataggio
+      // la cancellerebbe senza che nessuno se ne accorga.
+      if (pages.length) {
+        const fuoriCatalogo = (permOriginali[role] || []).filter(p => !allPageIds.includes(p));
+        pages = [...new Set([...pages, ...fuoriCatalogo])];
+      }
       await sb.db.upsert('role_permissions', { role, allowed_pages: pages }, 'role');
     }
     // Also ensure admin row exists
     await sb.db.upsert('role_permissions', { role: 'admin', allowed_pages: [] }, 'role');
     // Clear cached perms so next page load fetches fresh
     sessionStorage.removeItem('indubai_role_perms');
+    try { localStorage.removeItem('indubai_role_perms'); } catch(e) {}
     ui.showToast('Permessi salvati! Effetto al prossimo caricamento pagina.', 'success');
   } catch(e) {
     ui.showToast('Errore: ' + e.message, 'error');

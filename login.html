@@ -59,6 +59,19 @@
 
       try {
         await sb.signIn(email, pass);
+        // Scarica i permessi di ruolo PRIMA di entrare: altrimenti la prima
+        // pagina costruirebbe il menu sui valori predefiniti, mostrando voci
+        // che la configurazione salvata nega.
+        try {
+          const rows = await sb.db.select('role_permissions', { columns: 'role,allowed_pages' });
+          if (rows?.length) {
+            const perms = {};
+            rows.forEach(r => { perms[r.role] = r.allowed_pages?.length ? r.allowed_pages : null; });
+            const serializzato = JSON.stringify(perms);
+            sessionStorage.setItem('indubai_role_perms', serializzato);
+            try { localStorage.setItem('indubai_role_perms', serializzato); } catch(_) {}
+          }
+        } catch(_) { /* tabella assente: si useranno i predefiniti */ }
         window.location.href = '/index.html';
       } catch(e) {
         // Show actual error from Supabase
