@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Link Utili — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <link rel="manifest" href="/manifest-admin.json">
+  <meta name="theme-color" content="#14161a">
+  <style>
+    .lk-cat { font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+              color:var(--text-muted); margin:26px 0 12px; }
+    .lk-cat:first-of-type { margin-top:4px; }
+    .lk-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; }
+    .lk-card { background:var(--surface); border:1.5px solid var(--border); border-radius:14px;
+               padding:16px 18px; display:flex; flex-direction:column; gap:8px; transition:border-color .15s, transform .15s; }
+    .lk-card:hover { border-color:var(--primary); }
+    .lk-top { display:flex; align-items:flex-start; gap:10px; }
+    .lk-ico { width:38px; height:38px; border-radius:11px; background:var(--surface2);
+              display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--text); }
+    .lk-titolo { font-size:14.5px; font-weight:800; line-height:1.25; }
+    .lk-desc { font-size:12.5px; color:var(--text-muted); line-height:1.5; }
+    .lk-url { font-size:11.5px; color:var(--text-muted); word-break:break-all; font-family:ui-monospace,monospace; }
+    .lk-azioni { display:flex; gap:8px; margin-top:auto; padding-top:10px; flex-wrap:wrap; align-items:center; }
+    .lk-apri { min-width:84px; }
+    .lk-apri { flex:1; justify-content:center; }
+    .lk-spento { opacity:.5; }
+    .lk-badge { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.5px;
+                padding:2px 7px; border-radius:6px; background:var(--surface2); color:var(--text-muted); }
+    .lk-vuoto { text-align:center; padding:48px 20px; color:var(--text-muted); font-size:14px; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Link Utili</div>
+        <div class="topbar-subtitle" id="sub">Caricamento...</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-accent" onclick="apriNuovo()">+ Nuovo Link</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div id="elenco"><div class="loading-overlay" style="min-height:160px"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE LINK -->
+<div class="modal-overlay" id="modal-link" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-titolo">+ Nuovo Link</div>
+      <button class="btn btn-ghost btn-sm" onclick="chiudiModale()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nome *</label>
+        <input type="text" class="form-control" id="f-titolo" placeholder="Es. Calcolatore Testamento">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Indirizzo *</label>
+        <input type="text" class="form-control" id="f-url" placeholder="https://esempio.com oppure /pagina.html">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
+          Un indirizzo completo si apre in una scheda nuova. Uno che inizia con <code>/</code>
+          è una pagina del portale e si apre qui dentro.
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descrizione</label>
+        <input type="text" class="form-control" id="f-desc" placeholder="A cosa serve, in una riga">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Categoria</label>
+          <input type="text" class="form-control" id="f-cat" list="categorie" placeholder="Strumenti">
+          <datalist id="categorie"></datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ordine</label>
+          <input type="number" class="form-control" id="f-pos" value="0" min="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Stato</label>
+        <select class="form-control" id="f-attivo">
+          <option value="true">Visibile</option>
+          <option value="false">Nascosto</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="chiudiModale()">Annulla</button>
+      <button class="btn btn-accent" id="btn-salva" onclick="salva()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/i18n.js"></script>
+<script>
+let links = [], idInModifica = null, sonoAdmin = false;
+
+// Icona scelta dal nome del link, così ogni scheda non è un rettangolo anonimo
+const ICONE = {
+  testament: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>',
+  calcol:    '<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8" y2="11"/><line x1="12" y1="11" x2="12" y2="11"/><line x1="16" y1="11" x2="16" y2="11"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="12" y1="16" x2="12" y2="16"/>',
+  ambassad:  '<circle cx="12" cy="8" r="6"/><path d="M15.48 13.37L17 22l-5-3-5 3 1.52-8.63"/>',
+  social:    '<path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/>',
+  client:    '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/>',
+  sito:      '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>',
+  default:   '<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>',
+};
+function icona(titolo) {
+  const t = (titolo || '').toLowerCase();
+  for (const k of Object.keys(ICONE)) if (k !== 'default' && t.includes(k)) return ICONE[k];
+  return ICONE.default;
+}
+const svg = d => `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+
+const esterno = url => /^https?:\/\//i.test(url || '');
+
+async function carica() {
+  sonoAdmin = sb.getCurrentProfile()?.role === 'admin';
+  try {
+    links = await sb.db.select('useful_links', { order: 'categoria.asc,posizione.asc,titolo.asc' }) || [];
+  } catch(e) {
+    document.getElementById('elenco').innerHTML =
+      `<div class="alert alert-danger">${ui.escapeHtml(e.message)}</div>`;
+    return;
+  }
+  // solo gli admin possono aggiungere o modificare
+  document.querySelector('.topbar-actions').style.display = sonoAdmin ? '' : 'none';
+  rendi();
+}
+
+function rendi() {
+  const visibili = sonoAdmin ? links : links.filter(l => l.attivo);
+  document.getElementById('sub').textContent =
+    visibili.length ? `${visibili.length} link` : 'Nessun link';
+
+  // elenco categorie per il campo con suggerimenti
+  document.getElementById('categorie').innerHTML =
+    [...new Set(links.map(l => l.categoria))].map(c => `<option value="${ui.escapeHtml(c)}">`).join('');
+
+  if (!visibili.length) {
+    document.getElementById('elenco').innerHTML = `<div class="card lk-vuoto">
+      Nessun link ancora.${sonoAdmin ? ' Usa <strong>+ Nuovo Link</strong> per aggiungerne uno.' : ''}
+    </div>`;
+    return;
+  }
+
+  const perCategoria = {};
+  visibili.forEach(l => { (perCategoria[l.categoria] ||= []).push(l); });
+
+  document.getElementById('elenco').innerHTML = Object.entries(perCategoria).map(([cat, items]) => `
+    <div class="lk-cat">${ui.escapeHtml(cat)}</div>
+    <div class="lk-grid">
+      ${items.map(l => scheda(l)).join('')}
+    </div>`).join('');
+}
+
+function scheda(l) {
+  const fuori = esterno(l.url);
+  return `
+    <div class="lk-card${l.attivo ? '' : ' lk-spento'}">
+      <div class="lk-top">
+        <div class="lk-ico">${svg(icona(l.titolo))}</div>
+        <div style="flex:1;min-width:0">
+          <div class="lk-titolo">${ui.escapeHtml(l.titolo)}
+            ${l.attivo ? '' : '<span class="lk-badge">nascosto</span>'}</div>
+          ${l.descrizione ? `<div class="lk-desc">${ui.escapeHtml(l.descrizione)}</div>` : ''}
+        </div>
+      </div>
+      <div class="lk-url">${ui.escapeHtml(l.url)}</div>
+      <div class="lk-azioni">
+        <a class="btn btn-primary btn-sm lk-apri" href="${ui.escapeHtml(l.url)}"${fuori ? ' target="_blank" rel="noopener noreferrer"' : ''}>
+          Apri${fuori ? ' ↗' : ''}
+        </a>
+        ${sonoAdmin ? `
+          <button class="btn btn-ghost btn-sm" onclick="apriModifica('${l.id}')">Modifica</button>
+          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5"
+                  onclick="elimina('${l.id}')" title="Elimina">✕</button>` : ''}
+      </div>
+    </div>`;
+}
+
+// ── Modale ───────────────────────────────────────────────────
+function apriNuovo() {
+  idInModifica = null;
+  document.getElementById('modal-titolo').textContent = '+ Nuovo Link';
+  document.getElementById('f-titolo').value = '';
+  document.getElementById('f-url').value = '';
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-cat').value = 'Strumenti';
+  document.getElementById('f-pos').value = 0;
+  document.getElementById('f-attivo').value = 'true';
+  document.getElementById('modal-link').style.display = 'flex';
+}
+
+function apriModifica(id) {
+  const l = links.find(x => x.id === id);
+  if (!l) return;
+  idInModifica = id;
+  document.getElementById('modal-titolo').textContent = 'Modifica Link';
+  document.getElementById('f-titolo').value = l.titolo || '';
+  document.getElementById('f-url').value = l.url || '';
+  document.getElementById('f-desc').value = l.descrizione || '';
+  document.getElementById('f-cat').value = l.categoria || 'Strumenti';
+  document.getElementById('f-pos').value = l.posizione ?? 0;
+  document.getElementById('f-attivo').value = String(l.attivo);
+  document.getElementById('modal-link').style.display = 'flex';
+}
+
+function chiudiModale() { document.getElementById('modal-link').style.display = 'none'; }
+
+async function salva() {
+  const titolo = document.getElementById('f-titolo').value.trim();
+  let url      = document.getElementById('f-url').value.trim();
+  if (!titolo || !url) { ui.showToast('Nome e indirizzo sono obbligatori', 'error'); return; }
+  // un indirizzo senza protocollo e senza / iniziale è quasi sempre un sito esterno
+  if (!/^https?:\/\//i.test(url) && !url.startsWith('/')) url = 'https://' + url;
+
+  const dati = {
+    titolo,
+    url,
+    descrizione: document.getElementById('f-desc').value.trim() || null,
+    categoria: document.getElementById('f-cat').value.trim() || 'Strumenti',
+    posizione: parseInt(document.getElementById('f-pos').value) || 0,
+    attivo: document.getElementById('f-attivo').value === 'true',
+  };
+
+  const btn = document.getElementById('btn-salva');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    if (idInModifica) await sb.db.update('useful_links', `id=eq.${idInModifica}`, dati);
+    else              await sb.db.insert('useful_links', dati, { returning: false });
+    ui.showToast('Salvato', 'success');
+    chiudiModale();
+    await carica();
+  } catch(e) {
+    ui.showToast('Errore: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Salva';
+  }
+}
+
+async function elimina(id) {
+  const l = links.find(x => x.id === id);
+  if (!confirm(`Eliminare "${l?.titolo || 'questo link'}"?`)) return;
+  try {
+    await sb.db.delete('useful_links', `id=eq.${id}`);
+    ui.showToast('Link eliminato', 'success');
+    await carica();
+  } catch(e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+carica();
+window.addEventListener('pageshow', e => { if (e.persisted) carica(); });
+</script>
+</body>
+</html>

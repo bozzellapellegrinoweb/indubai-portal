@@ -77,6 +77,7 @@
     columns: '<rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/>',
     receipt: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/>',
     award: '<circle cx="12" cy="8" r="6"/><path d="M15.48 13.37L17 22l-5-3-5 3 1.52-8.63"/>',
+    link: '<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>',
     cpu: '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>',
   };
   function navIcon(key) {
@@ -119,6 +120,7 @@
     ] : []),
     ...(role === 'admin' ? [
       { id: 'attivita', icon: 'clipboard',     label: 'Attività Staff', href: '/attivita.html', section: 'ADMIN' },
+      { id: 'link-utili', icon: 'link',       label: 'Link Utili',     href: '/link-utili.html' },
       { id: 'ambassadors', icon: 'award',    label: 'Ambassador',     href: '/ambassadors.html' },
       { id: 'users',    icon: 'users',         label: 'Utenti',         href: '/users.html' },
       { id: 'notifiche-admin', icon: 'bell',   label: 'Impostazioni Notifiche', href: '/notifiche-admin.html' },
@@ -438,6 +440,7 @@
     'reconciliation': 'Riconciliazione',
     'expenses': 'Spese',
     'finance': 'Cashflow Gruppo',
+    'link-utili': 'Link Utili',
   };
   const pageLabel = PAGE_LABELS[currentPage] || 'InDubai';
 
