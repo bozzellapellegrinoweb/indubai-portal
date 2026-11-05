@@ -189,6 +189,7 @@
 
         <div class="tab-panel" id="tab-testamento" style="padding:20px">
           <div id="testamento-content"><div class="spinner"></div></div>
+          <div id="onboarding-content" style="margin-top:16px"></div>
         </div>
 
         <div class="tab-panel" id="tab-notifiche" style="padding:20px">
@@ -416,7 +417,7 @@ function switchTab(name, el) {
   if (name === 'accesso') { loadAccessTab(); loadExpenseLink(); }
   if (name === 'visti') loadVistiTab();
   if (name === 'pratiche') loadPraticheTab();
-  if (name === 'testamento') loadTestamentoTab();
+  if (name === 'testamento') { loadTestamentoTab(); loadOnboardingBlock(); }
   if (name === 'notifiche') loadNotificheTab();
 }
 
@@ -1447,6 +1448,116 @@ async function loadTestamentoTab() {
       </div>
       <pre id="will-scheda-text" style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.65;color:var(--text);background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px;max-height:460px;overflow:auto">${ui.escapeHtml(w.scheda_text || 'Nessun testo salvato.')}</pre>
     </div>`;
+}
+
+// ── Onboarding Testamento (raccolta dati dopo la firma) ──────────────────────
+// La raccolta la apre lo studio: finche' la riga non esiste, al cliente la
+// voce non compare nell'area clienti.
+const ONB_STATI = {
+  draft:     { label: 'In compilazione', bg:'#eff6ff', color:'#1d4ed8', border:'#bfdbfe' },
+  submitted: { label: 'Inviato',         bg:'#ecfdf5', color:'#047857', border:'#a7f3d0' },
+  in_review: { label: 'In verifica',     bg:'#fffbeb', color:'#92400e', border:'#fcd34d' },
+  completed: { label: 'Completato',      bg:'#f3f4f6', color:'#374151', border:'#d1d5db' },
+};
+
+async function loadOnboardingBlock() {
+  const el = document.getElementById('onboarding-content');
+  if (!el) return;
+  let righe;
+  try {
+    righe = await sb.db.select('will_onboardings', {
+      filter: 'client_id=eq.' + clientId,
+      columns: 'id,status,mirror,scheda_text,attivato_il,inviato_il,updated_at', limit: 1,
+    });
+  } catch (e) {
+    const msg = String(e.message || e);
+    el.innerHTML = '<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:12px;padding:16px 20px;font-size:13px;color:#92400e">'
+      + (/does not exist|schema cache|relation/i.test(msg)
+          ? 'La tabella <code>will_onboardings</code> non c&rsquo;&egrave; ancora: va applicata la migration <code>20261105_will_onboarding.sql</code>.'
+          : 'Non riesco a leggere l&rsquo;onboarding: ' + ui.escapeHtml(msg))
+      + '</div>';
+    return;
+  }
+
+  const w = righe && righe[0];
+  const fmt = d => d ? new Date(d).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+
+  if (!w) {
+    el.innerHTML = '<div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:20px">'
+      + '<div style="font-size:14px;font-weight:600;margin-bottom:6px">Onboarding Testamento</div>'
+      + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:14px">La raccolta dati da cui si redige il '
+      + 'testamento. Attivala dopo la firma dell&rsquo;incarico e il pagamento: da quel momento il cliente la trova '
+      + 'nella sua area e la compila da solo.</div>'
+      + '<label style="display:flex;gap:9px;align-items:center;font-size:13px;margin-bottom:14px">'
+      + '<input type="checkbox" id="onb-mirror"> Testamenti speculari per i coniugi '
+      + '<span style="color:var(--text-muted)">(una compilazione per entrambi)</span></label>'
+      + '<button class="btn btn-accent btn-sm" onclick="attivaOnboarding()">Attiva la raccolta dati</button></div>';
+    return;
+  }
+
+  const st = ONB_STATI[w.status] || ONB_STATI.draft;
+  const opzioni = Object.keys(ONB_STATI)
+    .map(k => '<option value="' + k + '"' + (k === w.status ? ' selected' : '') + '>' + ONB_STATI[k].label + '</option>')
+    .join('');
+
+  el.innerHTML = `
+    <div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="font-size:14px;font-weight:600">Onboarding Testamento</div>
+        <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;background:${st.bg};color:${st.color};border:1px solid ${st.border}">${st.label}</span>
+        ${w.mirror ? '<span style="font-size:11px;color:var(--text-muted)">speculare per i coniugi</span>' : ''}
+      </div>
+      <div class="info-grid" style="margin-bottom:16px">
+        <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Attivato</div><div style="font-weight:600;font-size:14px">${fmt(w.attivato_il)}</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Inviato</div><div style="font-weight:600;font-size:14px">${fmt(w.inviato_il)}</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Ultimo aggiornamento</div><div style="font-weight:600;font-size:14px">${fmt(w.updated_at)}</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Stato</label>
+        <select id="onb-status" class="form-control" style="width:auto;min-width:190px">${opzioni}</select>
+        <button class="btn btn-accent btn-sm" onclick="saveOnboardingStatus('${w.id}')">Salva stato</button>
+        <span style="font-size:12px;color:var(--text-muted)">Riportandolo in <strong>In compilazione</strong> il cliente pu&ograve; correggere e rimandare.</span>
+      </div>
+    </div>
+
+    <div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:18px 20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:600">Dati raccolti</div>
+        <button class="btn btn-ghost btn-sm" onclick="copyOnboarding()">Copia il testo</button>
+      </div>
+      <pre id="onb-text" style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.65;color:var(--text);background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px;max-height:460px;overflow:auto">${ui.escapeHtml(w.scheda_text || 'Il cliente non ha ancora inviato la raccolta.')}</pre>
+    </div>`;
+}
+
+async function attivaOnboarding() {
+  const mirror = !!document.getElementById('onb-mirror')?.checked;
+  try {
+    await sb.db.insert('will_onboardings', {
+      client_id: clientId, status: 'draft', mirror: mirror,
+      attivato_da: sb.getCurrentProfile()?.id || null,
+    }, { returning: false });
+    ui.showToast('Raccolta dati attivata: il cliente la vede nella sua area', 'success');
+    sb.db.log('will_onboarding_attivato', clientId, { mirror: mirror });
+    loadOnboardingBlock();
+  } catch (e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+async function saveOnboardingStatus(id) {
+  const sel = document.getElementById('onb-status');
+  if (!sel) return;
+  try {
+    await sb.db.update('will_onboardings', 'id=eq.' + id, { status: sel.value });
+    ui.showToast('Stato aggiornato', 'success');
+    sb.db.log('will_onboarding_status', clientId, { will_onboarding_id: id, status: sel.value });
+    loadOnboardingBlock();
+  } catch (e) { ui.showToast('Errore: ' + e.message, 'error'); }
+}
+
+function copyOnboarding() {
+  const t = document.getElementById('onb-text')?.textContent || '';
+  navigator.clipboard.writeText(t)
+    .then(() => ui.showToast('Testo copiato', 'success'))
+    .catch(() => ui.showToast('Non riesco a copiare', 'error'));
 }
 
 async function saveWillStatus(id) {
