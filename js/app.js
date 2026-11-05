@@ -31,12 +31,12 @@
 
   const ROLE_PAGES_DEFAULT = {
     admin:        null,   // null = all pages
-    senior:       ['index','tasks','pipeline','clients','zoho-setup','zoho-vat','onboarding','statements',
+    senior:       ['index','tasks','pipeline','clients','testamento','zoho-setup','zoho-vat','onboarding','statements',
                    'payments','reconciliation','expenses','bilanci','ferie','vat','corp-tax','affinitas',
                    'vat-partner','pw','documents','search','news','notifiche','broadcast','bacheca'],
-    junior:       ['index','tasks','pipeline','clients','zoho-setup','zoho-vat','onboarding','statements','reconciliation','expenses','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports','lead-analytics'],
-    mini_admin:   ['index','tasks','pipeline','clients','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
-    collaborator: ['index','tasks','pipeline','clients','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
+    junior:       ['index','tasks','pipeline','clients','testamento','zoho-setup','zoho-vat','onboarding','statements','reconciliation','expenses','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports','lead-analytics'],
+    mini_admin:   ['index','tasks','pipeline','clients','testamento','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
+    collaborator: ['index','tasks','pipeline','clients','testamento','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
   };
 
   window.ROLE_PAGES_DEFAULT = ROLE_PAGES_DEFAULT;
@@ -52,6 +52,12 @@
     return ['index','tasks','notifiche']; // ruolo sconosciuto = accesso minimo
   }
   const allowed = _getAllowed(role);
+
+  // Alcuni strumenti non sono pagine a sé: vivono dentro un'altra pagina (la
+  // scheda cliente, esentata dal controllo qui sotto perché la si apre da
+  // Clienti). Perché restino governabili dalla matrice permessi, la pagina che
+  // li ospita chiede qui se il ruolo ha quella voce.
+  window.canSeePage = function (id) { return !allowed || allowed.includes(id); };
 
   // ── Icone SVG (stile Feather, stroke currentColor) — sostituiscono le emoji ──
   const ICON_PATHS = {

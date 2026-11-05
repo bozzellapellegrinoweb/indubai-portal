@@ -41,6 +41,26 @@ Le uniche voci legittimamente fuori dalla matrice sono quelle della sezione
 `ADMIN` che toccano il portale stesso: `attivita`, `ambassadors`, `users`,
 `notifiche-admin`, `mcp`. Tutto il resto va concedibile.
 
+### Gli strumenti dentro un'altra pagina
+
+Non tutto e' una pagina del menu. Un pannello dentro la scheda cliente (la
+scheda Testamento, l'Onboarding) non passa dal controllo dei permessi, perche'
+`client-detail` e' esentata dal redirect: la si apre da Clienti, non dal menu.
+
+Vale la stessa regola, con due aggiunte:
+
+- la pagina che lo ospita chiede il permesso da se', con
+  `window.canSeePage('<id>')`, e **rimuove** dal DOM il pannello, non lo
+  nasconde con il CSS;
+- il dato lo chiude una policy RLS che legge la stessa voce. Esempio:
+  `can_see_wills()` in `20261106_permesso_testamento.sql`, con la lista dei
+  ruoli predefiniti in `wills_default_roles()` da tenere allineata a
+  `ROLE_PAGES_DEFAULT`.
+
+Togliere un permesso a un ruolo che ce l'ha oggi e' un cambio di
+comportamento: il predefinito conserva cio' che si vede, e la revoca la decide
+l'admin dalla matrice.
+
 ## I dati li protegge il database, non l'interfaccia
 
 Nascondere un campo o una voce di menu non è una misura di sicurezza: il dato
