@@ -39,6 +39,8 @@
     collaborator: ['index','tasks','pipeline','clients','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
   };
 
+  window.ROLE_PAGES_DEFAULT = ROLE_PAGES_DEFAULT;
+
   function _getAllowed(r) {
     // Solo l'admin vede tutto per definizione. 'senior' era cablato qui
     // insieme a lui: qualunque elenco di pagine configurato da /users.html
@@ -92,6 +94,7 @@
     { id: 'notifiche',  icon: 'bell',          label: 'Notifiche',     href: '/notifiche.html' },
     { id: 'broadcast', icon: 'megaphone',      label: 'Broadcast',     href: '/broadcast.html' },
     { id: 'bacheca',   icon: '',   label: '↳ Bacheca',      href: '/bacheca.html' },
+    { id: 'link-utili', icon: 'link',          label: 'Link Utili',     href: '/link-utili.html' },
     { id: 'clients',    icon: 'users',         label: 'Clienti',        href: '/clients.html',    section: 'GESTIONE' },
     { id: 'zoho-setup', icon: '',   label: '↳ Setup Zoho',     href: '/zoho-setup.html' },
     { id: 'zoho-vat',   icon: '',   label: '↳ Monitor VAT',    href: '/zoho-vat.html' },
@@ -120,7 +123,6 @@
     ] : []),
     ...(role === 'admin' ? [
       { id: 'attivita', icon: 'clipboard',     label: 'Attività Staff', href: '/attivita.html', section: 'ADMIN' },
-      { id: 'link-utili', icon: 'link',       label: 'Link Utili',     href: '/link-utili.html' },
       { id: 'ambassadors', icon: 'award',    label: 'Ambassador',     href: '/ambassadors.html' },
       { id: 'users',    icon: 'users',         label: 'Utenti',         href: '/users.html' },
       { id: 'notifiche-admin', icon: 'bell',   label: 'Impostazioni Notifiche', href: '/notifiche-admin.html' },
