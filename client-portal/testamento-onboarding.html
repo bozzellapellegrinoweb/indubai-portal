@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Onboarding Testamento</title>
+<meta name="theme-color" content="#f4f2ef">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Onboarding">
+<link rel="icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script>
+// Per entrare serve il login, come nelle altre pagine dell'area clienti.
+(function () {
+  var s = null;
+  try { s = sb.getSession(); } catch (e) {}
+  if (!s || !s.access_token) window.location.replace('login.html');
+})();
+</script>
+<style>
+:root{--bg:#f4f2ef;--card:#ffffff;--fg:#000;--mut:#5c5a55;--line:#e3dfd6;--acc:#000;--pop:#47ee74;--popink:#000;--btn:#000;--btnfg:#47ee74;--acc2:#b4452b;--logofx:none;--ok:#1b6b34;--okbg:#e4f9ea;--warn:#8a5a00;--warnbg:#fbf0d2;--bad:#9b2c1f;--badbg:#f8e1dc;--inp:#faf9f6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0d0b;--card:#151815;--fg:#f4f2ef;--mut:#a3a39b;--line:#2a2e2a;--acc:#47ee74;--pop:#47ee74;--popink:#000;--btn:#47ee74;--btnfg:#000;--logofx:brightness(0) invert(1);--acc2:#f08a6c;--ok:#47ee74;--okbg:#10301a;--warn:#f1c35a;--warnbg:#38300f;--bad:#f2a091;--badbg:#3b1d18;--inp:#10161a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b0d0b;--card:#151815;--fg:#f4f2ef;--mut:#a3a39b;--line:#2a2e2a;--acc:#47ee74;--pop:#47ee74;--popink:#000;--btn:#47ee74;--btnfg:#000;--logofx:brightness(0) invert(1);--acc2:#f08a6c;--ok:#47ee74;--okbg:#10301a;--warn:#f1c35a;--warnbg:#38300f;--bad:#f2a091;--badbg:#3b1d18;--inp:#10161a;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 'DM Sans',system-ui,sans-serif;padding-inline:16px;padding-block:24px}
+.wrap{max-width:820px;margin:0 auto}
+h1,h2,h3{font-family:'DM Sans',system-ui,sans-serif;font-weight:700;letter-spacing:-.02em;line-height:1.1;text-wrap:balance;margin:0}
+h1{font-size:2rem}h2{font-size:1.4rem}h3{font-size:1.1rem}
+.lead{color:var(--mut);margin:.5rem 0 0}
+.top{display:flex;flex-direction:column;gap:12px;padding-bottom:20px}
+.logo{height:44px;width:auto;align-self:flex-start;filter:var(--logofx)}
+.top h1 span{background:var(--pop);color:var(--popink);padding:0 .25em;border-radius:12px}
+.kick{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:700}
+nav.steps{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:8px;z-index:5}
+nav.steps button{flex:1 1 auto;min-width:0;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 12px;border-radius:99px;font:inherit;font-size:.82rem;cursor:pointer}
+nav.steps button.on{background:var(--pop);color:var(--popink);border-color:var(--pop);font-weight:700}
+nav.steps button.done::after{content:" ✓"}
+section.pane{display:none;flex-direction:column;gap:16px}
+section.pane.on{display:flex}
+.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:22px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(max-width:560px){.grid{grid-template-columns:minmax(0,1fr)}h1{font-size:1.6rem}}
+label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;font-weight:500;min-width:0}
+label small{font-weight:400;color:var(--mut)}
+input,select,textarea{font:inherit;font-size:1rem;color:var(--fg);background:var(--inp);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%;min-width:0}
+textarea{min-height:76px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--pop);outline-offset:1px}
+.full{grid-column:1/-1}
+.help{background:var(--warnbg);color:var(--warn);border-radius:16px;padding:10px 12px;font-size:.88rem}
+.help.ok{background:var(--okbg);color:var(--ok)}
+.help.bad{background:var(--badbg);color:var(--bad)}
+.help b{font-weight:600}
+.btn{border:0;background:var(--btn);color:var(--btnfg);padding:12px 22px;border-radius:99px;font:inherit;font-weight:700;cursor:pointer}
+.btn.sec{background:transparent;color:var(--fg);border:1.5px solid var(--fg)}
+.btn.sm{padding:7px 11px;font-size:.85rem}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.item{border:1px dashed var(--line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.item header{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:.9rem}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(max-width:620px){.cols{grid-template-columns:minmax(0,1fr)}}
+.opt{border:2px solid var(--line);border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.opt.rec{border-color:var(--pop);box-shadow:0 0 0 3px var(--pop)}
+.opt h3{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.tag{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;background:var(--pop);color:var(--popink);padding:3px 8px;border-radius:99px;}
+ul.pc{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:.92rem}
+ul.pc li{padding-left:22px;position:relative}
+ul.pc li.p::before{content:"+";position:absolute;left:0;color:var(--ok);font-weight:700}
+ul.pc li.c::before{content:"–";position:absolute;left:2px;color:var(--bad);font-weight:700}
+.price{font-weight:700;font-size:1.5rem;color:var(--acc)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+td,th{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+.tw{overflow-x:auto}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--inp);border:1px solid var(--line);border-radius:8px;padding:14px;font:.84rem/1.5 ui-monospace,Menlo,Consolas,monospace;margin:0}
+.chk{display:flex;gap:10px;align-items:flex-start;font-weight:400}
+.chk input{width:auto;margin-top:4px}
+.scheme{display:flex;flex-direction:column;gap:6px;font-size:.9rem}
+.scheme div{display:flex;gap:10px;align-items:flex-start}
+.scheme span.n{flex:0 0 28px;height:28px;border-radius:50%;background:var(--pop);color:var(--popink);display:grid;place-items:center;font-weight:600;font-size:.8rem}
+.foot{color:var(--mut);font-size:.8rem;border-top:1px solid var(--line);padding-top:14px;margin-top:8px}
+.bar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.hid{display:none!important}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.back{align-self:flex-start;color:var(--mut);font-size:.88rem;text-decoration:none;font-weight:500}
+.back:hover{color:var(--fg)}
+/* ── aggiunte dell'onboarding ───────────────────────────────── */
+.sez{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:16px}
+.sez h2{margin:0 0 4px;font-size:17px;letter-spacing:-.01em}
+.sez .nota{color:var(--mut);font-size:13.5px;margin:0 0 16px;line-height:1.5}
+.campo{margin-bottom:14px}
+.campo>label{display:block;font-size:13.5px;font-weight:500;margin-bottom:5px}
+.campo .sub{display:block;font-weight:400;color:var(--mut);font-size:12.5px;margin-top:2px}
+.campo input[type=text],.campo input[type=date],.campo input[type=tel],.campo input[type=email],
+.campo input[type=number],.campo select,.campo textarea{
+  width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--inp);
+  color:var(--fg);font:15px/1.4 'DM Sans',system-ui,sans-serif}
+.campo textarea{min-height:76px;resize:vertical}
+.campo input:focus,.campo select:focus,.campo textarea:focus{outline:2px solid var(--acc);outline-offset:1px}
+.due{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:620px){.due{grid-template-columns:1fr}}
+.dv{background:none;border:1px dashed var(--line);color:var(--mut);border-radius:7px;
+    font:500 11px 'DM Sans',sans-serif;padding:3px 8px;cursor:pointer;margin-left:6px}
+.dv:hover{border-color:var(--acc);color:var(--acc)}
+.obb{color:var(--acc2);font-weight:700}
+.rip{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:var(--inp)}
+.rip-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.rip-top b{font-size:13.5px}
+.rip-del{background:none;border:none;color:var(--acc2);cursor:pointer;font:500 13px 'DM Sans',sans-serif}
+.chklist label{display:flex;flex-direction:row;gap:10px;align-items:flex-start;padding:9px 0;
+  border-bottom:1px solid var(--line);font-size:14px;font-weight:400}
+.chklist label:last-child{border-bottom:0}
+.chklist input[type=checkbox]{width:auto;flex:0 0 auto;margin:3px 0 0}
+/* casella singola dentro un campo */
+.campo label.riga{display:flex;flex-direction:row;gap:10px;align-items:flex-start;font-weight:400}
+.campo label.riga input[type=checkbox]{width:auto;flex:0 0 auto;margin:3px 0 0}
+.stato{position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--line);
+       padding:12px 16px;margin:0 -16px -24px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.salvato{font-size:12.5px;color:var(--mut)}
+.prog{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin:10px 0 0}
+.prog div{height:100%;background:var(--acc);width:0;transition:width .3s}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<div class="top">
+  <a class="back" href="dashboard.html">&larr; Torna al portale</a>
+  <img class="logo" alt="InDubai" src="assets/logo-dark-transparent.png" width="932" height="336">
+  <span class="kick">PB TAX International Tax Consultants FZCO</span>
+  <h1>Onboarding <span>Testamento</span></h1>
+  <p class="lead">Questi sono i dati con cui il Wills Draftsman redige il tuo testamento. Prendi il tempo che
+  serve: quello che scrivi si salva da solo, puoi chiudere e riprendere quando vuoi.
+  <b>Se un dato non lo sai con certezza, premi "da verificare" e vai avanti</b> &mdash; lo sistemiamo insieme.</p>
+  <div class="prog"><div id="prog"></div></div>
+</div>
+
+<div id="avviso"></div>
+<div id="modulo"></div>
+
+<div class="sez" id="box-invio" style="display:none">
+  <h2>Invio</h2>
+  <p class="nota">Quando hai finito, invia. Da quel momento la raccolta si blocca: se devi correggere
+  qualcosa scrivi allo studio e la riaprono per te.</p>
+  <div id="mancanti"></div>
+  <button class="btn" id="sendBtn">Invia i dati a PB TAX</button>
+  <button class="btn sec" id="copyBtn">Copia il riepilogo</button>
+  <div id="sendMsg"></div>
+</div>
+
+<div class="foot">PB TAX International Tax Consultants FZCO &mdash; Platinum Tower, Unit 2503, JLT, Dubai</div>
+</div>
+
+<script>
+// ============================================================
+// Struttura del modulo
+// ============================================================
+// I campi vengono dal paragrafo 8 della lettera di incarico ("I dati da
+// completare") e dall'Allegato A. Sono dichiarati qui come dati invece che
+// scritti a mano in HTML: aggiungere un campo e' una riga, e il salvataggio,
+// il riepilogo e il controllo dei campi obbligatori funzionano da soli.
+//
+//   t: text | date | tel | email | num | sel | area | chk
+//   o: true  -> obbligatorio
+//   dv: true -> mostra il pulsante "da verificare"
+// ============================================================
+const PERSONA = (p, etichetta) => ([
+  { k:p+'nome',        l:etichetta+' &mdash; nome e cognome come sul passaporto', t:'text', dv:1 },
+  { k:p+'rapporto',    l:'Rapporto con te', t:'text', sub:'Es. coniuge, fratello, amico, commercialista', dv:1 },
+  { k:p+'nascita',     l:'Data di nascita', t:'date' },
+  { k:p+'cittadinanza',l:'Cittadinanza', t:'text', dv:1 },
+  { k:p+'doc',         l:'Numero di passaporto o Emirates ID', t:'text', dv:1 },
+  { k:p+'indirizzo',   l:'Indirizzo di residenza', t:'area', dv:1 },
+  { k:p+'contatti',    l:'Telefono ed email', t:'text', dv:1 },
+]);
+
+const SEZIONI = [
+  { id:'testatore', t:'I tuoi dati', nota:'Come risultano dal passaporto e dall\'Emirates ID. Il nome deve coincidere con il documento, altrimenti il DIFC respinge la registrazione.', campi:[
+    { k:'nome', l:'Nome e cognome, esattamente come sul passaporto', t:'text', o:1 },
+    { k:'nascita_data', l:'Data di nascita', t:'date', o:1 },
+    { k:'nascita_luogo', l:'Luogo di nascita', t:'text', o:1, dv:1 },
+    { k:'cittadinanza', l:'Cittadinanza', t:'text', o:1, dv:1 },
+    { k:'passaporto', l:'Numero di passaporto', t:'text', o:1, dv:1 },
+    { k:'passaporto_scad', l:'Scadenza del passaporto', t:'date' },
+    { k:'eid', l:'Numero Emirates ID', t:'text', o:1, dv:1 },
+    { k:'indirizzo_uae', l:'Indirizzo negli Emirati', t:'area', o:1, dv:1 },
+    { k:'indirizzo_origine', l:'Indirizzo nel Paese d\'origine', t:'area', sub:'Serve al DIFC quando il testatore non risiede stabilmente negli Emirati', dv:1 },
+    { k:'telefono', l:'Telefono / WhatsApp', t:'tel', o:1 },
+    { k:'email', l:'Email', t:'email', o:1 },
+    { k:'residenza_fiscale', l:'Paese di residenza fiscale', t:'text', o:1, dv:1 },
+    { k:'aire', l:'Sei iscritto all\'AIRE?', t:'sel', opt:['Sì','No','Non lo so'] },
+    { k:'professione', l:'Professione', t:'text', dv:1 },
+  ]},
+
+  { id:'religione', t:'Dichiarazione sulla religione', nota:'Il testamento DIFC è riservato ai non musulmani. Senza questa dichiarazione la pratica non si può aprire.', campi:[
+    { k:'non_musulmano', l:'Dichiaro di non essere musulmano e di non esserlo mai stato.', t:'chk', o:1 },
+  ]},
+
+  { id:'coniuge', t:'Il coniuge', nota:'Se siete sposati o conviventi. Se prepariamo anche il suo testamento speculare, qui servono i suoi dati completi: la compilazione è una sola per entrambi.', campi:[
+    { k:'stato_civile', l:'Stato civile', t:'sel', o:1, opt:['Coniugato/a','Convivente','Single','Divorziato/a','Vedovo/a'] },
+    { k:'mirror', l:'Prepariamo anche il testamento speculare del coniuge?', t:'sel', opt:['Sì, per entrambi','No, solo il mio'], sub:'Due Full Will speculari registrati insieme' },
+    { k:'c_nome', l:'Nome e cognome del coniuge, come sul passaporto', t:'text', dv:1 },
+    { k:'c_nascita', l:'Data di nascita', t:'date' },
+    { k:'c_cittadinanza', l:'Cittadinanza', t:'text', dv:1 },
+    { k:'c_passaporto', l:'Numero di passaporto', t:'text', dv:1 },
+    { k:'c_eid', l:'Numero Emirates ID', t:'text', dv:1 },
+    { k:'c_indirizzo', l:'Indirizzo di residenza', t:'area', dv:1 },
+    { k:'c_contatti', l:'Telefono ed email del coniuge', t:'text', dv:1 },
+    { k:'matrimonio', l:'Dove e quando vi siete sposati, e con quale regime patrimoniale', t:'area', dv:1 },
+    { k:'precedenti', l:'Matrimoni o convivenze precedenti con figli o accordi', t:'area', sub:'Lascia vuoto se non ce ne sono' },
+  ]},
+
+  { id:'figli', t:'I figli', nota:'Uno per uno, con il nome come sul documento. Per i minorenni il testamento deve indicare chi li tutela e chi amministra i loro beni.', rip:{ etichetta:'Figlio', campi:[
+    { k:'nome', l:'Nome e cognome', t:'text', dv:1 },
+    { k:'nascita', l:'Data di nascita', t:'date' },
+    { k:'doc', l:'Passaporto o Emirates ID', t:'text', dv:1 },
+    { k:'cittadinanza', l:'Cittadinanza', t:'text', dv:1 },
+  ]}},
+
+  { id:'ripartizione', t:'Ripartizione definitiva dei beni', nota:'È la parte che il testamento scrive nero su bianco. Le percentuali devono sommare a 100.', campi:[
+    { k:'quota_coniuge', l:'Quota al coniuge (%)', t:'num' },
+    { k:'quota_figli', l:'Quota ai figli (%) e come si divide fra loro', t:'text', sub:'Es. 50% in parti uguali fra i due figli' },
+    { k:'quota_altri', l:'Altri beneficiari e relative quote', t:'area', sub:'Lascia vuoto se non ce ne sono' },
+    { k:'quote_societarie', l:'Destinazione delle quote societarie', t:'area', o:1, sub:'A chi vanno le quote e chi gestisce la società. Possono seguire la stessa ripartizione degli altri beni oppure una diversa.' },
+    { k:'deroghe', l:'Beni che vuoi destinare diversamente dalla regola generale', t:'area' },
+  ]},
+
+  { id:'societa', t:'Le società negli Emirati', nota:'Numero di licenza e conti aziendali: il testamento li indica uno per uno.', rip:{ etichetta:'Società', campi:[
+    { k:'nome', l:'Ragione sociale', t:'text', dv:1 },
+    { k:'giurisdizione', l:'Free zone o mainland', t:'text', sub:'Es. DMCC, JAFZA, DED Dubai', dv:1 },
+    { k:'licenza', l:'Numero di licenza', t:'text', dv:1 },
+    { k:'quota', l:'Quota che possiedi (%)', t:'num' },
+    { k:'conti', l:'Conti aziendali: banca e IBAN', t:'area', dv:1 },
+    { k:'soci', l:'Altri soci e accordi fra soci', t:'area' },
+  ]}},
+
+  { id:'conti', t:'I conti personali negli Emirati', nota:'Banca e IBAN. Servono per far sbloccare i conti agli esecutori senza passare dal tribunale.', rip:{ etichetta:'Conto', campi:[
+    { k:'banca', l:'Banca', t:'text', dv:1 },
+    { k:'iban', l:'IBAN o numero di conto', t:'text', dv:1 },
+    { k:'intestazione', l:'Intestazione', t:'sel', opt:['Solo mio','Cointestato'] },
+  ]}},
+
+  { id:'immobili', t:'Immobili negli Emirati', nota:'Se non ne hai, salta la sezione.', rip:{ etichetta:'Immobile', campi:[
+    { k:'emirato', l:'Emirato', t:'text', dv:1 },
+    { k:'title_deed', l:'Numero di title deed', t:'text', dv:1 },
+    { k:'indirizzo', l:'Indirizzo o identificativo dell\'unità', t:'area', dv:1 },
+    { k:'quota', l:'Quota posseduta (%)', t:'num' },
+    { k:'mutuo', l:'Mutuo o finanziamento in corso', t:'text' },
+  ]}},
+
+  { id:'altri', t:'Altri beni negli Emirati', nota:'Solo quello che si trova negli Emirati: il testamento DIFC copre questi. I beni all\'estero entrano nel testamento italiano.', campi:[
+    { k:'veicoli', l:'Veicoli, orologi, gioielli, arte', t:'area' },
+    { k:'crypto', l:'Criptovalute e beni digitali', t:'area', sub:'Dove sono custoditi. Non scrivere qui le chiavi o le password.' },
+    { k:'polizze', l:'Polizze vita e assicurazioni', t:'area', sub:'Compagnia e beneficiario già indicato' },
+    { k:'eosb', l:'Fine servizio (EOSB) o pensione', t:'area' },
+    { k:'altro', l:'Altro', t:'area' },
+  ]},
+
+  { id:'tutori', t:'Tutori dei figli minorenni', nota:'Il tutore principale è di norma il coniuge. Il tutore sostituto interviene se il coniuge non potesse o veniste a mancare insieme, e deve firmare una dichiarazione di accettazione.', campi:[
+    { k:'tutore_principale', l:'Tutore principale', t:'text', sub:'Nome e cognome. Di solito il coniuge.', dv:1 },
+    ...PERSONA('ts_', 'Tutore sostituto'),
+    { k:'ts_accetta', l:'Il tutore sostituto è stato informato, ha accettato e firmerà la dichiarazione di accettazione.', t:'chk' },
+    { k:'tutela_note', l:'Istruzioni sull\'amministrazione dei beni dei figli', t:'area', sub:'Es. a che età ricevono i beni, chi li amministra fino ad allora' },
+  ]},
+
+  { id:'esecutori', t:'I due esecutori', nota:'Sono le persone che eseguono il testamento e che le banche di Dubai riconoscono direttamente. Servono i dati completi di entrambi.', campi:[
+    ...PERSONA('e1_', 'Primo esecutore'),
+    ...PERSONA('e2_', 'Secondo esecutore'),
+    { k:'esecutori_informati', l:'Entrambi gli esecutori sono stati informati e hanno dato la loro disponibilità.', t:'chk' },
+  ]},
+
+  { id:'erede', t:'Erede finale', nota:'Chi eredita se tutti i beneficiari principali non ti sopravvivono. Senza questa indicazione il testamento resta incompleto.', campi:[
+    { k:'erede_finale', l:'Erede finale', t:'area', o:1, sub:'Nome e cognome, rapporto con te e recapito. Può anche essere un ente o una onlus.' },
+  ]},
+
+  { id:'testimoni', t:'I due testimoni', nota:'Servono due testimoni per la firma. Non possono essere beneficiari del testamento né coniugi di beneficiari.', campi:[
+    { k:'t1_nome', l:'Primo testimone &mdash; nome e cognome', t:'text', dv:1 },
+    { k:'t1_doc', l:'Passaporto o Emirates ID', t:'text', dv:1 },
+    { k:'t1_contatti', l:'Telefono ed email', t:'text', dv:1 },
+    { k:'t2_nome', l:'Secondo testimone &mdash; nome e cognome', t:'text', dv:1 },
+    { k:'t2_doc', l:'Passaporto o Emirates ID', t:'text', dv:1 },
+    { k:'t2_contatti', l:'Telefono ed email', t:'text', dv:1 },
+    { k:'testimoni_studio', l:'Non ho testimoni, chiedo che li fornisca lo studio (da verificare con il professionista).', t:'chk' },
+  ]},
+
+  { id:'documenti', t:'Documenti da inviare', nota:'Sono quelli dell\'Allegato A della lettera di incarico. Segna quelli che hai già mandato: i file passano dal gruppo WhatsApp dedicato o dall\'area documenti, non da questo modulo.', chk:[
+    'Passaporto in copia chiara &mdash; tuo',
+    'Emirates ID fronte e retro &mdash; tuo',
+    'Passaporto o Emirates ID &mdash; coniuge e figli beneficiari',
+    'Passaporto o Emirates ID &mdash; primo e secondo esecutore',
+    'Passaporto o Emirates ID e dichiarazione firmata di accettazione &mdash; tutore sostituto',
+    'Passaporto o Emirates ID &mdash; due testimoni',
+    'Licenza, certificato delle quote, memorandum e statuto &mdash; società',
+    'Estratti dei conti personali e aziendali, solo le pagine con l\'intestazione',
+    'Certificato di matrimonio e certificati di nascita dei figli, se richiesti',
+    'Eventuali accordi fra soci, polizze assicurative e testamenti già fatti',
+  ]},
+
+  { id:'conferma', t:'Conferma', nota:'', campi:[
+    { k:'veridicita', l:'Confermo che i dati che ho inserito sono veri e completi, e mi impegno a segnalare allo studio ogni variazione rilevante della mia situazione familiare o patrimoniale.', t:'chk', o:1 },
+    { k:'note_finali', l:'Qualcosa che vuoi segnalare allo studio', t:'area' },
+  ]},
+];
+
+// ============================================================
+// Stato e salvataggio
+// ============================================================
+const SB = window.ENV_SUPABASE_URL, AK = window.ENV_SUPABASE_ANON_KEY;
+const EMAIL_FN = SB + '/functions/v1/send-email';
+const DEST = 'info@pellegrinobozzella.com';
+const LS = 'indubai_will_onboarding';
+
+let D = {};              // risposte: { chiave: valore }
+let RIP = {};            // sezioni ripetibili: { idSezione: [ {..}, {..} ] }
+let CHK = {};            // checklist documenti: { indice: true }
+let clientId = null, clientName = '', rowId = null, statoRiga = 'draft', mirror = false;
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+  ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const tok = () => { try { return sb.getSession()?.access_token || AK; } catch (e) { return AK; } };
+const H = () => ({ apikey: AK, Authorization: 'Bearer ' + tok(), 'Content-Type': 'application/json' });
+const scaduta = e => /jwt|expired|401|unauthor/i.test(String(e && e.message || e));
+
+// ============================================================
+// Disegno del modulo
+// ============================================================
+function campoHTML(c, pre, val) {
+  const id = (pre || '') + c.k;
+  const v = val == null ? '' : val;
+  const dv = c.dv ? `<button type="button" class="dv" data-dv="${id}">da verificare</button>` : '';
+  const sub = c.sub ? `<span class="sub">${c.sub}</span>` : '';
+  const obb = c.o ? ' <span class="obb">*</span>' : '';
+
+  if (c.t === 'chk') {
+    return `<div class="campo"><label class="riga" for="${id}">
+      <input type="checkbox" id="${id}" data-k="${id}" ${v ? 'checked' : ''}>
+      <span>${c.l}${obb}</span></label></div>`;
+  }
+  let input;
+  if (c.t === 'area') input = `<textarea id="${id}" data-k="${id}">${esc(v)}</textarea>`;
+  else if (c.t === 'sel') input = `<select id="${id}" data-k="${id}"><option value="">Scegli</option>`
+      + c.opt.map(o => `<option${v === o ? ' selected' : ''}>${o}</option>`).join('') + '</select>';
+  else input = `<input type="${c.t === 'num' ? 'number' : c.t}" id="${id}" data-k="${id}" value="${esc(v)}">`;
+
+  return `<div class="campo"><label for="${id}">${c.l}${obb}${dv}${sub}</label>${input}</div>`;
+}
+
+function ripHTML(sez) {
+  const righe = RIP[sez.id] || [];
+  const corpo = righe.map((r, i) => `
+    <div class="rip">
+      <div class="rip-top"><b>${sez.rip.etichetta} ${i + 1}</b>
+        <button type="button" class="rip-del" data-del="${sez.id}" data-i="${i}">Togli</button></div>
+      ${sez.rip.campi.map(c => campoHTML(c, sez.id + '.' + i + '.', r[c.k])).join('')}
+    </div>`).join('');
+  return corpo + `<button type="button" class="btn sec sm" data-add="${sez.id}">+ Aggiungi ${sez.rip.etichetta.toLowerCase()}</button>`;
+}
+
+function disegna() {
+  document.getElementById('modulo').innerHTML = SEZIONI.map((s, n) => {
+    let corpo;
+    if (s.rip) corpo = ripHTML(s);
+    else if (s.chk) corpo = '<div class="chklist">' + s.chk.map((t, i) =>
+      `<label><input type="checkbox" data-doc="${i}" ${CHK[i] ? 'checked' : ''}><span>${t}</span></label>`).join('') + '</div>';
+    else corpo = s.campi.map(c => campoHTML(c, '', D[c.k])).join('');
+    return `<div class="sez" id="sez-${s.id}">
+      <h2>${n + 1}. ${s.t}</h2>${s.nota ? `<p class="nota">${s.nota}</p>` : ''}${corpo}</div>`;
+  }).join('');
+  aggiornaProgresso();
+}
+
+// ============================================================
+// Lettura e scrittura dei valori
+// ============================================================
+function leggi(el) {
+  const k = el.dataset.k;
+  const val = el.type === 'checkbox' ? el.checked : el.value;
+  if (k.includes('.')) {                       // sezione ripetibile: id.indice.campo
+    const [sez, i, campo] = k.split('.');
+    (RIP[sez] = RIP[sez] || [])[i] = RIP[sez][i] || {};
+    RIP[sez][i][campo] = val;
+  } else {
+    D[k] = val;
+  }
+  if (k === 'mirror') mirror = /Sì/.test(val);
+}
+
+document.addEventListener('input', e => {
+  if (e.target.dataset.k) { leggi(e.target); salvaRitardato(); aggiornaProgresso(); }
+});
+document.addEventListener('change', e => {
+  if (e.target.dataset.k) { leggi(e.target); salvaRitardato(); aggiornaProgresso(); }
+  if (e.target.dataset.doc != null) { CHK[e.target.dataset.doc] = e.target.checked; salvaRitardato(); }
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.dv) {                          // "da verificare"
+    const el = document.getElementById(b.dataset.dv);
+    if (el) { el.value = 'da verificare'; leggi(el); salvaRitardato(); aggiornaProgresso(); }
+  }
+  if (b.dataset.add) { (RIP[b.dataset.add] = RIP[b.dataset.add] || []).push({}); disegna(); salvaRitardato(); }
+  if (b.dataset.del) { RIP[b.dataset.del].splice(+b.dataset.i, 1); disegna(); salvaRitardato(); }
+});
+
+// ============================================================
+// Salvataggio
+// ============================================================
+// Due reti: il database (cosi' lo studio vede l'avanzamento e il cliente
+// ritrova tutto da un altro dispositivo) e il localStorage come scorta se la
+// rete cade a meta' compilazione.
+let timer = null, salvando = false;
+function salvaRitardato() {
+  try { localStorage.setItem(LS, JSON.stringify({ D, RIP, CHK })); } catch (e) {}
+  clearTimeout(timer);
+  timer = setTimeout(salvaBozza, 1200);
+}
+
+async function salvaBozza() {
+  if (!rowId || statoRiga !== 'draft' || salvando) return;
+  salvando = true;
+  try {
+    await sb.db.update('will_onboardings', 'id=eq.' + rowId,
+      { payload: { D, RIP, CHK }, mirror: mirror });
+    segnala('Salvato ' + new Date().toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' }));
+  } catch (e) {
+    segnala(scaduta(e) ? 'Sessione scaduta: rientra per salvare' : 'Non salvato, riprovo');
+  } finally { salvando = false; }
+}
+
+function segnala(t) {
+  let el = document.getElementById('salvato');
+  if (!el) {
+    el = document.createElement('div'); el.id = 'salvato'; el.className = 'salvato';
+    document.getElementById('box-invio')?.prepend(el);
+  }
+  el.textContent = t;
+}
+
+// ============================================================
+// Campi obbligatori e progresso
+// ============================================================
+function mancanti() {
+  const out = [];
+  SEZIONI.forEach(s => (s.campi || []).forEach(c => {
+    if (!c.o) return;
+    const v = D[c.k];
+    if (c.t === 'chk' ? !v : !String(v || '').trim()) out.push(s.t + ' &rarr; ' + c.l.replace(/<[^>]*>/g, ''));
+  }));
+  return out;
+}
+
+function aggiornaProgresso() {
+  const tutti = SEZIONI.flatMap(s => s.campi || []).filter(c => c.t !== 'chk');
+  const pieni = tutti.filter(c => String(D[c.k] || '').trim()).length;
+  const pct = tutti.length ? Math.round(pieni / tutti.length * 100) : 0;
+  const b = document.getElementById('prog');
+  if (b) b.style.width = pct + '%';
+}
+
+// ============================================================
+// Riepilogo leggibile, salvato insieme ai dati
+// ============================================================
+function riepilogo() {
+  const r = [];
+  r.push('ONBOARDING TESTAMENTO — ' + (clientName || '') );
+  r.push('Compilato il ' + new Date().toLocaleDateString('it-IT'));
+  if (mirror) r.push('Testamenti speculari per entrambi i coniugi.');
+  SEZIONI.forEach((s, n) => {
+    const righe = [];
+    if (s.rip) {
+      (RIP[s.id] || []).forEach((x, i) => {
+        const dentro = s.rip.campi.filter(c => String(x[c.k] || '').trim())
+          .map(c => '    ' + c.l.replace(/<[^>]*>/g, '') + ': ' + x[c.k]);
+        if (dentro.length) righe.push('  ' + s.rip.etichetta + ' ' + (i + 1), ...dentro);
+      });
+    } else if (s.chk) {
+      s.chk.forEach((t, i) => righe.push('  [' + (CHK[i] ? 'x' : ' ') + '] ' + t.replace(/&mdash;/g, '—')));
+    } else {
+      s.campi.forEach(c => {
+        const v = D[c.k];
+        if (c.t === 'chk') { if (v) righe.push('  [x] ' + c.l.replace(/<[^>]*>/g, '')); return; }
+        if (String(v || '').trim()) righe.push('  ' + c.l.replace(/<[^>]*>/g, '') + ': ' + v);
+      });
+    }
+    if (righe.length) { r.push('', (n + 1) + '. ' + s.t.toUpperCase()); r.push(...righe); }
+  });
+  return r.join('\n');
+}
+
+// ============================================================
+// Invio
+// ============================================================
+async function invia() {
+  const btn = document.getElementById('sendBtn');
+  const box = document.getElementById('sendMsg');
+  const miss = mancanti();
+  if (miss.length) {
+    box.innerHTML = '<div class="help bad"><b>Mancano alcuni dati obbligatori:</b><br>' + miss.join('<br>')
+      + '<br><br>Se un dato non lo sai, scrivi "da verificare" e vai avanti.</div>';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Invio in corso...'; box.innerHTML = '';
+  const testo = riepilogo();
+  try {
+    await sb.db.update('will_onboardings', 'id=eq.' + rowId, {
+      status: 'submitted', payload: { D, RIP, CHK }, scheda_text: testo,
+      mirror: mirror, inviato_il: new Date().toISOString(),
+    });
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'Invia i dati a PB TAX';
+    box.innerHTML = '<div class="help bad"><b>Invio non riuscito.</b> '
+      + (scaduta(e) ? 'La tua sessione è scaduta: <a href="login.html" style="color:inherit">rientra</a> e riprova, quello che hai compilato è salvo.'
+                    : esc(String(e.message || e)) + '<br>Quello che hai compilato è salvo: riprova fra poco.') + '</div>';
+    return;
+  }
+  statoRiga = 'submitted';
+
+  let emailOk = true;
+  try {
+    const link = 'https://portal.indubai.it/client-detail.html?id=' + clientId;
+    const res = await fetch(EMAIL_FN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok() },
+      body: JSON.stringify({
+        to: DEST,
+        subject: 'Onboarding Testamento completato — ' + (clientName || 'cliente'),
+        html: '<h3 style="margin:0 0 12px;color:#1a2744">Onboarding Testamento completato</h3>'
+          + '<p style="font-size:14px;color:#374151">' + esc(clientName || 'Un cliente')
+          + ' ha compilato la raccolta dati' + (mirror ? ' (testamenti speculari per entrambi i coniugi)' : '') + '.</p>'
+          + '<pre style="background:#f3f4f6;border-left:4px solid #1a2744;padding:14px 18px;border-radius:6px;'
+          + 'font-size:12px;white-space:pre-wrap;color:#374151">' + esc(testo) + '</pre>'
+          + '<p style="text-align:center;margin-top:24px"><a href="' + link + '" style="background:#1a2744;'
+          + 'color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">'
+          + 'Apri la scheda cliente</a></p>',
+        event_type: 'will_onboarding_submitted',
+        entity_id: rowId, entity_type: 'will_onboarding',
+      }),
+    });
+    emailOk = !!(await res.json().catch(() => ({}))).ok;
+  } catch (e) { emailOk = false; }
+
+  blocca('<b>Dati inviati.</b> PB TAX li ha ricevuti e li passa al Wills Draftsman. Da ora la raccolta è '
+    + 'bloccata: se devi correggere qualcosa, scrivi allo studio e la riaprono per te.'
+    + (emailOk ? '' : '<br><br>I dati sono registrati, ma l\'email di avviso allo studio non è partita: '
+      + 'segnalalo sul gruppo WhatsApp dedicato.'));
+}
+
+function blocca(testo) {
+  document.querySelectorAll('#modulo input, #modulo select, #modulo textarea, #modulo button')
+    .forEach(el => el.disabled = true);
+  const b = document.getElementById('sendBtn');
+  b.disabled = true; b.textContent = 'Già inviato';
+  document.getElementById('sendMsg').innerHTML = '<div class="help ok">' + testo + '</div>';
+}
+
+// ============================================================
+// Avvio
+// ============================================================
+async function avvio() {
+  const avviso = document.getElementById('avviso');
+  let u;
+  try { u = sb.getSession().user.id; } catch (e) { location.replace('login.html'); return; }
+
+  let links;
+  try {
+    links = await sb.db.select('client_users', { filter: 'user_id=eq.' + u, columns: 'client_id' });
+  } catch (e) {
+    avviso.innerHTML = '<div class="help bad">Non riesco a leggere il tuo profilo: ' + esc(String(e.message || e)) + '</div>';
+    return;
+  }
+  if (!links || !links.length) {
+    avviso.innerHTML = '<div class="help bad">Il tuo accesso non è collegato a nessuna scheda cliente. Scrivi allo studio.</div>';
+    return;
+  }
+  clientId = links[0].client_id;
+  try {
+    const cl = await sb.db.select('clients', { filter: 'id=eq.' + clientId, columns: 'company_name' });
+    clientName = cl?.[0]?.company_name || '';
+  } catch (e) {}
+
+  let righe;
+  try {
+    righe = await sb.db.select('will_onboardings', {
+      filter: 'client_id=eq.' + clientId,
+      columns: 'id,status,mirror,payload', limit: 1,
+    });
+  } catch (e) {
+    const msg = String(e.message || e);
+    avviso.innerHTML = '<div class="help bad">'
+      + (/does not exist|schema cache|relation/i.test(msg)
+          ? 'La raccolta dati non è ancora attiva sul portale.'
+          : 'Non riesco a leggere la raccolta: ' + esc(msg)) + '</div>';
+    return;
+  }
+
+  const w = righe && righe[0];
+  if (!w) {
+    avviso.innerHTML = '<div class="help"><b>La raccolta dati non è ancora aperta.</b><br>'
+      + 'Viene attivata dallo studio dopo la firma dell\'incarico e il pagamento. '
+      + 'Se hai già firmato e non la vedi, scrivi sul gruppo WhatsApp dedicato.</div>';
+    return;
+  }
+
+  rowId = w.id; statoRiga = w.status; mirror = !!w.mirror;
+  const p = w.payload || {};
+  D = p.D || {}; RIP = p.RIP || {}; CHK = p.CHK || {};
+
+  // Se il database è vuoto ma il browser ha una bozza più ricca, si riprende
+  // quella: capita se la rete è caduta durante la compilazione.
+  if (!Object.keys(D).length) {
+    try {
+      const loc = JSON.parse(localStorage.getItem(LS) || 'null');
+      if (loc && loc.D && Object.keys(loc.D).length) { D = loc.D; RIP = loc.RIP || {}; CHK = loc.CHK || {}; }
+    } catch (e) {}
+  }
+
+  disegna();
+  document.getElementById('box-invio').style.display = '';
+  document.getElementById('sendBtn').addEventListener('click', invia);
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(riepilogo())
+      .then(() => segnala('Riepilogo copiato'))
+      .catch(() => segnala('Non riesco a copiare'));
+  });
+
+  if (statoRiga !== 'draft') {
+    blocca('<b>Raccolta già inviata.</b> Lo studio la sta lavorando. Se devi correggere qualcosa, scrivi allo studio.');
+  }
+}
+
+avvio();
+</script>
+</body>
+</html>

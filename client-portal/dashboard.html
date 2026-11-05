@@ -558,6 +558,7 @@
   <div class="ios-sheet-section">InDubai</div>
   <button class="ios-sheet-item" id="sitem-servizi"    onclick="sheetGo('servizi','SERVIZI')"><span class="item-icon">✦</span>Servizi<span class="item-chevron">›</span></button>
   <a class="ios-sheet-item" href="testamento.html" style="text-decoration:none"><span class="item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg></span>Testamento<span class="item-chevron">›</span></a>
+  <a class="ios-sheet-item" id="sheet-onboarding" href="testamento-onboarding.html" style="text-decoration:none;display:none"><span class="item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>Onboarding Testamento<span class="item-chevron">&rsaquo;</span></a>
   <button class="ios-sheet-item" id="sitem-numeri"     onclick="sheetGo('numeri','NUMERI UTILI')"><span class="item-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 10.4a19.79 19.79 0 01-3.07-8.67A2 2 0 012.86 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></span>Numeri Utili<span class="item-chevron">›</span></button>
   <button class="ios-sheet-item" id="sitem-news"       onclick="sheetGo('news','UAE NEWS')"><span class="item-icon">📰</span>UAE News<span class="item-chevron">›</span></button>
   <button class="ios-sheet-logout" onclick="closeSheet(); doLogout()">⏻ Esci dall'account</button>
@@ -575,6 +576,7 @@
     <div class="nav-section" style="margin-top:16px">InDubai</div>
     <button class="nav-item" onclick="showPanel('servizi', this)"><span class="nav-icon">✦</span> Servizi</button>
     <a class="nav-item" href="testamento.html" style="text-decoration:none"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg></span> Testamento</a>
+    <a class="nav-item" id="nav-onboarding" href="testamento-onboarding.html" style="text-decoration:none;display:none"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span> Onboarding Testamento</a>
     <button class="nav-item" onclick="showPanel('numeri', this)"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 10.4a19.79 19.79 0 01-3.07-8.67A2 2 0 012.86 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></span> Numeri Utili</button>
     <button class="nav-item" onclick="showPanel('news', this)"><span class="nav-icon">📰</span> UAE News</button>
   </aside>
@@ -1858,5 +1860,25 @@ function syncTabBar(name) {
     <span class="tab-label">Altro</span>
   </button>
 </div>
+<script>
+// La voce "Onboarding Testamento" compare solo quando lo studio ha aperto la
+// raccolta dati, cioe' quando esiste una riga in will_onboardings per questo
+// cliente. Prima della firma dell'incarico non deve vedersi.
+(async function () {
+  try {
+    const u = sb.getSession()?.user?.id;
+    if (!u) return;
+    const l = await sb.db.select('client_users', { filter: 'user_id=eq.' + u, columns: 'client_id' });
+    if (!l || !l.length) return;
+    const r = await sb.db.select('will_onboardings', {
+      filter: 'client_id=eq.' + l[0].client_id, columns: 'id', limit: 1 });
+    if (!r || !r.length) return;
+    ['sheet-onboarding', 'nav-onboarding'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+  } catch (e) { /* tabella non ancora creata o rete assente: la voce resta nascosta */ }
+})();
+</script>
 </body>
 </html>
