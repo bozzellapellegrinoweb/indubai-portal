@@ -203,7 +203,7 @@ function rendi() {
       <td><span class="tw-badge" style="background:${s.bg};color:${s.color};border-color:${s.border}">${ui.escapeHtml(s.label)}</span></td>
       <td class="tw-nascondi tw-sotto">${quando(p.updated_at || p.created_at)}</td>
       <td>${p.client_id
-        ? `<a class="btn btn-ghost btn-sm" href="/client-detail.html?id=${encodeURIComponent(p.client_id)}&tab=testamento">Apri scheda</a>`
+        ? `<a class="btn btn-ghost btn-sm" href="/client-detail.html?id=${encodeURIComponent(p.client_id)}&tab=${p.tipo === 'consulenza' ? 'testamento' : 'testamento-dati'}">Apri scheda</a>`
         : ''}</td>
     </tr>`;
   }).join('');
