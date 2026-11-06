@@ -14,12 +14,9 @@
 <script src="config.js"></script>
 <script src="supabase.js"></script>
 <script>
-// Per entrare serve il login, come nelle altre pagine dell'area clienti.
-(function () {
-  var s = null;
-  try { s = sb.getSession(); } catch (e) {}
-  if (!s || !s.access_token) window.location.replace('login.html');
-})();
+// Questa pagina si apre senza entrare nel portale: quando mandiamo il link
+// la scheda cliente spesso non esiste ancora, e viene creata all'invio.
+// Non e' indicizzabile (vedi il meta robots qui sopra e robots.txt).
 </script>
 <style>
 :root{--bg:#f4f2ef;--card:#ffffff;--fg:#000;--mut:#5c5a55;--line:#e3dfd6;--acc:#000;--pop:#47ee74;--popink:#000;--btn:#000;--btnfg:#47ee74;--acc2:#b4452b;--logofx:none;--ok:#1b6b34;--okbg:#e4f9ea;--warn:#8a5a00;--warnbg:#fbf0d2;--bad:#9b2c1f;--badbg:#f8e1dc;--inp:#faf9f6}
@@ -331,13 +328,53 @@ let D = {};              // risposte: { chiave: valore }
 let RIP = {};            // sezioni ripetibili: { idSezione: [ {..}, {..} ] }
 let CHK = {};            // checklist documenti (vecchie compilazioni): { indice: true }
 let ALG = {};            // allegati caricati: { indice: [ {nome, path, dim, tipo} ] }
-let clientId = null, clientName = '', rowId = null, statoRiga = 'draft', mirror = false;
+let clientName = '', statoRiga = 'draft', mirror = false, bozzaCreata = false;
+
+// La chiave della compilazione. Sta nell'indirizzo, cosi' chi riapre il link
+// ritrova quello che aveva scritto, e nel browser come rete di sicurezza se
+// l'indirizzo viene perso. Senza token non si legge e non si scrive niente.
+const LS_TOKEN = 'indubai_will_onboarding_token';
+function prendiToken() {
+  const url = new URL(location.href);
+  let t = url.searchParams.get('t');
+  if (!/^[0-9a-f-]{36}$/i.test(t || '')) {
+    try { t = localStorage.getItem(LS_TOKEN); } catch (e) { t = null; }
+  }
+  if (!/^[0-9a-f-]{36}$/i.test(t || '')) {
+    t = (crypto.randomUUID ? crypto.randomUUID()
+         : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+             const r = Math.random() * 16 | 0;
+             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+           }));
+  }
+  try { localStorage.setItem(LS_TOKEN, t); } catch (e) {}
+  if (url.searchParams.get('t') !== t) {
+    url.searchParams.set('t', t);
+    history.replaceState(null, '', url.toString());
+  }
+  return t;
+}
+const TOKEN = prendiToken();
+
+// Le tre funzioni che il database espone a chi non ha un accesso.
+async function rpc(nome, args) {
+  const r = await fetch(SB + '/rest/v1/rpc/' + nome, {
+    method: 'POST',
+    headers: { apikey: AK, Authorization: 'Bearer ' + tok(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+  });
+  if (!r.ok) {
+    let det = 'errore ' + r.status;
+    try { const e = await r.json(); det = e.message || e.hint || det; } catch (x) {}
+    throw new Error(det);
+  }
+  return r.json();
+}
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
   ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const tok = () => { try { return sb.getSession()?.access_token || AK; } catch (e) { return AK; } };
 const H = () => ({ apikey: AK, Authorization: 'Bearer ' + tok(), 'Content-Type': 'application/json' });
-const scaduta = e => /jwt|expired|401|unauthor/i.test(String(e && e.message || e));
 
 // ============================================================
 // Disegno del modulo
@@ -469,8 +506,9 @@ async function caricaFile(i, lista) {
     msg.innerHTML = '<span class="attesa">Carico ' + esc(f.name) + '...</span>';
     if (input) input.disabled = true;
     try {
+      if (!(await assicuraBozza())) throw new Error('non riesco a salvare la bozza, riprova fra poco');
       const nomePulito = f.name.replace(/[^\w.\- ()]/g, '_');
-      const path = clientId + '/Testamento/' + Date.now() + '_' + nomePulito;
+      const path = 'onboarding/' + TOKEN + '/' + Date.now() + '_' + nomePulito;
       const r = await fetch(SB + '/storage/v1/object/' + BUCKET + '/' + path, {
         method: 'POST',
         headers: { apikey: AK, Authorization: 'Bearer ' + tok(), 'Content-Type': tipo, 'x-upsert': 'true' },
@@ -481,24 +519,15 @@ async function caricaFile(i, lista) {
         try { const e = await r.json(); det = e.message || e.error || det; } catch (x) {}
         throw new Error(det);
       }
-      // la riga in client_files fa comparire il file anche nell'area documenti
-      await fetch(SB + '/rest/v1/client_files', {
-        method: 'POST',
-        headers: Object.assign({}, H(), { Prefer: 'return=minimal' }),
-        body: JSON.stringify({
-          client_id: clientId, storage_path: path, display_name: f.name, original_name: f.name,
-          file_size: f.size, mime_type: tipo, folder: '/Testamento',
-          uploaded_by: (sb.getCurrentUser && sb.getCurrentUser()) ? sb.getCurrentUser().id : null,
-        }),
-      }).catch(() => {});
+      // Il file comparira' fra i documenti del cliente all'invio: la scheda
+      // cliente non esiste ancora, la crea will_onboarding_invia.
       (ALG[i] = ALG[i] || []).push({ nome: f.name, path: path, dim: f.size, tipo: tipo });
       msg.innerHTML = '';
       ridisegnaSlot(i);
       salvaRitardato();
     } catch (e) {
       msg.innerHTML = '<span class="bad">' + esc(f.name) + ' non caricato: '
-        + (scaduta(e) ? 'la sessione è scaduta, <a href="login.html" style="color:inherit">rientra</a> e riprova.'
-                      : esc(String(e.message || e))) + '</span>';
+        + esc(String(e.message || e)) + '. Riprova, oppure mandalo sul gruppo WhatsApp.</span>';
     } finally {
       if (input) { input.disabled = false; input.value = ''; }
     }
@@ -575,15 +604,33 @@ function salvaRitardato() {
 }
 
 async function salvaBozza() {
-  if (!rowId || statoRiga !== 'draft' || salvando) return;
+  if (statoRiga !== 'draft' || salvando) return;
   salvando = true;
   try {
-    await sb.db.update('will_onboardings', 'id=eq.' + rowId,
-      { payload: { D, RIP, CHK, ALG }, mirror: mirror });
+    const ok = await rpc('will_onboarding_salva',
+      { p_token: TOKEN, p_payload: { D, RIP, CHK, ALG }, p_mirror: mirror });
+    if (ok === false) {   // qualcuno l'ha gia' inviata
+      statoRiga = 'submitted';
+      blocca('<b>Questa raccolta risulta gia&rsquo; inviata.</b> Se devi correggere qualcosa, scrivi allo studio.');
+      return;
+    }
+    bozzaCreata = true;
     segnala('Salvato ' + new Date().toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' }));
   } catch (e) {
-    segnala(scaduta(e) ? 'Sessione scaduta: rientra per salvare' : 'Non salvato, riprovo');
+    segnala('Non salvato, riprovo');
   } finally { salvando = false; }
+}
+
+// I file si caricano sotto onboarding/<token>/, e il database li accetta solo
+// se quel token corrisponde a una raccolta in bozza: percio' la bozza deve
+// esistere prima del primo file.
+async function assicuraBozza() {
+  if (bozzaCreata) return true;
+  try {
+    await rpc('will_onboarding_salva', { p_token: TOKEN, p_payload: { D, RIP, CHK, ALG }, p_mirror: mirror });
+    bozzaCreata = true;
+    return true;
+  } catch (e) { return false; }
 }
 
 function segnala(t) {
@@ -667,18 +714,31 @@ async function invia() {
   }
   btn.disabled = true; btn.textContent = 'Invio in corso...'; box.innerHTML = '';
   const testo = riepilogo();
+  // tutti gli allegati, in un elenco piatto: il database li registra fra i
+  // documenti della scheda cliente che crea adesso
+  const allegati = Object.values(ALG).flat();
+  let esito;
   try {
-    await sb.db.update('will_onboardings', 'id=eq.' + rowId, {
-      status: 'submitted', payload: { D, RIP, CHK, ALG }, scheda_text: testo,
-      mirror: mirror, inviato_il: new Date().toISOString(),
+    esito = await rpc('will_onboarding_invia', {
+      p_token: TOKEN, p_payload: { D, RIP, CHK, ALG }, p_scheda: testo,
+      p_mirror: mirror, p_nome: D.nome || null, p_email: D.email || null,
+      p_allegati: allegati,
     });
   } catch (e) {
     btn.disabled = false; btn.textContent = 'Invia modulo e documenti';
     box.innerHTML = '<div class="help bad"><b>Invio non riuscito.</b> '
-      + (scaduta(e) ? 'La tua sessione è scaduta: <a href="login.html" style="color:inherit">rientra</a> e riprova, quello che hai compilato è salvo.'
-                    : esc(String(e.message || e)) + '<br>Quello che hai compilato è salvo: riprova fra poco.') + '</div>';
+      + esc(String(e.message || e)) + '<br>Quello che hai compilato è salvo: riprova fra poco.</div>';
     return;
   }
+  if (!esito || esito.ok === false) {
+    btn.disabled = false; btn.textContent = 'Invia modulo e documenti';
+    box.innerHTML = '<div class="help bad">'
+      + (esito && esito.motivo === 'gia_inviata'
+          ? '<b>Risulta gi&agrave; inviata.</b> Se devi correggere qualcosa, scrivi allo studio.'
+          : '<b>Non trovo questa compilazione.</b> Riapri il link che ti abbiamo mandato.') + '</div>';
+    return;
+  }
+  const clientId = esito.client_id;
   statoRiga = 'submitted';
 
   let emailOk = true;
@@ -699,7 +759,7 @@ async function invia() {
           + 'color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">'
           + 'Apri la scheda cliente</a></p>',
         event_type: 'will_onboarding_submitted',
-        entity_id: rowId, entity_type: 'will_onboarding',
+        entity_id: clientId, entity_type: 'client',
       }),
     });
     emailOk = !!(await res.json().catch(() => ({}))).ok;
@@ -728,52 +788,26 @@ function blocca(testo) {
 // ============================================================
 async function avvio() {
   const avviso = document.getElementById('avviso');
-  let u;
-  try { u = sb.getSession().user.id; } catch (e) { location.replace('login.html'); return; }
 
-  let links;
+  // Nessun accesso richiesto: conta solo il token nell'indirizzo. Se per quel
+  // token non c'e' ancora niente, si parte da un modulo vuoto e la riga nasce
+  // al primo salvataggio.
+  let w = null;
   try {
-    links = await sb.db.select('client_users', { filter: 'user_id=eq.' + u, columns: 'client_id' });
+    w = await rpc('will_onboarding_apri', { p_token: TOKEN });
   } catch (e) {
-    avviso.innerHTML = '<div class="help bad">Non riesco a leggere il tuo profilo: ' + esc(String(e.message || e)) + '</div>';
-    return;
-  }
-  if (!links || !links.length) {
-    avviso.innerHTML = '<div class="help bad">Il tuo accesso non è collegato a nessuna scheda cliente. Scrivi allo studio.</div>';
-    return;
-  }
-  clientId = links[0].client_id;
-  try {
-    const cl = await sb.db.select('clients', { filter: 'id=eq.' + clientId, columns: 'company_name' });
-    clientName = cl?.[0]?.company_name || '';
-  } catch (e) {}
-
-  let righe;
-  try {
-    righe = await sb.db.select('will_onboardings', {
-      filter: 'client_id=eq.' + clientId,
-      columns: 'id,status,mirror,payload', limit: 1,
-    });
-  } catch (e) {
-    const msg = String(e.message || e);
-    avviso.innerHTML = '<div class="help bad">'
-      + (/does not exist|schema cache|relation/i.test(msg)
-          ? 'La raccolta dati non è ancora attiva sul portale.'
-          : 'Non riesco a leggere la raccolta: ' + esc(msg)) + '</div>';
+    avviso.innerHTML = '<div class="help bad">Non riesco ad aprire il modulo: '
+      + esc(String(e.message || e)) + '<br>Riprova fra poco, oppure scrivi allo studio.</div>';
     return;
   }
 
-  const w = righe && righe[0];
-  if (!w) {
-    avviso.innerHTML = '<div class="help"><b>La raccolta dati non è ancora aperta.</b><br>'
-      + 'Viene attivata dallo studio dopo la firma dell\'incarico e il pagamento. '
-      + 'Se hai già firmato e non la vedi, scrivi sul gruppo WhatsApp dedicato.</div>';
-    return;
+  if (w) {
+    statoRiga = w.status || 'draft';
+    mirror = !!w.mirror;
+    bozzaCreata = true;
+    const p = w.payload || {};
+    D = p.D || {}; RIP = p.RIP || {}; CHK = p.CHK || {}; ALG = p.ALG || {};
   }
-
-  rowId = w.id; statoRiga = w.status; mirror = !!w.mirror;
-  const p = w.payload || {};
-  D = p.D || {}; RIP = p.RIP || {}; CHK = p.CHK || {}; ALG = p.ALG || {};
 
   // Se il database è vuoto ma il browser ha una bozza più ricca, si riprende
   // quella: capita se la rete è caduta durante la compilazione.

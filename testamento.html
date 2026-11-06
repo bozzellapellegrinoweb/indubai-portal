@@ -120,7 +120,7 @@ async function carica() {
   // stesso, invece di lasciare la pagina vuota senza spiegazione.
   const esiti = await Promise.allSettled([
     sb.db.select('will_intakes',     { columns: campi + ',route,price_aed', order: 'updated_at.desc' }),
-    sb.db.select('will_onboardings', { columns: campi + ',mirror,inviato_il,payload', order: 'updated_at.desc' }),
+    sb.db.select('will_onboardings', { columns: campi + ',mirror,inviato_il,payload,origine', order: 'updated_at.desc' }),
   ]);
   if (esiti[0].status === 'fulfilled') consulenze = esiti[0].value || [];
   else errori.push('consulenze: ' + (esiti[0].reason?.message || 'errore'));
@@ -151,7 +151,16 @@ async function carica() {
 const stato = p => (p.tipo === 'consulenza' ? STATI_CONSULENZA : STATI_ONBOARDING)[p.status]
                || { label: p.status || '—', bg:'#f3f4f6', color:'#374151', border:'#d1d5db' };
 
-const nomeCliente = p => p.clients?.company_name || p.clients?.contact_name || 'Cliente rimosso';
+// Una raccolta aperta dal link pubblico non ha ancora una scheda cliente:
+// la scheda nasce all'invio. Fino ad allora si mostra il nome che la persona
+// ha scritto nel modulo, se l'ha gia' scritto.
+function nomeCliente(p) {
+  if (p.clients?.company_name || p.clients?.contact_name)
+    return p.clients.company_name || p.clients.contact_name;
+  const dalModulo = p.payload?.D?.nome;
+  if (dalModulo) return dalModulo;
+  return p.client_id ? 'Cliente rimosso' : 'Non ancora identificato';
+}
 
 // Quanti file ha allegato il cliente. Stanno nel payload, raccolti per voce
 // dell'Allegato A: { indice: [ {nome, path, dim, tipo} ] }.
@@ -211,6 +220,8 @@ function rendi() {
       <td>
         <div class="tw-cliente">${ui.escapeHtml(nomeCliente(p))}</div>
         ${extra ? `<div class="tw-sotto">${ui.escapeHtml(extra)}</div>` : ''}
+        ${p.tipo === 'onboarding' && !p.client_id
+          ? '<div class="tw-sotto" style="color:#9a3412">da link &middot; nessuna scheda cliente</div>' : ''}
       </td>
       <td><span class="tw-tipo">${p.tipo === 'consulenza' ? 'Consulenza' : 'Onboarding'}</span></td>
       <td><span class="tw-badge" style="background:${s.bg};color:${s.color};border-color:${s.border}">${ui.escapeHtml(s.label)}</span></td>
@@ -224,7 +235,7 @@ function rendi() {
       <td class="tw-nascondi tw-sotto">${quando(p.updated_at || p.created_at)}</td>
       <td>${p.client_id
         ? `<a class="btn btn-ghost btn-sm" href="/client-detail.html?id=${encodeURIComponent(p.client_id)}&tab=${p.tipo === 'consulenza' ? 'testamento' : 'testamento-dati'}">Apri scheda</a>`
-        : ''}</td>
+        : '<span class="tw-sotto">in compilazione</span>'}</td>
     </tr>`;
   }).join('');
 }

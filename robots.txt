@@ -1,0 +1,4 @@
+# Il portale non va indicizzato: e' uno strumento di lavoro, e l'area
+# clienti contiene moduli che si aprono con un link diretto.
+User-agent: *
+Disallow: /

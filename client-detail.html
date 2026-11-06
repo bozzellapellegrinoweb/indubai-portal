@@ -1498,7 +1498,7 @@ async function loadOnboardingBlock() {
   try {
     righe = await sb.db.select('will_onboardings', {
       filter: 'client_id=eq.' + clientId,
-      columns: 'id,status,mirror,scheda_text,attivato_il,inviato_il,updated_at,payload', limit: 1,
+      columns: 'id,status,mirror,scheda_text,attivato_il,inviato_il,updated_at,payload,token', limit: 1,
     });
   } catch (e) {
     const msg = String(e.message || e);
@@ -1549,6 +1549,17 @@ async function loadOnboardingBlock() {
         <button class="btn btn-accent btn-sm" onclick="saveOnboardingStatus('${w.id}')">Salva stato</button>
         <span style="font-size:12px;color:var(--text-muted)">Riportandolo in <strong>In compilazione</strong> il cliente pu&ograve; correggere e rimandare.</span>
       </div>
+
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Link da mandare al cliente</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <code style="flex:1;min-width:240px;font-size:12px;background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:8px 11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${linkOnboarding(w)}</code>
+          <button class="btn btn-ghost btn-sm" onclick="copiaLinkOnboarding('${w.token || ''}')">Copia</button>
+        </div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:7px">
+          Si apre senza entrare nel portale. Quello che il cliente compila finisce su questa scheda.
+        </div>
+      </div>
     </div>
 
     ${allegatiHTML(w)}
@@ -1560,6 +1571,18 @@ async function loadOnboardingBlock() {
       </div>
       <pre id="onb-text" style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.65;color:var(--text);background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px;max-height:460px;overflow:auto">${ui.escapeHtml(w.scheda_text || 'Il cliente non ha ancora inviato la raccolta.')}</pre>
     </div>`;
+}
+
+// Il link personale di questa raccolta. Porta il token, quindi quello che il
+// cliente compila si attacca a questa scheda invece di crearne una nuova.
+const linkOnboarding = w => 'https://portal.indubai.it/client-portal/testamento-onboarding'
+  + (w.token ? '?t=' + w.token : '');
+
+function copiaLinkOnboarding(token) {
+  const url = linkOnboarding({ token });
+  navigator.clipboard.writeText(url)
+    .then(() => ui.showToast('Link copiato', 'success'))
+    .catch(() => ui.showToast('Non riesco a copiare: ' + url, 'error'));
 }
 
 // I file che il cliente ha allegato, raccolti per voce dell'Allegato A.
