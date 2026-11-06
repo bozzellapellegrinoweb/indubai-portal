@@ -164,8 +164,11 @@ export default async function handler(req, res) {
 
   // For write operations, check role
   const role = await getUserRole(callerId, token);
-  const isAdmin = ['admin', 'mini_admin', 'senior'].includes(role);
-  if (!isAdmin) console.error('[leave-requests] role check failed — callerId:', callerId, 'role:', role);
+  // Approvare, rifiutare ed eliminare le ferie spetta solo all'admin. Prima
+  // qui c'erano anche 'senior' e 'mini_admin': Martina e Mercedes, entrambe
+  // 'senior' e entrambe dipendenti, potevano approvare le proprie richieste.
+  const isAdmin = role === 'admin';
+  if (!isAdmin) console.error('[leave-requests] non admin — callerId:', callerId, 'role:', role);
 
   // POST — insert new leave request
   if (req.method === 'POST') {
@@ -186,11 +189,8 @@ export default async function handler(req, res) {
     const data = await r.json();
     if (!r.ok) return res.status(r.status).json(data);
 
-    // Invia email agli admin quando qualcuno crea una richiesta.
-    // NB: la condizione NON è più `!isAdmin`. `isAdmin` serve a decidere chi può
-    // scrivere e include i ruoli 'senior' e 'mini_admin': di conseguenza le
-    // richieste di Mercedes e Martina (entrambe 'senior') non generavano nessuna
-    // email. Qui conta solo se chi richiede è l'amministratore stesso.
+    // Invia email agli admin quando qualcuno crea una richiesta: l'unico che
+    // non la riceve e' l'admin stesso, che non ha bisogno di avvisarsi.
     if (role !== 'admin') {
       try {
         const empRes = await fetch(`${SUPABASE_URL}/rest/v1/employees?id=eq.${body.employee_id}&select=id,profile:profiles(full_name)`, { headers });
