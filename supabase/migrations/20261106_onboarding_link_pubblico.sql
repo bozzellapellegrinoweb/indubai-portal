@@ -168,3 +168,28 @@ create policy "onboarding_pubblico_upload" on storage.objects
        where w.token::text = (storage.foldername(name))[2]
          and w.status = 'draft')
   );
+
+-- ── Correzione applicata subito dopo, in produzione ─────────
+-- La policy qui sopra interrogava will_onboardings direttamente. Quella
+-- sotto-query viene valutata con i permessi di chi carica, e chi non ha un
+-- accesso al portale non ha nessun permesso su quella tabella: la policy
+-- andava in errore invece di dare un verdetto, e OGNI caricamento falliva
+-- con "permission denied for table will_onboardings". Il controllo passa da
+-- una funzione SECURITY DEFINER, come le altre tre.
+create or replace function will_onboarding_bozza_aperta(p_token text)
+returns boolean
+language sql stable security definer set search_path to 'public' as $$
+  select exists (
+    select 1 from will_onboardings w
+     where w.token::text = p_token
+       and w.status = 'draft');
+$$;
+
+grant execute on function will_onboarding_bozza_aperta(text) to anon, authenticated;
+
+alter policy "onboarding_pubblico_upload" on storage.objects
+  with check (
+    bucket_id = 'client-documents'
+    and (storage.foldername(name))[1] = 'onboarding'
+    and will_onboarding_bozza_aperta((storage.foldername(name))[2])
+  );
