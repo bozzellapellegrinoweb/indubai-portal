@@ -47,6 +47,12 @@ Non tutto e' una pagina del menu. Un pannello dentro la scheda cliente (la
 scheda Testamento, l'Onboarding) non passa dal controllo dei permessi, perche'
 `client-detail` e' esentata dal redirect: la si apre da Clienti, non dal menu.
 
+Quando lo stesso strumento ha una pagina nel menu e un pannello nella scheda
+cliente, **usano lo stesso id**, cosi' una concessione sola copre entrambi:
+`testamento.html` e la scheda Testamento sono tutti e due `testamento`.
+L'id deve coincidere col nome del file, perche' `app.js` ricava la pagina
+corrente dall'indirizzo e chi non ce l'ha viene rimandato altrove.
+
 Vale la stessa regola, con due aggiunte:
 
 - la pagina che lo ospita chiede il permesso da se', con

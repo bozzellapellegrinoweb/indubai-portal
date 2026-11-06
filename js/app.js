@@ -106,6 +106,7 @@
     { id: 'zoho-vat',   icon: '',   label: '↳ Monitor VAT',    href: '/zoho-vat.html' },
     { id: 'documents',  icon: 'folder',        label: 'Documenti',     href: '/documents.html' },
     { id: 'onboarding', icon: 'star',          label: 'Onboarding',     href: '/onboarding.html' },
+    { id: 'testamento', icon: 'file-text',     label: 'Testamenti',     href: '/testamento.html' },
     { id: 'statements', icon: 'file-text',     label: 'Estratti Conto', href: '/statements.html' },
     { id: 'payments',   icon: 'credit-card',   label: 'Abbonamenti',    href: '/payments.html' },
     { id: 'reconciliation', icon: 'refresh-cw', label: 'Riconciliazione', href: '/reconciliation.html' },
@@ -449,6 +450,7 @@
     'expenses': 'Spese',
     'finance': 'Cashflow Gruppo',
     'link-utili': 'Link Utili',
+    'testamento': 'Testamenti',
   };
   const pageLabel = PAGE_LABELS[currentPage] || 'InDubai';
 

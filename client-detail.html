@@ -217,6 +217,7 @@ async function init() {
   clientId = params.get('id');
   if (!clientId) { window.location.href = '/clients.html'; return; }
   await loadClient();
+  apriSchedaDaUrl(params.get('tab'));
 }
 
 async function loadClient() {
@@ -413,6 +414,16 @@ if (!puoVedereTestamento) {
     document.getElementById('tab-btn-testamento')?.remove();
     document.getElementById('tab-testamento')?.remove();
   });
+}
+
+// Si arriva qui anche da un elenco (per esempio /testamento.html), che indica
+// quale scheda aprire. Il bottone puo' non esserci: se il permesso manca, e'
+// stato rimosso, e allora resta la scheda Info.
+function apriSchedaDaUrl(nome) {
+  if (!nome) return;
+  const bottone = [...document.querySelectorAll('.tab')]
+    .find(b => (b.getAttribute('onclick') || '').includes("switchTab('" + nome + "'"));
+  if (bottone) switchTab(nome, bottone);
 }
 
 function switchTab(name, el) {

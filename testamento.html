@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Testamenti — InDubai Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/config.js"></script>
+  <link rel="manifest" href="/manifest-admin.json">
+  <meta name="theme-color" content="#14161a">
+  <style>
+    .tw-filtri { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+    .tw-filtri .form-control { max-width:260px; }
+    .tw-chip { font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:999px; cursor:pointer;
+               border:1.5px solid var(--border); background:var(--surface); color:var(--text-muted); }
+    .tw-chip.on { border-color:var(--primary); color:var(--text); background:var(--surface2); }
+    .tw-badge { display:inline-block; font-size:11px; font-weight:800; padding:3px 9px; border-radius:7px;
+                border:1px solid transparent; white-space:nowrap; }
+    .tw-tipo { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.5px;
+               padding:3px 8px; border-radius:6px; background:var(--surface2); color:var(--text-muted); white-space:nowrap; }
+    .tw-cliente { font-weight:700; font-size:14px; }
+    .tw-sotto { font-size:12px; color:var(--text-muted); }
+    .tw-vuoto { text-align:center; padding:48px 20px; color:var(--text-muted); font-size:14px; }
+    .tw-tot { display:flex; gap:22px; flex-wrap:wrap; margin-bottom:18px; }
+    .tw-tot div { font-size:12.5px; color:var(--text-muted); }
+    .tw-tot strong { display:block; font-size:22px; font-weight:800; color:var(--text); line-height:1.2; }
+    #tw-tabella th:last-child, #tw-tabella td:last-child { text-align:right; }
+    @media (max-width:768px) { .tw-nascondi { display:none !important; } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Testamenti</div>
+        <div class="topbar-subtitle" id="sub">Caricamento...</div>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="tw-tot" id="totali"></div>
+
+      <div class="tw-filtri">
+        <div class="tw-chip on" data-tipo="tutti"       onclick="filtraTipo(this)">Tutte</div>
+        <div class="tw-chip"    data-tipo="consulenza"  onclick="filtraTipo(this)">Consulenze</div>
+        <div class="tw-chip"    data-tipo="onboarding"  onclick="filtraTipo(this)">Onboarding</div>
+        <select class="form-control" id="f-stato" onchange="rendi()" style="max-width:200px">
+          <option value="">Tutti gli stati</option>
+        </select>
+        <input type="text" class="form-control" id="f-cerca" placeholder="Cerca cliente..." oninput="rendi()">
+      </div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table id="tw-tabella">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Tipo</th>
+                <th>Stato</th>
+                <th class="tw-nascondi">Aggiornato</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="righe">
+              <tr><td colspan="5"><div class="spinner" style="margin:24px auto"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/supabase.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/i18n.js"></script>
+<script src="/js/notify.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════════
+// Testamenti — l'elenco di tutte le pratiche, consulenze e onboarding
+// ══════════════════════════════════════════════════════════════
+// Le due tabelle sono separate perche' sono due momenti diversi:
+// will_intakes e' la consulenza prima della firma (con il prezzo),
+// will_onboardings e' la raccolta dati dopo, da cui si redige l'atto.
+// Qui si vedono insieme, perche' chi le lavora le pensa come una cosa sola.
+//
+// I permessi: questa pagina ha id 'testamento', la stessa voce che governa
+// la scheda Testamento dentro il cliente. Una concessione sola copre
+// entrambe, e le policy can_see_wills() chiudono i dati nel database.
+
+const STATI_CONSULENZA = {
+  draft:           { label: 'In compilazione', bg:'#f1f5f9', color:'#475569', border:'#cbd5e1' },
+  submitted:       { label: 'Inviata',         bg:'#e0f2fe', color:'#0369a1', border:'#7dd3fc' },
+  in_review:       { label: 'In valutazione',  bg:'#fef3c7', color:'#92400e', border:'#fcd34d' },
+  sent_to_partner: { label: 'Allo studio',     bg:'#ede9fe', color:'#6d28d9', border:'#c4b5fd' },
+  completed:       { label: 'Completata',      bg:'#dcfce7', color:'#15803d', border:'#86efac' },
+};
+const STATI_ONBOARDING = {
+  draft:     { label: 'In compilazione', bg:'#eff6ff', color:'#1d4ed8', border:'#bfdbfe' },
+  submitted: { label: 'Inviato',         bg:'#ecfdf5', color:'#047857', border:'#a7f3d0' },
+  in_review: { label: 'In verifica',     bg:'#fffbeb', color:'#92400e', border:'#fcd34d' },
+  completed: { label: 'Completato',      bg:'#f3f4f6', color:'#374151', border:'#d1d5db' },
+};
+const ROTTE = { difc: 'DIFC', adgm: 'ADGM', stop: 'Non procede', wait: 'In attesa' };
+
+let pratiche = [];
+let tipoScelto = 'tutti';
+
+async function carica() {
+  const campi = 'id,client_id,status,created_at,updated_at,clients(id,company_name,contact_name)';
+  let consulenze = [], onboarding = [];
+  const errori = [];
+
+  // Le due letture sono indipendenti: se una fallisce, l'altra si vede lo
+  // stesso, invece di lasciare la pagina vuota senza spiegazione.
+  const esiti = await Promise.allSettled([
+    sb.db.select('will_intakes',     { columns: campi + ',route,price_aed', order: 'updated_at.desc' }),
+    sb.db.select('will_onboardings', { columns: campi + ',mirror,inviato_il', order: 'updated_at.desc' }),
+  ]);
+  if (esiti[0].status === 'fulfilled') consulenze = esiti[0].value || [];
+  else errori.push('consulenze: ' + (esiti[0].reason?.message || 'errore'));
+  if (esiti[1].status === 'fulfilled') onboarding = esiti[1].value || [];
+  else errori.push('onboarding: ' + (esiti[1].reason?.message || 'errore'));
+
+  pratiche = [
+    ...consulenze.map(r => ({ ...r, tipo: 'consulenza' })),
+    ...onboarding.map(r => ({ ...r, tipo: 'onboarding' })),
+  ].sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+
+  // un solo elenco di stati, quelli che compaiono davvero
+  const visti = new Map();
+  pratiche.forEach(p => {
+    const st = stato(p);
+    if (!visti.has(p.status)) visti.set(p.status, st.label);
+  });
+  document.getElementById('f-stato').innerHTML = '<option value="">Tutti gli stati</option>' +
+    [...visti].map(([k, v]) => `<option value="${ui.escapeHtml(k)}">${ui.escapeHtml(v)}</option>`).join('');
+
+  if (errori.length) {
+    document.querySelector('.page-content').insertAdjacentHTML('afterbegin',
+      `<div class="alert alert-danger" style="margin-bottom:16px">Non riesco a leggere ${ui.escapeHtml(errori.join(' · '))}</div>`);
+  }
+  rendi();
+}
+
+const stato = p => (p.tipo === 'consulenza' ? STATI_CONSULENZA : STATI_ONBOARDING)[p.status]
+               || { label: p.status || '—', bg:'#f3f4f6', color:'#374151', border:'#d1d5db' };
+
+const nomeCliente = p => p.clients?.company_name || p.clients?.contact_name || 'Cliente rimosso';
+
+function filtraTipo(el) {
+  document.querySelectorAll('.tw-chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  tipoScelto = el.dataset.tipo;
+  rendi();
+}
+
+function rendi() {
+  const q = document.getElementById('f-cerca').value.trim().toLowerCase();
+  const st = document.getElementById('f-stato').value;
+
+  const visibili = pratiche.filter(p =>
+    (tipoScelto === 'tutti' || p.tipo === tipoScelto) &&
+    (!st || p.status === st) &&
+    (!q || nomeCliente(p).toLowerCase().includes(q))
+  );
+
+  document.getElementById('sub').textContent = pratiche.length
+    ? `${visibili.length} di ${pratiche.length} pratiche`
+    : 'Nessuna pratica';
+
+  const daLavorare = pratiche.filter(p => ['submitted','in_review'].includes(p.status)).length;
+  document.getElementById('totali').innerHTML = `
+    <div><strong>${pratiche.filter(p => p.tipo === 'consulenza').length}</strong>consulenze</div>
+    <div><strong>${pratiche.filter(p => p.tipo === 'onboarding').length}</strong>onboarding</div>
+    <div><strong>${daLavorare}</strong>da lavorare</div>`;
+
+  const corpo = document.getElementById('righe');
+  if (!visibili.length) {
+    corpo.innerHTML = `<tr><td colspan="5"><div class="tw-vuoto">${
+      pratiche.length
+        ? 'Nessuna pratica con questi filtri.'
+        : 'Nessuna pratica ancora. La consulenza la compila il cliente dal suo portale; l&rsquo;onboarding lo attivi dalla scheda del cliente, dopo la firma.'
+    }</div></td></tr>`;
+    return;
+  }
+
+  corpo.innerHTML = visibili.map(p => {
+    const s = stato(p);
+    const extra = p.tipo === 'consulenza'
+      ? (p.route ? ROTTE[p.route] || p.route : '')
+      : (p.mirror ? 'Speculari' : '');
+    return `<tr>
+      <td>
+        <div class="tw-cliente">${ui.escapeHtml(nomeCliente(p))}</div>
+        ${extra ? `<div class="tw-sotto">${ui.escapeHtml(extra)}</div>` : ''}
+      </td>
+      <td><span class="tw-tipo">${p.tipo === 'consulenza' ? 'Consulenza' : 'Onboarding'}</span></td>
+      <td><span class="tw-badge" style="background:${s.bg};color:${s.color};border-color:${s.border}">${ui.escapeHtml(s.label)}</span></td>
+      <td class="tw-nascondi tw-sotto">${quando(p.updated_at || p.created_at)}</td>
+      <td>${p.client_id
+        ? `<a class="btn btn-ghost btn-sm" href="/client-detail.html?id=${encodeURIComponent(p.client_id)}&tab=testamento">Apri scheda</a>`
+        : ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+carica();
+window.addEventListener('pageshow', e => { if (e.persisted) carica(); });
+
+function quando(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+</script>
+</body>
+</html>
