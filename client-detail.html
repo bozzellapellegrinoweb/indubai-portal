@@ -1498,7 +1498,7 @@ async function loadOnboardingBlock() {
   try {
     righe = await sb.db.select('will_onboardings', {
       filter: 'client_id=eq.' + clientId,
-      columns: 'id,status,mirror,scheda_text,attivato_il,inviato_il,updated_at', limit: 1,
+      columns: 'id,status,mirror,scheda_text,attivato_il,inviato_il,updated_at,payload', limit: 1,
     });
   } catch (e) {
     const msg = String(e.message || e);
@@ -1551,6 +1551,8 @@ async function loadOnboardingBlock() {
       </div>
     </div>
 
+    ${allegatiHTML(w)}
+
     <div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:18px 20px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
         <div style="font-size:14px;font-weight:600">Dati raccolti</div>
@@ -1558,6 +1560,68 @@ async function loadOnboardingBlock() {
       </div>
       <pre id="onb-text" style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.65;color:var(--text);background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px;max-height:460px;overflow:auto">${ui.escapeHtml(w.scheda_text || 'Il cliente non ha ancora inviato la raccolta.')}</pre>
     </div>`;
+}
+
+// I file che il cliente ha allegato, raccolti per voce dell'Allegato A.
+// Stanno nel bucket client-documents, cartella <cliente>/Testamento: si
+// ritrovano anche dalla scheda Documenti, qui si scaricano senza cercarli.
+const VOCI_ALLEGATO = [
+  'Passaporto — tuo', 'Emirates ID — tuo', 'Documenti coniuge e figli',
+  'Documenti esecutori', 'Documenti e accettazione del tutore sostituto',
+  'Documenti dei testimoni', 'Documenti societari', 'Estratti conto',
+  'Certificati di matrimonio e nascita', 'Altri documenti',
+];
+
+function allegatiHTML(w) {
+  const alg = w.payload?.ALG || {};
+  const voci = Object.entries(alg).filter(([, v]) => Array.isArray(v) && v.length);
+  const totale = voci.reduce((n, [, v]) => n + v.length, 0);
+
+  if (!totale) {
+    return `<div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:6px">Allegati</div>
+      <div style="font-size:13px;color:var(--text-muted)">${
+        w.status === 'draft'
+          ? 'Il cliente non ha ancora caricato documenti.'
+          : 'La raccolta &egrave; stata inviata <strong>senza allegati</strong>. Chiedili sul gruppo WhatsApp.'
+      }</div></div>`;
+  }
+
+  return `<div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:600">Allegati</div>
+      <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0">${totale} file</span>
+    </div>
+    ${voci.map(([i, files]) => `
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${ui.escapeHtml(VOCI_ALLEGATO[i] || 'Voce ' + (Number(i) + 1))}</div>
+        ${files.map(f => `
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 11px;margin-bottom:5px;background:#f8fafc;border:1px solid var(--border);border-radius:8px">
+            <span style="flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ui.escapeHtml(f.nome)}</span>
+            <span style="font-size:11px;color:var(--text-muted);flex:0 0 auto">${pesoFile(f.dim)}</span>
+            <button class="btn btn-ghost btn-sm" onclick="scaricaAllegato('${ui.escapeHtml(f.path)}','${ui.escapeHtml(f.nome)}')">Scarica</button>
+          </div>`).join('')}
+      </div>`).join('')}
+  </div>`;
+}
+
+const pesoFile = b => !b ? '' : b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB'
+                   : b >= 1024 ? Math.round(b / 1024) + ' KB' : b + ' B';
+
+async function scaricaAllegato(path, nome) {
+  try {
+    const r = await fetch(window.ENV_SUPABASE_URL + '/storage/v1/object/authenticated/client-documents/' + path, {
+      headers: { apikey: window.ENV_SUPABASE_ANON_KEY,
+                 Authorization: 'Bearer ' + (sb.getSession()?.access_token || '') },
+    });
+    if (!r.ok) throw new Error('errore ' + r.status);
+    const url = URL.createObjectURL(await r.blob());
+    const a = document.createElement('a');
+    a.href = url; a.download = nome; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (e) {
+    ui.showToast('Non riesco a scaricare ' + nome + ': ' + (e.message || e), 'error');
+  }
 }
 
 async function attivaOnboarding() {

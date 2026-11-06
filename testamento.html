@@ -61,12 +61,13 @@
                 <th>Cliente</th>
                 <th>Tipo</th>
                 <th>Stato</th>
+                <th>Documenti</th>
                 <th class="tw-nascondi">Aggiornato</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="righe">
-              <tr><td colspan="5"><div class="spinner" style="margin:24px auto"></div></td></tr>
+              <tr><td colspan="6"><div class="spinner" style="margin:24px auto"></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -119,7 +120,7 @@ async function carica() {
   // stesso, invece di lasciare la pagina vuota senza spiegazione.
   const esiti = await Promise.allSettled([
     sb.db.select('will_intakes',     { columns: campi + ',route,price_aed', order: 'updated_at.desc' }),
-    sb.db.select('will_onboardings', { columns: campi + ',mirror,inviato_il', order: 'updated_at.desc' }),
+    sb.db.select('will_onboardings', { columns: campi + ',mirror,inviato_il,payload', order: 'updated_at.desc' }),
   ]);
   if (esiti[0].status === 'fulfilled') consulenze = esiti[0].value || [];
   else errori.push('consulenze: ' + (esiti[0].reason?.message || 'errore'));
@@ -152,6 +153,15 @@ const stato = p => (p.tipo === 'consulenza' ? STATI_CONSULENZA : STATI_ONBOARDIN
 
 const nomeCliente = p => p.clients?.company_name || p.clients?.contact_name || 'Cliente rimosso';
 
+// Quanti file ha allegato il cliente. Stanno nel payload, raccolti per voce
+// dell'Allegato A: { indice: [ {nome, path, dim, tipo} ] }.
+function quantiAllegati(p) {
+  if (p.tipo !== 'onboarding') return null;
+  const alg = p.payload?.ALG;
+  if (!alg) return 0;
+  return Object.values(alg).reduce((n, v) => n + (Array.isArray(v) ? v.length : 0), 0);
+}
+
 function filtraTipo(el) {
   document.querySelectorAll('.tw-chip').forEach(c => c.classList.remove('on'));
   el.classList.add('on');
@@ -174,14 +184,17 @@ function rendi() {
     : 'Nessuna pratica';
 
   const daLavorare = pratiche.filter(p => ['submitted','in_review'].includes(p.status)).length;
+  const senzaFile = pratiche.filter(p => p.tipo === 'onboarding'
+    && p.status !== 'draft' && quantiAllegati(p) === 0).length;
   document.getElementById('totali').innerHTML = `
     <div><strong>${pratiche.filter(p => p.tipo === 'consulenza').length}</strong>consulenze</div>
     <div><strong>${pratiche.filter(p => p.tipo === 'onboarding').length}</strong>onboarding</div>
-    <div><strong>${daLavorare}</strong>da lavorare</div>`;
+    <div><strong>${daLavorare}</strong>da lavorare</div>
+    ${senzaFile ? `<div><strong style="color:#9a3412">${senzaFile}</strong>inviati senza documenti</div>` : ''}`;
 
   const corpo = document.getElementById('righe');
   if (!visibili.length) {
-    corpo.innerHTML = `<tr><td colspan="5"><div class="tw-vuoto">${
+    corpo.innerHTML = `<tr><td colspan="6"><div class="tw-vuoto">${
       pratiche.length
         ? 'Nessuna pratica con questi filtri.'
         : 'Nessuna pratica ancora. La consulenza la compila il cliente dal suo portale; l&rsquo;onboarding lo attivi dalla scheda del cliente, dopo la firma.'
@@ -201,6 +214,13 @@ function rendi() {
       </td>
       <td><span class="tw-tipo">${p.tipo === 'consulenza' ? 'Consulenza' : 'Onboarding'}</span></td>
       <td><span class="tw-badge" style="background:${s.bg};color:${s.color};border-color:${s.border}">${ui.escapeHtml(s.label)}</span></td>
+      <td>${(() => {
+        const n = quantiAllegati(p);
+        if (n === null) return '<span class="tw-sotto">&mdash;</span>';
+        return n
+          ? `<span class="tw-badge" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0">${n} file</span>`
+          : '<span class="tw-badge" style="background:#fff7ed;color:#9a3412;border-color:#fed7aa">nessuno</span>';
+      })()}</td>
       <td class="tw-nascondi tw-sotto">${quando(p.updated_at || p.created_at)}</td>
       <td>${p.client_id
         ? `<a class="btn btn-ghost btn-sm" href="/client-detail.html?id=${encodeURIComponent(p.client_id)}&tab=${p.tipo === 'consulenza' ? 'testamento' : 'testamento-dati'}">Apri scheda</a>`

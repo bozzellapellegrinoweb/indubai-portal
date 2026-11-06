@@ -109,10 +109,25 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--inp);border:1px 
 .rip-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .rip-top b{font-size:13.5px}
 .rip-del{background:none;border:none;color:var(--acc2);cursor:pointer;font:500 13px 'DM Sans',sans-serif}
-.chklist label{display:flex;flex-direction:row;gap:10px;align-items:flex-start;padding:9px 0;
-  border-bottom:1px solid var(--line);font-size:14px;font-weight:400}
-.chklist label:last-child{border-bottom:0}
-.chklist input[type=checkbox]{width:auto;flex:0 0 auto;margin:3px 0 0}
+/* una voce dell'Allegato A, con i suoi file */
+.slot{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.slot-top{display:flex;flex-direction:row;gap:10px;align-items:flex-start}
+.slot-segno{flex:0 0 auto;width:21px;height:21px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:700;background:#eceff3;color:#8a94a2;margin-top:1px}
+.slot-segno.ok{background:#dcfce7;color:#15803d}
+.slot-nome{font-size:14px;line-height:1.45}
+.slot-file{margin:8px 0 0}
+.file-riga{display:flex;flex-direction:row;align-items:center;gap:10px;padding:6px 10px;margin-top:6px;
+  background:#f6f7f9;border-radius:7px}
+.file-nome{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-dim{font-size:11.5px;color:#8a94a2;flex:0 0 auto}
+.file-via{flex:0 0 auto;background:none;border:none;color:var(--acc2);cursor:pointer;font-size:13px;padding:0 2px}
+.slot-scegli{display:inline-block;margin-top:9px;cursor:pointer;font-size:13px;font-weight:600;
+  color:var(--acc);border:1px dashed var(--line);border-radius:8px;padding:7px 13px;width:auto}
+.slot-scegli:hover{border-color:var(--acc)}
+.slot-msg{font-size:12.5px;margin-top:7px}
+.slot-msg .bad{color:#b91c1c}
+.slot-msg .attesa{color:#8a94a2}
 /* casella singola dentro un campo */
 .campo label.riga{display:flex;flex-direction:row;gap:10px;align-items:flex-start;font-weight:400}
 .campo label.riga input[type=checkbox]{width:auto;flex:0 0 auto;margin:3px 0 0}
@@ -145,7 +160,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--inp);border:1px 
   <p class="nota">Quando hai finito, invia. Da quel momento la raccolta si blocca: se devi correggere
   qualcosa scrivi allo studio e la riaprono per te.</p>
   <div id="mancanti"></div>
-  <button class="btn" id="sendBtn">Invia i dati a PB TAX</button>
+  <button class="btn" id="sendBtn">Invia modulo e documenti</button>
   <button class="btn sec" id="copyBtn">Copia il riepilogo</button>
   <div id="sendMsg"></div>
 </div>
@@ -285,7 +300,7 @@ const SEZIONI = [
     { k:'testimoni_studio', l:'Non ho testimoni, chiedo che li fornisca lo studio (da verificare con il professionista).', t:'chk' },
   ]},
 
-  { id:'documenti', t:'Documenti da inviare', nota:'Sono quelli dell\'Allegato A della lettera di incarico. Segna quelli che hai già mandato: i file passano dal gruppo WhatsApp dedicato o dall\'area documenti, non da questo modulo.', chk:[
+  { id:'documenti', t:'Documenti da inviare', nota:'Sono quelli dell\'Allegato A della lettera di incarico. Caricali qui: PDF, foto dal telefono (anche HEIC di iPhone), scansioni, documenti Word o Excel. Fino a 50 MB per file. Finiscono nella tua area documenti e arrivano allo studio.', chk:[
     'Passaporto in copia chiara &mdash; tuo',
     'Emirates ID fronte e retro &mdash; tuo',
     'Passaporto o Emirates ID &mdash; coniuge e figli beneficiari',
@@ -314,7 +329,8 @@ const LS = 'indubai_will_onboarding';
 
 let D = {};              // risposte: { chiave: valore }
 let RIP = {};            // sezioni ripetibili: { idSezione: [ {..}, {..} ] }
-let CHK = {};            // checklist documenti: { indice: true }
+let CHK = {};            // checklist documenti (vecchie compilazioni): { indice: true }
+let ALG = {};            // allegati caricati: { indice: [ {nome, path, dim, tipo} ] }
 let clientId = null, clientName = '', rowId = null, statoRiga = 'draft', mirror = false;
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -362,14 +378,155 @@ function disegna() {
   document.getElementById('modulo').innerHTML = SEZIONI.map((s, n) => {
     let corpo;
     if (s.rip) corpo = ripHTML(s);
-    else if (s.chk) corpo = '<div class="chklist">' + s.chk.map((t, i) =>
-      `<label><input type="checkbox" data-doc="${i}" ${CHK[i] ? 'checked' : ''}><span>${t}</span></label>`).join('') + '</div>';
+    else if (s.chk) corpo = s.chk.map((t, i) => slotHTML(t, i)).join('');
     else corpo = s.campi.map(c => campoHTML(c, '', D[c.k])).join('');
     return `<div class="sez" id="sez-${s.id}">
       <h2>${n + 1}. ${s.t}</h2>${s.nota ? `<p class="nota">${s.nota}</p>` : ''}${corpo}</div>`;
   }).join('');
   aggiornaProgresso();
 }
+
+// ============================================================
+// Allegati
+// ============================================================
+// I file vanno nello stesso posto dei documenti del cliente (bucket
+// client-documents, cartella <cliente>/Testamento), cosi' si ritrovano anche
+// dall'area documenti e dalla scheda cliente, non solo da qui.
+const BUCKET = 'client-documents';
+const LIMITE = 50 * 1024 * 1024;
+
+// Alcuni browser non sanno dire il tipo di un file (le foto HEIC di iPhone
+// sono il caso tipico): senza Content-Type lo storage rifiuta il caricamento,
+// quindi lo deduciamo dall'estensione.
+const TIPI = {
+  pdf:'application/pdf', jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png',
+  webp:'image/webp', heic:'image/heic', heif:'image/heif', gif:'image/gif',
+  tif:'image/tiff', tiff:'image/tiff', bmp:'image/bmp',
+  doc:'application/msword',
+  docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls:'application/vnd.ms-excel',
+  xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  txt:'text/plain', rtf:'application/rtf', zip:'application/zip',
+};
+const ACCETTATI = Object.keys(TIPI).map(e => '.' + e).join(',');
+
+const tipoDi = f => f.type && TIPI[(f.name.split('.').pop() || '').toLowerCase()] !== undefined
+  ? f.type
+  : (TIPI[(f.name.split('.').pop() || '').toLowerCase()] || f.type || '');
+
+const peso = b => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB'
+               : b >= 1024 ? Math.round(b / 1024) + ' KB' : b + ' B';
+
+function slotHTML(testo, i) {
+  const files = ALG[i] || [];
+  return `<div class="slot" id="slot-${i}">
+    <div class="slot-top">
+      <span class="slot-segno${files.length ? ' ok' : ''}">${files.length ? '&#10003;' : '&#43;'}</span>
+      <span class="slot-nome">${testo}</span>
+    </div>
+    <div class="slot-file" id="slot-file-${i}">${files.map((f, j) => rigaFile(f, i, j)).join('')}</div>
+    <label class="slot-scegli">
+      <input type="file" multiple accept="${ACCETTATI}" data-slot="${i}" style="display:none">
+      <span>${files.length ? 'Aggiungi un altro file' : 'Scegli i file'}</span>
+    </label>
+    <div class="slot-msg" id="slot-msg-${i}"></div>
+  </div>`;
+}
+
+const rigaFile = (f, i, j) => `<div class="file-riga">
+    <span class="file-nome">${esc(f.nome)}</span>
+    <span class="file-dim">${peso(f.dim)}</span>
+    <button type="button" class="file-via" data-togli="${i}:${j}" title="Togli">&#10005;</button>
+  </div>`;
+
+function ridisegnaSlot(i) {
+  const box = document.getElementById('slot-file-' + i);
+  if (!box) return;
+  const files = ALG[i] || [];
+  box.innerHTML = files.map((f, j) => rigaFile(f, i, j)).join('');
+  const segno = document.querySelector('#slot-' + i + ' .slot-segno');
+  if (segno) { segno.classList.toggle('ok', files.length > 0); segno.innerHTML = files.length ? '&#10003;' : '&#43;'; }
+  const scegli = document.querySelector('#slot-' + i + ' .slot-scegli span');
+  if (scegli) scegli.textContent = files.length ? 'Aggiungi un altro file' : 'Scegli i file';
+  aggiornaProgresso();
+}
+
+async function caricaFile(i, lista) {
+  const msg = document.getElementById('slot-msg-' + i);
+  const input = document.querySelector('#slot-' + i + ' input[type=file]');
+  for (const f of lista) {
+    const tipo = tipoDi(f);
+    if (!tipo || !Object.values(TIPI).includes(tipo)) {
+      msg.innerHTML = '<span class="bad">' + esc(f.name) + ': tipo di file non accettato. '
+        + 'Vanno bene PDF, foto (anche HEIC), scansioni, Word, Excel, testo e ZIP.</span>';
+      continue;
+    }
+    if (f.size > LIMITE) {
+      msg.innerHTML = '<span class="bad">' + esc(f.name) + ' pesa ' + peso(f.size)
+        + ': il limite è 50 MB. Mandalo sul gruppo WhatsApp.</span>';
+      continue;
+    }
+    msg.innerHTML = '<span class="attesa">Carico ' + esc(f.name) + '...</span>';
+    if (input) input.disabled = true;
+    try {
+      const nomePulito = f.name.replace(/[^\w.\- ()]/g, '_');
+      const path = clientId + '/Testamento/' + Date.now() + '_' + nomePulito;
+      const r = await fetch(SB + '/storage/v1/object/' + BUCKET + '/' + path, {
+        method: 'POST',
+        headers: { apikey: AK, Authorization: 'Bearer ' + tok(), 'Content-Type': tipo, 'x-upsert': 'true' },
+        body: f,
+      });
+      if (!r.ok) {
+        let det = 'errore ' + r.status;
+        try { const e = await r.json(); det = e.message || e.error || det; } catch (x) {}
+        throw new Error(det);
+      }
+      // la riga in client_files fa comparire il file anche nell'area documenti
+      await fetch(SB + '/rest/v1/client_files', {
+        method: 'POST',
+        headers: Object.assign({}, H(), { Prefer: 'return=minimal' }),
+        body: JSON.stringify({
+          client_id: clientId, storage_path: path, display_name: f.name, original_name: f.name,
+          file_size: f.size, mime_type: tipo, folder: '/Testamento',
+          uploaded_by: (sb.getCurrentUser && sb.getCurrentUser()) ? sb.getCurrentUser().id : null,
+        }),
+      }).catch(() => {});
+      (ALG[i] = ALG[i] || []).push({ nome: f.name, path: path, dim: f.size, tipo: tipo });
+      msg.innerHTML = '';
+      ridisegnaSlot(i);
+      salvaRitardato();
+    } catch (e) {
+      msg.innerHTML = '<span class="bad">' + esc(f.name) + ' non caricato: '
+        + (scaduta(e) ? 'la sessione è scaduta, <a href="login.html" style="color:inherit">rientra</a> e riprova.'
+                      : esc(String(e.message || e))) + '</span>';
+    } finally {
+      if (input) { input.disabled = false; input.value = ''; }
+    }
+  }
+}
+
+function togliFile(i, j) {
+  const f = (ALG[i] || [])[j];
+  if (!f) return;
+  if (!confirm('Togliere "' + f.nome + '" dall\'elenco?')) return;
+  ALG[i].splice(j, 1);
+  if (!ALG[i].length) delete ALG[i];
+  ridisegnaSlot(i);
+  salvaRitardato();
+  // il file resta nell'area documenti: toglierlo da qui significa solo che
+  // non fa piu' parte di questa voce dell'Allegato A.
+}
+
+document.addEventListener('change', e => {
+  const i = e.target.dataset && e.target.dataset.slot;
+  if (i != null && e.target.files && e.target.files.length) caricaFile(i, [...e.target.files]);
+});
+document.addEventListener('click', e => {
+  const d = e.target.dataset && e.target.dataset.togli;
+  if (d) { const [i, j] = d.split(':'); togliFile(i, Number(j)); }
+});
+
+const totaleAllegati = () => Object.values(ALG).reduce((n, v) => n + v.length, 0);
 
 // ============================================================
 // Lettura e scrittura dei valori
@@ -392,7 +549,6 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => {
   if (e.target.dataset.k) { leggi(e.target); salvaRitardato(); aggiornaProgresso(); }
-  if (e.target.dataset.doc != null) { CHK[e.target.dataset.doc] = e.target.checked; salvaRitardato(); }
 });
 document.addEventListener('click', e => {
   const b = e.target.closest('button');
@@ -413,7 +569,7 @@ document.addEventListener('click', e => {
 // rete cade a meta' compilazione.
 let timer = null, salvando = false;
 function salvaRitardato() {
-  try { localStorage.setItem(LS, JSON.stringify({ D, RIP, CHK })); } catch (e) {}
+  try { localStorage.setItem(LS, JSON.stringify({ D, RIP, CHK, ALG })); } catch (e) {}
   clearTimeout(timer);
   timer = setTimeout(salvaBozza, 1200);
 }
@@ -423,7 +579,7 @@ async function salvaBozza() {
   salvando = true;
   try {
     await sb.db.update('will_onboardings', 'id=eq.' + rowId,
-      { payload: { D, RIP, CHK }, mirror: mirror });
+      { payload: { D, RIP, CHK, ALG }, mirror: mirror });
     segnala('Salvato ' + new Date().toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' }));
   } catch (e) {
     segnala(scaduta(e) ? 'Sessione scaduta: rientra per salvare' : 'Non salvato, riprovo');
@@ -454,8 +610,11 @@ function mancanti() {
 
 function aggiornaProgresso() {
   const tutti = SEZIONI.flatMap(s => s.campi || []).filter(c => c.t !== 'chk');
-  const pieni = tutti.filter(c => String(D[c.k] || '').trim()).length;
-  const pct = tutti.length ? Math.round(pieni / tutti.length * 100) : 0;
+  const voci = SEZIONI.flatMap(s => s.chk || []);          // le voci dell'Allegato A
+  const pieni = tutti.filter(c => String(D[c.k] || '').trim()).length
+              + voci.filter((t, i) => (ALG[i] || []).length).length;
+  const quanti = tutti.length + voci.length;
+  const pct = quanti ? Math.round(pieni / quanti * 100) : 0;
   const b = document.getElementById('prog');
   if (b) b.style.width = pct + '%';
 }
@@ -477,7 +636,11 @@ function riepilogo() {
         if (dentro.length) righe.push('  ' + s.rip.etichetta + ' ' + (i + 1), ...dentro);
       });
     } else if (s.chk) {
-      s.chk.forEach((t, i) => righe.push('  [' + (CHK[i] ? 'x' : ' ') + '] ' + t.replace(/&mdash;/g, '—')));
+      s.chk.forEach((t, i) => {
+        const files = ALG[i] || [];
+        righe.push('  [' + (files.length || CHK[i] ? 'x' : ' ') + '] ' + t.replace(/&mdash;/g, '—'));
+        files.forEach(f => righe.push('        · ' + f.nome + ' (' + peso(f.dim) + ')'));
+      });
     } else {
       s.campi.forEach(c => {
         const v = D[c.k];
@@ -506,11 +669,11 @@ async function invia() {
   const testo = riepilogo();
   try {
     await sb.db.update('will_onboardings', 'id=eq.' + rowId, {
-      status: 'submitted', payload: { D, RIP, CHK }, scheda_text: testo,
+      status: 'submitted', payload: { D, RIP, CHK, ALG }, scheda_text: testo,
       mirror: mirror, inviato_il: new Date().toISOString(),
     });
   } catch (e) {
-    btn.disabled = false; btn.textContent = 'Invia i dati a PB TAX';
+    btn.disabled = false; btn.textContent = 'Invia modulo e documenti';
     box.innerHTML = '<div class="help bad"><b>Invio non riuscito.</b> '
       + (scaduta(e) ? 'La tua sessione è scaduta: <a href="login.html" style="color:inherit">rientra</a> e riprova, quello che hai compilato è salvo.'
                     : esc(String(e.message || e)) + '<br>Quello che hai compilato è salvo: riprova fra poco.') + '</div>';
@@ -542,9 +705,13 @@ async function invia() {
     emailOk = !!(await res.json().catch(() => ({}))).ok;
   } catch (e) { emailOk = false; }
 
-  blocca('<b>Dati inviati.</b> PB TAX li ha ricevuti e li passa al Wills Draftsman. Da ora la raccolta è '
-    + 'bloccata: se devi correggere qualcosa, scrivi allo studio e la riaprono per te.'
-    + (emailOk ? '' : '<br><br>I dati sono registrati, ma l\'email di avviso allo studio non è partita: '
+  const n = totaleAllegati();
+  blocca('<b>Modulo completato.</b> Il modulo e ' + (n === 1 ? 'il documento che hai allegato è stato inviato'
+      : n ? 'i ' + n + ' documenti che hai allegato sono stati inviati' : 'i tuoi dati sono stati inviati')
+    + ' allo studio di Tax International a Dubai.'
+    + '<br><br>Da ora la raccolta è bloccata: se devi correggere qualcosa o aggiungere un documento, '
+    + 'scrivi allo studio e la riaprono per te.'
+    + (emailOk ? '' : '<br><br>Tutto è registrato, ma l\'email di avviso allo studio non è partita: '
       + 'segnalalo sul gruppo WhatsApp dedicato.'));
 }
 
@@ -606,14 +773,14 @@ async function avvio() {
 
   rowId = w.id; statoRiga = w.status; mirror = !!w.mirror;
   const p = w.payload || {};
-  D = p.D || {}; RIP = p.RIP || {}; CHK = p.CHK || {};
+  D = p.D || {}; RIP = p.RIP || {}; CHK = p.CHK || {}; ALG = p.ALG || {};
 
   // Se il database è vuoto ma il browser ha una bozza più ricca, si riprende
   // quella: capita se la rete è caduta durante la compilazione.
   if (!Object.keys(D).length) {
     try {
       const loc = JSON.parse(localStorage.getItem(LS) || 'null');
-      if (loc && loc.D && Object.keys(loc.D).length) { D = loc.D; RIP = loc.RIP || {}; CHK = loc.CHK || {}; }
+      if (loc && loc.D && Object.keys(loc.D).length) { D = loc.D; RIP = loc.RIP || {}; CHK = loc.CHK || {}; ALG = loc.ALG || ALG; }
     } catch (e) {}
   }
 
