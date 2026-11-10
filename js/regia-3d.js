@@ -129,38 +129,57 @@ export function creaScena(contenitore, opzioni = {}) {
   riempimento.position.set(-8, 6, -6);
   scena.add(riempimento);
 
-  /** 0 = alba, 0.5 = mezzogiorno, 1 = sera. Calcolato sull'ora di Dubai. */
+  /**
+   * La luce segue l'ora di Dubai, ma l'ufficio resta sempre leggibile.
+   *
+   * La prima versione abbassava tutto la sera: alle due di notte la stanza
+   * diventava una poltiglia grigia in cui non si distingueva un agente da
+   * una pianta. Un ufficio di sera non e' buio, e' illuminato dall'interno.
+   * Quindi di sera cala la luce che viene da fuori e salgono le lampade,
+   * con un bianco caldo: cambia l'atmosfera, non la leggibilita'.
+   */
   function aggiornaLuce() {
-    const oraDubai = Number(new Intl.DateTimeFormat('it-IT', {
-      timeZone: 'Asia/Dubai', hour: 'numeric', hour12: false,
-    }).format(new Date()));
-    const minuti = Number(new Intl.DateTimeFormat('it-IT', {
-      timeZone: 'Asia/Dubai', minute: 'numeric',
-    }).format(new Date()));
-    const ora = oraDubai + minuti / 60;
+    const fmt = new Intl.DateTimeFormat('it-IT', {
+      timeZone: 'Asia/Dubai', hour: 'numeric', minute: 'numeric', hour12: false,
+    });
+    const parti = Object.fromEntries(fmt.formatToParts(new Date())
+      .filter(x => x.type === 'hour' || x.type === 'minute')
+      .map(x => [x.type, Number(x.value)]));
+    const ora = (parti.hour % 24) + (parti.minute || 0) / 60;
 
-    // Giorno fra le 6 e le 19: il sole gira e si abbassa.
-    const giorno = Math.min(1, Math.max(0, (ora - 5.5) / 13.5));
-    const altezza = Math.sin(Math.PI * giorno);
-    const sera = ora >= 18 || ora < 6.5;
+    // quanto e' "giorno": 0 di notte piena, 1 a mezzogiorno
+    const giorno = Math.max(0, Math.min(1,
+      ora < 5.5 || ora > 19.5 ? 0 : Math.sin(Math.PI * (ora - 5.5) / 14)));
+    const sera = giorno < 0.18;
 
+    // Il sole gira e si abbassa, ma non si spegne del tutto: resta una
+    // luce direzionale tenue che tiene le ombre e il volume.
     sole.position.set(
-      Math.cos(Math.PI * giorno) * 10,
-      2 + altezza * 12,
-      5 - altezza * 2,
+      Math.cos(Math.PI * Math.max(0.08, giorno)) * 10,
+      3 + giorno * 11,
+      5 - giorno * 2,
     );
-    sole.intensity = sera ? 0.45 : 0.9 + altezza * 0.8;
-    sole.color.setHex(sera ? 0xffd9a8 : (giorno < 0.25 || giorno > 0.8 ? 0xffe2bb : 0xfff6e8));
+    sole.intensity = 0.42 + giorno * 1.05;
+    sole.color.setHex(sera ? 0xffd9b0 : (giorno < 0.35 ? 0xffe8c8 : 0xfff6e8));
 
-    ambiente.intensity = sera ? 0.55 : 0.8 + altezza * 0.3;
-    ambiente.color.setHex(sera ? 0xdfe4f0 : 0xffffff);
-    ambiente.groundColor.setHex(sera ? 0xbdbac4 : 0xd8d2c4);
+    // L'ambiente non scende mai sotto una soglia: e' quello che tiene
+    // leggibili i volti e i colori delle maglie.
+    ambiente.intensity = 0.82 + giorno * 0.25;
+    ambiente.color.setHex(sera ? 0xfff3e2 : 0xffffff);
+    ambiente.groundColor.setHex(sera ? 0xd8cfc0 : 0xd8d2c4);
 
-    const sfondo = sera ? 0xe8e6ee : 0xf7f6f2;
+    riempimento.intensity = sera ? 0.18 : 0.35;
+    riempimento.color.setHex(sera ? 0xffe0bb : 0xdce6ff);
+
+    // Lo sfondo di sera e' caldo e appena piu' scuro, non grigio freddo.
+    const sfondo = sera ? 0xf0e9df : 0xf7f6f2;
     renderer.setClearColor(sfondo, 1);
     scena.fog.color.setHex(sfondo);
-    return { sera, ora };
+    renderer.toneMappingExposure = sera ? 1.12 : 1.05;
+
+    return { sera, ora, giorno };
   }
+
   let condizioniLuce = aggiornaLuce();
 
   // ── Materiali condivisi ─────────────────────────────────
@@ -1118,7 +1137,9 @@ export function creaScena(contenitore, opzioni = {}) {
 
     // La luce di Dubai si ricalcola ogni mezzo minuto, non ogni fotogramma.
     if (t - ultimaLuce > 30) { condizioniLuce = aggiornaLuce(); ultimaLuce = t; }
-    const accese = condizioniLuce.sera ? 0.9 : 0;
+    // Le lampade salgono man mano che cala la luce da fuori: alle sei di
+    // sera sono gia' accese a meta', a mezzanotte al massimo.
+    const accese = 1.25 * (1 - Math.min(1, condizioniLuce.giorno / 0.45));
     for (const l of luciLampada) l.intensity += (accese - l.intensity) * dt * 2;
 
     if (!movimentoRidotto) {
@@ -1291,9 +1312,18 @@ export function creaScena(contenitore, opzioni = {}) {
     }
   }
 
+  /** Avvicina o allontana di un passo, dentro i limiti dell'orbita. */
+  function zoom(passo) {
+    orbita.raggio = THREE.MathUtils.clamp(
+      orbita.raggio * (passo > 0 ? 0.78 : 1.28),
+      LIMITI.raggioMin, LIMITI.raggioMax);
+    piazzaCamera();
+  }
+
   return {
     disponiAgenti, aggiornaStato, aggiornaCollaborazioni, aggiornaFumetti,
-    pulsaCervello, inquadra, torna, filtraZona, distruggi,
+    pulsaCervello, inquadra, torna, filtraZona, distruggi, zoom,
+    ridimensiona,
     inquadraAgente: (id) => {
       const a = avatarPerAgente.get(id);
       if (a) inquadra(new THREE.Vector3(a.base.x, 1.0, a.base.z), 13);

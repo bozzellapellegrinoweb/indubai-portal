@@ -11,6 +11,27 @@
   <link rel="manifest" href="/manifest-admin.json">
   <meta name="theme-color" content="#14161a">
   <style>
+    /* ── I livelli ───────────────────────────────────────────
+       Il portale ha i suoi z-index sparsi (modale 200, barre 300,
+       toast 999) e il pannello della Regia stava a 600: il modale
+       "Aggiungi la nota" si apriva SOTTO il pannello, e sembrava una
+       finestra dietro l'altra. Qui la scala sta in un posto solo e la
+       Regia ci si attiene. Tutto cio' che e' sopra il pannello va
+       dichiarato qui, non inventato nel punto in cui serve. */
+    :root {
+      --liv-scena:    1;    /* la tela 3D */
+      --liv-fumetti:  3;    /* i fumetti sopra le teste */
+      --liv-controlli:6;    /* zoom, schermo intero, orologio */
+      --liv-velo:   1000;   /* il velo che spegne la pagina dietro */
+      --liv-pannello:1001;  /* il pannello laterale */
+      --liv-modale: 1100;   /* le finestre, sempre sopra il pannello */
+      --liv-toast:  1200;   /* gli avvisi, sempre in cima a tutto */
+    }
+    /* La Regia alza il modale e i toast del portale sopra il proprio
+       pannello: senza, finiscono dietro. */
+    .modal-overlay   { z-index: var(--liv-modale) !important; }
+    .toast-container { z-index: var(--liv-toast)  !important; }
+
     /* ── La Sala ─────────────────────────────────────────── */
     .rg-saluto { font-size:22px; font-weight:800; letter-spacing:-.3px; }
     .rg-stato  { font-size:13.5px; color:var(--text-muted); margin-top:3px; line-height:1.5; }
@@ -26,6 +47,10 @@
     .rg-scheda[aria-selected="true"] { background:var(--surface); color:var(--text);
                  box-shadow:0 1px 3px rgba(20,22,26,.08); }
     .rg-spazio { flex:1 1 auto; }
+    .rg-barra-vista { border-bottom:0; padding-top:0; padding-bottom:10px;
+                      margin-bottom:10px; }
+    .rg-barra-et { font-size:10.5px; font-weight:800; text-transform:uppercase;
+                   letter-spacing:.06em; color:var(--text-muted); }
 
     .rg-filtro { display:flex; gap:4px; flex-wrap:wrap; }
     .rg-zona { border:1.5px solid var(--border); background:var(--surface); font:inherit;
@@ -37,7 +62,7 @@
     /* ── Scena ───────────────────────────────────────────── */
     .rg-palco { position:relative; border:1.5px solid var(--border); border-radius:var(--radius);
                 overflow:hidden; background:linear-gradient(170deg,#fbfaf7,#f2efe8);
-                height:clamp(360px, 56vh, 620px); }
+                height:clamp(320px, 48vh, 560px); }
     .rg-palco.nascosto { display:none; }
     .rg-scena { position:absolute; inset:0; }
     /* vignettatura leggera: il post-processing sobrio, in CSS */
@@ -46,14 +71,14 @@
 
     .rg-fatica { position:absolute; inset:0; display:grid; place-items:center;
                  font-size:13px; color:var(--text-muted); gap:10px; text-align:center; padding:20px;
-                 background:rgba(247,246,242,.92); z-index:5; }
+                 background:rgba(247,246,242,.92); z-index:var(--liv-controlli); }
     /* L'attributo hidden mette display:none dal foglio del browser, ma la
        regola di classe qui sopra e' piu' specifica e lo annullava: il
        riquadro restava steso sopra tutta la scena, vuoto e invisibile, e
        si mangiava i click sul 3D. Trovato guardando lo screenshot. */
     .rg-fatica[hidden] { display:none; }
 
-    .regia-fumetti { position:absolute; inset:0; pointer-events:none; z-index:3; }
+    .regia-fumetti { position:absolute; inset:0; pointer-events:none; z-index:var(--liv-fumetti); }
     .regia-fumetto { position:absolute; top:0; left:0; pointer-events:auto;
       background:var(--surface); border:1.5px solid var(--border); border-radius:11px;
       padding:7px 10px 8px; box-shadow:0 6px 18px rgba(20,22,26,.13);
@@ -72,11 +97,24 @@
                  cursor:pointer; }
     .regia-fumetto.urgente .rf-azione { background:var(--danger); }
 
-    .rg-camera { position:absolute; right:10px; bottom:10px; z-index:4; display:flex; gap:6px; }
-    .rg-camera button { border:1.5px solid var(--border); background:rgba(255,255,255,.93);
-      border-radius:9px; width:32px; height:32px; font:inherit; font-size:15px; cursor:pointer;
-      color:var(--text); display:grid; place-items:center; }
-    .rg-ora { position:absolute; left:12px; top:12px; z-index:4; font-size:11px; font-weight:700;
+    
+    
+    .rg-comandi { position:absolute; right:10px; bottom:10px; z-index:var(--liv-controlli);
+                  display:flex; flex-direction:column; gap:5px;
+                  background:rgba(255,255,255,.82); border:1.5px solid var(--border);
+                  border-radius:11px; padding:5px; backdrop-filter:blur(6px); }
+    .rg-comandi button { border:0; background:transparent; border-radius:7px;
+      width:32px; height:32px; font:inherit; font-size:16px; line-height:1; cursor:pointer;
+      color:var(--text); display:grid; place-items:center; transition:background .12s; }
+    .rg-comandi button:hover { background:var(--surface2); }
+    .rg-comandi button:focus-visible { outline:2px solid var(--primary); outline-offset:1px; }
+
+    /* Schermo intero: la scena prende tutta la finestra, i comandi
+       restano dove sono e il fumetto resta leggibile. */
+    .rg-palco:fullscreen { height:100%; border-radius:0; border:0; }
+    .rg-palco:fullscreen .rg-comandi { right:18px; bottom:18px; }
+
+    .rg-ora { position:absolute; left:12px; top:12px; z-index:var(--liv-controlli); font-size:11px; font-weight:700;
       color:var(--text-muted); background:rgba(255,255,255,.86); border-radius:8px;
       padding:4px 9px; border:1px solid var(--border); }
 
@@ -95,7 +133,7 @@
     .rg-posto-azioni { display:flex; gap:7px; margin-top:auto; }
 
     /* ── Tocca a te ──────────────────────────────────────── */
-    .rg-tocca { margin-top:14px; border:1.5px solid var(--border); border-radius:13px;
+    .rg-tocca { margin-bottom:14px; border:1.5px solid var(--border); border-radius:13px;
                 background:var(--surface); padding:11px 13px; }
     .rg-tocca-testa { font-size:11px; font-weight:800; text-transform:uppercase;
                       letter-spacing:.06em; color:var(--text-muted); margin-bottom:9px; }
@@ -105,13 +143,18 @@
                   display:flex; flex-direction:column; gap:5px; }
     .rg-tessera.urgente { border-color:var(--danger); background:var(--danger-bg); }
     .rg-tessera.cervello { border-color:var(--accent-dark); background:var(--success-bg); }
+    /* Il colore deve dire sempre la stessa cosa: su una scheda rossa il
+       pulsante non puo' essere verde. Rosso = qualcuno e' fermo e aspetta
+       te, verde = c'e' qualcosa di buono da guardare. */
+    .rg-tessera.urgente .btn-accent { background:var(--danger); border-color:var(--danger); }
+    .rg-tessera.urgente .btn-accent:hover { background:#b91c1c; }
     .rg-tessera-titolo { font-size:13px; font-weight:800; line-height:1.25; }
     .rg-tessera-testo  { font-size:12px; color:var(--text-muted); line-height:1.4; }
     .rg-vuoto-tocca { font-size:12.5px; color:var(--text-muted); }
 
     /* ── Pannello laterale ───────────────────────────────── */
     .rg-pannello { position:fixed; top:0; right:0; bottom:0; width:min(480px,100vw);
-      background:var(--surface); border-left:1.5px solid var(--border); z-index:600;
+      background:var(--surface); border-left:1.5px solid var(--border); z-index:var(--liv-pannello);
       transform:translateX(102%); transition:transform .22s ease; display:flex;
       flex-direction:column; box-shadow:var(--shadow-lg); }
     .rg-pannello.aperto { transform:none; }
@@ -123,9 +166,20 @@
     .rg-pan-piede  { padding:12px 16px; border-top:1.5px solid var(--border);
       display:flex; gap:8px; align-items:flex-end; }
     .rg-pan-piede textarea { flex:1; resize:none; min-height:40px; max-height:140px; }
-    .rg-velo { position:fixed; inset:0; background:rgba(20,22,26,.3); z-index:590; opacity:0;
+    .rg-velo { position:fixed; inset:0; background:rgba(20,22,26,.34); z-index:var(--liv-velo); opacity:0;
       pointer-events:none; transition:opacity .2s; }
+    /* Quando qualcosa e' disattivato dietro, si vede: niente sembra
+       cliccabile se non lo e'. */
+    [inert] { filter:saturate(.75); }
     .rg-velo.aperto { opacity:1; pointer-events:auto; }
+
+    /* Il riquadro che si apre dentro il pannello al posto di una finestra. */
+    .rg-riquadro { border:1.5px solid var(--primary); border-radius:12px;
+      background:var(--surface2); padding:12px 13px; margin-bottom:14px; }
+    .rg-riquadro-testa { font-size:12.5px; font-weight:800; margin-bottom:8px; }
+    .rg-riquadro-dove { font-size:11.5px; color:var(--text-muted); margin-bottom:7px; }
+    .rg-riquadro textarea, .rg-riquadro input, .rg-riquadro select { width:100%; }
+    .rg-riquadro-azioni { display:flex; gap:7px; margin-top:9px; flex-wrap:wrap; }
 
     .rg-sez { font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.06em;
               color:var(--text-muted); margin:16px 0 7px; }
@@ -268,11 +322,13 @@
       <div class="topbar-actions">
         <button class="btn btn-ghost btn-sm" id="rg-btn-cervello">Cervello</button>
         <button class="btn btn-ghost btn-sm" id="rg-btn-reference">Reference</button>
-        <button class="btn btn-accent" id="rg-btn-nuovo">Nuovo lavoro</button>
       </div>
     </div>
 
     <div class="page-content">
+      <!-- Due file, non una sola lunga: in alto dove sei, in basso cosa
+           guardi. Prima erano nove comandi in fila senza gerarchia e non si
+           capiva quali cambiassero pagina e quali cambiassero vista. -->
       <div class="rg-barra">
         <div class="rg-schede" role="tablist" aria-label="Sezioni della Regia">
           <button class="rg-scheda" role="tab" aria-selected="true"  data-vista="sala">Sala</button>
@@ -280,27 +336,40 @@
           <button class="rg-scheda" role="tab" aria-selected="false" data-vista="risultati">Risultati</button>
         </div>
         <div class="rg-spazio"></div>
+        <button class="btn btn-accent btn-sm" id="rg-btn-nuovo">Nuovo lavoro</button>
+      </div>
+
+      <div class="rg-barra rg-barra-vista" id="rg-barra-vista">
+        <span class="rg-barra-et">Zona</span>
         <div class="rg-filtro" id="rg-filtro" role="group" aria-label="Filtro per zona"></div>
+        <div class="rg-spazio"></div>
         <button class="rg-zona" id="rg-btn-vista" aria-pressed="false">Vista a lista</button>
       </div>
 
       <!-- ── SALA ─────────────────────────────────────── -->
       <section id="rg-vista-sala">
+        <!-- Prima stava sotto la scena, cioe' sotto la piega: la cosa che
+             chiede un'azione era l'ultima che si vedeva. La stanza e' lo
+             stato, questa e' la lista delle cose da fare. -->
+        <div class="rg-tocca">
+          <div class="rg-tocca-testa">Tocca a te</div>
+          <div class="rg-tocca-righe" id="rg-tocca"></div>
+        </div>
+
         <div class="rg-palco" id="rg-palco">
           <div class="rg-scena" id="rg-scena"></div>
           <div class="rg-ora" id="rg-ora"></div>
-          <div class="rg-camera">
-            <button type="button" id="rg-cam-reset" title="Torna alla vista d'insieme" aria-label="Torna alla vista d'insieme">⌂</button>
+          <div class="rg-comandi" id="rg-comandi" role="group" aria-label="Comandi della scena">
+            <button type="button" id="rg-zoom-piu"  title="Avvicina"      aria-label="Avvicina">+</button>
+            <button type="button" id="rg-zoom-meno" title="Allontana"     aria-label="Allontana">&minus;</button>
+            <button type="button" id="rg-cam-reset" title="Vista d'insieme" aria-label="Torna alla vista d'insieme">&#8962;</button>
+            <button type="button" id="rg-schermo"   title="Schermo intero"  aria-label="Schermo intero">&#9974;</button>
           </div>
           <div class="rg-fatica" id="rg-fatica" hidden></div>
         </div>
 
         <div class="rg-lista nascosto" id="rg-lista" aria-live="polite"></div>
 
-        <div class="rg-tocca">
-          <div class="rg-tocca-testa">Tocca a te</div>
-          <div class="rg-tocca-righe" id="rg-tocca"></div>
-        </div>
       </section>
 
       <!-- ── CALENDARIO ───────────────────────────────── -->

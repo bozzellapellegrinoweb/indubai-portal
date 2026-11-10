@@ -175,6 +175,7 @@
 
   function cambiaVistaSala(quale) {
     const lista = quale === 'lista';
+    $('rg-comandi').style.display = lista ? 'none' : '';
     ui.usaTridi = !lista;
     $('rg-palco').classList.toggle('nascosto', lista);
     $('rg-lista').classList.toggle('nascosto', !lista);
@@ -304,17 +305,91 @@
     $('rg-pannello').classList.add('aperto');
     $('rg-velo').classList.add('aperto');
     $('rg-pannello').setAttribute('aria-modal', 'true');
+    sfondoInerte(true);
+    // Il primo elemento su cui si puo' agire prende il fuoco, cosi' chi usa
+    // la tastiera non resta indietro nella pagina.
+    setTimeout(() => {
+      ($('rg-pan-corpo').querySelector('button, a, input, textarea, select')
+        || $('rg-pan-chiudi'))?.focus();
+    }, 220);
+  }
+
+  /**
+   * Mentre il pannello e' aperto, la pagina dietro non e' solo coperta: e'
+   * disattivata davvero.
+   *
+   * Senza questo i comandi dietro restavano a fuoco e sembravano cliccabili.
+   * Premendo "Nuovo lavoro" si colpiva il velo, che chiudeva il pannello: il
+   * tasto sembrava rotto. Con inert il browser li toglie dal giro, dal
+   * puntatore, dalla tastiera e dagli screen reader.
+   */
+  function sfondoInerte(attivo) {
+    for (const sel of ['.app-layout', '.sidebar', '.ios-bottom-nav', '.ios-admin-bar']) {
+      for (const el of document.querySelectorAll(sel)) {
+        if (attivo) el.setAttribute('inert', '');
+        else el.removeAttribute('inert');
+      }
+    }
   }
 
   function chiudiPannello() {
+    chiudiRiquadro();
     $('rg-pannello').classList.remove('aperto');
     $('rg-velo').classList.remove('aperto');
     $('rg-pannello').setAttribute('aria-modal', 'false');
+    sfondoInerte(false);
     ui.pannello = null;
     ui.tridi?.torna();
   }
 
   function corpoPannello() { return $('rg-pan-corpo'); }
+
+  /**
+   * Un riquadro che si apre DENTRO il pannello, non come finestra sopra.
+   *
+   * Prima "Aggiungi la nota" e "Carica un file" aprivano un modale: il
+   * modale del portale sta a z-index 200 e il pannello a 600, quindi la
+   * finestra finiva dietro al pannello e sembrava che si accavallassero.
+   * Si poteva alzare il numero, ma il problema vero era un altro: una
+   * finestra sopra un pannello gia' aperto e' una cosa di troppo. Qui il
+   * form compare dove stai guardando, spinge il contenuto in giu' e si
+   * chiude da solo quando hai finito.
+   */
+  function riquadroNelPannello(titolo, html, azioni) {
+    chiudiRiquadro();
+    const box = document.createElement('div');
+    box.className = 'rg-riquadro';
+    box.id = 'rg-riquadro';
+    box.innerHTML = `<div class="rg-riquadro-testa">${esc(titolo)}</div>${html}
+      <div class="rg-riquadro-azioni"></div>`;
+    const piede = box.querySelector('.rg-riquadro-azioni');
+    for (const a of azioni || []) {
+      const b = document.createElement('button');
+      b.className = 'btn btn-sm ' + (a.primaria ? 'btn-accent' : 'btn-ghost');
+      b.type = 'button';
+      b.textContent = a.etichetta;
+      b.addEventListener('click', async () => {
+        b.disabled = true;
+        try { await a.azione(); }
+        catch (e) { window.ui.showToast(pulisciErrore(e.message), 'error'); }
+        finally { b.disabled = false; }
+      });
+      piede.appendChild(b);
+    }
+    const annulla = document.createElement('button');
+    annulla.className = 'btn btn-ghost btn-sm';
+    annulla.type = 'button';
+    annulla.textContent = 'Annulla';
+    annulla.addEventListener('click', chiudiRiquadro);
+    piede.appendChild(annulla);
+
+    corpoPannello().prepend(box);
+    corpoPannello().scrollTop = 0;
+    box.querySelector('textarea, input, select')?.focus();
+    return box;
+  }
+
+  function chiudiRiquadro() { $('rg-riquadro')?.remove(); }
 
   // ── Pannello di un agente: la chat ────────────────────────
   async function apriAgente(agentId) {
@@ -521,17 +596,13 @@
     $('rg-rimanda')?.addEventListener('click', () => {
       // Un contenuto fermato dal Revisore non si approva scavalcandolo: si
       // rimanda indietro con l'indicazione di cosa cambiare.
-      modale('Rimanda indietro', `
-        <div class="form-group">
-          <label class="form-label" for="rg-rim-testo">Cosa deve cambiare</label>
-          <textarea class="form-input" id="rg-rim-testo" rows="4"
-            placeholder="Riprendi le segnalazioni del Revisore e aggiungi cosa vuoi tu."></textarea>
-        </div>`,
+      riquadroNelPannello('Rimanda indietro', `
+        <textarea class="form-input" id="rg-rim-testo" rows="3"
+          placeholder="Riprendi le segnalazioni del Revisore e aggiungi cosa vuoi tu."></textarea>`,
         [{ etichetta: 'Rimanda', primaria: true, azione: async () => {
             const t = $('rg-rim-testo').value.trim();
             if (!t) return window.ui.showToast('Scrivi cosa deve cambiare.', 'error');
             await D.rimandaIndietro(c.id, t);
-            chiudiModale();
             window.ui.showToast('Rimandato indietro.', 'success');
             apriContenuto(c.id);
           } }]);
@@ -712,34 +783,23 @@
     // La nota si aggancia a dove sta guardando: il secondo del video se c'e'
     // un video aperto, la slide scelta se e' un carosello.
     let ancora = { tipo: 'generale' };
-    let dove = 'su tutto il contenuto';
     if (video && video.currentTime > 0) {
       ancora = { tipo: 'video', secondo: Number(video.currentTime.toFixed(2)) };
-      dove = descriviAncora(ancora);
     } else if (slides.length) {
       ancora = { tipo: 'slide', slide: Math.min(ui.slideScelta, slides.length - 1) };
-      dove = descriviAncora(ancora);
     }
 
-    modale('Aggiungi la nota', `
-      <div class="form-group">
-        <label class="form-label">Dove</label>
-        <div class="rg-voce">${esc(dove)}</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="rg-nota-testo">Cosa va cambiato</label>
-        <textarea class="form-input" id="rg-nota-testo" rows="4"
-          placeholder="Scrivilo come lo diresti a voce. Diventa anche una nota nel Cervello, così non si ripete."></textarea>
-      </div>`,
+    riquadroNelPannello('Aggiungi la nota', `
+      <div class="rg-riquadro-dove">${esc(descriviAncora(ancora))}</div>
+      <textarea class="form-input" id="rg-nota-testo" rows="3"
+        placeholder="Scrivilo come lo diresti a voce. Diventa anche una nota nel Cervello, così non si ripete."></textarea>`,
       [{ etichetta: 'Salva la nota', primaria: true, azione: async () => {
           const t = $('rg-nota-testo').value.trim();
           if (!t) return window.ui.showToast('Scrivi cosa va cambiato.', 'error');
           await D.aggiungiNota(c.id, t, ancora);
-          chiudiModale();
           window.ui.showToast('Nota salvata. Finisce anche nel Cervello.', 'success');
           apriContenuto(c.id);
         } }]);
-    setTimeout(() => $('rg-nota-testo')?.focus(), 60);
   }
 
   function pesoLeggibile(b) {
@@ -758,33 +818,22 @@
    * li': non resta sul computer del manager.
    */
   function caricaSuContenuto(c) {
-    modale('Carica un file', `
-      <div class="form-group">
-        <label class="form-label" for="rg-up-file">Video, immagine o documento</label>
-        <input class="form-input" id="rg-up-file" type="file">
-        <div class="rg-voce-fonte">
-          I file grandi si caricano a pezzi: se la rete cade, riprende da dove era.
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="rg-up-ruolo">Che cos'è</label>
-        <select class="form-input" id="rg-up-ruolo">
-          <option value="originale">Il materiale di partenza</option>
-          <option value="derivato">Una versione già pronta da pubblicare</option>
-          <option value="reference">Un esempio a cui ispirarsi</option>
-        </select>
-      </div>
+    riquadroNelPannello('Carica un file', `
+      <input class="form-input" id="rg-up-file" type="file">
+      <select class="form-input" id="rg-up-ruolo" style="margin-top:8px">
+        <option value="originale">Il materiale di partenza</option>
+        <option value="derivato">Una versione già pronta da pubblicare</option>
+        <option value="reference">Un esempio a cui ispirarsi</option>
+      </select>
       <div class="rg-avanzamento" id="rg-up-barra" hidden><i></i></div>
-      <div id="rg-up-stato" class="rg-voce-fonte"></div>`,
+      <div id="rg-up-stato" class="rg-riquadro-dove" style="margin-top:6px">
+        I file grandi si caricano a pezzi: se la rete cade, riprende da dove era.
+      </div>`,
       [{ etichetta: 'Carica', primaria: true, azione: async () => {
           const f = $('rg-up-file').files?.[0];
           if (!f) return window.ui.showToast('Scegli un file.', 'error');
-          const barra = $('rg-up-barra');
-          const stato = $('rg-up-stato');
+          const barra = $('rg-up-barra'), stato = $('rg-up-stato');
           barra.hidden = false;
-          stato.textContent = f.size > 6 * 1024 * 1024
-            ? `${pesoLeggibile(f.size)}: lo mando a pezzi, puoi lasciare la pagina aperta.`
-            : `${pesoLeggibile(f.size)}: un attimo.`;
           await D.caricaFile(f, {
             contentId: c.id, ruolo: $('rg-up-ruolo').value,
             onProgress: (p) => {
@@ -792,7 +841,6 @@
               stato.textContent = `${(p * 100).toFixed(0)}% di ${pesoLeggibile(f.size)}`;
             },
           });
-          chiudiModale();
           window.ui.showToast('Caricato. Gli agenti ce l\'hanno.', 'success');
           apriContenuto(c.id);
         } }]);
@@ -1130,6 +1178,9 @@
   // Modali
   // ══════════════════════════════════════════════════════════
   function modale(titolo, corpo, azioni) {
+    // Mai una finestra sopra il pannello: se e' aperto, prima si chiude.
+    // E' la regola che toglie alla radice l'accavallamento.
+    if ($('rg-pannello').classList.contains('aperto')) chiudiPannello();
     $('rg-modale-titolo').textContent = titolo;
     $('rg-modale-corpo').innerHTML = corpo;
     $('rg-modale-azioni').innerHTML = '';
@@ -1151,6 +1202,8 @@
     annulla.addEventListener('click', chiudiModale);
     $('rg-modale-azioni').appendChild(annulla);
     $('rg-modale').style.display = 'flex';
+    setTimeout(() => $('rg-modale-corpo')
+      .querySelector('textarea, input, select')?.focus(), 60);
   }
   function chiudiModale() { $('rg-modale').style.display = 'none'; }
 
@@ -1220,6 +1273,23 @@
         } }]);
   }
 
+  /**
+   * Schermo intero sulla scena.
+   * Va chiesto da un gesto dell'utente, e il browser puo' rifiutare: in quel
+   * caso si dice perche' invece di non fare niente.
+   */
+  async function schermoIntero() {
+    const palco = $('rg-palco');
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else if (palco.requestFullscreen) await palco.requestFullscreen();
+      else if (palco.webkitRequestFullscreen) palco.webkitRequestFullscreen();
+      else window.ui.showToast('Questo browser non apre lo schermo intero.', 'error');
+    } catch (e) {
+      window.ui.showToast('Schermo intero non disponibile qui.', 'error');
+    }
+  }
+
   // ══════════════════════════════════════════════════════════
   // Viste
   // ══════════════════════════════════════════════════════════
@@ -1231,8 +1301,9 @@
     $('rg-vista-sala').hidden = quale !== 'sala';
     $('rg-vista-calendario').hidden = quale !== 'calendario';
     $('rg-vista-risultati').hidden = quale !== 'risultati';
-    $('rg-filtro').style.display = quale === 'sala' ? '' : 'none';
-    $('rg-btn-vista').style.display = quale === 'sala' ? '' : 'none';
+    // La barra della vista riguarda solo la Sala: nelle altre sparisce
+    // tutta, invece di restare mezza vuota.
+    $('rg-barra-vista').hidden = quale !== 'sala';
     if (quale === 'calendario') disegnaCalendario();
     if (quale === 'risultati') disegnaRisultati();
     if (quale === 'sala' && ui.usaTridi) accendiTridi();
@@ -1342,6 +1413,15 @@
     $('rg-velo').addEventListener('click', chiudiPannello);
     $('rg-modale-chiudi').addEventListener('click', chiudiModale);
     $('rg-cam-reset').addEventListener('click', () => ui.tridi?.torna());
+    $('rg-zoom-piu').addEventListener('click', () => ui.tridi?.zoom(1));
+    $('rg-zoom-meno').addEventListener('click', () => ui.tridi?.zoom(-1));
+    $('rg-schermo').addEventListener('click', schermoIntero);
+
+    // La rotellina sulla scena non deve far scorrere la pagina: la scena se
+    // la prende per lo zoom. Fuori dalla scena la pagina scorre normale.
+    $('rg-palco').addEventListener('wheel', (ev) => {
+      if (ui.tridi) ev.preventDefault();
+    }, { passive: false });
     $('rg-btn-vista').addEventListener('click', () =>
       cambiaVistaSala(ui.usaTridi ? 'lista' : '3d'));
     for (const b of document.querySelectorAll('[data-vista]')) {
@@ -1350,10 +1430,23 @@
     $('rg-pan-testo').addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); $('rg-pan-invia').click(); }
     });
+    // Esc chiude un livello alla volta, dal piu' alto: prima la finestra,
+    // poi il riquadro dentro il pannello, poi il pannello, poi lo schermo
+    // intero. Senza quest'ordine si chiudeva tutto insieme.
     document.addEventListener('keydown', (ev) => {
       if (ev.key !== 'Escape') return;
-      if ($('rg-modale').style.display !== 'none') chiudiModale();
-      else if ($('rg-pannello').classList.contains('aperto')) chiudiPannello();
+      if ($('rg-modale').style.display !== 'none') return chiudiModale();
+      if ($('rg-riquadro')) return chiudiRiquadro();
+      if ($('rg-pannello').classList.contains('aperto')) return chiudiPannello();
+      if (document.fullscreenElement) document.exitFullscreen?.();
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      const dentro = !!document.fullscreenElement;
+      $('rg-schermo').setAttribute('aria-pressed', String(dentro));
+      $('rg-schermo').title = dentro ? 'Esci da schermo intero' : 'Schermo intero';
+      // La tela deve rimisurarsi: il contenitore ha cambiato dimensione.
+      setTimeout(() => ui.tridi?.ridimensiona?.(), 60);
     });
     // Il pannello si aggancia anche al tasto Guarda dentro un fumetto 3D.
     avvia();
