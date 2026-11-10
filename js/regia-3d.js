@@ -362,113 +362,288 @@ export function creaScena(contenitore, opzioni = {}) {
     if (riga && righe < maxRighe) g.fillText(riga, x, y + righe * passo);
   }
 
+  // ── Le persone ──────────────────────────────────────────
+  // Costruite da primitive, ma non "una capsula e una palla": la prima
+  // versione non aveva collo, spalle ne' faccia, e le braccia partivano
+  // dritte di lato come stecchi. Da vicino sembravano orsetti gommosi.
+  //
+  // Quello che le rende leggibili e' poco e preciso: un collo, le spalle
+  // piu' larghe dei fianchi, gli occhi, e soprattutto le mani appoggiate
+  // sulla scrivania invece che per aria.
+
+  const PELLI   = [0xf2cdab, 0xe8bb94, 0xd9a57c, 0xc08a5e, 0x8d5a3b, 0x6b4229];
+  const CAPELLI = [0x2b2622, 0x4a342a, 0x6b4a2f, 0x9a7340, 0xc9a227, 0xb0b0b0, 0x1c1a19];
+  const ACCONCIATURE = ['corti', 'caschetto', 'chignon', 'rasati'];
+
+  /** Numero stabile ricavato dallo slug: lo stesso agente e' sempre uguale. */
+  function impronta(testo) {
+    let h = 0;
+    for (let i = 0; i < testo.length; i++) h = (h * 31 + testo.charCodeAt(i)) >>> 0;
+    return h;
+  }
+
+  /**
+   * L'aspetto si prende dalla colonna avatar di smm_agents, se c'e'.
+   * Altrimenti si ricava dallo slug: cosi' otto agenti non sono otto cloni,
+   * e chi ne aggiunge uno dall'interfaccia non deve scegliere niente.
+   */
+  function aspettoDi(agente) {
+    const a = agente.avatar || {};
+    const h = impronta(agente.slug || agente.nome || 'x');
+    return {
+      pelle:   a.pelle   ?? PELLI[h % PELLI.length],
+      capelli: a.capelli ?? CAPELLI[(h >> 3) % CAPELLI.length],
+      taglio:  a.taglio  ?? ACCONCIATURE[(h >> 6) % ACCONCIATURE.length],
+      // la camicia e' il colore dell'agente, schiarito: resta riconoscibile
+      // ma non fa a pugni con l'anello di stato
+      maglia:  a.maglia  ?? null,
+    };
+  }
+
   /** Un avatar costruito da primitive. */
   function creaAvatar(agente, x, z, rotazione) {
     const gruppo = new THREE.Group();
     gruppo.position.set(x, 0, z);
     gruppo.rotation.y = rotazione;
 
-    const colore = new THREE.Color(agente.colore || '#47ee74');
-    const matVestito = new THREE.MeshLambertMaterial({ color: colore });
-    const matPelle = new THREE.MeshLambertMaterial({ color: 0xf0c9a8 });
+    const look = aspettoDi(agente);
+    const base = new THREE.Color(agente.colore || '#47ee74');
+    const maglia = look.maglia
+      ? new THREE.Color(look.maglia)
+      : base.clone().lerp(new THREE.Color(0xffffff), 0.18);
+    const pantaloni = base.clone().lerp(new THREE.Color(0x14161a), 0.62);
+
+    const matMaglia    = new THREE.MeshLambertMaterial({ color: maglia });
+    const matPantaloni = new THREE.MeshLambertMaterial({ color: pantaloni });
+    const matPelle     = new THREE.MeshLambertMaterial({ color: look.pelle });
+    const matCapelli   = new THREE.MeshLambertMaterial({ color: look.capelli });
+    const matOcchi     = new THREE.MeshBasicMaterial({ color: 0x1b1a18 });
 
     // ── scrivania ──
-    const piano = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.07, 0.95), mat.scrivania);
-    piano.position.set(0, 0.73, 0);
+    const piano = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.06, 0.95), mat.scrivania);
+    piano.position.set(0, 0.76, 0);
     piano.castShadow = piano.receiveShadow = !movimentoRidotto;
     gruppo.add(piano);
-    for (const [gx, gz] of [[-0.85, -0.38], [0.85, -0.38], [-0.85, 0.38], [0.85, 0.38]]) {
-      const gamba = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.7, 7), mat.gambe);
-      gamba.position.set(gx, 0.36, gz);
+    // Un bordo piu' scuro sul davanti: senza, il piano sparisce contro il
+    // pavimento quando la luce e' piatta.
+    const bordo = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.035, 0.03), mat.gambe);
+    bordo.position.set(0, 0.742, 0.474);
+    gruppo.add(bordo);
+    for (const [gx, gz] of [[-0.88, -0.4], [0.88, -0.4], [-0.88, 0.4], [0.88, 0.4]]) {
+      const gamba = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.73, 7), mat.gambe);
+      gamba.position.set(gx, 0.37, gz);
       gruppo.add(gamba);
     }
-    gruppo.add(ombraContatto(0, 0, 2.6));
+    gruppo.add(ombraContatto(0, 0.1, 2.7));
 
-    // ── monitor con la miniatura del lavoro ──
-    const schermo = creaSchermo();
-    schermo.mesh.position.set(0, 1.12, -0.26);
-    schermo.mesh.rotation.x = -0.1;
+    // ── monitor ──
+    // Misure tarate guardando gli screenshot: con lo schermo piu' grande e
+    // piu' vicino alla sedia copriva la persona e sembrava un televisore
+    // appoggiato sul tavolo.
+    // Il monitor sta di lato, non davanti al petto. Al centro copriva il
+    // busto della persona e la scena diventava una fila di televisori con
+    // una testa che spunta. Spostato e ruotato verso di lei, si vedono tutti
+    // e due: la persona e quello che sta facendo.
+    const latoMonitor = (impronta(agente.slug || agente.nome || 'x') % 2) ? 1 : -1;
+    const mx = 0.47 * latoMonitor;
+    const schermo = creaSchermo(0.62, 0.36);
+    schermo.mesh.position.set(mx, 1.03, -0.14);
+    schermo.mesh.rotation.set(-0.06, -0.38 * latoMonitor, 0);
     gruppo.add(schermo.mesh);
-    const scocca = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.57, 0.04), mat.monitor);
-    scocca.position.set(0, 1.12, -0.29);
-    scocca.rotation.x = -0.1;
+    const scocca = new THREE.Mesh(new THREE.BoxGeometry(0.67, 0.41, 0.028), mat.monitor);
+    scocca.position.set(mx + 0.01 * latoMonitor, 1.03, -0.155);
+    scocca.rotation.set(-0.06, -0.38 * latoMonitor, 0);
     scocca.castShadow = !movimentoRidotto;
     gruppo.add(scocca);
-    const piedeMonitor = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.17, 0.04), mat.monitor);
-    piedeMonitor.position.set(0, 0.84, -0.28);
-    gruppo.add(piedeMonitor);
+    const collo = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.13, 0.025), mat.monitor);
+    collo.position.set(mx, 0.855, -0.16);
+    gruppo.add(collo);
+    const piede = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.014, 0.13), mat.monitor);
+    piede.position.set(mx, 0.787, -0.16);
+    piede.rotation.y = -0.38 * latoMonitor;
+    gruppo.add(piede);
+
+    // tastiera: da' alle mani un posto dove stare
+    const tastiera = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.015, 0.16), mat.gambe);
+    tastiera.position.set(0, 0.8, 0.12);
+    tastiera.rotation.x = -0.03;
+    gruppo.add(tastiera);
 
     // ── sedia ──
-    const sedile = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.09, 0.5), mat.sedia);
-    sedile.position.set(0, 0.46, 0.86);
-    gruppo.add(sedile);
-    const spalliera = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.56, 0.08), mat.sedia);
-    spalliera.position.set(0, 0.76, 1.09);
-    gruppo.add(spalliera);
-    const perno = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.42, 8), mat.gambe);
-    perno.position.set(0, 0.21, 0.86);
-    gruppo.add(perno);
+    const sedia = new THREE.Group();
+    sedia.position.set(0, 0, 0.84);
+    const sedile = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.08, 0.44), mat.sedia);
+    sedile.position.y = 0.44;
+    sedile.castShadow = !movimentoRidotto;
+    sedia.add(sedile);
+    const spalliera = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.5, 0.07), mat.sedia);
+    spalliera.position.set(0, 0.72, 0.21);
+    spalliera.rotation.x = 0.1;
+    sedia.add(spalliera);
+    for (const lato of [-1, 1]) {
+      const bracciolo = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.3), mat.sedia);
+      bracciolo.position.set(0.25 * lato, 0.6, 0.02);
+      sedia.add(bracciolo);
+      const sostegno = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.14, 0.04), mat.sedia);
+      sostegno.position.set(0.25 * lato, 0.52, 0.12);
+      sedia.add(sostegno);
+    }
+    const perno = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 8), mat.gambe);
+    perno.position.y = 0.25;
+    sedia.add(perno);
+    // base a cinque razze
+    for (let i = 0; i < 5; i++) {
+      const razza = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.025, 0.26), mat.gambe);
+      razza.position.set(Math.sin(i * 1.2566) * 0.11, 0.1, Math.cos(i * 1.2566) * 0.11);
+      razza.rotation.y = i * 1.2566;
+      sedia.add(razza);
+    }
+    gruppo.add(sedia);
 
-    // ── persona ──
+    // ── la persona ──
+    // Seduta: il bacino sta sul sedile, il busto si inclina appena in avanti.
     const persona = new THREE.Group();
-    persona.position.set(0, 0, 0.78);
+    persona.position.set(0, 0, 0.8);
 
-    const busto = new THREE.Mesh(new THREE.CapsuleGeometry(0.19, 0.3, 4, 12), matVestito);
-    busto.position.y = 0.78;
+    const bacino = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.14, 0.26), matPantaloni);
+    bacino.position.y = 0.54;
+    persona.add(bacino);
+
+    // Il busto e' un tronco di cono a otto lati: spalle piu' larghe dei
+    // fianchi, che e' cio' che fa leggere una figura come una persona.
+    const busto = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.155, 0.4, 8), matMaglia);
+    busto.position.set(0, 0.79, -0.015);
+    busto.rotation.x = -0.1;
     busto.castShadow = !movimentoRidotto;
     persona.add(busto);
 
-    const testa = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 16), matPelle);
-    testa.position.y = 1.12;
-    testa.castShadow = !movimentoRidotto;
+    // spalle: due sfere schiacciate, cosi' le braccia non spuntano dal nulla
+    for (const lato of [-1, 1]) {
+      const spalla = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), matMaglia);
+      spalla.position.set(0.185 * lato, 0.95, -0.03);
+      spalla.scale.set(1, 0.85, 1);
+      persona.add(spalla);
+    }
+
+    const colloPersona = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.058, 0.09, 10), matPelle);
+    colloPersona.position.set(0, 1.0, -0.035);
+    persona.add(colloPersona);
+
+    // ── testa ──
+    const testa = new THREE.Group();
+    testa.position.set(0, 1.07, -0.045);
+
+    const cranio = new THREE.Mesh(new THREE.SphereGeometry(0.135, 20, 16), matPelle);
+    cranio.scale.set(1, 1.08, 0.96);
+    cranio.castShadow = !movimentoRidotto;
+    testa.add(cranio);
+
+    // La persona guarda verso -Z: gli occhi stanno di la'.
+    for (const lato of [-1, 1]) {
+      const occhio = new THREE.Mesh(new THREE.SphereGeometry(0.023, 10, 8), matOcchi);
+      occhio.position.set(0.054 * lato, 0.02, -0.116);
+      testa.add(occhio);
+      // sopracciglio: un trattino sottile, ma cambia tutto
+      const sopracciglio = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.011, 0.012), matCapelli);
+      sopracciglio.position.set(0.052 * lato, 0.062, -0.116);
+      testa.add(sopracciglio);
+    }
+    const naso = new THREE.Mesh(new THREE.SphereGeometry(0.019, 8, 6), matPelle);
+    naso.position.set(0, -0.012, -0.129);
+    naso.scale.set(0.8, 1, 1.1);
+    testa.add(naso);
+
+    // ── capelli ──
+    if (look.taglio !== 'rasati') {
+      const calotta = new THREE.Mesh(
+        new THREE.SphereGeometry(0.142, 20, 14, 0, Math.PI * 2, 0,
+          look.taglio === 'caschetto' ? Math.PI * 0.72 : Math.PI * 0.55),
+        matCapelli);
+      calotta.position.y = 0.012;
+      calotta.scale.set(1, 1.04, 0.99);
+      testa.add(calotta);
+      if (look.taglio === 'chignon') {
+        const nodo = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 10), matCapelli);
+        nodo.position.set(0, 0.06, 0.125);
+        testa.add(nodo);
+      }
+    } else {
+      // Rasato, non pelato: una calotta bassissima nel colore dei capelli.
+      // Con una sfera semitrasparente sembrava un casco grigio.
+      const rasatura = new THREE.Mesh(
+        new THREE.SphereGeometry(0.139, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.46),
+        matCapelli);
+      rasatura.position.y = 0.01;
+      rasatura.scale.set(1, 0.92, 1);
+      testa.add(rasatura);
+    }
     persona.add(testa);
 
-    const capelli = new THREE.Mesh(
-      new THREE.SphereGeometry(0.166, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.58),
-      new THREE.MeshLambertMaterial({ color: 0x3b3a36 }));
-    capelli.position.y = 1.13;
-    persona.add(capelli);
-
-    // Le braccia hanno il perno sulla spalla, cosi' ruotano come braccia.
+    /**
+     * Un braccio in due pezzi, con il gomito.
+     * La mano finisce sulla tastiera, non per aria: e' la differenza fra
+     * "una persona che lavora" e "un pupazzo con due stecchi".
+     */
     function braccio(lato) {
-      const perno = new THREE.Group();
-      perno.position.set(0.21 * lato, 0.96, 0);
-      const arto = new THREE.Mesh(new THREE.CapsuleGeometry(0.058, 0.3, 3, 8), matVestito);
-      arto.position.y = -0.19;
-      perno.add(arto);
-      const mano = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), matPelle);
-      mano.position.y = -0.37;
-      perno.add(mano);
-      perno.rotation.x = -0.9;   // avambracci verso la tastiera
-      persona.add(perno);
-      return perno;
+      const spalla = new THREE.Group();
+      spalla.position.set(0.185 * lato, 0.94, -0.03);
+
+      const omero = new THREE.Mesh(new THREE.CapsuleGeometry(0.047, 0.19, 3, 8), matMaglia);
+      omero.position.y = -0.12;
+      spalla.add(omero);
+
+      const gomito = new THREE.Group();
+      gomito.position.y = -0.24;
+      spalla.add(gomito);
+
+      const avambraccio = new THREE.Mesh(new THREE.CapsuleGeometry(0.042, 0.17, 3, 8), matPelle);
+      avambraccio.position.y = -0.11;
+      gomito.add(avambraccio);
+
+      const mano = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8), matPelle);
+      mano.position.y = -0.215;
+      mano.scale.set(1, 0.72, 1.25);
+      gomito.add(mano);
+
+      // riposo: braccio in giu' e avambraccio in avanti verso la tastiera
+      spalla.rotation.set(-0.42, 0, 0.12 * lato);
+      gomito.rotation.x = -0.95;
+      persona.add(spalla);
+      return { spalla, gomito };
     }
     const braccioSx = braccio(-1), braccioDx = braccio(1);
 
-    // Gambe: si vedono poco da seduti, ma senza si nota.
+    // ── gambe: cosce in avanti sotto la scrivania, polpacci in giu' ──
     for (const lato of [-1, 1]) {
-      const coscia = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.24, 3, 8), matVestito);
-      coscia.position.set(0.1 * lato, 0.5, -0.16);
+      const coscia = new THREE.Mesh(new THREE.CapsuleGeometry(0.063, 0.24, 3, 8), matPantaloni);
+      coscia.position.set(0.085 * lato, 0.5, -0.17);
       coscia.rotation.x = Math.PI / 2;
       persona.add(coscia);
+      const polpaccio = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.22, 3, 8), matPantaloni);
+      polpaccio.position.set(0.085 * lato, 0.28, -0.3);
+      polpaccio.rotation.x = 0.12;
+      persona.add(polpaccio);
+      const scarpa = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.055, 0.19), new THREE.MeshLambertMaterial({ color: 0x3a3832 }));
+      scarpa.position.set(0.085 * lato, 0.14, -0.36);
+      persona.add(scarpa);
     }
 
     gruppo.add(persona);
 
-    // ── anello di stato ai piedi della scrivania ──
+    // ── anello di stato ──
     const anello = new THREE.Mesh(
-      new THREE.RingGeometry(0.42, 0.56, 28),
+      new THREE.RingGeometry(0.44, 0.58, 28),
       new THREE.MeshBasicMaterial({ color: POSA.libero.colore, transparent: true, opacity: 0.85 }));
     anello.rotation.x = -Math.PI / 2;
-    anello.position.set(0, 0.02, 0.78);
+    anello.position.set(0, 0.02, 0.84);
     gruppo.add(anello);
 
-    // Il bersaglio del click e' una scatola invisibile che copre tutta la
-    // postazione: cliccare la testa o la scrivania deve fare la stessa cosa.
+    // Il bersaglio del click copre tutta la postazione: cliccare la testa o
+    // la scrivania deve fare la stessa cosa.
     const bersaglioClick = new THREE.Mesh(
-      new THREE.BoxGeometry(2.1, 1.6, 2.3),
+      new THREE.BoxGeometry(2.1, 1.8, 2.4),
       new THREE.MeshBasicMaterial({ visible: false }));
-    bersaglioClick.position.set(0, 0.8, 0.3);
+    bersaglioClick.position.set(0, 0.85, 0.3);
     bersaglioClick.userData.agentId = agente.id;
     gruppo.add(bersaglioClick);
     cliccabili.push(bersaglioClick);
@@ -476,7 +651,8 @@ export function creaScena(contenitore, opzioni = {}) {
     gruppoAgenti.add(gruppo);
 
     return {
-      agente, gruppo, persona, testa, busto, braccioSx, braccioDx, anello, schermo,
+      agente, gruppo, persona, testa, busto, sedia,
+      braccioSx, braccioDx, anello, schermo,
       base: { x, z }, posa: 'libero', fase: Math.random() * Math.PI * 2,
     };
   }
@@ -512,8 +688,22 @@ export function creaScena(contenitore, opzioni = {}) {
           x = centro.x + Math.cos(angolo) * 1.7;
           z = centro.z + Math.sin(angolo) * 1.7;
         }
-        // Guarda verso il centro della stanza.
-        const rotazione = Math.atan2(-x, -z) + Math.PI;
+        // L'orientamento conta piu' di quanto sembri. Nella prima versione
+        // ogni agente guardava il centro della stanza: sembrava sensato, ma
+        // dalla vista d'insieme si vedevano nuche e retro dei monitor,
+        // cioe' il peggio dei due mondi, visto che lo schermo mostra la
+        // miniatura vera del lavoro in corso.
+        //
+        // Lo schermo sta davanti alla persona, quindi si vede solo da
+        // dietro le sue spalle: e' anche l'inquadratura del riferimento,
+        // la scrivania vista da dietro con il monitor acceso davanti.
+        // Quindi le persone danno le spalle alla posizione di riposo della
+        // camera, con una variazione per agente perche' non sembrino una
+        // fila di comparse. Chi vuole vedere le facce gira intorno:
+        // l'orbita arriva dall'altra parte.
+        const h = impronta(agente.slug || agente.nome || String(i));
+        const variazione = ((h % 100) / 100 - 0.5) * 0.7;   // circa ±20 gradi
+        const rotazione = orbitaRiposo.theta + variazione;
         avatarPerAgente.set(agente.id, creaAvatar(agente, x, z, rotazione));
       });
     }
@@ -935,40 +1125,62 @@ export function creaScena(contenitore, opzioni = {}) {
       // ── animazioni degli avatar ──
       for (const a of avatarPerAgente.values()) {
         a.fase += dt;
-        const respiro = Math.sin(a.fase * 1.6) * 0.012;
-        a.busto.position.y = 0.78 + respiro;
-        a.testa.position.y = 1.12 + respiro;
+        const respiro = Math.sin(a.fase * 1.6) * 0.011;
+        a.busto.position.y = 0.79 + respiro;
+        a.testa.position.y = 1.07 + respiro;
+
+        const sx = a.braccioSx, dx = a.braccioDx;
 
         if (a.posa === 'lavora') {
-          // digita: le mani si alternano sulla tastiera
-          const v = a.fase * 11;
-          a.braccioSx.rotation.x = -0.9 + Math.sin(v) * 0.11;
-          a.braccioDx.rotation.x = -0.9 + Math.sin(v + 1.9) * 0.11;
-          a.testa.rotation.x = 0.16;
+          // digita: le mani si alternano sulla tastiera, e la testa e'
+          // appena china sullo schermo
+          const v = a.fase * 10;
+          sx.gomito.rotation.x = -0.95 + Math.sin(v) * 0.07;
+          dx.gomito.rotation.x = -0.95 + Math.sin(v + 2.1) * 0.07;
+          sx.spalla.rotation.x = -0.42; dx.spalla.rotation.x = -0.42;
+          sx.spalla.rotation.z =  0.12; dx.spalla.rotation.z = -0.12;
+          a.testa.rotation.x = 0.17;
+          a.testa.rotation.y *= 0.88;
           a.persona.rotation.z = 0;
+
         } else if (a.posa === 'mano_alzata') {
-          // alza la mano e la tiene su, con un'oscillazione appena percepibile
-          a.braccioDx.rotation.x = -2.55 + Math.sin(a.fase * 2.4) * 0.13;
-          a.braccioSx.rotation.x = -0.75;
-          a.testa.rotation.x = -0.09;
-          a.persona.rotation.z = Math.sin(a.fase * 1.2) * 0.02;
+          // alza il braccio destro, lo tiene su e oscilla appena
+          dx.spalla.rotation.x = -2.5 + Math.sin(a.fase * 2.3) * 0.11;
+          dx.spalla.rotation.z = -0.3;
+          dx.gomito.rotation.x = -0.35;
+          sx.spalla.rotation.x = -0.42; sx.spalla.rotation.z = 0.12;
+          sx.gomito.rotation.x = -0.95;
+          a.testa.rotation.x = -0.1;
+          a.testa.rotation.y *= 0.88;
+          a.persona.rotation.z = Math.sin(a.fase * 1.1) * 0.018;
+
         } else if (a.posa === 'attende') {
-          // guarda lo schermo, immobile, un piede che si muove
-          a.braccioSx.rotation.x = -0.72;
-          a.braccioDx.rotation.x = -0.72 + Math.sin(a.fase * 2.8) * 0.05;
+          // ferma a guardare lo schermo, una mano che tamburella
+          sx.spalla.rotation.x = -0.4; sx.spalla.rotation.z = 0.12;
+          dx.spalla.rotation.x = -0.4; dx.spalla.rotation.z = -0.12;
+          sx.gomito.rotation.x = -0.9;
+          dx.gomito.rotation.x = -0.9 + Math.sin(a.fase * 3.4) * 0.05;
           a.testa.rotation.x = 0.1;
+          a.testa.rotation.y *= 0.88;
+          a.persona.rotation.z = 0;
+
         } else {
-          // in pausa: si allontana dalla scrivania e si guarda intorno
-          a.braccioSx.rotation.x = -0.25;
-          a.braccioDx.rotation.x = -0.25;
-          a.testa.rotation.y = Math.sin(a.fase * 0.5) * 0.4;
-          a.testa.rotation.x = 0;
-          a.persona.position.z = 0.78 + Math.sin(a.fase * 0.4) * 0.06;
+          // in pausa: si stacca dalla scrivania, braccia rilassate, si
+          // guarda intorno
+          sx.spalla.rotation.x = -0.12; sx.spalla.rotation.z =  0.2;
+          dx.spalla.rotation.x = -0.12; dx.spalla.rotation.z = -0.2;
+          sx.gomito.rotation.x = -0.3;
+          dx.gomito.rotation.x = -0.3;
+          a.testa.rotation.x = -0.03;
+          a.testa.rotation.y = Math.sin(a.fase * 0.45) * 0.45;
+          a.persona.rotation.z = 0;
         }
-        if (a.posa !== 'libero') {
-          a.testa.rotation.y *= 0.9;
-          a.persona.position.z += (0.78 - a.persona.position.z) * dt * 3;
-        }
+
+        // Chi lavora sta vicino alla scrivania, chi e' in pausa si allontana
+        // un po' con tutta la sedia.
+        const zRiposo = a.posa === 'libero' ? 0.98 : 0.8;
+        a.persona.position.z += (zRiposo - a.persona.position.z) * dt * 2.4;
+        a.sedia.position.z += ((zRiposo + 0.04) - a.sedia.position.z) * dt * 2.4;
       }
 
       // ── il Cervello pulsa ──
