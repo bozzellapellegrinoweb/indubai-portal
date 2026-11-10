@@ -1,0 +1,639 @@
+#!/usr/bin/env node
+/**
+ * Test della Regia SMM — le parti in cui un errore si paga.
+ *
+ * Gira su un PostgreSQL vero, non su mock: le policy RLS e i trigger sono
+ * codice del database, e un mock non li esegue. Il banco di prova
+ * (tests/smm/00_harness.sql) ricostruisce il minimo del portale che la
+ * migrazione presuppone, poi si applicano le migrazioni vere e si prova.
+ *
+ *   node tests/smm.test.mjs
+ *
+ * Variabili d'ambiente:
+ *   PGHOST  socket o host (default: cerca una socket locale)
+ *   PGPORT  porta (default 5433)
+ *   PGUSER  utente (default postgres)
+ *
+ * Se non trova un PostgreSQL, il test lo dice e si ferma con esito 0: non
+ * fallisce il CI di chi non ha un database a portata di mano.
+ */
+
+import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const DB = 'smm_test_' + Math.random().toString(36).slice(2, 8);
+
+const PSQL = ['/usr/lib/postgresql/16/bin/psql', '/usr/bin/psql', 'psql']
+  .find(p => p === 'psql' || existsSync(p)) || 'psql';
+
+const HOST = process.env.PGHOST || '/var/lib/postgresql/smmsock';
+const PORT = process.env.PGPORT || '5433';
+const USER = process.env.PGUSER || 'postgres';
+
+function psql(db, args, input) {
+  return execFileSync(PSQL, ['-h', HOST, '-p', PORT, '-U', USER, '-d', db,
+                             '-v', 'ON_ERROR_STOP=1', '-q', ...args],
+    { input, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+}
+
+// ── Esecuzione di una query, righe come array di array ──────
+function q(sql) {
+  const out = psql(DB, ['-tA', '-F', '\u0001', '-c', sql]);
+  return out.trim() === '' ? [] : out.trim().split('\n').map(r => r.split('\u0001'));
+}
+function one(sql) { const r = q(sql); return r.length ? r[0][0] : null; }
+
+/** Esegue SQL che deve fallire, e restituisce il messaggio d'errore. */
+function mustFail(sql, attesa) {
+  let msg = null;
+  try { psql(DB, ['-c', sql]); }
+  catch (e) { msg = ((e.stderr || '') + (e.stdout || '')).trim(); }
+  if (msg === null) throw new Error(`doveva fallire e non e' fallito:\n  ${sql}`);
+  if (attesa && !msg.toLowerCase().includes(attesa.toLowerCase())) {
+    throw new Error(`e' fallito per il motivo sbagliato.\n  atteso: ${attesa}\n  avuto:  ${msg.split('\n')[0]}`);
+  }
+  return msg;
+}
+
+// ── Mini runner ─────────────────────────────────────────────
+let passati = 0, falliti = 0;
+const soloQuesto = process.argv[2];
+
+function test(nome, fn) {
+  if (soloQuesto && !nome.includes(soloQuesto)) return;
+  try { fn(); console.log(`  \x1b[32m✓\x1b[0m ${nome}`); passati++; }
+  catch (e) {
+    console.log(`  \x1b[31m✗\x1b[0m ${nome}`);
+    console.log(`      ${String(e.message).split('\n').join('\n      ')}`);
+    falliti++;
+  }
+}
+function gruppo(nome) { console.log(`\n\x1b[1m${nome}\x1b[0m`); }
+function eq(avuto, atteso, che = '') {
+  if (String(avuto) !== String(atteso)) {
+    throw new Error(`${che || 'valore'}: atteso ${JSON.stringify(atteso)}, avuto ${JSON.stringify(avuto)}`);
+  }
+}
+function vero(x, che) { if (!(x === true || x === 't' || x === 'true')) throw new Error(`${che}: atteso vero, avuto ${JSON.stringify(x)}`); }
+function falso(x, che) { if (x === true || x === 't' || x === 'true') throw new Error(`${che}: atteso falso, avuto ${JSON.stringify(x)}`); }
+
+// ── Preparazione ────────────────────────────────────────────
+console.log('Test della Regia SMM\n');
+
+try {
+  psql('postgres', ['-c', `create database ${DB}`]);
+} catch (e) {
+  console.log('Nessun PostgreSQL raggiungibile su ' + HOST + ':' + PORT + '.');
+  console.log('Il test ha bisogno di un database vero: le policy RLS e i trigger');
+  console.log('sono codice del database e un mock non li esegue.\n');
+  console.log('Per farlo partire in locale:');
+  console.log('  initdb -D /tmp/pg && pg_ctl -D /tmp/pg -o "-p 5433 -k /tmp" start\n');
+  process.exit(0);
+}
+
+const PULIZIA = () => { try { psql('postgres', ['-c', `drop database if exists ${DB}`]); } catch {} };
+process.on('exit', PULIZIA);
+
+try {
+  psql(DB, ['-f', join(ROOT, 'tests/smm/00_harness.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_ruolo_smm.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_regia.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_seed.sql')]);
+} catch (e) {
+  console.error('Le migrazioni non si applicano:\n' + (e.stderr || e.stdout || e.message));
+  process.exit(1);
+}
+
+// Utenti di prova. Gli id sono fissi per poterli citare nelle query.
+const ADMIN   = '11111111-1111-1111-1111-111111111111';
+const MANAGER = '22222222-2222-2222-2222-222222222222';
+const JUNIOR  = '33333333-3333-3333-3333-333333333333';
+
+psql(DB, ['-c', `
+  insert into profiles (id, full_name, role) values
+    ('${ADMIN}',   'Pellegrino', 'admin'),
+    ('${MANAGER}', 'Social Media Manager', 'smm'),
+    ('${JUNIOR}',  'Contabile Junior', 'junior');
+`]);
+
+const BRAND = one(`select id from smm_brands where slug = 'indubai'`);
+
+/** Query eseguita impersonando un utente, con RLS attiva. */
+function come(uid, sql) {
+  const out = psql(DB, ['-tA', '-F', '\u0001', '-c',
+    `set role authenticated; set local test.uid = '${uid}'; ${sql}`]);
+  return out.trim() === '' ? [] : out.trim().split('\n').map(r => r.split('\u0001'));
+}
+function comeUno(uid, sql) { const r = come(uid, sql); return r.length ? r[0][0] : null; }
+function comeFallisce(uid, sql, attesa) {
+  return mustFail(`set role authenticated; set local test.uid = '${uid}'; ${sql}`, attesa);
+}
+
+/** Crea un contenuto pronto per la revisione. Restituisce l'id. */
+function nuovoContenuto(opts = {}) {
+  const {
+    titolo = 'Corporate Tax: la soglia che tutti sbagliano',
+    caption = 'La Corporate Tax negli Emirati e al 9 per cento sopra 375.000 AED. Approfondisci su InDubai.it',
+    categoria = 'normativa', sensibile = false, stato = 'in_lavorazione',
+  } = opts;
+  return one(`
+    insert into smm_contents (brand_id, titolo, caption, categoria, sensibile, stato, created_by)
+    values ('${BRAND}', $$${titolo}$$, $$${caption}$$, '${categoria}', ${sensibile}, '${stato}', '${MANAGER}')
+    returning id`);
+}
+
+// ============================================================
+gruppo('Permessi: li fa rispettare il database, non il menu');
+
+test('il manager con ruolo smm vede la Regia', () => {
+  vero(comeUno(MANAGER, `select can_see_smm()`), 'can_see_smm per smm');
+});
+
+test("l'admin vede la Regia sempre, senza configurazione", () => {
+  vero(comeUno(ADMIN, `select can_see_smm()`), 'can_see_smm per admin');
+});
+
+test('un contabile junior non vede la Regia', () => {
+  falso(comeUno(JUNIOR, `select can_see_smm()`), 'can_see_smm per junior');
+});
+
+test('chi non vede la Regia non legge gli agenti, nemmeno via API', () => {
+  eq(comeUno(JUNIOR, `select count(*) from smm_agents`), '0', 'agenti letti da junior');
+  eq(comeUno(MANAGER, `select count(*) from smm_agents`), '8', 'agenti letti dal manager');
+});
+
+test('chi non vede la Regia non legge i contenuti', () => {
+  nuovoContenuto({ titolo: 'Contenuto riservato alla Regia' });
+  eq(comeUno(JUNIOR, `select count(*) from smm_contents`), '0', 'contenuti letti da junior');
+});
+
+test('chi non vede la Regia non scrive nemmeno', () => {
+  comeFallisce(JUNIOR,
+    `insert into smm_contents (brand_id, titolo) values ('${BRAND}', 'intruso')`,
+    'row-level security');
+});
+
+test('concedere la pagina dalla matrice da accesso al junior', () => {
+  psql(DB, ['-c', `insert into role_permissions (role, allowed_pages)
+                   values ('junior', array['index','regia'])
+                   on conflict (role) do update set allowed_pages = excluded.allowed_pages`]);
+  vero(comeUno(JUNIOR, `select can_see_smm()`), 'can_see_smm dopo la concessione');
+  eq(comeUno(JUNIOR, `select count(*) from smm_agents`), '8', 'agenti dopo la concessione');
+});
+
+test('togliere la pagina dalla matrice revoca l accesso', () => {
+  psql(DB, ['-c', `update role_permissions set allowed_pages = array['index']
+                   where role = 'junior'`]);
+  falso(comeUno(JUNIOR, `select can_see_smm()`), 'can_see_smm dopo la revoca');
+  eq(comeUno(JUNIOR, `select count(*) from smm_agents`), '0', 'agenti dopo la revoca');
+});
+
+test('una configurazione vuota vale "tutte le pagine", come in app.js', () => {
+  psql(DB, ['-c', `update role_permissions set allowed_pages = '{}' where role = 'junior'`]);
+  vero(comeUno(JUNIOR, `select can_see_smm()`), 'array vuoto = tutte le pagine');
+  psql(DB, ['-c', `delete from role_permissions where role = 'junior'`]);
+});
+
+test('il budget e l interruttore li cambia solo l admin', () => {
+  // Su UPDATE la RLS non solleva un errore: filtra le righe, e la modifica
+  // tocca zero righe. E' la stessa trappola raccontata in
+  // 20261016_permessi_utenti.sql, dove un admin cambiava il ruolo di
+  // qualcuno, riceveva 200 con zero righe toccate e il portale diceva
+  // "aggiornato". Quindi qui non si verifica l'errore: si verifica che non
+  // sia cambiato niente. Nell'interfaccia quei comandi li vede solo l'admin,
+  // e dopo un salvataggio si rilegge il valore invece di fidarsi.
+  const tocche = comeUno(MANAGER,
+    `with u as (update smm_settings set stop_tutto = true
+                 where brand_id = '${BRAND}' returning 1)
+     select count(*) from u`);
+  eq(tocche, '0', 'righe toccate dal manager');
+  falso(one(`select stop_tutto from smm_settings where brand_id = '${BRAND}'`),
+        'interruttore dopo il tentativo del manager');
+
+  // l'admin si', e il manager lo legge
+  const tocche2 = comeUno(ADMIN,
+    `with u as (update smm_settings set budget_giorno_usd = 12
+                 where brand_id = '${BRAND}' returning 1)
+     select count(*) from u`);
+  eq(tocche2, '1', 'righe toccate dall admin');
+  eq(comeUno(MANAGER, `select budget_giorno_usd from smm_settings where brand_id = '${BRAND}'`),
+     '12.0000', 'budget letto dal manager');
+});
+
+test('un contenuto di un altro brand non si legge se non si vede la Regia', () => {
+  // La RLS filtra, non spiega: verificare "zero righe" e' l'unico modo
+  // onesto di provarlo su SELECT.
+  eq(comeUno(JUNIOR, `select count(*) from smm_settings`), '0', 'impostazioni lette da junior');
+});
+
+// ============================================================
+gruppo('Non si pubblica senza approvazione');
+
+test('senza il via libera del Revisore non si va in approvazione', () => {
+  const c = nuovoContenuto();
+  mustFail(`update smm_contents set stato = 'da_approvare' where id = '${c}'`,
+           'Revisore di conformit');
+});
+
+test('col via libera del Revisore si va in approvazione', () => {
+  const c = nuovoContenuto();
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true, revisore_at = now() where id = '${c}'`]);
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${c}'`]);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'da_approvare', 'stato');
+});
+
+test('non si pubblica un contenuto che il Revisore non ha passato', () => {
+  const c = nuovoContenuto();
+  mustFail(`update smm_contents set stato = 'programmato',
+              approvato_da = '${MANAGER}', approvato_at = now() where id = '${c}'`,
+           'che il Revisore non ha passato');
+});
+
+test('non si pubblica senza un approvazione umana registrata', () => {
+  const c = nuovoContenuto();
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  mustFail(`update smm_contents set stato = 'programmato' where id = '${c}'`,
+           'approvazione umana registrata');
+});
+
+test('con revisione e approvazione si programma', () => {
+  const c = nuovoContenuto();
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  psql(DB, ['-c', `update smm_contents
+                      set stato = 'programmato', approvato_da = '${MANAGER}',
+                          approvato_at = now(), slot_at = now() + interval '1 day'
+                    where id = '${c}'`]);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'programmato', 'stato');
+});
+
+test('lo stesso vale per "pubblicato", non solo per "programmato"', () => {
+  const c = nuovoContenuto();
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  mustFail(`update smm_contents set stato = 'pubblicato' where id = '${c}'`,
+           'approvazione umana registrata');
+});
+
+test('un agente non puo firmare l approvazione a nome del manager', () => {
+  const c = nuovoContenuto();
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  comeFallisce(MANAGER,
+    `update smm_contents set approvato_da = '${ADMIN}', approvato_at = now() where id = '${c}'`,
+    'firmata da chi la sta dando');
+});
+
+// ============================================================
+gruppo('Secondo livello di approvazione sulle categorie sensibili');
+
+test('spento, una categoria sensibile si pubblica con la sola firma del manager', () => {
+  const c = nuovoContenuto({ categoria: 'normativa' });
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  psql(DB, ['-c', `update smm_contents set stato = 'programmato',
+                     approvato_da = '${MANAGER}', approvato_at = now() where id = '${c}'`]);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'programmato', 'stato');
+});
+
+test('acceso, una categoria sensibile chiede anche l admin', () => {
+  psql(DB, ['-c', `update smm_settings set doppia_approvazione = true where brand_id = '${BRAND}'`]);
+  const c = nuovoContenuto({ categoria: 'normativa' });
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  mustFail(`update smm_contents set stato = 'programmato',
+              approvato_da = '${MANAGER}', approvato_at = now() where id = '${c}'`,
+           'seconda approvazione');
+});
+
+test('acceso, una categoria non sensibile passa comunque', () => {
+  const c = nuovoContenuto({ categoria: 'lifestyle' });
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  psql(DB, ['-c', `update smm_contents set stato = 'programmato',
+                     approvato_da = '${MANAGER}', approvato_at = now() where id = '${c}'`]);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'programmato', 'stato');
+});
+
+test('la seconda approvazione la da solo un admin', () => {
+  const c = nuovoContenuto({ categoria: 'normativa' });
+  comeFallisce(MANAGER,
+    `update smm_contents set approvato_admin_da = '${MANAGER}', approvato_admin_at = now()
+      where id = '${c}'`,
+    'solo un amministratore');
+});
+
+test('con le due firme la categoria sensibile si programma', () => {
+  const c = nuovoContenuto({ categoria: 'normativa' });
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  come(ADMIN, `update smm_contents set approvato_admin_da = '${ADMIN}',
+                 approvato_admin_at = now() where id = '${c}'`);
+  come(MANAGER, `update smm_contents set stato = 'programmato',
+                   approvato_da = '${MANAGER}', approvato_at = now() where id = '${c}'`);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'programmato', 'stato');
+  psql(DB, ['-c', `update smm_settings set doppia_approvazione = false where brand_id = '${BRAND}'`]);
+});
+
+// ============================================================
+gruppo('Il Revisore sulle parole vietate: due reti, non una');
+
+const VIETATI = [
+  ['avvocato nel testo',        'Parla con il nostro avvocato di fiducia'],
+  ['studio legale nel testo',   'Siamo uno studio legale a Dubai'],
+  ['studiolegale come hashtag', 'Contenuto pulito. #dubai #studiolegale'],
+  ['lawyer in inglese',         'Our lawyer will help you'],
+  ['law firm in inglese',       'A top law firm in the UAE'],
+  ['consulente legale',         'Il consulente legale ti assiste'],
+  ['avv. abbreviato',           'Scritto da Avv. Rossi'],
+  ['studio.legale con il punto','Contatta studio.legale Rossi'],
+];
+
+for (const [che, testo] of VIETATI) {
+  test(`la funzione riconosce: ${che}`, () => {
+    const n = one(`select cardinality(smm_termini_vietati($$${testo}$$))`);
+    if (Number(n) < 1) throw new Error(`non ha trovato niente in: ${testo}`);
+  });
+}
+
+test('non segnala falsi positivi su testo corretto', () => {
+  const ok = [
+    'Consulente fiscale e societario specializzato negli Emirati',
+    'Lo studio del commercialista apre alle nove',
+    'Strutturazione societaria e redazione di contratti commerciali',
+    'La legale rappresentante della societa ha firmato',
+  ];
+  for (const t of ok) {
+    const n = one(`select cardinality(smm_termini_vietati($$${t}$$))`);
+    eq(n, '0', `falso positivo su: ${t}`);
+  }
+});
+
+test('il via libera del Revisore non si registra se c e una parola vietata', () => {
+  const c = nuovoContenuto({ caption: 'Il nostro studio legale ti assiste a Dubai' });
+  mustFail(`update smm_contents set revisore_ok = true where id = '${c}'`,
+           'Termini vietati');
+});
+
+test('la parola vietata viene trovata anche dentro le slide', () => {
+  const c = nuovoContenuto();
+  psql(DB, ['-c', `update smm_contents set slides =
+    '[{"type":"standard","title":"Chi siamo","body":"Un avvocato al tuo fianco"}]'::jsonb
+    where id = '${c}'`]);
+  mustFail(`update smm_contents set revisore_ok = true where id = '${c}'`, 'Termini vietati');
+});
+
+test('la parola vietata viene trovata anche negli hashtag', () => {
+  const c = nuovoContenuto();
+  psql(DB, ['-c', `update smm_contents set hashtags = array['#dubai','#studiolegale']
+                   where id = '${c}'`]);
+  mustFail(`update smm_contents set revisore_ok = true where id = '${c}'`, 'Termini vietati');
+});
+
+test('un contenuto pulito ottiene il via libera', () => {
+  const c = nuovoContenuto();
+  psql(DB, ['-c', `update smm_contents set slides =
+    '[{"type":"standard","title":"La soglia","body":"Nove per cento sopra 375.000 AED"}]'::jsonb,
+      hashtags = array['#dubai','#fiscalita'] where id = '${c}'`]);
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  vero(one(`select revisore_ok from smm_contents where id = '${c}'`), 'revisore_ok');
+});
+
+test('in bozza una parola vietata non blocca la scrittura', () => {
+  // Durante il lavoro un testo puo' contenere qualsiasi cosa: il presidio
+  // scatta al via libera, non a ogni salvataggio.
+  const c = nuovoContenuto();
+  psql(DB, ['-c', `update smm_contents set caption = 'bozza con avvocato dentro' where id = '${c}'`]);
+  eq(one(`select caption like '%avvocato%' from smm_contents where id = '${c}'`), 't', 'bozza salvata');
+});
+
+// ============================================================
+gruppo('Il Cervello');
+
+test('il seed ha caricato le regole con le fonti', () => {
+  eq(one(`select count(*) from smm_brain where tipo = 'regola'`), '113', 'regole');
+  eq(one(`select count(*) from smm_brain where tipo = 'regola' and fonte is null`), '0',
+     'regole senza fonte');
+});
+
+test('le regole vincolanti sono marcate', () => {
+  const n = Number(one(`select count(*) from smm_brain where vincolante`));
+  if (n < 40) throw new Error(`troppe poche regole vincolanti: ${n}`);
+});
+
+test('la ricerca per rilevanza trova per argomento', () => {
+  const r = come(MANAGER,
+    `select codice from smm_cervello_cerca('${BRAND}', 'golden visa investimento minimo', array['regola'], 6)`);
+  const codici = r.map(x => x[0]);
+  if (!codici.some(c => c && c.startsWith('R-FACT-0'))) {
+    throw new Error('non ha trovato le regole sul Golden Visa: ' + codici.join(','));
+  }
+});
+
+test('le regole vincolanti arrivano anche se la ricerca non le cita', () => {
+  const r = come(MANAGER,
+    `select codice, vincolante from smm_cervello_cerca('${BRAND}', 'lifestyle costo della vita', array['regola'], 80)`);
+  if (!r.some(x => x[1] === 't')) {
+    throw new Error('nessuna regola vincolante nei risultati');
+  }
+});
+
+test('la ricerca trova anche per tag', () => {
+  const r = come(MANAGER,
+    `select codice from smm_cervello_cerca('${BRAND}', 'termini-vietati', array['regola'], 10)`);
+  if (!r.some(x => x[0] === 'R-QUAL-02')) {
+    throw new Error('il tag termini-vietati non ha portato R-QUAL-02');
+  }
+});
+
+test('la ricerca non esce dal brand', () => {
+  const altro = one(`insert into smm_brands (slug, nome) values ('keyprime','KeyPrime') returning id`);
+  psql(DB, ['-c', `insert into smm_settings (brand_id) values ('${altro}')`]);
+  psql(DB, ['-c', `insert into smm_brain (brand_id, tipo, codice, testo, fonte)
+                   values ('${altro}', 'regola', 'KP-01', 'Regola solo di KeyPrime', 'test')`]);
+  const r = come(MANAGER, `select codice from smm_cervello_cerca('${BRAND}', 'KeyPrime', null, 20)`);
+  if (r.some(x => x[0] === 'KP-01')) throw new Error('una regola di un altro brand e trapelata');
+});
+
+test('le voci non confermate non entrano nella ricerca', () => {
+  psql(DB, ['-c', `insert into smm_brain (brand_id, tipo, testo, fonte, confermata)
+                   values ('${BRAND}', 'nota', 'Nota in attesa di conferma sul tono', 'test', false)`]);
+  const r = come(MANAGER, `select testo from smm_cervello_cerca('${BRAND}', 'attesa di conferma tono', null, 20)`);
+  if (r.some(x => (x[0] || '').includes('in attesa di conferma'))) {
+    throw new Error('una nota non confermata e finita nei risultati');
+  }
+});
+
+// ============================================================
+gruppo('Una correzione del manager diventa una nota nel Cervello');
+
+test('la nota del manager crea una voce non confermata', () => {
+  const c = nuovoContenuto();
+  const prima = Number(one(`select count(*) from smm_brain where tipo = 'nota'`));
+  come(MANAGER, `insert into smm_notes (content_id, autore, testo, ancora)
+    values ('${c}', '${MANAGER}', 'Qui il tono e troppo commerciale, serve piu sobrieta',
+            '{"tipo":"slide","slide":2}'::jsonb)`);
+  const dopo = Number(one(`select count(*) from smm_brain where tipo = 'nota'`));
+  eq(dopo, prima + 1, 'note nel Cervello');
+  eq(one(`select confermata from smm_brain where tipo='nota'
+            order by created_at desc limit 1`), 'f', 'confermata');
+});
+
+test('la nota porta con se la fonte e il legame con la revisione', () => {
+  const r = q(`select fonte, origine_note_id is not null from smm_brain
+                where tipo='nota' order by created_at desc limit 1`);
+  if (!r[0][0] || !r[0][0].startsWith('Revisione del ')) {
+    throw new Error('fonte assente o sbagliata: ' + r[0][0]);
+  }
+  eq(r[0][1], 't', 'legame con la nota di revisione');
+});
+
+test('parte il lavoro che la generalizza', () => {
+  eq(one(`select count(*) from smm_jobs where tipo = 'nota_cervello'`), '1', 'lavori di generalizzazione');
+});
+
+test('una nota quasi identica alza il peso invece di duplicare', () => {
+  const c = nuovoContenuto();
+  const prima = Number(one(`select count(*) from smm_brain where tipo = 'nota'`));
+  const peso0 = Number(one(`select peso from smm_brain where tipo='nota'
+                             order by created_at desc limit 1`));
+  come(MANAGER, `insert into smm_notes (content_id, autore, testo)
+    values ('${c}', '${MANAGER}', 'Qui il tono e troppo commerciale, serve piu sobrieta.')`);
+  const dopo = Number(one(`select count(*) from smm_brain where tipo = 'nota'`));
+  eq(dopo, prima, 'nessun duplicato');
+  const peso1 = Number(one(`select max(peso) from smm_brain where tipo='nota'`));
+  if (peso1 <= peso0) throw new Error(`il peso non e salito: ${peso0} -> ${peso1}`);
+});
+
+test('una nota di un agente non entra nel Cervello', () => {
+  const c = nuovoContenuto();
+  const ag = one(`select id from smm_agents where slug = 'revisore'`);
+  const prima = Number(one(`select count(*) from smm_brain where tipo = 'nota'`));
+  psql(DB, ['-c', `insert into smm_notes (content_id, autore_agent_id, testo)
+                   values ('${c}', '${ag}', 'Nota automatica del Revisore')`]);
+  eq(one(`select count(*) from smm_brain where tipo = 'nota'`), String(prima),
+     'le note degli agenti non entrano');
+});
+
+// ============================================================
+gruppo('La coda dei lavori');
+
+test('un lavoro viene preso una volta sola', () => {
+  psql(DB, ['-c', `delete from smm_jobs`]);
+  const ag = one(`select id from smm_agents where slug = 'copywriter'`);
+  psql(DB, ['-c', `insert into smm_jobs (brand_id, agent_id, titolo, richiesta)
+                   values ('${BRAND}', '${ag}', 'Scrivi una caption', 'Tema: Corporate Tax')`]);
+  const primo  = one(`select (smm_claim_job()).id`);
+  const secondo = one(`select (smm_claim_job()).id`);
+  if (!primo) throw new Error('il primo worker non ha preso niente');
+  if (secondo) throw new Error('il secondo worker ha preso un lavoro gia preso');
+  eq(one(`select stato from smm_jobs where id = '${primo}'`), 'in_corso', 'stato');
+});
+
+test("l interruttore generale ferma la coda", () => {
+  psql(DB, ['-c', `delete from smm_jobs`]);
+  psql(DB, ['-c', `update smm_settings set stop_tutto = true where brand_id = '${BRAND}'`]);
+  psql(DB, ['-c', `insert into smm_jobs (brand_id, titolo, richiesta)
+                   values ('${BRAND}', 'Lavoro bloccato', 'niente')`]);
+  if (one(`select (smm_claim_job()).id`)) throw new Error('ha preso un lavoro con l interruttore alzato');
+  psql(DB, ['-c', `update smm_settings set stop_tutto = false where brand_id = '${BRAND}'`]);
+  if (!one(`select (smm_claim_job()).id`)) throw new Error('non riparte dopo aver abbassato l interruttore');
+});
+
+test('il budget giornaliero esaurito ferma la coda', () => {
+  psql(DB, ['-c', `delete from smm_jobs`]);
+  psql(DB, ['-c', `update smm_settings
+                      set speso_oggi_usd = budget_giorno_usd, speso_oggi_data = current_date
+                    where brand_id = '${BRAND}'`]);
+  psql(DB, ['-c', `insert into smm_jobs (brand_id, titolo, richiesta)
+                   values ('${BRAND}', 'Lavoro oltre budget', 'niente')`]);
+  if (one(`select (smm_claim_job()).id`)) throw new Error('ha preso un lavoro a budget esaurito');
+});
+
+test('il contatore di spesa si azzera il giorno dopo', () => {
+  psql(DB, ['-c', `update smm_settings set speso_oggi_data = current_date - 1
+                   where brand_id = '${BRAND}'`]);
+  const residuo = Number(one(`select smm_budget_residuo('${BRAND}')`));
+  if (residuo <= 0) throw new Error(`il residuo non si e azzerato: ${residuo}`);
+  eq(one(`select speso_oggi_usd from smm_settings where brand_id = '${BRAND}'`), '0.0000', 'speso azzerato');
+});
+
+test('la priorita conta', () => {
+  psql(DB, ['-c', `delete from smm_jobs`]);
+  psql(DB, ['-c', `insert into smm_jobs (brand_id, titolo, richiesta, priorita)
+                   values ('${BRAND}', 'Poco urgente', 'x', 10),
+                          ('${BRAND}', 'Urgente', 'x', 90)`]);
+  const id = one(`select (smm_claim_job()).id`);
+  eq(one(`select titolo from smm_jobs where id = '${id}'`), 'Urgente', 'lavoro scelto');
+});
+
+// ============================================================
+gruppo('Log attivita');
+
+test('creare un contenuto finisce in activity_log', () => {
+  psql(DB, ['-c', `delete from activity_log`]);
+  nuovoContenuto({ titolo: 'Contenuto da tracciare' });
+  const n = Number(one(`select count(*) from activity_log where action = 'smm_contenuto_creato'`));
+  if (n < 1) throw new Error('nessuna riga di log');
+});
+
+test('ogni passaggio di stato finisce in activity_log', () => {
+  psql(DB, ['-c', `delete from activity_log`]);
+  const c = nuovoContenuto();
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${c}'`]);
+  eq(one(`select count(*) from activity_log where action = 'smm_contenuto_da_approvare'`), '1', 'log di stato');
+});
+
+test('una voce nuova nel Cervello finisce in activity_log', () => {
+  psql(DB, ['-c', `delete from activity_log`]);
+  psql(DB, ['-c', `insert into smm_brain (brand_id, tipo, testo, fonte)
+                   values ('${BRAND}', 'studio', 'Studio di prova', 'test')`]);
+  eq(one(`select count(*) from activity_log where action = 'smm_cervello_nuova_voce'`), '1', 'log cervello');
+});
+
+// ============================================================
+gruppo('Multi-brand');
+
+test('ogni tabella porta brand_id', () => {
+  const senza = q(`
+    select t.table_name from information_schema.tables t
+     where t.table_schema = 'public' and t.table_name like 'smm_%'
+       and t.table_type = 'BASE TABLE'
+       and t.table_name <> 'smm_brands'
+       and not exists (select 1 from information_schema.columns c
+                        where c.table_name = t.table_name and c.column_name = 'brand_id')`);
+  // le tabelle figlie risalgono al brand dal padre: elencate qui per scelta
+  const ammesse = ['smm_content_versions', 'smm_notes'];
+  const mancanti = senza.map(r => r[0]).filter(t => !ammesse.includes(t));
+  eq(mancanti.join(','), '', 'tabelle senza brand_id');
+});
+
+test('un secondo brand si aggiunge con una riga', () => {
+  const n = Number(one(`select count(*) from smm_brands`));
+  if (n < 2) throw new Error('il test precedente doveva aver creato KeyPrime');
+  const kp = one(`select id from smm_brands where slug = 'keyprime'`);
+  psql(DB, ['-c', `insert into smm_agents (brand_id, slug, nome, ruolo, system_prompt)
+                   values ('${kp}', 'direttore', 'Direttore', 'Direttore', 'prompt')`]);
+  eq(one(`select count(*) from smm_agents where brand_id = '${kp}'`), '1', 'agente del secondo brand');
+  // lo stesso slug su due brand non va in conflitto
+  eq(one(`select count(*) from smm_agents where slug = 'direttore'`), '2', 'slug ripetuto fra brand');
+});
+
+// ============================================================
+gruppo('Reversibilita');
+
+test('la migrazione di rollback riporta il database come prima', () => {
+  const prima = one(`select count(*) from information_schema.tables
+                      where table_schema='public' and table_name like 'smm_%'`);
+  if (Number(prima) < 11) throw new Error('mancano tabelle prima del rollback');
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_regia_down.sql')]);
+  eq(one(`select count(*) from information_schema.tables
+           where table_schema='public' and table_name like 'smm_%'`), '0', 'tabelle smm rimaste');
+  eq(one(`select count(*) from pg_proc where proname like 'smm_%' or proname = 'can_see_smm'`), '0',
+     'funzioni smm rimaste');
+  // le tabelle del portale non sono state toccate
+  eq(one(`select count(*) from profiles`), '3', 'profili del portale');
+  vero(one(`select exists (select 1 from information_schema.tables
+             where table_name = 'activity_log')`), 'activity_log ancora presente');
+});
+
+// ============================================================
+console.log(`\n${passati} passati, ${falliti} falliti\n`);
+process.exit(falliti ? 1 : 0);
