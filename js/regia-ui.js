@@ -455,6 +455,7 @@
     html.push('<div class="rg-sez">Note</div>');
     html.push(`<div style="display:flex;gap:7px;margin-bottom:9px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" id="rg-aggiungi-nota">Aggiungi la nota</button>
+      <button class="btn btn-ghost btn-sm" id="rg-carica-media">Carica un file</button>
       ${c.stato === 'da_approvare'
         ? '<button class="btn btn-accent btn-sm" id="rg-a-posto">È a posto così</button>' : ''}
       ${c.stato === 'respinto'
@@ -467,6 +468,15 @@
             ${n.risolta ? '' : `<div style="margin-top:6px"><button class="btn btn-ghost btn-sm" data-risolvi="${n.id}">Sistemata</button></div>`}
           </div>`).join('')
       : '<div class="rg-vuoto-tocca">Nessuna nota.</div>');
+
+    // ── i file caricati ──
+    if (media.length) {
+      html.push('<div class="rg-sez">File</div>');
+      html.push(media.map(m => `<div class="rg-voce">
+        <b>${esc(m.nome_file || m.path.split('/').pop())}</b>
+        <div class="rg-voce-fonte">${esc(m.ruolo)} · ${esc(m.mime || '')} · ${pesoLeggibile(m.bytes)}</div>
+      </div>`).join(''));
+    }
 
     // ── confronto dei round ──
     if (versioni.length > 1) {
@@ -506,6 +516,7 @@
 
     // ── agganci ──
     $('rg-aggiungi-nota')?.addEventListener('click', () => chiediNota(c, media));
+    $('rg-carica-media')?.addEventListener('click', () => caricaSuContenuto(c));
     $('rg-a-posto')?.addEventListener('click', () => approvaContenuto(c));
     $('rg-rimanda')?.addEventListener('click', () => {
       // Un contenuto fermato dal Revisore non si approva scavalcandolo: si
@@ -729,6 +740,62 @@
           apriContenuto(c.id);
         } }]);
     setTimeout(() => $('rg-nota-testo')?.focus(), 60);
+  }
+
+  function pesoLeggibile(b) {
+    const n = Number(b) || 0;
+    if (n < 1024) return n + ' byte';
+    if (n < 1048576) return (n / 1024).toFixed(0) + ' KB';
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
+    return (n / 1073741824).toFixed(2) + ' GB';
+  }
+
+  /**
+   * Carica un file e lo aggancia al contenuto: e' il "dallo in pasta ai
+   * contenuti". Il file va diritto nello Storage privato, con la barra di
+   * avanzamento, e sopra i 6 MB a pezzi, cosi' se la rete cade si riprende
+   * invece di ricominciare. Gli agenti girano lato server e lo leggono da
+   * li': non resta sul computer del manager.
+   */
+  function caricaSuContenuto(c) {
+    modale('Carica un file', `
+      <div class="form-group">
+        <label class="form-label" for="rg-up-file">Video, immagine o documento</label>
+        <input class="form-input" id="rg-up-file" type="file">
+        <div class="rg-voce-fonte">
+          I file grandi si caricano a pezzi: se la rete cade, riprende da dove era.
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="rg-up-ruolo">Che cos'è</label>
+        <select class="form-input" id="rg-up-ruolo">
+          <option value="originale">Il materiale di partenza</option>
+          <option value="derivato">Una versione già pronta da pubblicare</option>
+          <option value="reference">Un esempio a cui ispirarsi</option>
+        </select>
+      </div>
+      <div class="rg-avanzamento" id="rg-up-barra" hidden><i></i></div>
+      <div id="rg-up-stato" class="rg-voce-fonte"></div>`,
+      [{ etichetta: 'Carica', primaria: true, azione: async () => {
+          const f = $('rg-up-file').files?.[0];
+          if (!f) return window.ui.showToast('Scegli un file.', 'error');
+          const barra = $('rg-up-barra');
+          const stato = $('rg-up-stato');
+          barra.hidden = false;
+          stato.textContent = f.size > 6 * 1024 * 1024
+            ? `${pesoLeggibile(f.size)}: lo mando a pezzi, puoi lasciare la pagina aperta.`
+            : `${pesoLeggibile(f.size)}: un attimo.`;
+          await D.caricaFile(f, {
+            contentId: c.id, ruolo: $('rg-up-ruolo').value,
+            onProgress: (p) => {
+              barra.firstElementChild.style.width = (p * 100).toFixed(0) + '%';
+              stato.textContent = `${(p * 100).toFixed(0)}% di ${pesoLeggibile(f.size)}`;
+            },
+          });
+          chiudiModale();
+          window.ui.showToast('Caricato. Gli agenti ce l\'hanno.', 'success');
+          apriContenuto(c.id);
+        } }]);
   }
 
   // ══════════════════════════════════════════════════════════
