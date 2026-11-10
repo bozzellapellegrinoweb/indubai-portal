@@ -96,8 +96,8 @@ create table if not exists smm_agents (
   zona          text not null default 'studio'
                 check (zona in ('direzione','studio','montaggio','uscita','revisione','cervello')),
   system_prompt text not null,
-  model         text not null default 'claude-sonnet-4-6',
-  max_tokens    int  not null default 4000,
+  model         text not null default 'claude-opus-5-5',
+  max_tokens    int  not null default 16000,
   strumenti     text[] not null default '{cervello_cerca,contenuto_leggi}',
   colore        text not null default '#47ee74',
   avatar        jsonb not null default '{}'::jsonb,   -- pelle, capelli, vestito

@@ -36,8 +36,8 @@ on conflict (brand_id) do nothing;
 
 insert into smm_agents (brand_id, slug, nome, ruolo, descrizione, zona, model,
                         max_tokens, strumenti, colore, ordine, posizione, system_prompt)
-select b.id, 'direttore', 'Direttore', 'Direttore', 'Smista il lavoro, tiene il calendario e prepara il riepilogo del giorno. E'' l''unico con cui parli direttamente.', 'direzione', 'claude-sonnet-4-6',
-       180, array['cervello_cerca','contenuto_leggi','contenuto_crea','coinvolgi_agente','chiedi_al_manager','calendario_proponi'], '#2563a8', 0,
+select b.id, 'direttore', 'Direttore', 'Direttore', 'Smista il lavoro, tiene il calendario e prepara il riepilogo del giorno. E'' l''unico con cui parli direttamente.', 'direzione', 'claude-opus-5-5',
+       16000, array['cervello_cerca','contenuto_leggi','contenuto_crea','coinvolgi_agente','chiedi_al_manager','calendario_proponi'], '#2563a8', 0,
        '{"x": -3.2, "z": 0.0}'::jsonb,
        'Sei il Direttore della Regia social di {BRAND}. Parli con il social media manager: sei l''unico agente con cui si interfaccia direttamente.
 
@@ -65,8 +65,8 @@ on conflict (brand_id, slug) do update
 
 insert into smm_agents (brand_id, slug, nome, ruolo, descrizione, zona, model,
                         max_tokens, strumenti, colore, ordine, posizione, system_prompt)
-select b.id, 'stratega', 'Stratega editoriale', 'Stratega', 'Propone i temi e il piano della settimana, guardando i risultati, le scadenze fiscali e le domande che tornano piu'' spesso.', 'studio', 'claude-sonnet-4-6',
-       160, array['cervello_cerca','contenuto_leggi','contenuto_crea','chiedi_al_manager'], '#7c3aed', 1,
+select b.id, 'stratega', 'Stratega editoriale', 'Stratega', 'Propone i temi e il piano della settimana, guardando i risultati, le scadenze fiscali e le domande che tornano piu'' spesso.', 'studio', 'claude-opus-5-5',
+       16000, array['cervello_cerca','contenuto_leggi','contenuto_crea','chiedi_al_manager'], '#7c3aed', 1,
        '{"x": -1.2, "z": -2.4}'::jsonb,
        'Sei lo Stratega editoriale di {BRAND}. Decidi di cosa si parla e quando.
 
@@ -96,8 +96,8 @@ on conflict (brand_id, slug) do update
 
 insert into smm_agents (brand_id, slug, nome, ruolo, descrizione, zona, model,
                         max_tokens, strumenti, colore, ordine, posizione, system_prompt)
-select b.id, 'copywriter', 'Copywriter', 'Copywriter', 'Scrive caption, testi dei caroselli e aperture, in italiano, nel tono del Cervello.', 'studio', 'claude-sonnet-4-6',
-       160, array['cervello_cerca','contenuto_leggi','contenuto_aggiorna','coinvolgi_agente','chiedi_al_manager'], '#16a34a', 2,
+select b.id, 'copywriter', 'Copywriter', 'Copywriter', 'Scrive caption, testi dei caroselli e aperture, in italiano, nel tono del Cervello.', 'studio', 'claude-opus-5-5',
+       16000, array['cervello_cerca','contenuto_leggi','contenuto_aggiorna','coinvolgi_agente','chiedi_al_manager'], '#16a34a', 2,
        '{"x": 1.2, "z": -2.4}'::jsonb,
        'Sei il Copywriter di {BRAND}. Scrivi i testi: caption, titoli, slide dei caroselli, aperture.
 
@@ -129,8 +129,8 @@ on conflict (brand_id, slug) do update
 
 insert into smm_agents (brand_id, slug, nome, ruolo, descrizione, zona, model,
                         max_tokens, strumenti, colore, ordine, posizione, system_prompt)
-select b.id, 'grafico', 'Grafico', 'Grafico', 'Prepara caroselli e immagini nello stile del brand.', 'studio', 'claude-sonnet-4-6',
-       160, array['cervello_cerca','contenuto_leggi','contenuto_aggiorna','chiedi_al_manager'], '#d97706', 3,
+select b.id, 'grafico', 'Grafico', 'Grafico', 'Prepara caroselli e immagini nello stile del brand.', 'studio', 'claude-opus-5-5',
+       16000, array['cervello_cerca','contenuto_leggi','contenuto_aggiorna','chiedi_al_manager'], '#d97706', 3,
        '{"x": 3.2, "z": -2.4}'::jsonb,
        'Sei il Grafico di {BRAND}. Prepari i visual: caroselli e immagini.
 
@@ -156,8 +156,8 @@ on conflict (brand_id, slug) do update
 
 insert into smm_agents (brand_id, slug, nome, ruolo, descrizione, zona, model,
                         max_tokens, strumenti, colore, ordine, posizione, system_prompt)
-select b.id, 'video', 'Video', 'Video', 'Script, aperture, struttura dei reel e sottotitoli.', 'montaggio', 'claude-sonnet-4-6',
-       160, array['cervello_cerca','contenuto_leggi','contenuto_aggiorna','coinvolgi_agente','chiedi_al_manager'], '#db2777', 4,
+select b.id, 'video', 'Video', 'Video', 'Script, aperture, struttura dei reel e sottotitoli.', 'montaggio', 'claude-opus-5-5',
+       16000, array['cervello_cerca','contenuto_leggi','contenuto_aggiorna','coinvolgi_agente','chiedi_al_manager'], '#db2777', 4,
        '{"x": -2.0, "z": 2.6}'::jsonb,
        'Sei l''agente Video di {BRAND}. Prepari i reel: script, apertura, struttura, sottotitoli.
 
@@ -184,8 +184,8 @@ on conflict (brand_id, slug) do update
 
 insert into smm_agents (brand_id, slug, nome, ruolo, descrizione, zona, model,
                         max_tokens, strumenti, colore, ordine, posizione, system_prompt)
-select b.id, 'revisore', 'Revisore di conformita', 'Revisore', 'Controlla ogni contenuto contro le regole del Cervello. Senza il suo via libera nulla va in approvazione.', 'revisione', 'claude-sonnet-4-6',
-       200, array['cervello_cerca','contenuto_leggi','revisore_verdetto'], '#dc2626', 5,
+select b.id, 'revisore', 'Revisore di conformita', 'Revisore', 'Controlla ogni contenuto contro le regole del Cervello. Senza il suo via libera nulla va in approvazione.', 'revisione', 'claude-opus-5-5',
+       16000, array['cervello_cerca','contenuto_leggi','revisore_verdetto'], '#dc2626', 5,
        '{"x": 3.4, "z": 2.6}'::jsonb,
        'Sei il Revisore di conformita di {BRAND}. Nessun contenuto va in approvazione senza il tuo via libera. Sei l''ultimo presidio prima che una cosa sbagliata finisca in pubblico.
 
@@ -221,8 +221,8 @@ on conflict (brand_id, slug) do update
 
 insert into smm_agents (brand_id, slug, nome, ruolo, descrizione, zona, model,
                         max_tokens, strumenti, colore, ordine, posizione, system_prompt)
-select b.id, 'pubblicatore', 'Pubblicatore', 'Pubblicatore', 'Programma e pubblica, solo su contenuti approvati.', 'uscita', 'claude-haiku-4-5-20251001',
-       120, array['cervello_cerca','contenuto_leggi','pubblica','chiedi_al_manager'], '#0369a1', 6,
+select b.id, 'pubblicatore', 'Pubblicatore', 'Pubblicatore', 'Programma e pubblica, solo su contenuti approvati.', 'uscita', 'claude-haiku-5-5',
+       8000, array['cervello_cerca','contenuto_leggi','pubblica','chiedi_al_manager'], '#0369a1', 6,
        '{"x": 0.6, "z": 4.8}'::jsonb,
        'Sei il Pubblicatore di {BRAND}. Mandi in pubblico i contenuti, e solo quelli approvati.
 
@@ -247,8 +247,8 @@ on conflict (brand_id, slug) do update
 
 insert into smm_agents (brand_id, slug, nome, ruolo, descrizione, zona, model,
                         max_tokens, strumenti, colore, ordine, posizione, system_prompt)
-select b.id, 'analista', 'Analista', 'Analista', 'Legge i risultati e scrive le note per il Cervello.', 'uscita', 'claude-sonnet-4-6',
-       120, array['cervello_cerca','contenuto_leggi','cervello_proponi','chiedi_al_manager'], '#6b7280', 7,
+select b.id, 'analista', 'Analista', 'Analista', 'Legge i risultati e scrive le note per il Cervello.', 'uscita', 'claude-opus-5-5',
+       16000, array['cervello_cerca','contenuto_leggi','cervello_proponi','chiedi_al_manager'], '#6b7280', 7,
        '{"x": 2.6, "z": 4.8}'::jsonb,
        'Sei l''Analista di {BRAND}. Guardi i numeri e tiri le conclusioni che servono a chi scrive.
 
