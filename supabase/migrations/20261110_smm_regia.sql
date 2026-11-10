@@ -520,8 +520,12 @@ end $$;
 create or replace function smm_guard_revisore() returns trigger
 language plpgsql set search_path to 'public' as $$
 begin
-  if new.stato = 'da_approvare'
-     and coalesce(old.stato,'') <> 'da_approvare'
+  -- Anche 'approvato', non solo 'da_approvare': altrimenti bastava saltare
+  -- un passaggio e si approvava un contenuto che il Revisore aveva fermato.
+  -- La pubblicazione restava comunque bloccata dal presidio successivo, ma
+  -- il contenuto risultava approvato, che e'' una bugia sullo stato.
+  if new.stato in ('da_approvare','approvato')
+     and coalesce(old.stato,'') not in ('da_approvare','approvato')
      and not new.revisore_ok then
     raise exception
       'Il contenuto non puo'' andare in approvazione: il Revisore di conformita'' non lo ha ancora passato.'

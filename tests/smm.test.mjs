@@ -102,6 +102,11 @@ try {
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_ruolo_smm.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_regia.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_seed.sql')]);
+  // La pianificazione vive in una migrazione a parte perche' ha bisogno di
+  // pg_cron e pg_net. Sul banco di prova quelli non ci sono: si prende solo
+  // la funzione che mette in coda le uscite arrivate a scadenza, che e' la
+  // parte da provare.
+  psql(DB, ['-f', join(ROOT, 'tests/smm/10_cron_senza_estensioni.sql')]);
 } catch (e) {
   console.error('Le migrazioni non si applicano:\n' + (e.stderr || e.stdout || e.message));
   process.exit(1);
@@ -274,6 +279,16 @@ test('lo stesso vale per "pubblicato", non solo per "programmato"', () => {
   psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
   mustFail(`update smm_contents set stato = 'pubblicato' where id = '${c}'`,
            'approvazione umana registrata');
+});
+
+test('non si approva saltando il Revisore', () => {
+  // Il presidio guardava solo il passaggio a "da_approvare": passando
+  // direttamente ad "approvato" si scavalcava. La pubblicazione restava
+  // bloccata piu' avanti, ma lo stato diceva una cosa falsa.
+  const c = nuovoContenuto({ stato: 'respinto' });
+  mustFail(`update smm_contents set stato = 'approvato',
+              approvato_da = '${MANAGER}', approvato_at = now() where id = '${c}'`,
+           'Revisore di conformit');
 });
 
 test('un agente non puo firmare l approvazione a nome del manager', () => {
@@ -617,12 +632,92 @@ test('un secondo brand si aggiunge con una riga', () => {
 });
 
 // ============================================================
+gruppo('Dall idea alla programmazione: il giro completo');
+
+test('un contenuto attraversa tutti i passaggi, e nessuno si puo saltare', () => {
+  // E' il percorso descritto nella definizione di "finito": il manager
+  // scrive al Direttore, l'agente produce, il Revisore passa, il manager
+  // corregge e approva, il contenuto va in calendario e viene programmato.
+  // Qui si prova la parte che vive nel database. La chiamata vera a
+  // GoHighLevel sta in smm-publish e ha bisogno delle chiavi.
+  const ag = one(`select id from smm_agents where slug = 'copywriter'`);
+  const rev = one(`select id from smm_agents where slug = 'revisore'`);
+
+  // 1. il manager scrive al Direttore: nasce un lavoro
+  const job = one(`insert into smm_jobs (brand_id, agent_id, titolo, richiesta, richiesto_da)
+                   values ('${BRAND}', '${ag}', 'Carosello sulla soglia',
+                           'Un carosello sulla soglia dei 375.000 AED', '${MANAGER}')
+                   returning id`);
+  eq(one(`select stato from smm_jobs where id = '${job}'`), 'in_coda', 'lavoro in coda');
+
+  // 2. il worker lo prende
+  eq(one(`select (smm_claim_job()).id`), job, 'lavoro preso dal worker');
+
+  // 3. l'agente produce il contenuto
+  const c = one(`insert into smm_contents
+                   (brand_id, titolo, tipo, stato, caption, hashtags, slides, categoria, created_by)
+                 values ('${BRAND}', 'La soglia dei 375.000 AED', 'carosello', 'in_lavorazione',
+                   'La Corporate Tax negli Emirati e al nove per cento sopra i 375.000 AED. Approfondisci su InDubai.it',
+                   array['#dubai','#fiscalita'],
+                   '[{"type":"standard","title":"La soglia","body":"Nove per cento sopra 375.000 AED"}]'::jsonb,
+                   'normativa', '${MANAGER}')
+                 returning id`);
+
+  // 4. non si salta il Revisore
+  mustFail(`update smm_contents set stato = 'da_approvare' where id = '${c}'`,
+           'Revisore di conformit');
+
+  // 5. il Revisore passa il contenuto
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true, revisore_at = now(),
+                     revisore_note = '{"violazioni":[],"commento":"Tutto in regola."}'::jsonb
+                   where id = '${c}'`]);
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${c}'`]);
+
+  // 6. il manager lascia una nota: entra nel Cervello
+  const noteCervelloPrima = Number(one(`select count(*) from smm_brain where tipo = 'nota'`));
+  come(MANAGER, `insert into smm_notes (content_id, autore, testo, ancora)
+    values ('${c}', '${MANAGER}', 'Nella prima slide il numero va scritto in parole.',
+            '{"tipo":"slide","slide":0}'::jsonb)`);
+  eq(one(`select count(*) from smm_brain where tipo = 'nota'`),
+     String(noteCervelloPrima + 1), 'la correzione e nel Cervello');
+
+  // 7. non si pubblica senza approvazione
+  mustFail(`update smm_contents set stato = 'programmato' where id = '${c}'`,
+           'approvazione umana registrata');
+
+  // 8. il manager approva, con la sua firma
+  come(MANAGER, `update smm_contents set stato = 'approvato',
+                   approvato_da = '${MANAGER}', approvato_at = now() where id = '${c}'`);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'approvato', 'approvato');
+
+  // 9. trascinato nel calendario
+  come(MANAGER, `update smm_contents set slot_at = now() + interval '2 days',
+                   stato = 'in_calendario' where id = '${c}'`);
+
+  // 10. arrivata l'ora, il cron mette in coda la pubblicazione
+  psql(DB, ['-c', `update smm_contents set slot_at = now() - interval '1 minute'
+                   where id = '${c}'`]);
+  const messi = one(`select smm_programmati_in_scadenza()`);
+  if (Number(messi) < 1) throw new Error('il cron non ha messo in coda la pubblicazione');
+  eq(one(`select count(*) from smm_jobs where content_id = '${c}' and tipo = 'pubblicazione'`),
+     '1', 'lavoro di pubblicazione');
+
+  // 11. e il contenuto si puo programmare, perche ha tutte le firme
+  psql(DB, ['-c', `update smm_contents set stato = 'programmato' where id = '${c}'`]);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'programmato', 'programmato');
+});
+
+// ============================================================
 gruppo('Reversibilita');
 
 test('la migrazione di rollback riporta il database come prima', () => {
   const prima = one(`select count(*) from information_schema.tables
                       where table_schema='public' and table_name like 'smm_%'`);
   if (Number(prima) < 11) throw new Error('mancano tabelle prima del rollback');
+  // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
+  // poi lo schema. Il down del cron gira anche senza pg_cron installato,
+  // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_cron_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_regia_down.sql')]);
   eq(one(`select count(*) from information_schema.tables
            where table_schema='public' and table_name like 'smm_%'`), '0', 'tabelle smm rimaste');
