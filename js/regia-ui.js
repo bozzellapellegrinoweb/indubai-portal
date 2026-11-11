@@ -600,6 +600,8 @@
     html.push(`<div style="display:flex;gap:7px;margin-bottom:9px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" id="rg-aggiungi-nota">Aggiungi la nota</button>
       <button class="btn btn-ghost btn-sm" id="rg-carica-media">Carica un file</button>
+      ${['carosello', 'reel', 'storia', 'post'].includes(c.tipo)
+        ? `<button class="btn btn-ghost btn-sm" id="rg-rendi">${media.length ? 'Rifai le immagini' : 'Prepara le immagini'}</button>` : ''}
       ${c.stato === 'da_approvare'
         ? '<button class="btn btn-accent btn-sm" id="rg-a-posto">È a posto così</button>' : ''}
       ${c.stato === 'respinto'
@@ -661,6 +663,7 @@
     // ── agganci ──
     $('rg-aggiungi-nota')?.addEventListener('click', () => chiediNota(c, media));
     $('rg-carica-media')?.addEventListener('click', () => caricaSuContenuto(c));
+    $('rg-rendi')?.addEventListener('click', () => rendiContenuto(c));
     $('rg-a-posto')?.addEventListener('click', () => approvaContenuto(c));
     $('rg-rimanda')?.addEventListener('click', () => {
       // Un contenuto fermato dal Revisore non si approva scavalcandolo: si
@@ -1243,6 +1246,32 @@
         } }]);
   }
 
+
+  /**
+   * Manda il contenuto al motore che lo rende.
+   *
+   * Ci mette da venti secondi a un minuto e mezzo, perche' di la' apre un
+   * browser vero, fa le pagine una per una e per i video le monta. Il tasto
+   * lo dice, invece di restare li' a far pensare che non abbia funzionato.
+   */
+  async function rendiContenuto(c) {
+    const b = $('rg-rendi');
+    if (!b) return;
+    const prima = b.textContent;
+    b.disabled = true;
+    b.textContent = c.tipo === 'reel' || c.tipo === 'storia'
+      ? 'Sto montando… anche un minuto'
+      : 'Sto preparando… una ventina di secondi';
+    try {
+      const d = await D.rendi(c.id);
+      window.ui.showToast(d.messaggio || 'Fatto.', 'success');
+      await apriContenuto(c.id);
+    } catch (e) {
+      window.ui.showToast(pulisciErrore(e.message), 'error');
+      b.disabled = false;
+      b.textContent = prima;
+    }
+  }
 
   // ══════════════════════════════════════════════════════════
   // Direzione: il piano della settimana

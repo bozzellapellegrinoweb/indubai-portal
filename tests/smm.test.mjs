@@ -103,6 +103,7 @@ try {
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_regia.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_seed.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_direzione.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_motore.sql')]);
   // La pianificazione vive in una migrazione a parte perche' ha bisogno di
   // pg_cron e pg_net. Sul banco di prova quelli non ci sono: si prende solo
   // la funzione che mette in coda le uscite arrivate a scadenza, che e' la
@@ -935,6 +936,32 @@ test('un contabile junior non puo spegnere un agente', () => {
 });
 
 // ============================================================
+gruppo('Il motore: chi lo puo chiamare');
+
+test('il Grafico e il Video hanno lo strumento, il Copywriter no', () => {
+  const ha = (slug) => one(`select 'rendi_immagini' = any(strumenti)
+                              from smm_agents where brand_id='${BRAND}' and slug='${slug}'`);
+  vero(ha('grafico'), 'il Grafico');
+  vero(ha('video'), 'il Video');
+  falso(ha('copywriter'), 'il Copywriter');
+});
+
+test('il prompt del Grafico glielo dice, una volta sola', () => {
+  const quante = one(`select (length(system_prompt) - length(replace(system_prompt,'rendi_immagini','')))
+                             / length('rendi_immagini')
+                        from smm_agents where brand_id='${BRAND}' and slug='grafico'`);
+  eq(quante, '1', 'quante volte compare nel prompt');
+});
+
+test('riapplicare la migrazione non raddoppia niente', () => {
+  const prima = one(`select array_length(strumenti,1) from smm_agents
+                      where brand_id='${BRAND}' and slug='grafico'`);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_motore.sql')]);
+  eq(one(`select array_length(strumenti,1) from smm_agents
+           where brand_id='${BRAND}' and slug='grafico'`), prima, 'strumenti del Grafico');
+});
+
+// ============================================================
 gruppo('Reversibilita');
 
 test('la migrazione di rollback riporta il database come prima', () => {
@@ -944,6 +971,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_motore_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_direzione_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_cron_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_regia_down.sql')]);

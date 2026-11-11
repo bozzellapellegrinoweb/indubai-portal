@@ -362,6 +362,27 @@
   const cervelloDaConfermare = () =>
     sel('smm_brain', `brand_id=eq.${stato.brand.id}&confermata=eq.false&attivo=eq.true&select=*&order=created_at.desc`);
 
+  /**
+   * Fa rendere il contenuto dal generatore: immagini del carosello, video
+   * del reel, slide della storia. Puo' metterci un minuto, perche' di la'
+   * apre un browser vero e monta i file.
+   */
+  async function rendi(contentId, formato = null) {
+    const r = await fetch(`${SB}/functions/v1/smm-render`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({
+        content_id: contentId,
+        ...(formato ? { formato } : {}),
+        chi: window.sb?.getCurrentUser?.()?.id || null,
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d?.ok === false) throw new Error(d?.error || `Il motore non ha risposto (${r.status}).`);
+    await carica();
+    return d;
+  }
+
   async function cervelloConferma(id) {
     await upd('smm_brain', `id=eq.${id}`, { confermata: true });
     await carica();
@@ -713,6 +734,6 @@
     nuovaReference, risultati, salvaRisultato, salvaImpostazioni,
     plurale, piano, nuovaRigaPiano, salvaRigaPiano, eliminaRigaPiano, lanciaQuelloCheManca,
     interruttore, accendiAgente,
-    caricaFile, linkFirmato, svegliaWorker,
+    caricaFile, linkFirmato, svegliaWorker, rendi,
   };
 })();

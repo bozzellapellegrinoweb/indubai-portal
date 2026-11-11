@@ -414,9 +414,48 @@ const cervelloProponi: Strumento = {
   },
 };
 
+// ── rendi_immagini ──────────────────────────────────────────
+const rendiImmagini: Strumento = {
+  nome: "rendi_immagini",
+  definizione: {
+    name: "rendi_immagini",
+    description:
+      "Trasforma le slide scritte nel contenuto in file veri: le immagini del carosello, il video del reel, " +
+      "i video della storia. Chiamalo quando le slide sono finite, non prima: ogni chiamata rifa' tutto da capo. " +
+      "Senza questo passaggio non si puo' pubblicare, perche' GoHighLevel ha bisogno dei file.",
+    input_schema: schema({
+      content_id: { type: "string" },
+      formato: {
+        type: "string", enum: ["carosello", "reel", "storia"],
+        description: "Che cosa produrre. Di solito coincide con il tipo del contenuto.",
+      },
+    }, ["content_id", "formato"]),
+    strict: true,
+  },
+  async esegui(input, ctx) {
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !key) return "Non riesco a raggiungere il motore: manca la configurazione del progetto.";
+
+    const r = await fetch(`${url}/functions/v1/smm-render`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      body: JSON.stringify({ content_id: input.content_id, formato: input.formato }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d?.ok === false) {
+      return `Il rendering non e' andato: ${d?.error ?? "HTTP " + r.status}. ` +
+             "Non insistere: se manca una configurazione, riprovare non la fa comparire.";
+    }
+    ctx.effetti.contenutoTocca = String(input.content_id);
+    return `${d.messaggio ?? "Fatto."} I file sono caricati e pronti per la pubblicazione.`;
+  },
+};
+
 export const STRUMENTI: Record<string, Strumento> = Object.fromEntries(
   [cervelloCerca, contenutoLeggi, contenutoCrea, contenutoAggiorna, coinvolgiAgente,
-   chiediAlManager, revisoreVerdetto, calendarioProponi, pubblica, cervelloProponi]
+   chiediAlManager, revisoreVerdetto, calendarioProponi, pubblica, cervelloProponi,
+   rendiImmagini]
     .map((s) => [s.nome, s]),
 );
 
