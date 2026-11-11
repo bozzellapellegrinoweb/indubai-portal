@@ -21,14 +21,27 @@
 
 create or replace function smm_monta_quando_pronto() returns trigger
 language plpgsql security definer set search_path to 'public' as $$
+declare
+  quante int;
 begin
   -- Solo quando ENTRA in approvazione, non a ogni salvataggio.
   if new.stato <> 'da_approvare' or coalesce(old.stato,'') = 'da_approvare' then
     return new;
   end if;
 
-  -- Niente slide, niente da rendere.
-  if coalesce(jsonb_array_length(new.slides), 0) = 0 then
+  -- Niente slide, niente da rendere. Le slide possono essere un elenco
+  -- oppure l'oggetto completo con dentro la copertina: il motore accetta
+  -- tutte e due, e su quest'ultimo jsonb_array_length solleva un errore.
+  -- Dentro un trigger un errore non e' un messaggio: e' il verdetto del
+  -- Revisore che viene rifiutato e il contenuto che non passa.
+  -- In un IF di plpgsql il primo "then" chiude la condizione, anche quello
+  -- di un case annidato: il conto si fa prima, in una variabile.
+  quante := case jsonb_typeof(new.slides)
+              when 'array'  then jsonb_array_length(new.slides)
+              when 'object' then 1
+              else 0
+            end;
+  if quante = 0 then
     return new;
   end if;
 
@@ -69,3 +82,35 @@ create trigger trg_smm_monta_quando_pronto after update of stato on smm_contents
 alter table smm_jobs drop constraint if exists smm_jobs_tipo_check;
 alter table smm_jobs add constraint smm_jobs_tipo_check
   check (tipo in ('agente','montaggio','nota_cervello','analisi','pubblicazione','piano'));
+
+-- ─── Chi era gia' in approvazione quando il trigger non c'era ──────────────
+--
+-- Il trigger scatta sul passaggio di stato, e un contenuto che in
+-- approvazione c'e' gia' quel passaggio non lo rifa': resterebbe senza file
+-- per sempre, e il manager se li ritroverebbe da chiedere a mano. E' esatta-
+-- mente il lavoro che questa migrazione gli toglie, quindi va tolto anche a
+-- chi era arrivato prima.
+--
+-- Si puo' rieseguire: chi ha gia' i file, o un montaggio in coda, resta
+-- fuori.
+insert into smm_jobs (brand_id, content_id, tipo, titolo, richiesta, payload, priorita)
+select c.brand_id, c.id, 'montaggio',
+       'Preparare i file di: ' || c.titolo,
+       'Rendere le slide in immagini o video, pronte per la pubblicazione.',
+       jsonb_build_object('formato',
+         case c.tipo when 'reel'   then 'reel'
+                     when 'storia' then 'storia'
+                     else 'carosello' end),
+       75
+from smm_contents c
+where c.stato = 'da_approvare'
+  and case jsonb_typeof(c.slides)
+        when 'array'  then jsonb_array_length(c.slides)
+        when 'object' then 1
+        else 0
+      end > 0
+  and not exists (select 1 from smm_media m
+                   where m.content_id = c.id and m.ruolo = 'derivato')
+  and not exists (select 1 from smm_jobs j
+                   where j.content_id = c.id and j.tipo = 'montaggio'
+                     and j.stato in ('in_coda', 'in_corso'));

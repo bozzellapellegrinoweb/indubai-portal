@@ -1167,6 +1167,40 @@ test('senza slide non si monta niente', () => {
   eq(montaggiDi(c), '0', 'montaggi');
 });
 
+test('le slide a oggetto non fanno saltare il verdetto del Revisore', () => {
+  // Il Grafico puo' salvare la forma completa, con la copertina dentro: il
+  // motore la accetta. Dentro il trigger jsonb_array_length su un oggetto
+  // solleva un errore, e un errore in un trigger non e' un avviso, e' il
+  // passaggio in approvazione che viene rifiutato.
+  const c = one(`
+    insert into smm_contents (brand_id, titolo, categoria, stato, slides, created_by)
+    values ('${BRAND}', 'Slide a oggetto', 'normativa', 'in_lavorazione',
+            '{"coverTitle":"Copertina","slides":[{"type":"standard","title":"Uno"}]}'::jsonb,
+            '${MANAGER}')
+    returning id`);
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${c}'`]);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'da_approvare', 'ci e arrivato');
+  eq(montaggiDi(c), '1', 'montaggio in coda');
+});
+
+test('il recupero prende chi era in approvazione prima del trigger', () => {
+  // Il trigger scatta sul passaggio di stato, e chi in approvazione c'era
+  // gia' quel passaggio non lo rifa' piu': senza il recupero resterebbe
+  // senza file per sempre, e il manager dovrebbe chiederli a mano.
+  const c = one(`
+    insert into smm_contents (brand_id, titolo, categoria, stato, slides, revisore_ok, created_by)
+    values ('${BRAND}', 'Arrivato prima', 'normativa', 'da_approvare',
+            '[{"tipo":"intro","titolo":"Uno"}]'::jsonb, true, '${MANAGER}')
+    returning id`);
+  eq(montaggiDi(c), '0', 'nessun trigger su un inserimento');
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_montaggio_automatico.sql')]);
+  eq(montaggiDi(c), '1', 'recuperato');
+  // E si puo' rieseguire senza accumulare doppioni.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_montaggio_automatico.sql')]);
+  eq(montaggiDi(c), '1', 'non si duplica');
+});
+
 // ============================================================
 gruppo('Il motore: chi lo puo chiamare');
 
