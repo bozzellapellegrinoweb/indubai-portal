@@ -1344,6 +1344,17 @@
           : ''}
       </div>
 
+      <div class="rg-sez">Da sola</div>
+      <div class="rg-voce">
+        ${s.piano_automatico === false
+          ? 'Il piano <b>non</b> parte da solo: quello che manca lo lanci tu da qui.'
+          : 'Ogni mattina, se la settimana non e&#768; coperta, il Direttore riceve da solo l&#39;incarico di coprirla.'}
+        <div class="rg-voce-azioni">
+          <button class="btn btn-ghost btn-sm" data-piano-auto="${s.piano_automatico === false ? '1' : '0'}">
+            ${s.piano_automatico === false ? 'Fallo partire da solo' : 'Lascia decidere a me'}</button>
+        </div>
+      </div>
+
       <div class="rg-sez">Spesa</div>
       <div class="rg-voce">
         Oggi gli agenti hanno speso <b>${spesoOggi.toFixed(2)} $</b>
@@ -1354,6 +1365,19 @@
 
     corpoPannello().querySelector('[data-piano-nuovo]')
       ?.addEventListener('click', () => formaRigaPiano(null));
+    corpoPannello().querySelector('[data-piano-auto]')
+      ?.addEventListener('click', async (ev) => {
+        const verso = ev.currentTarget.dataset.pianoAuto === '1';
+        ev.currentTarget.disabled = true;
+        try {
+          await D.pianoAutomatico(verso);
+          window.ui.showToast(verso ? 'Parte da solo ogni mattina.' : 'Non parte piu\' da solo.', 'success');
+          await apriDirezione();
+        } catch (e) {
+          window.ui.showToast(pulisciErrore(e.message), 'error');
+          ev.currentTarget.disabled = false;
+        }
+      });
     corpoPannello().querySelector('[data-piano-lancia]')
       ?.addEventListener('click', async (ev) => {
         ev.currentTarget.disabled = true;

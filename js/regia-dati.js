@@ -488,6 +488,18 @@
     return !!fermo;
   }
 
+  /** Il piano che si copre da solo ogni mattina. Lo scrive solo l'admin,
+   *  come tutte le impostazioni di spesa: a un manager senza i permessi la
+   *  riga non cambia e il messaggio lo dice. */
+  async function pianoAutomatico(acceso) {
+    await upd('smm_settings', `brand_id=eq.${stato.brand.id}`, { piano_automatico: !!acceso });
+    const dopo = await sel('smm_settings', `brand_id=eq.${stato.brand.id}&select=piano_automatico`);
+    if (dopo?.[0]?.piano_automatico !== !!acceso) {
+      throw new Error('Questa impostazione la cambia solo un amministratore.');
+    }
+    await carica();
+  }
+
   async function accendiAgente(agentId, acceso) {
     await upd('smm_agents', `id=eq.${agentId}`, { attivo: !!acceso });
     await carica();
@@ -760,7 +772,7 @@
     cervelloCerca, cervelloDaConfermare, cervelloConferma, cervelloScarta, cervelloAggiungi,
     nuovaReference, risultati, salvaRisultato, salvaImpostazioni,
     plurale, piano, nuovaRigaPiano, salvaRigaPiano, eliminaRigaPiano, lanciaQuelloCheManca,
-    interruttore, accendiAgente,
+    interruttore, accendiAgente, pianoAutomatico,
     caricaFile, linkFirmato, svegliaWorker, rendi,
   };
 })();

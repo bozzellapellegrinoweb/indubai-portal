@@ -962,6 +962,64 @@ test('un contabile junior non puo spegnere un agente', () => {
 });
 
 // ============================================================
+gruppo('La settimana si copre da sola');
+
+// E' la parte che fa andare avanti la Regia quando nessuno guarda. Gira
+// sotto pg_cron, cioe' senza nessun utente autenticato: e' li' che si
+// nasconde l'errore, perche' un permesso mancante non da' un errore, da'
+// zero righe e un silenzio.
+
+test('il conteggio interno risponde anche senza nessun utente', () => {
+  // E' il contesto di pg_cron: nessun JWT, nessuno autenticato. Il guscio
+  // pubblico qui risponde vuoto ed e' giusto; la funzione interna no, ed e'
+  // quella che usa il lavoro quotidiano.
+  if (Number(one(`select count(*) from smm_piano_settimana_interna('${BRAND}', 0)`)) < 1) {
+    throw new Error('il conteggio interno e vuoto: il lavoro quotidiano non partirebbe mai');
+  }
+});
+
+test('la funzione interna non e chiamabile da un utente qualunque', () => {
+  comeFallisce(JUNIOR, `select count(*) from smm_piano_settimana_interna('${BRAND}', 0)`,
+               'permission denied');
+  comeFallisce(MANAGER, `select count(*) from smm_piano_settimana_interna('${BRAND}', 0)`,
+               'permission denied');
+});
+
+test('se manca qualcosa, il Direttore riceve l incarico', () => {
+  psql(DB, ['-c', `delete from smm_jobs where tipo = 'piano'`]);
+  eq(one(`select smm_piano_quotidiano()`), '1', 'brand incaricati');
+  eq(one(`select count(*) from smm_jobs where tipo = 'piano' and stato = 'in_coda'`), '1', 'lavori creati');
+  eq(one(`select a.slug from smm_jobs j join smm_agents a on a.id = j.agent_id
+           where j.tipo = 'piano'`), 'direttore', 'a chi tocca');
+});
+
+test('non si chiede due volte nello stesso giorno', () => {
+  eq(one(`select smm_piano_quotidiano()`), '0', 'secondo giro');
+  eq(one(`select count(*) from smm_jobs where tipo = 'piano'`), '1', 'lavori in tutto');
+});
+
+test('col fermo generale alzato non parte niente', () => {
+  psql(DB, ['-c', `delete from smm_jobs where tipo = 'piano'`]);
+  psql(DB, ['-c', `update smm_settings set stop_tutto = true where brand_id = '${BRAND}'`]);
+  eq(one(`select smm_piano_quotidiano()`), '0', 'col fermo alzato');
+  psql(DB, ['-c', `update smm_settings set stop_tutto = false where brand_id = '${BRAND}'`]);
+});
+
+test('col piano automatico spento non parte niente', () => {
+  psql(DB, ['-c', `update smm_settings set piano_automatico = false where brand_id = '${BRAND}'`]);
+  eq(one(`select smm_piano_quotidiano()`), '0', 'col piano automatico spento');
+  psql(DB, ['-c', `update smm_settings set piano_automatico = true where brand_id = '${BRAND}'`]);
+});
+
+test('se la settimana e gia coperta non si disturba nessuno', () => {
+  psql(DB, ['-c', `delete from smm_jobs where tipo = 'piano'`]);
+  psql(DB, ['-c', `update smm_piano set attivo = false where brand_id = '${BRAND}'`]);
+  eq(one(`select smm_piano_quotidiano()`), '0', 'senza righe attive nel piano');
+  psql(DB, ['-c', `update smm_piano set attivo = true where brand_id = '${BRAND}'`]);
+  psql(DB, ['-c', `delete from smm_jobs where tipo = 'piano'`]);
+});
+
+// ============================================================
 gruppo('Il motore: chi lo puo chiamare');
 
 test('il Grafico e il Video hanno lo strumento, il Copywriter no', () => {
@@ -997,6 +1055,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_cron_automatico_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_motore_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_direzione_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_cron_down.sql')]);

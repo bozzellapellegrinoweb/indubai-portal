@@ -563,11 +563,26 @@ Deno.serve(async (req: Request) => {
     const segreto = Deno.env.get("CRON_SECRET");
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const token = auth.replace(/^Bearer\s+/i, "");
-    const autorizzato =
-      (segreto && token === segreto) ||
-      (service && token === service) ||
+    const corpo = await req.json().catch(() => ({})) as { token?: unknown };
+
+    let autorizzato: boolean =
+      (!!segreto && token === segreto) ||
+      (!!service && token === service) ||
       // una persona autenticata del portale, non la chiave pubblica
       eUnaPersona(token);
+
+    // pg_cron non puo' mettere il suo token nell'intestazione: con
+    // verify_jwt acceso il gateway accetta solo un JWT del progetto. Manda
+    // la chiave pubblica li' e il token qui, e il database dice se e'
+    // quello giusto. La funzione risponde vero o falso, non rivela mai il
+    // valore.
+    if (!autorizzato && typeof corpo?.token === "string" && corpo.token.length > 0) {
+      try {
+        autorizzato = await clientDaAmbiente().rpc(
+          "smm_token_cron_valido", { p_token: corpo.token }) === true;
+      } catch { autorizzato = false; }
+    }
+
     if (!autorizzato) {
       return new Response(JSON.stringify({ ok: false, error: "Non autorizzato" }),
         { status: 401, headers: CORS });
