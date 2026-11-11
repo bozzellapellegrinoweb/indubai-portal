@@ -165,6 +165,11 @@
     .rg-pan-corpo  { flex:1; overflow-y:auto; padding:14px 16px; }
     .rg-pan-piede  { padding:12px 16px; border-top:1.5px solid var(--border);
       display:flex; gap:8px; align-items:flex-end; }
+    /* display: flex batte l'attributo hidden, quindi la casella "Scrivi"
+       restava in fondo anche nei pannelli dove non si scrive a nessuno
+       (Direzione, Cervello, un contenuto). Stessa trappola della
+       .rg-fatica. */
+    .rg-pan-piede[hidden] { display:none; }
     .rg-pan-piede textarea { flex:1; resize:none; min-height:40px; max-height:140px; }
     .rg-velo { position:fixed; inset:0; background:rgba(20,22,26,.34); z-index:var(--liv-velo); opacity:0;
       pointer-events:none; transition:opacity .2s; }
@@ -299,6 +304,62 @@
     .rg-sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);
              white-space:nowrap; }
 
+    /* ── Interruttore generale ───────────────────────────── */
+    /* Sta nella testata e non dentro un pannello: un fermo di emergenza che
+       devi cercare non e' un fermo di emergenza. */
+    .rg-interruttore { display:inline-flex; align-items:center; gap:7px;
+      border:1.5px solid var(--border); background:var(--surface); font:inherit;
+      font-size:12.5px; font-weight:700; color:var(--text); border-radius:999px;
+      padding:5px 12px 5px 9px; cursor:pointer; }
+    .rg-interruttore:hover { border-color:var(--text-muted); }
+    .rg-int-pallino { width:9px; height:9px; border-radius:50%; background:var(--accent-dark);
+      box-shadow:0 0 0 3px color-mix(in srgb, var(--accent-dark) 22%, transparent); flex:0 0 auto; }
+    .rg-interruttore[aria-pressed="true"] { border-color:var(--danger); color:var(--danger); }
+    .rg-interruttore[aria-pressed="true"] .rg-int-pallino { background:var(--danger);
+      box-shadow:0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent); }
+
+    .rg-fermo { display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+      border:1.5px solid var(--danger); background:var(--danger-bg); color:var(--text);
+      border-radius:12px; padding:10px 13px; margin-bottom:12px; font-size:13px; }
+    .rg-fermo[hidden] { display:none; }
+    .rg-fermo b { font-weight:800; }
+
+    /* ── Contatore sul Tocca a te e sulle schede ─────────── */
+    .rg-conta { display:inline-flex; align-items:center; justify-content:center;
+      min-width:18px; height:18px; padding:0 5px; border-radius:999px;
+      background:var(--danger); color:#fff; font-size:10.5px; font-weight:800;
+      letter-spacing:0; margin-left:6px; vertical-align:middle; }
+    .rg-conta[hidden] { display:none; }
+    .rg-conta.calma { background:var(--text-muted); }
+    /* Quando c'e' davvero qualcosa da fare la striscia si fa notare. */
+    .rg-tocca.piena { border-color:var(--danger); }
+    .rg-tocca.piena .rg-tocca-testa { color:var(--danger); }
+
+    /* ── Direzione: il piano della settimana ─────────────── */
+    .rg-piano-riga { border:1.5px solid var(--border); border-radius:11px; padding:10px 12px;
+      margin-bottom:9px; background:var(--surface2); }
+    .rg-piano-riga.spenta { opacity:.55; }
+    .rg-piano-testa { display:flex; align-items:baseline; gap:8px; }
+    .rg-piano-nome { font-size:13.5px; font-weight:800; flex:1 1 auto; }
+    .rg-piano-conto { font-size:12px; font-weight:800; white-space:nowrap; }
+    .rg-piano-conto.manca { color:var(--danger); }
+    .rg-piano-conto.pieno { color:var(--accent-dark); }
+    .rg-piano-prog { height:6px; border-radius:999px; background:var(--border);
+      overflow:hidden; margin:8px 0 7px; }
+    .rg-piano-prog span { display:block; height:100%; background:var(--accent-dark); }
+    .rg-piano-det { font-size:12px; color:var(--text-muted); line-height:1.45; }
+    .rg-piano-come { font-size:12px; line-height:1.45; margin-top:6px;
+      padding-left:9px; border-left:2.5px solid var(--border); }
+    .rg-piano-azioni { display:flex; gap:6px; margin-top:9px; flex-wrap:wrap; }
+    .rg-campo { display:block; margin-bottom:9px; }
+    .rg-campo > span { display:block; font-size:11px; font-weight:800; text-transform:uppercase;
+      letter-spacing:.05em; color:var(--text-muted); margin-bottom:4px; }
+    .rg-campo input, .rg-campo select, .rg-campo textarea { width:100%; font:inherit; font-size:13px;
+      padding:7px 9px; border:1.5px solid var(--border); border-radius:9px;
+      background:var(--surface); color:var(--text); }
+    .rg-campo textarea { min-height:76px; resize:vertical; line-height:1.45; }
+    .rg-campo-aiuto { font-size:11.5px; color:var(--text-muted); margin-top:4px; line-height:1.4; }
+
     @media (max-width: 860px) {
       .rg-cal-guscio { grid-template-columns:1fr; }
       .rg-griglia { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -320,18 +381,33 @@
         <div class="rg-stato" id="rg-stato">Apro la sala…</div>
       </div>
       <div class="topbar-actions">
+        <button class="rg-interruttore" id="rg-interruttore" type="button" aria-pressed="false"
+                title="Ferma o fa ripartire tutti gli agenti">
+          <span class="rg-int-pallino" aria-hidden="true"></span>
+          <span id="rg-int-testo">Agenti attivi</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" id="rg-btn-direzione">Direzione</button>
         <button class="btn btn-ghost btn-sm" id="rg-btn-cervello">Cervello</button>
         <button class="btn btn-ghost btn-sm" id="rg-btn-reference">Reference</button>
       </div>
     </div>
 
     <div class="page-content">
+      <!-- Quando gli agenti sono fermi non basta scriverlo nella riga di
+           stato: la riga di stato cambia sempre, una fascia rossa no. -->
+      <div class="rg-fermo" id="rg-fermo" role="status" hidden>
+        <span><b>Gli agenti sono fermi.</b> Non parte nessun lavoro e non si spende niente.
+          Quelli gia&#768; in coda restano in coda e ripartono da soli quando riaccendi.</span>
+        <div class="rg-spazio"></div>
+        <button class="btn btn-accent btn-sm" type="button" id="rg-fermo-riparti">Fai ripartire</button>
+      </div>
+
       <!-- Due file, non una sola lunga: in alto dove sei, in basso cosa
            guardi. Prima erano nove comandi in fila senza gerarchia e non si
            capiva quali cambiassero pagina e quali cambiassero vista. -->
       <div class="rg-barra">
         <div class="rg-schede" role="tablist" aria-label="Sezioni della Regia">
-          <button class="rg-scheda" role="tab" aria-selected="true"  data-vista="sala">Sala</button>
+          <button class="rg-scheda" role="tab" aria-selected="true"  data-vista="sala">Sala<span class="rg-conta" id="rg-scheda-conta" hidden>0</span></button>
           <button class="rg-scheda" role="tab" aria-selected="false" data-vista="calendario">Calendario</button>
           <button class="rg-scheda" role="tab" aria-selected="false" data-vista="risultati">Risultati</button>
         </div>
@@ -351,8 +427,8 @@
         <!-- Prima stava sotto la scena, cioe' sotto la piega: la cosa che
              chiede un'azione era l'ultima che si vedeva. La stanza e' lo
              stato, questa e' la lista delle cose da fare. -->
-        <div class="rg-tocca">
-          <div class="rg-tocca-testa">Tocca a te</div>
+        <div class="rg-tocca" id="rg-tocca-guscio">
+          <div class="rg-tocca-testa">Tocca a te<span class="rg-conta" id="rg-tocca-conta" hidden>0</span></div>
           <div class="rg-tocca-righe" id="rg-tocca"></div>
         </div>
 

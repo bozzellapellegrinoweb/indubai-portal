@@ -40,7 +40,7 @@
     // Il social media manager vede la Regia e nient'altro. Niente 'index':
     // la dashboard mostra clienti e incassi, che non sono affari suoi, e il
     // redirect qui sotto lo porta direttamente sulla Regia.
-    smm:          ['regia','smm','notifiche'],
+    smm:          ['regia','notifiche'],
   };
 
   window.ROLE_PAGES_DEFAULT = ROLE_PAGES_DEFAULT;
@@ -130,12 +130,16 @@
     ] : []),
     { id: 'news',       icon: 'book-open',     label: 'UAE News',       href: '/news.html' },
     { id: 'search',     icon: 'search',        label: 'Ricerca',        href: '/search.html' },
-    // La Regia e il generatore di post stanno in una sezione normale, non
-    // dentro un blocco "solo admin": cablata li' la voce era invisibile al
-    // sistema permessi, e il social media manager non poteva vederla
-    // nemmeno concedendogliela dalla matrice (vedi CLAUDE.md).
+    // La Regia sta in una sezione normale, non dentro un blocco "solo
+    // admin": cablata li' la voce era invisibile al sistema permessi, e il
+    // social media manager non poteva vederla nemmeno concedendogliela
+    // dalla matrice (vedi CLAUDE.md).
+    //
+    // Il generatore di post aveva una voce sua che portava fuori dal
+    // portale, su un indirizzo Vercel. Adesso non e' piu' un posto dove si
+    // va: e' il motore che la Regia chiama per rendere i caroselli e
+    // montare i reel, e il manager non lo vede.
     { id: 'regia',      icon: 'film',          label: 'Regia Social',   href: '/regia.html',      section: 'SOCIAL' },
-    { id: 'smm',        icon: 'megaphone',     label: '↳ Generatore Post', href: 'https://indubai-social-manager.vercel.app', external: true },
     ...(role === 'admin' ? [
       { id: 'attivita', icon: 'clipboard',     label: 'Attività Staff', href: '/attivita.html', section: 'ADMIN' },
       { id: 'ambassadors', icon: 'award',    label: 'Ambassador',     href: '/ambassadors.html' },

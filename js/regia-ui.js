@@ -99,15 +99,41 @@
     if (r.lavorano)   pezzi.push(`<b>${r.lavorano}</b> ${r.lavorano === 1 ? 'sta lavorando' : 'stanno lavorando'}`);
     if (r.inCoda)     pezzi.push(`<b>${r.inCoda}</b> in attesa di partire`);
     if (r.liberi)     pezzi.push(`<b>${r.liberi}</b> ${r.liberi === 1 ? 'è libero' : 'sono liberi'}`);
+    if (r.spenti)     pezzi.push(`<b>${r.spenti}</b> ${r.spenti === 1 ? 'è spento' : 'sono spenti'}`);
     $('rg-stato').innerHTML = pezzi.length
       ? pezzi.join(', ') + '.'
       : 'La sala è tranquilla: nessun lavoro aperto.';
 
-    const spento = D.stato.impostazioni?.stop_tutto;
+    const spento = !!D.stato.impostazioni?.stop_tutto;
     if (spento) {
       $('rg-stato').innerHTML =
         '<span class="rg-pillola rossa">tutto fermo</span> ' +
         'Gli agenti sono in pausa: nessun lavoro parte finché non si riaccende.';
+    }
+
+    // L'interruttore dice sempre lo stato in cui si trova, non l'azione che
+    // fa: un tasto che dice "Spegni" mentre e' gia' spento e' il modo
+    // migliore per spegnere due volte e riaccendere senza accorgersene.
+    const sw = $('rg-interruttore');
+    if (sw) {
+      sw.setAttribute('aria-pressed', String(spento));
+      $('rg-int-testo').textContent = spento ? 'Agenti fermi' : 'Agenti attivi';
+      sw.title = spento
+        ? 'Gli agenti sono fermi. Premi per farli ripartire.'
+        : 'Gli agenti lavorano. Premi per fermarli tutti.';
+    }
+    const fascia = $('rg-fermo');
+    if (fascia) fascia.hidden = !spento;
+
+    // Quanto manca per chiudere la settimana, accanto al saluto: e' la
+    // domanda che un direttore si fa per prima.
+    const manca = (D.stato.piano || []).filter(x => x.attivo)
+      .reduce((s, x) => s + Number(x.mancanti || 0), 0);
+    const previsti = (D.stato.piano || []).filter(x => x.attivo)
+      .reduce((s, x) => s + Number(x.quanti_a_settimana || 0), 0);
+    if (previsti) {
+      $('rg-stato').innerHTML += ` <span class="rg-pillola ${manca ? 'rossa' : ''}">`
+        + `settimana: ${previsti - manca} su ${previsti}</span>`;
     }
 
     const ora = new Intl.DateTimeFormat('it-IT', {
@@ -242,14 +268,17 @@
     c.innerHTML = agenti.map(a => {
       const lavoro = D.lavoroVivoDi(a.id);
       const posa = D.posaDi(a.id);
-      const colore = { libero: '#9ca3af', attende: '#d97706', lavora: '#16a34a', mano_alzata: '#dc2626' }[posa];
+      const colore = { libero: '#9ca3af', attende: '#d97706', lavora: '#16a34a',
+                       mano_alzata: '#dc2626', spento: '#4b5563' }[posa];
       const contenuto = lavoro?.content_id
         ? D.stato.contenuti.find(x => x.id === lavoro.content_id) : null;
-      const cosa = posa === 'mano_alzata'
-        ? (lavoro.domanda || 'Ha una domanda per te')
-        : posa === 'libero'
-          ? 'Libero, in attesa di un lavoro'
-          : `${lavoro.attivita || testoAttivita(lavoro)}${contenuto ? ' · ' + esc(contenuto.titolo) : ''}`;
+      const cosa = posa === 'spento'
+        ? 'Spento: non prende lavori'
+        : posa === 'mano_alzata'
+          ? (lavoro.domanda || 'Ha una domanda per te')
+          : posa === 'libero'
+            ? 'Libero, in attesa di un lavoro'
+            : `${lavoro.attivita || testoAttivita(lavoro)}${contenuto ? ' · ' + esc(contenuto.titolo) : ''}`;
 
       return `<article class="rg-posto">
         <div class="rg-posto-testa">
@@ -276,8 +305,22 @@
   function disegnaTocca() {
     const c = $('rg-tocca');
     const voci = D.toccaATe();
+
+    // Il numero si vede in tre posti perche' la domanda "devo fare
+    // qualcosa?" non deve costare uno scorrimento: sulla striscia, sulla
+    // scheda Sala (cosi' si vede anche dal Calendario e dai Risultati) e
+    // nella riga di stato in cima.
+    const conta = $('rg-tocca-conta'), contaScheda = $('rg-scheda-conta');
+    for (const el of [conta, contaScheda]) {
+      if (!el) continue;
+      el.textContent = String(voci.length);
+      el.hidden = voci.length === 0;
+    }
+    $('rg-tocca-guscio')?.classList.toggle('piena', voci.length > 0);
+
     if (!voci.length) {
-      c.innerHTML = '<div class="rg-vuoto-tocca">Niente in attesa di te. Buon momento per lanciare qualcosa di nuovo.</div>';
+      c.innerHTML = '<div class="rg-vuoto-tocca">Niente in attesa di te. '
+        + 'Se la settimana e&#768; coperta va bene cosi&#768;: il piano lo vedi in <b>Direzione</b>.</div>';
       return;
     }
     c.innerHTML = voci.map(v => {
@@ -285,6 +328,7 @@
                    : v.tipo === 'cervello' ? 'cervello' : '';
       const attr = v.tipo === 'domanda'      ? `data-rispondi="${v.id}"`
                  : v.tipo === 'cervello'     ? 'data-cervello="1"'
+                 : v.tipo === 'piano'        ? 'data-piano="1"'
                  : `data-contenuto="${v.id}"`;
       return `<div class="rg-tessera ${classe}">
         <div class="rg-tessera-titolo">${esc(v.titolo)}</div>
@@ -398,19 +442,24 @@
     ui.pannello = { tipo: 'agente', id: agentId };
     ui.tridi?.inquadraAgente(agentId);
 
-    apriPannello(a.nome, `${a.ruolo} · ${a.descrizione || ''}`,
+    apriPannello(a.nome,
+      `${a.ruolo}${a.attivo === false ? ' · spento' : ''} · ${a.descrizione || ''}`,
       '<div class="rg-vuoto-tocca">Carico…</div>',
-      { conPiede: true, placeholder: `Scrivi a ${a.nome}…` });
+      { conPiede: a.attivo !== false, placeholder: `Scrivi a ${a.nome}…` });
 
     const [messaggi, lavori] = await Promise.all([D.messaggiDi(agentId), D.lavoriDi(agentId)]);
     if (ui.pannello?.id !== agentId) return;
 
     const lavoro = D.lavoroVivoDi(agentId);
-    const adesso = lavoro
-      ? (lavoro.stato === 'attesa_risposta'
-          ? `<div class="rg-nota"><div class="rg-nota-ancora">ti sta aspettando</div>${esc(lavoro.domanda || '')}</div>`
-          : `<div class="rg-voce">${esc(lavoro.attivita || testoAttivita(lavoro))}: ${esc(lavoro.titolo)}</div>`)
-      : '<div class="rg-vuoto-tocca">Adesso è libero.</div>';
+    const acceso = a.attivo !== false;
+    const adesso = !acceso
+      ? '<div class="rg-vuoto-tocca">È spento: non prende lavori finché non lo riaccendi. '
+        + 'Quelli già in coda per lui restano in coda.</div>'
+      : lavoro
+        ? (lavoro.stato === 'attesa_risposta'
+            ? `<div class="rg-nota"><div class="rg-nota-ancora">ti sta aspettando</div>${esc(lavoro.domanda || '')}</div>`
+            : `<div class="rg-voce">${esc(lavoro.attivita || testoAttivita(lavoro))}: ${esc(lavoro.titolo)}</div>`)
+        : '<div class="rg-vuoto-tocca">Adesso è libero.</div>';
 
     const fatti = (lavori || []).filter(j => j.stato === 'fatto').slice(0, 6);
     const fattiHtml = fatti.length
@@ -424,11 +473,31 @@
       ? messaggi.map(m => `<div class="rg-bolla ${m.autore === 'utente' ? 'utente' : 'agente'}">${esc(m.testo)}<div class="rg-bolla-ora">${oraBreve(m.created_at)}</div></div>`).join('')
       : '<div class="rg-vuoto-tocca">Non vi siete ancora parlati.</div>';
 
+    // Il modello e gli strumenti non si mostrano: il manager non e' un
+    // amministratore di sistema. L'interruttore si', perche' e' una
+    // decisione sua.
     corpoPannello().innerHTML = `
       <div class="rg-sez">Cosa fa adesso</div>${adesso}
+      <div class="rg-piano-azioni">
+        <button class="btn ${acceso ? 'btn-ghost' : 'btn-accent'} btn-sm" data-agente-acceso="${acceso ? '0' : '1'}">
+          ${acceso ? 'Spegni questo agente' : 'Riaccendi questo agente'}</button>
+      </div>
       <div class="rg-sez">Ultime cose fatte</div>${fattiHtml}
       <div class="rg-sez">Conversazione</div>${chat}`;
     corpoPannello().scrollTop = corpoPannello().scrollHeight;
+
+    corpoPannello().querySelector('[data-agente-acceso]')?.addEventListener('click', async (ev) => {
+      const verso = ev.currentTarget.dataset.agenteAcceso === '1';
+      ev.currentTarget.disabled = true;
+      try {
+        await D.accendiAgente(agentId, verso);
+        window.ui.showToast(verso ? `${a.nome} riaccesso.` : `${a.nome} spento.`, 'success');
+        await apriAgente(agentId);
+      } catch (e) {
+        window.ui.showToast(pulisciErrore(e.message), 'error');
+        ev.currentTarget.disabled = false;
+      }
+    });
 
     $('rg-pan-invia').onclick = async () => {
       const t = $('rg-pan-testo').value.trim();
@@ -1174,6 +1243,243 @@
         } }]);
   }
 
+
+  // ══════════════════════════════════════════════════════════
+  // Direzione: il piano della settimana
+  // ══════════════════════════════════════════════════════════
+  // Qui il manager dice quanto deve uscire, di che tipo, chi lo fa e come.
+  // Non e' un modulo decorativo: quello che scrive qui finisce nel prompt di
+  // ogni agente insieme a quanto manca, e il Direttore ci si regola.
+
+  const GIORNI = [[1, 'Lun'], [2, 'Mar'], [3, 'Mer'], [4, 'Gio'], [5, 'Ven'], [6, 'Sab'], [7, 'Dom']];
+  const TIPI = [['carosello', 'Carosello'], ['reel', 'Reel'], ['storia', 'Storia'], ['post', 'Post']];
+
+  async function apriDirezione() {
+    ui.pannello = { tipo: 'direzione' };
+    apriPannello('Direzione', 'Il piano di questa settimana',
+      '<div class="rg-vuoto-tocca">Carico…</div>');
+
+    let righe = [];
+    try { righe = await D.piano(0) || []; }
+    catch (e) {
+      corpoPannello().innerHTML =
+        `<div class="rg-vuoto-tocca">Non riesco a leggere il piano: ${esc(e.message)}</div>`;
+      return;
+    }
+    if (ui.pannello?.tipo !== 'direzione') return;
+
+    const s = D.stato.impostazioni || {};
+    const spesoOggi = Number(s.speso_oggi_usd || 0);
+    const budget = Number(s.budget_giorno_usd || 0);
+
+    const corpo = righe.length
+      ? righe.map(rigaPianoHtml).join('')
+      : `<div class="rg-vuoto-tocca">
+           Il piano e&#768; vuoto: gli agenti aspettano che tu dica cosa fare, ogni volta.
+           Aggiungi una voce e sapranno da soli quanto deve uscire.
+         </div>`;
+
+    corpoPannello().innerHTML = `
+      <div class="rg-sez">Cosa deve uscire</div>
+      ${corpo}
+      <div class="rg-piano-azioni">
+        <button class="btn btn-accent btn-sm" data-piano-nuovo="1">Aggiungi una voce</button>
+        ${righe.some(r => r.attivo && r.mancanti > 0)
+          ? '<button class="btn btn-ghost btn-sm" data-piano-lancia="1">Lancia quello che manca</button>'
+          : ''}
+      </div>
+
+      <div class="rg-sez">Spesa</div>
+      <div class="rg-voce">
+        Oggi gli agenti hanno speso <b>${spesoOggi.toFixed(2)} $</b>
+        ${budget ? `su un tetto di <b>${budget.toFixed(2)} $</b>` : ''}.
+        Oltre il tetto la coda si ferma da sola.
+        <div class="rg-voce-fonte">Il tetto lo cambia l&#39;amministratore.</div>
+      </div>`;
+
+    corpoPannello().querySelector('[data-piano-nuovo]')
+      ?.addEventListener('click', () => formaRigaPiano(null));
+    corpoPannello().querySelector('[data-piano-lancia]')
+      ?.addEventListener('click', async (ev) => {
+        ev.currentTarget.disabled = true;
+        try {
+          await D.lanciaQuelloCheManca();
+          window.ui.showToast('Detto al Direttore. Guarda la sala.', 'success');
+          chiudiPannello();
+          cambiaVista('sala');
+        } catch (e) { window.ui.showToast(pulisciErrore(e.message), 'error'); }
+      });
+
+    for (const b of corpoPannello().querySelectorAll('[data-piano-modifica]')) {
+      b.addEventListener('click', () =>
+        formaRigaPiano(righe.find(r => r.id === b.dataset.pianoModifica)));
+    }
+    for (const b of corpoPannello().querySelectorAll('[data-piano-acceso]')) {
+      b.addEventListener('click', async () => {
+        b.disabled = true;
+        try {
+          await D.salvaRigaPiano(b.dataset.pianoAcceso, { attivo: b.dataset.verso === '1' });
+          await apriDirezione();
+        } catch (e) { window.ui.showToast(pulisciErrore(e.message), 'error'); b.disabled = false; }
+      });
+    }
+    for (const b of corpoPannello().querySelectorAll('[data-piano-togli]')) {
+      b.addEventListener('click', () => {
+        const r = righe.find(x => x.id === b.dataset.pianoTogli);
+        modale('Togliere questa voce?', `
+          <p>«${esc(r.nome)}» non fara&#768; piu&#768; parte del piano, e gli agenti non sapranno
+          piu&#768; che deve uscire. I contenuti gia&#768; fatti restano dove sono.</p>`,
+          [{ etichetta: 'Togli', primaria: true, azione: async () => {
+              await D.eliminaRigaPiano(r.id);
+              chiudiModale();
+              window.ui.showToast('Togliata dal piano.', 'success');
+              apriDirezione();
+            } }]);
+      });
+    }
+  }
+
+  function rigaPianoHtml(r) {
+    const previsti = Number(r.quanti_a_settimana || 0);
+    const fatti = Number(r.usciti || 0) + Number(r.in_calendario || 0) + Number(r.in_lavorazione || 0);
+    const manca = Number(r.mancanti || 0);
+    const quota = previsti ? Math.min(100, Math.round(fatti / previsti * 100)) : 0;
+    const det = [];
+    if ((r.pillar || []).length)    det.push('pillar ' + r.pillar.join(' o '));
+    if ((r.categorie || []).length) det.push('categoria ' + r.categorie.join(' o '));
+    det.push(r.agente ? `li fa ${esc(r.agente)}` : 'lo decide il Direttore');
+    if ((r.giorni || []).length) {
+      det.push('giorni: ' + r.giorni.map(g => (GIORNI.find(x => x[0] === Number(g)) || [, g])[1]).join(', '));
+    }
+    if (r.ora) det.push(`verso le ${String(r.ora).slice(0, 5)}`);
+
+    return `<div class="rg-piano-riga ${r.attivo ? '' : 'spenta'}">
+      <div class="rg-piano-testa">
+        <span class="rg-piano-nome">${esc(r.nome)}</span>
+        <span class="rg-piano-conto ${!r.attivo ? '' : manca ? 'manca' : 'pieno'}">${fatti} su ${previsti}</span>
+      </div>
+      <div class="rg-piano-prog"><span style="width:${quota}%"></span></div>
+      <div class="rg-piano-det">${esc(det.join(' · '))}</div>
+      ${!r.attivo
+        ? '<div class="rg-piano-det">In pausa: gli agenti non la contano e non la coprono.</div>'
+        : manca
+          ? `<div class="rg-piano-det"><b>Mancano ${manca}.</b> ${Number(r.usciti) ? `Usciti ${r.usciti}. ` : ''}${Number(r.in_calendario) ? `In calendario ${r.in_calendario}. ` : ''}${Number(r.in_lavorazione) ? `In lavorazione ${r.in_lavorazione}.` : ''}</div>`
+          : '<div class="rg-piano-det">Questa voce è coperta.</div>'}
+      ${r.come ? `<div class="rg-piano-come">${esc(r.come)}</div>` : ''}
+      <div class="rg-piano-azioni">
+        <button class="btn btn-ghost btn-sm" data-piano-modifica="${r.id}">Modifica</button>
+        <button class="btn btn-ghost btn-sm" data-piano-acceso="${r.id}" data-verso="${r.attivo ? '0' : '1'}">
+          ${r.attivo ? 'Metti in pausa' : 'Rimetti in piano'}</button>
+        <button class="btn btn-ghost btn-sm" data-piano-togli="${r.id}">Togli</button>
+      </div>
+    </div>`;
+  }
+
+  function formaRigaPiano(r) {
+    const nuova = !r;
+    const agenti = D.stato.agenti.filter(a => a.slug !== 'direttore');
+    modale(nuova ? 'Una voce nuova nel piano' : 'Modifica la voce', `
+      <label class="rg-campo"><span>Come la chiamiamo</span>
+        <input id="rg-p-nome" value="${esc(r?.nome || '')}"
+          placeholder="Per esempio: caroselli fiscali del marted&igrave;"></label>
+
+      <label class="rg-campo"><span>Che cos&#39;e&#768;</span>
+        <select id="rg-p-tipo">${TIPI.map(([k, et]) =>
+          `<option value="${k}" ${r?.tipo === k ? 'selected' : ''}>${et}</option>`).join('')}</select></label>
+
+      <label class="rg-campo"><span>Quanti a settimana</span>
+        <input id="rg-p-quanti" type="number" min="0" max="70"
+          value="${r ? r.quanti_a_settimana : 2}"></label>
+
+      <label class="rg-campo"><span>Chi li fa</span>
+        <select id="rg-p-agente">
+          <option value="">lo decide il Direttore</option>
+          ${agenti.map(a => `<option value="${a.id}" ${r?.agente_id === a.id ? 'selected' : ''}>${esc(a.nome)}</option>`).join('')}
+        </select></label>
+
+      <div class="rg-campo"><span>Che giorni</span>
+        <div id="rg-p-giorni" style="display:flex;gap:6px;flex-wrap:wrap">
+          ${GIORNI.map(([n, et]) => `
+            <button type="button" class="rg-zona" data-g="${n}"
+              aria-pressed="${(r?.giorni || []).map(Number).includes(n)}">${et}</button>`).join('')}
+        </div>
+        <div class="rg-campo-aiuto">Nessuno selezionato: li distribuisce il Direttore.</div></div>
+
+      <label class="rg-campo"><span>Pillar, se vuoi vincolarlo</span>
+        <input id="rg-p-pillar" value="${esc((r?.pillar || []).join(', '))}"
+          placeholder="fiscale, residenza">
+        <div class="rg-campo-aiuto">Separati da virgola. Vuoto: qualunque pillar vale per questa voce.</div></label>
+
+      <label class="rg-campo"><span>Come vanno fatti</span>
+        <textarea id="rg-p-come" placeholder="Scrivilo come lo spiegheresti a una persona nuova. Per esempio: si apre con un numero, si chiude con un invito a leggere l&#39;approfondimento, mai piu&#768; di sei slide.">${esc(r?.come || '')}</textarea>
+        <div class="rg-campo-aiuto">Questo testo lo legge l&#39;agente parola per parola, ogni volta che lavora su questa voce.</div></label>
+      `,
+      [{ etichetta: nuova ? 'Aggiungi' : 'Salva', primaria: true, azione: async () => {
+          const nome = $('rg-p-nome').value.trim();
+          if (!nome) { window.ui.showToast('Serve un nome per riconoscerla.', 'error'); return; }
+          const giorni = [...document.querySelectorAll('#rg-p-giorni [data-g][aria-pressed="true"]')]
+            .map(b => Number(b.dataset.g));
+          const dati = {
+            nome,
+            tipo: $('rg-p-tipo').value,
+            quanti_a_settimana: Math.max(0, Number($('rg-p-quanti').value) || 0),
+            agente_id: $('rg-p-agente').value || null,
+            giorni,
+            pillar: $('rg-p-pillar').value.split(',').map(x => x.trim()).filter(Boolean),
+            come: $('rg-p-come').value.trim() || null,
+          };
+          if (nuova) await D.nuovaRigaPiano(dati);
+          else await D.salvaRigaPiano(r.id, dati);
+          chiudiModale();
+          window.ui.showToast(nuova ? 'Aggiunta al piano.' : 'Salvata.', 'success');
+          apriDirezione();
+        } }]);
+
+    // I giorni sono tasti, non caselle: si premono e restano premuti.
+    document.getElementById('rg-p-giorni')?.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-g]');
+      if (!b) return;
+      b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // Interruttori
+  // ══════════════════════════════════════════════════════════
+
+  async function cambiaInterruttore(forza) {
+    const fermoAdesso = !!D.stato.impostazioni?.stop_tutto;
+    const fermo = typeof forza === 'boolean' ? forza : !fermoAdesso;
+    if (fermo === fermoAdesso) return;
+
+    // Fermare tutto si conferma, far ripartire no: il verso prudente non
+    // chiede permesso.
+    if (!fermo) return applicaInterruttore(false);
+
+    const inCorso = D.stato.lavori.filter(j => j.stato === 'in_corso').length;
+    modale('Fermare tutti gli agenti?', `
+      <p>Non parte nessun lavoro nuovo e non si spende piu&#768; niente.
+      ${inCorso ? `I <b>${inCorso}</b> gia&#768; partiti finiscono il loro giro: non si possono richiamare a metà.` : ''}
+      Quelli in coda restano in coda e ripartono da soli quando riaccendi.</p>`,
+      [{ etichetta: 'Ferma tutto', primaria: true, azione: async () => {
+          await applicaInterruttore(true);
+          chiudiModale();
+        } }]);
+  }
+
+  async function applicaInterruttore(fermo) {
+    const sw = $('rg-interruttore');
+    if (sw) sw.disabled = true;
+    try {
+      await D.interruttore(fermo);
+      window.ui.showToast(fermo ? 'Fermi.' : 'Ripartiti.', 'success');
+    } catch (e) {
+      window.ui.showToast(pulisciErrore(e.message), 'error');
+    } finally {
+      if (sw) sw.disabled = false;
+    }
+  }
+
   // ══════════════════════════════════════════════════════════
   // Modali
   // ══════════════════════════════════════════════════════════
@@ -1403,12 +1709,16 @@
     const r = t.closest?.('[data-rispondi]');
     if (r) return apriRisposta(r.dataset.rispondi);
     if (t.closest?.('[data-cervello]')) return apriCervello();
+    if (t.closest?.('[data-piano]')) return apriDirezione();
   });
 
   document.addEventListener('DOMContentLoaded', () => {
     $('rg-btn-nuovo').addEventListener('click', nuovoLavoro);
     $('rg-btn-reference').addEventListener('click', nuovaReference);
     $('rg-btn-cervello').addEventListener('click', apriCervello);
+    $('rg-btn-direzione').addEventListener('click', apriDirezione);
+    $('rg-interruttore').addEventListener('click', () => cambiaInterruttore());
+    $('rg-fermo-riparti').addEventListener('click', () => cambiaInterruttore(false));
     $('rg-pan-chiudi').addEventListener('click', chiudiPannello);
     $('rg-velo').addEventListener('click', chiudiPannello);
     $('rg-modale-chiudi').addEventListener('click', chiudiModale);

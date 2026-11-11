@@ -23,6 +23,7 @@
     lavori: [],
     contenuti: [],
     impostazioni: null,
+    piano: [],
     cervelloContatori: { regola: 0, nota: 0, studio: 0, design: 0, daConfermare: 0 },
     profilo: null,
     caricato: false,
@@ -72,19 +73,25 @@
     if (!stato.brand) { stato.caricato = true; avvisa(); return stato; }
     const b = stato.brand.id;
 
-    const [agenti, lavori, contenuti, impostazioni, cervello] = await Promise.all([
-      sel('smm_agents', `brand_id=eq.${b}&attivo=eq.true&select=*&order=ordine`),
+    const [agenti, lavori, contenuti, impostazioni, cervello, pianoSett] = await Promise.all([
+      // Anche quelli spenti: uno spento deve restare alla sua scrivania,
+      // buio, altrimenti sparisce dalla stanza e non lo riaccendi piu'.
+      sel('smm_agents', `brand_id=eq.${b}&select=*&order=ordine`),
       // I lavori chiusi da piu' di un giorno non servono alla scena
       sel('smm_jobs', `brand_id=eq.${b}&or=(stato.in.(in_coda,in_corso,attesa_risposta),updated_at.gte.${ieri()})&select=*&order=created_at.desc&limit=200`),
       sel('smm_contents', `brand_id=eq.${b}&select=*&order=updated_at.desc&limit=300`),
       sel('smm_settings', `brand_id=eq.${b}&select=*`),
       sel('smm_brain', `brand_id=eq.${b}&attivo=eq.true&select=tipo,confermata`),
+      // Il piano con quanto manca: lo guarda la testata, non solo il
+      // pannello Direzione, quindi viene su col resto.
+      rpc('smm_piano_settimana', { p_brand: b, p_offset: 0 }).catch(() => []),
     ]);
 
     stato.agenti = agenti || [];
     stato.lavori = lavori || [];
     stato.contenuti = contenuti || [];
     stato.impostazioni = impostazioni?.[0] || null;
+    stato.piano = pianoSett || [];
 
     const c = { regola: 0, nota: 0, studio: 0, design: 0, daConfermare: 0 };
     for (const v of cervello || []) {
@@ -111,6 +118,8 @@
   }
 
   function posaDi(agentId) {
+    const a = stato.agenti.find(x => x.id === agentId);
+    if (a && a.attivo === false) return 'spento';
     const j = lavoroVivoDi(agentId);
     if (!j) return 'libero';
     if (j.stato === 'attesa_risposta') return 'mano_alzata';
@@ -139,11 +148,20 @@
     const daGuardare = stato.contenuti.filter(c => c.stato === 'da_approvare').length;
     const occupati = new Set(stato.lavori
       .filter(j => ['in_corso', 'in_coda'].includes(j.stato)).map(j => j.agent_id));
-    const liberi = stato.agenti.filter(a => !occupati.has(a.id)).length;
-    return { domande, lavorano, inCoda, daGuardare, liberi, totale: stato.agenti.length };
+    const accesi = stato.agenti.filter(a => a.attivo !== false);
+    const spenti = stato.agenti.length - accesi.length;
+    const liberi = accesi.filter(a => !occupati.has(a.id)).length;
+    return { domande, lavorano, inCoda, daGuardare, liberi, spenti,
+             totale: stato.agenti.length };
   }
 
   /** La striscia "Tocca a te". */
+  /** Caroselli, non caroselloe. Reel e post non cambiano. */
+  const PLURALI = { carosello: 'caroselli', reel: 'reel', storia: 'storie', post: 'post' };
+  function plurale(tipo, quanti) {
+    return quanti === 1 ? tipo : (PLURALI[tipo] || tipo);
+  }
+
   function toccaATe() {
     const voci = [];
     for (const j of stato.lavori.filter(x => x.stato === 'attesa_risposta')) {
@@ -166,6 +184,18 @@
         tipo: 'respinto', id: c.id, titolo: c.titolo,
         testo: n ? `Il Revisore ha trovato ${n} ${n === 1 ? 'problema' : 'problemi'}` : 'Fermato dal Revisore',
         azione: 'Leggi',
+      });
+    }
+    // Il piano in arretrato e' una cosa che tocca a te: nessun agente parte
+    // da solo a coprirlo, glielo devi dire.
+    const manca = (stato.piano || [])
+      .filter(r => r.attivo && r.mancanti > 0)
+      .map(r => `${r.mancanti} ${plurale(r.tipo, r.mancanti)}`);
+    if (manca.length) {
+      voci.push({
+        tipo: 'piano', id: 'piano',
+        titolo: 'La settimana non è coperta',
+        testo: `Mancano ${manca.join(', ')}`, azione: 'Lancia',
       });
     }
     if (stato.cervelloContatori.daConfermare > 0) {
@@ -390,6 +420,59 @@
   }
 
   // ── Impostazioni (solo admin le scrive: la RLS filtra in silenzio) ──
+  // ── Il piano della settimana ──────────────────────────────
+
+  function piano(offset = 0) {
+    return rpc('smm_piano_settimana', { p_brand: stato.brand.id, p_offset: offset });
+  }
+
+  async function nuovaRigaPiano(riga) {
+    const r = await ins('smm_piano', {
+      brand_id: stato.brand.id,
+      created_by: window.sb?.getCurrentUser?.()?.id || null,
+      ...riga,
+    });
+    await carica();
+    return r?.[0];
+  }
+
+  async function salvaRigaPiano(id, patch) {
+    await upd('smm_piano', `id=eq.${id}`, patch);
+    await carica();
+  }
+
+  async function eliminaRigaPiano(id) {
+    await del('smm_piano', `id=eq.${id}`);
+    await carica();
+  }
+
+  /** Dice al Direttore di coprire quello che manca. Il piano lo legge lui dal
+   *  suo prompt: non gli passo numeri che potrebbero essere vecchi. */
+  async function lanciaQuelloCheManca() {
+    return scriviAlDirettore(
+      'Guarda la direzione di questa settimana e lancia quello che manca, ' +
+      'una cosa per volta, assegnando a chi tocca secondo il piano. ' +
+      'Se è già coperta dillo e non produrre niente in più.');
+  }
+
+  // ── Interruttori ──────────────────────────────────────────
+
+  /** Il fermo generale. Passa da una funzione del database perche'
+   *  smm_settings la scrive solo l'admin, e il fermo deve poterlo alzare chi
+   *  guarda la stanza. */
+  async function interruttore(fermo) {
+    await rpc('smm_interruttore', { p_brand: stato.brand.id, p_stato: !!fermo });
+    await carica();
+    if (!fermo) svegliaWorker();
+    return !!fermo;
+  }
+
+  async function accendiAgente(agentId, acceso) {
+    await upd('smm_agents', `id=eq.${agentId}`, { attivo: !!acceso });
+    await carica();
+    if (acceso) svegliaWorker();
+  }
+
   async function salvaImpostazioni(patch) {
     const righe = await upd('smm_settings', `brand_id=eq.${stato.brand.id}`, patch);
     // La RLS su UPDATE non solleva errori: filtra. Zero righe = non permesso.
@@ -628,6 +711,8 @@
     approva, approvaComeAdmin, rimandaIndietro, spostaInCalendario, pubblicaOra,
     cervelloCerca, cervelloDaConfermare, cervelloConferma, cervelloScarta, cervelloAggiungi,
     nuovaReference, risultati, salvaRisultato, salvaImpostazioni,
+    plurale, piano, nuovaRigaPiano, salvaRigaPiano, eliminaRigaPiano, lanciaQuelloCheManca,
+    interruttore, accendiAgente,
     caricaFile, linkFirmato, svegliaWorker,
   };
 })();

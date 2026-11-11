@@ -46,6 +46,9 @@ const POSA = {
   attende:     { colore: 0xd97706, etichetta: 'in attesa' },
   lavora:      { colore: 0x16a34a, etichetta: 'al lavoro' },
   mano_alzata: { colore: 0xdc2626, etichetta: 'ha una domanda' },
+  // Spento non e' "libero": libero vuol dire che puo' partire da un momento
+  // all'altro, spento vuol dire che non partira' finche' non lo riaccendi.
+  spento:      { colore: 0x4b5563, etichetta: 'spento' },
 };
 
 /** Il centro di ogni zona. Gli agenti si disperdono attorno al loro. */
@@ -325,6 +328,16 @@ export function creaScena(contenitore, opzioni = {}) {
       new THREE.MeshBasicMaterial({ map: tex }),
     );
     return { mesh, canvas, tex };
+  }
+
+  /** Il monitor di un agente spento: nero, con una riga sola. */
+  function schermoSpento(schermo) {
+    const g = schermo.canvas.getContext('2d');
+    const W = schermo.canvas.width, H = schermo.canvas.height;
+    g.fillStyle = '#0a0a0f'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#3a3a4a'; g.font = '700 22px Inter, sans-serif';
+    g.fillText('spento', 24, H / 2 + 8);
+    schermo.tex.needsUpdate = true;
   }
 
   /** Disegna sul monitor cosa sta facendo l'agente. */
@@ -1104,7 +1117,8 @@ export function creaScena(contenitore, opzioni = {}) {
       a.posa = d.posa || 'libero';
       const p = POSA[a.posa] || POSA.libero;
       a.anello.material.color.setHex(p.colore);
-      disegnaSchermo(a.schermo, a.agente, d.lavoro, d.contenuto);
+      if (a.posa === 'spento') schermoSpento(a.schermo);
+      else disegnaSchermo(a.schermo, a.agente, d.lavoro, d.contenuto);
     }
   }
 
@@ -1152,7 +1166,21 @@ export function creaScena(contenitore, opzioni = {}) {
 
         const sx = a.braccioSx, dx = a.braccioDx;
 
-        if (a.posa === 'lavora') {
+        if (a.posa === 'spento') {
+          // Immobile, spalle giu', testa bassa: si vede da lontano che non
+          // sta aspettando un lavoro, e' fuori servizio.
+          sx.spalla.rotation.x = 0.04; sx.spalla.rotation.z =  0.06;
+          dx.spalla.rotation.x = 0.04; dx.spalla.rotation.z = -0.06;
+          sx.gomito.rotation.x = -0.08;
+          dx.gomito.rotation.x = -0.08;
+          a.testa.rotation.x = 0.3;
+          a.testa.rotation.y *= 0.9;
+          a.persona.rotation.z = 0;
+          // nessun respiro: l'altezza torna ferma al suo posto
+          a.busto.position.y = 0.785;
+          a.testa.position.y = 1.065;
+
+        } else if (a.posa === 'lavora') {
           // digita: le mani si alternano sulla tastiera, e la testa e'
           // appena china sullo schermo
           const v = a.fase * 10;
@@ -1199,7 +1227,7 @@ export function creaScena(contenitore, opzioni = {}) {
 
         // Chi lavora sta vicino alla scrivania, chi e' in pausa si allontana
         // un po' con tutta la sedia.
-        const zRiposo = a.posa === 'libero' ? 0.98 : 0.8;
+        const zRiposo = (a.posa === 'libero' || a.posa === 'spento') ? 0.98 : 0.8;
         a.persona.position.z += (zRiposo - a.persona.position.z) * dt * 2.4;
         a.sedia.position.z += ((zRiposo + 0.04) - a.sedia.position.z) * dt * 2.4;
       }

@@ -52,7 +52,9 @@ interface Agente {
  * funzionamento della Regia, non il mestiere dell'agente: se cambia, cambia
  * per tutti senza riscrivere otto righe di database.
  */
-function prompt(agente: Agente, brand: { nome: string }, colleghi: Agente[]): string {
+function prompt(
+  agente: Agente, brand: { nome: string }, colleghi: Agente[], piano: string,
+): string {
   const elenco = colleghi
     .filter((c) => c.slug !== agente.slug)
     .map((c) => `- ${c.slug}: ${c.nome}, ${c.ruolo}. ${c.descrizione ?? ""}`)
@@ -62,8 +64,30 @@ function prompt(agente: Agente, brand: { nome: string }, colleghi: Agente[]): st
     .replaceAll("{BRAND}", brand.nome)
     .replaceAll("{AGENTI}", elenco || "(nessun altro agente attivo)");
 
-  return `${base}
+  // La direzione sta prima di tutto il resto: e' il motivo per cui l'agente
+  // e' li'. Se e' vuota la sezione non compare, invece di dire "nessun
+  // piano" e invitare a inventarselo.
+  const direzione = piano
+    ? `
+────────────────────────────────────────
+LA DIREZIONE DI QUESTA SETTIMANA
 
+Questo e' il piano che il social media manager ha deciso. I numeri sono suoi:
+non si alzano per fare bella figura e non si abbassano perche' sembrano
+tanti. "Mancano" vuol dire che quelle uscite non esistono ancora ne' come
+bozza ne' come posto in calendario.
+
+${piano}
+
+Se ti chiedono di lanciare quello che manca, parti da qui e assegna a chi
+tocca secondo il piano. Se il piano e' gia' coperto, dillo invece di
+produrre roba in piu': una settimana piena di contenuti mediocri vale meno
+di una con quelli previsti fatti bene.
+`
+    : "";
+
+  return `${base}
+${direzione}
 ────────────────────────────────────────
 COME FUNZIONA QUESTO POSTO
 
@@ -98,9 +122,12 @@ interface Job {
 async function eseguiLavoroAgente(
   db: SupabaseClient, anthropic: Anthropic, job: Job,
 ): Promise<{ attivita: string; testo: string; costoUsd: number; tokenIn: number; tokenOut: number }> {
-  const [agenti, brands] = await Promise.all([
+  const [agenti, brands, piano] = await Promise.all([
     db.select("smm_agents", `brand_id=eq.${job.brand_id}&attivo=eq.true&select=*&order=ordine`),
     db.select("smm_brands", `id=eq.${job.brand_id}&select=*`),
+    // Il piano della settimana con quanto manca. Se la lettura non va, si
+    // lavora senza: meglio un agente senza direzione che un lavoro fermo.
+    db.rpc("smm_piano_in_parole", { p_brand: job.brand_id }).catch(() => ""),
   ]);
   const agente: Agente | undefined = agenti.find((a: Agente) => a.id === job.agent_id)
     ?? agenti.find((a: Agente) => a.slug === "direttore");
@@ -140,7 +167,7 @@ async function eseguiLavoroAgente(
       // Il pensiero adattivo e' il modo giusto su questi modelli, e su
       // claude-opus-5-5 non si puo' nemmeno disattivare.
       thinking: { type: "adaptive" },
-      system: prompt(agente, brand, agenti),
+      system: prompt(agente, brand, agenti, typeof piano === "string" ? piano : ""),
       // tool_choice resta "auto": su questi modelli forzare "any" o un
       // nome di strumento risponde 400. L'indirizzo lo da' il prompt, e
       // strict: true tiene gli argomenti dentro lo schema.

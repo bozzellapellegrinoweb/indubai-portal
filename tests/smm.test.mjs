@@ -102,6 +102,7 @@ try {
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_ruolo_smm.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_regia.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_seed.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_direzione.sql')]);
   // La pianificazione vive in una migrazione a parte perche' ha bisogno di
   // pg_cron e pg_net. Sul banco di prova quelli non ci sono: si prende solo
   // la funzione che mette in coda le uscite arrivate a scadenza, che e' la
@@ -708,6 +709,232 @@ test('un contenuto attraversa tutti i passaggi, e nessuno si puo saltare', () =>
 });
 
 // ============================================================
+gruppo('Direzione: il piano della settimana');
+
+// Il piano serve a una cosa sola: far sapere agli agenti quanto deve uscire
+// e quanto manca. Se il conteggio sbaglia, il Direttore lancia il doppio del
+// lavoro o non ne lancia nessuno, e in entrambi i casi spende male.
+
+const PIANO = one(`select id from smm_piano where brand_id = '${BRAND}' and nome = 'Storie quotidiane'`);
+
+/** Una uscita di quel tipo, con le date che decido io. */
+function uscita(opts = {}) {
+  const { tipo = 'storia', pillar = null, stato = 'idea',
+          pubblicato = null, slot = null, creato = 'now()' } = opts;
+  return one(`
+    insert into smm_contents (brand_id, titolo, tipo, pillar, stato,
+                              pubblicato_at, slot_at, created_at, created_by)
+    values ('${BRAND}', 'Prova del piano', '${tipo}',
+            ${pillar ? `'${pillar}'` : 'null'}, '${stato}',
+            ${pubblicato || 'null'}, ${slot || 'null'}, ${creato}, '${MANAGER}')
+    returning id`);
+}
+const settimana = (campo = 'mancanti', piano = PIANO) =>
+  comeUno(MANAGER, `select ${campo} from smm_piano_settimana('${BRAND}', 0) where id = '${piano}'`);
+const pulisciUscite = () => psql(DB, ['-c', `delete from smm_contents where titolo = 'Prova del piano'`]);
+
+test('il piano di partenza dice sette storie a settimana, e le fa il Copywriter', () => {
+  eq(one(`select quanti_a_settimana from smm_piano where id = '${PIANO}'`), '7', 'quante a settimana');
+  eq(one(`select a.slug from smm_piano p join smm_agents a on a.id = p.agente_id
+           where p.id = '${PIANO}'`), 'copywriter', 'chi le fa');
+});
+
+test('senza niente fatto mancano tutte e sette', () => {
+  pulisciUscite();
+  eq(settimana('mancanti'), '7', 'mancanti a settimana vuota');
+});
+
+test('una storia uscita questa settimana conta come fatta', () => {
+  pulisciUscite();
+  uscita({ pubblicato: 'now()', stato: 'pubblicato' });
+  eq(settimana('usciti'), '1', 'usciti');
+  eq(settimana('mancanti'), '6', 'mancanti');
+});
+
+test('una storia con un posto in calendario questa settimana conta', () => {
+  pulisciUscite();
+  uscita({ slot: `date_trunc('week', now() at time zone 'Asia/Dubai') + interval '3 days 18 hours'`,
+           stato: 'in_calendario' });
+  eq(settimana('in_calendario'), '1', 'in calendario');
+  eq(settimana('mancanti'), '6', 'mancanti');
+});
+
+test('una storia in lavorazione senza data conta: il Direttore non ne lancia altre sette', () => {
+  pulisciUscite();
+  uscita({ stato: 'in_lavorazione' });
+  eq(settimana('in_lavorazione'), '1', 'in lavorazione');
+  eq(settimana('mancanti'), '6', 'mancanti');
+});
+
+test('una storia respinta non conta come lavoro in corso', () => {
+  pulisciUscite();
+  uscita({ stato: 'respinto' });
+  eq(settimana('in_lavorazione'), '0', 'in lavorazione');
+  eq(settimana('mancanti'), '7', 'mancanti');
+});
+
+test('una storia uscita la settimana scorsa non conta in questa', () => {
+  pulisciUscite();
+  uscita({ pubblicato: `now() - interval '8 days'`, stato: 'pubblicato',
+           creato: `now() - interval '8 days'` });
+  eq(settimana('usciti'), '0', 'usciti');
+  eq(settimana('mancanti'), '7', 'mancanti');
+});
+
+test('un carosello non conta nella riga delle storie', () => {
+  pulisciUscite();
+  uscita({ tipo: 'carosello', pubblicato: 'now()', stato: 'pubblicato' });
+  eq(settimana('usciti'), '0', 'usciti');
+});
+
+test('la settimana scorsa si guarda indietro, non si perde', () => {
+  pulisciUscite();
+  uscita({ pubblicato: `now() - interval '8 days'`, stato: 'pubblicato',
+           creato: `now() - interval '8 days'` });
+  eq(comeUno(MANAGER, `select usciti from smm_piano_settimana('${BRAND}', -1) where id = '${PIANO}'`), '1',
+     'usciti la settimana scorsa');
+});
+
+test('il pillar della riga filtra: quello che non lo rispetta non conta', () => {
+  pulisciUscite();
+  const soloFiscale = one(`
+    insert into smm_piano (brand_id, nome, tipo, quanti_a_settimana, pillar)
+    values ('${BRAND}', 'Caroselli fiscali', 'carosello', 2, '{fiscale}')
+    returning id`);
+  uscita({ tipo: 'carosello', pillar: 'lifestyle', pubblicato: 'now()', stato: 'pubblicato' });
+  eq(settimana('usciti', soloFiscale), '0', 'un carosello lifestyle nella riga fiscale');
+  uscita({ tipo: 'carosello', pillar: 'fiscale', pubblicato: 'now()', stato: 'pubblicato' });
+  eq(settimana('usciti', soloFiscale), '1', 'un carosello fiscale nella riga fiscale');
+  eq(settimana('mancanti', soloFiscale), '1', 'mancanti');
+  psql(DB, ['-c', `delete from smm_piano where id = '${soloFiscale}'`]);
+});
+
+test('i mancanti non vanno sotto zero se si produce piu del previsto', () => {
+  pulisciUscite();
+  for (let i = 0; i < 9; i++) uscita({ pubblicato: 'now()', stato: 'pubblicato' });
+  eq(settimana('usciti'), '9', 'usciti');
+  eq(settimana('mancanti'), '0', 'mancanti');
+  pulisciUscite();
+});
+
+test('il piano in parole dice il numero, chi lo fa e quanto manca', () => {
+  pulisciUscite();
+  const testo = comeUno(MANAGER, `select smm_piano_in_parole('${BRAND}')`);
+  if (!testo.includes('7 storia')) throw new Error(`manca la quantita: ${testo}`);
+  if (!testo.includes('Copywriter')) throw new Error(`manca chi lo fa: ${testo}`);
+  if (!testo.includes('Mancano: 7')) throw new Error(`manca il mancante: ${testo}`);
+  if (!testo.includes('Come:')) throw new Error(`mancano le istruzioni: ${testo}`);
+});
+
+test('una riga spenta non entra nel piano in parole', () => {
+  psql(DB, ['-c', `update smm_piano set attivo = false where id = '${PIANO}'`]);
+  // Fra parentesi quadre perche' psql stampa il vuoto come niente, e il
+  // lettore dei test non distingue "stringa vuota" da "nessuna riga".
+  eq(comeUno(MANAGER, `select '[' || smm_piano_in_parole('${BRAND}') || ']'`), '[]',
+     'piano con la riga spenta');
+  psql(DB, ['-c', `update smm_piano set attivo = true where id = '${PIANO}'`]);
+});
+
+test('un contabile junior non vede il piano', () => {
+  eq(come(JUNIOR, `select count(*) from smm_piano_settimana('${BRAND}', 0)`)[0][0], '0',
+     'righe del piano per un junior');
+});
+
+test('il manager vede il piano', () => {
+  if (Number(comeUno(MANAGER, `select count(*) from smm_piano_settimana('${BRAND}', 0)`)) < 1) {
+    throw new Error('il manager non vede nessuna riga del piano');
+  }
+});
+
+// ============================================================
+gruppo('Interruttori: attiva e spegni');
+
+/** Mette un lavoro in coda per un agente, e restituisce l'id. */
+function lavoroPer(slug, priorita = 50) {
+  const agente = slug
+    ? one(`select id from smm_agents where brand_id = '${BRAND}' and slug = '${slug}'`)
+    : null;
+  return one(`
+    insert into smm_jobs (brand_id, agent_id, tipo, titolo, richiesta, priorita, richiesto_da)
+    values ('${BRAND}', ${agente ? `'${agente}'` : 'null'}, 'agente',
+            'Prova interruttore', 'niente', ${priorita}, '${MANAGER}')
+    returning id`);
+}
+// Tutti i lavori ancora in coda, non solo i miei: i gruppi precedenti ne
+// lasciano, e "ho preso un lavoro" non dice quale.
+const svuotaCoda = () => psql(DB, ['-c', `delete from smm_jobs where stato = 'in_coda'`]);
+const prendi = () => one(`select (smm_claim_job()).id`);
+
+test('il fermo generale lo puo alzare il manager, non serve l admin', () => {
+  vero(comeUno(MANAGER, `select smm_interruttore('${BRAND}', true)`), 'il manager alza il fermo');
+  vero(one(`select stop_tutto from smm_settings where brand_id = '${BRAND}'`), 'stop_tutto');
+});
+
+test('col fermo alzato la coda non da lavori', () => {
+  svuotaCoda();
+  lavoroPer('copywriter');
+  eq(prendi(), null, 'un lavoro preso col fermo alzato');
+});
+
+test('abbassando il fermo il lavoro e ancora li: non si perde, riparte', () => {
+  comeUno(MANAGER, `select smm_interruttore('${BRAND}', false)`);
+  falso(one(`select stop_tutto from smm_settings where brand_id = '${BRAND}'`), 'stop_tutto');
+  if (!prendi()) throw new Error('il lavoro non riparte dopo la ripartenza');
+  svuotaCoda();
+});
+
+test('alzare e abbassare il fermo finisce in activity_log', () => {
+  eq(one(`select count(*) from activity_log where action = 'smm_fermo_generale'`), '1', 'fermo');
+  eq(one(`select count(*) from activity_log where action = 'smm_ripartenza'`), '1', 'ripartenza');
+});
+
+test('un contabile junior non puo toccare l interruttore', () => {
+  comeFallisce(JUNIOR, `select smm_interruttore('${BRAND}', true)`, 'non hai accesso alla regia');
+  falso(one(`select stop_tutto from smm_settings where brand_id = '${BRAND}'`), 'stop_tutto');
+});
+
+test('un agente spento non riceve lavori', () => {
+  svuotaCoda();
+  const lavoro = lavoroPer('copywriter');
+  psql(DB, ['-c', `update smm_agents set attivo = false where brand_id = '${BRAND}' and slug = 'copywriter'`]);
+  eq(prendi(), null, 'lavoro preso da un agente spento');
+  eq(one(`select stato from smm_jobs where id = '${lavoro}'`), 'in_coda', 'il lavoro resta in coda');
+});
+
+test('gli altri agenti continuano a lavorare mentre uno e spento', () => {
+  const altro = lavoroPer('grafico', 90);
+  eq(prendi(), altro, 'il lavoro del grafico');
+});
+
+test('un lavoro senza agente parte comunque: la pubblicazione non ha una persona', () => {
+  const senzaAgente = one(`
+    insert into smm_jobs (brand_id, tipo, titolo, richiesta, priorita, richiesto_da)
+    values ('${BRAND}', 'pubblicazione', 'Prova interruttore', 'niente', 95, '${MANAGER}')
+    returning id`);
+  eq(prendi(), senzaAgente, 'il lavoro senza agente');
+});
+
+test('riaccendendo l agente il suo lavoro riparte', () => {
+  psql(DB, ['-c', `update smm_agents set attivo = true where brand_id = '${BRAND}' and slug = 'copywriter'`]);
+  if (!prendi()) throw new Error('il lavoro del copywriter non riparte');
+  svuotaCoda();
+});
+
+test('il manager puo spegnere e riaccendere un agente', () => {
+  const copy = one(`select id from smm_agents where brand_id = '${BRAND}' and slug = 'copywriter'`);
+  come(MANAGER, `update smm_agents set attivo = false where id = '${copy}'`);
+  falso(one(`select attivo from smm_agents where id = '${copy}'`), 'spento dal manager');
+  come(MANAGER, `update smm_agents set attivo = true where id = '${copy}'`);
+  vero(one(`select attivo from smm_agents where id = '${copy}'`), 'riaccesso dal manager');
+});
+
+test('un contabile junior non puo spegnere un agente', () => {
+  const copy = one(`select id from smm_agents where brand_id = '${BRAND}' and slug = 'copywriter'`);
+  come(JUNIOR, `update smm_agents set attivo = false where id = '${copy}'`);
+  vero(one(`select attivo from smm_agents where id = '${copy}'`), 'l agente dopo il tentativo del junior');
+});
+
+// ============================================================
 gruppo('Reversibilita');
 
 test('la migrazione di rollback riporta il database come prima', () => {
@@ -717,6 +944,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_direzione_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_cron_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_regia_down.sql')]);
   eq(one(`select count(*) from information_schema.tables
