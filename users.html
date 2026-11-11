@@ -19,6 +19,7 @@
     .rb-junior { background:#f3f4f6; color:#6b7280; }
     .rb-staff { background:#f3f4f6; color:#9ca3af; }
     .rb-collaborator { background:#dcfce7; color:#166534; }
+    .rb-smm { background:#f3e8ff; color:#6b21a8; }
     /* Permissions Matrix */
     .perm-matrix { width:100%; border-collapse:collapse; font-size:13px; }
     .perm-matrix th { text-align:left; padding:10px 12px; font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; border-bottom:2px solid var(--border); }
@@ -171,8 +172,8 @@
 <script src="/js/i18n.js"></script>
 <script>
 let editingId = null;
-const ROLE_LABELS = {admin:'Admin', mini_admin:'Mini Admin', senior:'Contabilità Senior', junior:'Contabilità Junior', collaborator:'Collaboratore', staff:'Staff'};
-const ROLE_COLORS = {admin:'#14161a', mini_admin:'#47ee74', senior:'#2563a8', junior:'#6b7280', collaborator:'#059669', staff:'#9ca3af'};
+const ROLE_LABELS = {admin:'Admin', mini_admin:'Mini Admin', senior:'Contabilità Senior', junior:'Contabilità Junior', collaborator:'Collaboratore', staff:'Staff', smm:'Social Media Manager'};
+const ROLE_COLORS = {admin:'#14161a', mini_admin:'#47ee74', senior:'#2563a8', junior:'#6b7280', collaborator:'#059669', staff:'#9ca3af', smm:'#7c3aed'};
 
 async function init() {
   await sb.requireAuth();
@@ -379,7 +380,7 @@ async function changePassword() {
 }
 
 // ── Permissions Management ────────────────────────────────────
-const MANAGEABLE_ROLES = ['senior','junior','mini_admin','collaborator'];
+const MANAGEABLE_ROLES = ['senior','junior','mini_admin','collaborator','smm'];
 const ALL_PAGES = [
   { section:'OVERVIEW', pages: [
     { id:'index',      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>', label:'Dashboard' },
@@ -410,6 +411,10 @@ const ALL_PAGES = [
     { id:'affinitas',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label:'Affinitas' },
     { id:'vat-partner',icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>', label:'VAT Consultant' },
     { id:'pw',         icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>', label:'P&amp;W' },
+  ]},
+  { section:'SOCIAL', pages: [
+    { id:'regia',      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="7" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="17" y2="21"/><line x1="2" y1="9" x2="7" y2="9"/><line x1="2" y1="15" x2="7" y2="15"/><line x1="17" y1="9" x2="22" y2="9"/><line x1="17" y1="15" x2="22" y2="15"/></svg>', label:'Regia Social' },
+    { id:'smm',        icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>', label:'Generatore Post' },
   ]},
   { section:'ANALYTICS', pages: [
     { id:'reports',    icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label:'Report' },

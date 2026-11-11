@@ -40,7 +40,7 @@ async function getClientUserId(clientId) {
 
 // Ruoli staff VALIDI (valori reali dell'enum user_role). 'collaborator' NON esiste:
 // includerlo nella query profiles causa errore enum 22P02 e azzera i destinatari.
-const VALID_STAFF_ROLES = ['admin', 'senior', 'mini_admin', 'junior', 'staff'];
+const VALID_STAFF_ROLES = ['admin', 'senior', 'mini_admin', 'junior', 'staff', 'smm'];
 
 // Helper: get user_ids of all admin/senior/junior staff (for internal alerts)
 async function getStaffUserIds(roles = ['admin', 'senior', 'mini_admin', 'junior']) {

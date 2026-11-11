@@ -90,3 +90,30 @@ unire.
 ```
 git fetch origin && git checkout -b <nome> origin/main
 ```
+
+## La Regia SMM: i presidi stanno nel database
+
+La sezione social (`regia.html`) e' l'unica parte del portale in cui lavorano
+agenti AI che scrivono sul database da soli. Per questo tre regole non sono
+controlli nell'interfaccia ma trigger su `smm_contents`, e vanno lasciate li':
+
+1. un contenuto non entra in **approvazione** senza il via libera del
+   Revisore (`revisore_ok`);
+2. non si **pubblica** senza un'approvazione umana registrata, e sulle
+   categorie sensibili con la doppia approvazione accesa serve anche l'admin;
+3. i **termini vietati** (avvocato, studio legale, lawyer, law firm) fermano
+   il via libera. Il Revisore e' un modello e puo' distrarsi: quella
+   particolare regola riguarda la qualifica professionale, quindi e' scritta
+   due volte.
+
+Spostarne una in JavaScript vuol dire toglierla: gli agenti scrivono dal
+server, non dal browser.
+
+Il resto dell'impianto, con le regole editoriali importate dal progetto che
+genera i post, sta in `docs/SMM_INVENTARIO.md`, `docs/SMM_PORTALE.md` e
+`docs/SMM_PIANO.md`. I test sono in `tests/smm.test.mjs` e girano su un
+PostgreSQL vero:
+
+```
+node tests/smm.test.mjs
+```

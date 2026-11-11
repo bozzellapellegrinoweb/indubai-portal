@@ -37,6 +37,10 @@
     junior:       ['index','tasks','pipeline','clients','testamento','zoho-setup','zoho-vat','onboarding','statements','reconciliation','expenses','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports','lead-analytics'],
     mini_admin:   ['index','tasks','pipeline','clients','testamento','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
     collaborator: ['index','tasks','pipeline','clients','testamento','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
+    // Il social media manager vede la Regia e nient'altro. Niente 'index':
+    // la dashboard mostra clienti e incassi, che non sono affari suoi, e il
+    // redirect qui sotto lo porta direttamente sulla Regia.
+    smm:          ['regia','smm','notifiche'],
   };
 
   window.ROLE_PAGES_DEFAULT = ROLE_PAGES_DEFAULT;
@@ -86,6 +90,7 @@
     receipt: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/>',
     award: '<circle cx="12" cy="8" r="6"/><path d="M15.48 13.37L17 22l-5-3-5 3 1.52-8.63"/>',
     link: '<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>',
+    film: '<rect x="2" y="3" width="20" height="18" rx="2"/><line x1="7" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="17" y2="21"/><line x1="2" y1="9" x2="7" y2="9"/><line x1="2" y1="15" x2="7" y2="15"/><line x1="17" y1="9" x2="22" y2="9"/><line x1="17" y1="15" x2="22" y2="15"/>',
     cpu: '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>',
   };
   function navIcon(key) {
@@ -125,9 +130,12 @@
     ] : []),
     { id: 'news',       icon: 'book-open',     label: 'UAE News',       href: '/news.html' },
     { id: 'search',     icon: 'search',        label: 'Ricerca',        href: '/search.html' },
-    ...(role === 'admin' ? [
-      { id: 'smm', icon: 'megaphone', label: 'Social Manager', href: 'https://indubai-social-manager.vercel.app', external: true },
-    ] : []),
+    // La Regia e il generatore di post stanno in una sezione normale, non
+    // dentro un blocco "solo admin": cablata li' la voce era invisibile al
+    // sistema permessi, e il social media manager non poteva vederla
+    // nemmeno concedendogliela dalla matrice (vedi CLAUDE.md).
+    { id: 'regia',      icon: 'film',          label: 'Regia Social',   href: '/regia.html',      section: 'SOCIAL' },
+    { id: 'smm',        icon: 'megaphone',     label: '↳ Generatore Post', href: 'https://indubai-social-manager.vercel.app', external: true },
     ...(role === 'admin' ? [
       { id: 'attivita', icon: 'clipboard',     label: 'Attività Staff', href: '/attivita.html', section: 'ADMIN' },
       { id: 'ambassadors', icon: 'award',    label: 'Ambassador',     href: '/ambassadors.html' },
