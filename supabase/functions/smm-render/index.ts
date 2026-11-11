@@ -34,9 +34,51 @@ interface Contenuto {
 
 interface Brand { nome: string; cta_default: string | null; sito: string | null }
 
-/** Il badge in alto nelle slide: la categoria, se c'e', altrimenti il pillar. */
+/**
+ * Il badge che compare in alto su ogni slide.
+ *
+ * Il generatore lo sceglie da un elenco chiuso, e si vede: un badge che
+ * dice "FISCALE" invece di "FISCALITA' UAE" e' fuori dal marchio su tutte
+ * le slide insieme. Prima lo ricavavo alla lettera dalla categoria, che
+ * non e' quell'elenco.
+ *
+ * Ordine: quello che ha scelto chi ha scritto (nella prima slide), poi la
+ * categoria o il pillar ricondotti all'elenco, poi il generico.
+ */
+const BADGE_AMMESSI = [
+  "FISCALITÀ UAE", "CORPORATE TAX", "RESIDENZA FISCALE", "FREE ZONE", "AIRE",
+  "COMPLIANCE", "SOCIETÀ UAE", "BANCHE UAE", "VISTI UAE", "CRYPTO UAE", "NORMATIVA",
+];
+
+/** Senza accenti e in maiuscolo, per confrontare "SOCIETA'" con "SOCIETÀ". */
+function piatto(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/'/g, "").toUpperCase().trim();
+}
+
+const VERSO_BADGE: Record<string, string> = {
+  FISCALE: "FISCALITÀ UAE", FISCALITA: "FISCALITÀ UAE", "FISCALITA UAE": "FISCALITÀ UAE",
+  NORMATIVA: "NORMATIVA", RESIDENZA: "RESIDENZA FISCALE", "RESIDENZA FISCALE": "RESIDENZA FISCALE",
+  STRUTTURE: "SOCIETÀ UAE", "SOCIETA UAE": "SOCIETÀ UAE", SOCIETA: "SOCIETÀ UAE",
+  COMPLIANCE: "COMPLIANCE", MITI: "NORMATIVA", DATI: "NORMATIVA",
+  "CORPORATE TAX": "CORPORATE TAX", "FREE ZONE": "FREE ZONE", FREEZONE: "FREE ZONE",
+  AIRE: "AIRE", BANCHE: "BANCHE UAE", "BANCHE UAE": "BANCHE UAE",
+  VISTI: "VISTI UAE", "VISTI UAE": "VISTI UAE", CRYPTO: "CRYPTO UAE", "CRYPTO UAE": "CRYPTO UAE",
+  LIFESTYLE: "FISCALITÀ UAE",
+};
+
 function badge(c: Contenuto): string {
-  return (c.categoria || c.pillar || "Fiscalita UAE").toUpperCase().slice(0, 28);
+  const prima = Array.isArray(c.slides) ? (c.slides[0] as Record<string, unknown> | undefined) : undefined;
+  const scelto = typeof prima?.badge === "string" ? prima.badge : null;
+
+  for (const candidato of [scelto, c.categoria, c.pillar]) {
+    if (!candidato) continue;
+    const k = piatto(candidato);
+    const ammesso = BADGE_AMMESSI.find((b) => piatto(b) === k);
+    if (ammesso) return ammesso;
+    if (VERSO_BADGE[k]) return VERSO_BADGE[k];
+  }
+  return "FISCALITÀ UAE";
 }
 
 /** La prima frase della caption, che fa da sottotitolo di copertina. */

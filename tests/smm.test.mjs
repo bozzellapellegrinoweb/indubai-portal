@@ -104,6 +104,9 @@ try {
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261110_smm_seed.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_direzione.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_motore.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_knowledge_intera.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_brief_copywriter.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_cervello_quote.sql')]);
   // La pianificazione vive in una migrazione a parte perche' ha bisogno di
   // pg_cron e pg_net. Sul banco di prova quelli non ci sono: si prende solo
   // la funzione che mette in coda le uscite arrivate a scadenza, che e' la
@@ -1020,6 +1023,82 @@ test('se la settimana e gia coperta non si disturba nessuno', () => {
 });
 
 // ============================================================
+gruppo('Quello che sa chi scrive');
+
+// La prima storia uscita dagli agenti era corretta e anonima. Non era un
+// difetto del modello: era quello che gli avevo dato. I fatti c'erano, il
+// gancio no.
+
+test('ogni topic della knowledge porta il gancio, non solo il fatto', () => {
+  const magri = one(`select count(*) from smm_brain
+                      where codice like 'S-KB-%' and testo not like '%GANCIO:%'`);
+  eq(magri, '0', 'topic senza gancio');
+  const corti = one(`select count(*) from smm_brain
+                      where codice like 'S-KB-%' and length(testo) < 400`);
+  eq(corti, '0', 'topic piu corti di 400 caratteri');
+});
+
+test('ci sono tutti e venti, con errore comune e cliffhanger', () => {
+  eq(one(`select count(*) from smm_brain where codice like 'S-KB-%'`), '20', 'quanti topic');
+  eq(one(`select count(*) from smm_brain
+           where codice like 'S-KB-%'
+             and (testo not like '%ERRORE COMUNE:%' or testo not like '%CLIFFHANGER:%')`),
+     '0', 'topic a cui manca un pezzo');
+});
+
+test('ogni topic porta il suo pillar fra i tag', () => {
+  eq(one(`select count(*) from smm_brain
+           where codice like 'S-KB-%'
+             and not (tags && array['miti','strutture','compliance','residenza','normativa'])`),
+     '0', 'topic senza pillar');
+});
+
+// Attenzione: questi testi vanno a capo, e il lettore dei risultati qui
+// sopra spezza le righe. Le domande si fanno al database, che risponde una
+// riga sola, invece di tirarsi i testi dentro JavaScript.
+
+test('la ricerca non restituisce solo divieti', () => {
+  // Le vincolanti sono 51 e arrivano sempre: con una classifica sola si
+  // prendevano tutti i posti, e chi scriveva riceveva l'elenco di cosa non
+  // dire invece del materiale su cui scrivere.
+  const r = come(MANAGER,
+    `select count(*) filter (where vincolante)::text || ' ' ||
+            count(*) filter (where not vincolante)::text
+       from smm_cervello_cerca('${BRAND}', 'conto a Dubai e quadro RW', null, 8)`);
+  const [vinc, mat] = String(r[0][0]).split(' ').map(Number);
+  if (vinc < 1) throw new Error('nessuna voce vincolante: devono arrivare sempre');
+  if (mat < 1) throw new Error('solo divieti: il materiale non arriva mai');
+  // Non si pretende di riempire il limite: se il materiale pertinente e'
+  // poco, meglio sei risposte buone che otto allungate.
+  if (vinc + mat > 8) throw new Error(`il limite non e rispettato: ${vinc + mat} risultati`);
+});
+
+test('la ricerca sul Cervello restituisce il gancio, non la riga di prima', () => {
+  eq(comeUno(MANAGER,
+    `select count(*) from smm_cervello_cerca('${BRAND}', 'conto a Dubai e quadro RW', null, 8)
+      where testo like '%GANCIO:%'`) > '0', true,
+    'risultati della ricerca che portano un gancio');
+});
+
+test('il Copywriter sa come si fa una slide, non solo che tono usare', () => {
+  const manca = one(`
+    select coalesce(string_agg(p, ', '), '') from unnest(array[
+      'CINQUE PILLAR', 'intro', 'content', 'cta', 'bullet', 'ctaLine', 'badge'
+    ]) p
+    where not exists (
+      select 1 from smm_agents a
+       where a.slug = 'copywriter' and a.system_prompt ilike '%' || p || '%')`);
+  if (manca) throw new Error(`nel prompt mancano: ${manca}`);
+});
+
+test('i bullet restano vietati nella caption e ammessi nelle slide', () => {
+  vero(one(`select system_prompt like '%CAPTION mai elenchi puntati%'
+              from smm_agents where slug = 'copywriter'`), 'la caption resta protetta');
+  vero(one(`select system_prompt like '%SLIDE i bullet si usano%'
+              from smm_agents where slug = 'copywriter'`), 'nelle slide i bullet si usano');
+});
+
+// ============================================================
 gruppo('Il motore: chi lo puo chiamare');
 
 test('il Grafico e il Video hanno lo strumento, il Copywriter no', () => {
@@ -1055,6 +1134,9 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_cervello_quote_down.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_brief_copywriter_down.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_knowledge_intera_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_cron_automatico_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_motore_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261111_smm_direzione_down.sql')]);

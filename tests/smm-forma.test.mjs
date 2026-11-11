@@ -18,17 +18,23 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = readFileSync(join(ROOT, 'supabase/functions/smm-render/index.ts'), 'utf8');
-const pezzo = src.slice(src.indexOf('function badge('), src.indexOf('async function salvaMedia'));
+// Dal primo aiutante del badge fino a prima di salvaMedia: dentro ci sono
+// anche BADGE_AMMESSI e piatto(), che badge() usa.
+const pezzo = src.slice(src.indexOf('const BADGE_AMMESSI'), src.indexOf('async function salvaMedia'));
 // Via i tipi: bastano quelli che compaiono in queste due funzioni.
+// L'ordine conta: l'intera espressione "as Tipo | Altro" va via in un
+// colpo solo. Togliendo prima il tipo e poi il resto restava "| undefined",
+// che in JavaScript e' un or fra bit e vale zero: il test girava su codice
+// storpiato e falliva per una ragione inventata.
 const js = pezzo
-  .replace(/as Record<string, unknown> \| unknown\[\] \| null/g, '')
-  .replace(/as Record<string, unknown>/g, '')
+  .replace(/\bas\s+[A-Za-z]+(<[^>]*>)?(\s*\|\s*[A-Za-z]+(<[^>]*>)?(\[\])?)*/g, '')
   .replace(/(\w+)\?\s*:\s*[A-Za-z<>\[\], |]+/g, '$1')
-  .replace(/:\s*(Contenuto|Brand|string|boolean|number)\b/g, '')
+  .replace(/:\s*Record<[^>]*>/g, '')
+  .replace(/:\s*(Contenuto|Brand|string|boolean|number)(\[\])?\b/g, '')
   .replace(/\)\s*:\s*Record<string, unknown>\s*\{/g, ') {')
   .replace(/\)\s*:\s*string\s*\{/g, ') {');
 
-const mod = new Function(`${js}; return { datiCarosello, datiStoria, badge, sottotitolo };`)();
+const mod = new Function(`${js}; return { datiCarosello, datiStoria, badge, sottotitolo, BADGE_AMMESSI };`)();
 
 const brand = { nome: 'InDubai', cta_default: 'Approfondisci su InDubai.it', sito: 'InDubai.it' };
 
@@ -63,6 +69,7 @@ const dev = (cond, che) => { if (!cond) { ko++; console.log('  KO  ' + che); } e
 
 console.log('\nCAROSELLO — quello che riceverebbe il motore');
 dev(c.badge === 'NORMATIVA', 'badge dalla categoria: ' + c.badge);
+dev(mod.BADGE_AMMESSI.includes(c.badge), 'il badge sta nell\'elenco chiuso');
 dev(c.coverTitle === carosello.titolo, 'titolo di copertina');
 dev(typeof c.coverSubtitle === 'string' && c.coverSubtitle.length > 10, 'sottotitolo dalla prima frase');
 dev(Array.isArray(c.slides) && c.slides.length === 3, 'tre slide');
@@ -73,7 +80,7 @@ dev(c.ctaText === brand.cta_default && c.ctaButton === brand.sito, 'invito dal b
 
 console.log('\nSTORIA — chiavi italiane scritte dal Copywriter');
 dev(s.theme === storia.titolo, 'tema');
-dev(s.badge === 'FISCALE', 'badge dal pillar: ' + s.badge);
+dev(s.badge === 'FISCALITÀ UAE', 'pillar "fiscale" ricondotto all\'elenco: ' + s.badge);
 dev(s.slides.length === 3, 'tre slide');
 dev(s.slides[0].type === 'intro', 'tipo letto da "tipo": ' + s.slides[0].type);
 dev(s.slides[1].type === 'content', 'secondo tipo: ' + s.slides[1].type);
@@ -81,6 +88,20 @@ dev(s.slides[2].type === 'cta', 'terzo tipo: ' + s.slides[2].type);
 dev(s.slides[0].title.startsWith('Iscritto'), 'titolo letto da "titolo"');
 dev(s.slides[0].body.startsWith("Per l'articolo"), 'testo letto da "testo"');
 dev(!s.slides.some(x => x.title === 'undefined' || x.body === 'undefined'), 'nessun "undefined" nei campi');
+
+console.log('\nBADGE — l\'elenco e\' chiuso, sempre');
+const conBadge = (b, cat, pil) => mod.datiStoria(
+  { titolo: 'x', categoria: cat ?? null, pillar: pil ?? null, caption: 'y',
+    slides: [{ tipo: 'intro', titolo: 't', testo: 'c', ...(b ? { badge: b } : {}) }] }, brand).badge;
+
+dev(conBadge('COMPLIANCE') === 'COMPLIANCE', 'quello scelto da chi scrive vince');
+dev(conBadge("SOCIETA' UAE") === 'SOCIETÀ UAE', 'senza accento viene riconosciuto');
+dev(conBadge(null, 'strutture') === 'SOCIETÀ UAE', 'categoria "strutture" -> SOCIETÀ UAE');
+dev(conBadge(null, null, 'residenza') === 'RESIDENZA FISCALE', 'pillar "residenza" -> RESIDENZA FISCALE');
+dev(conBadge('INVENTATO') === 'FISCALITÀ UAE', 'uno inventato ricade sul generico');
+dev(conBadge(null, null, null) === 'FISCALITÀ UAE', 'senza niente, il generico');
+dev([conBadge('COMPLIANCE'), conBadge(null, 'strutture'), conBadge('INVENTATO')]
+      .every(b => mod.BADGE_AMMESSI.includes(b)), 'nessuna via d\'uscita dall\'elenco');
 
 console.log(ko ? `\n${ko} problemi di forma\n` : '\nLa forma e\' giusta per tutti e due.\n');
 process.exit(ko ? 1 : 0);

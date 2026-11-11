@@ -736,10 +736,22 @@
     // La linguetta sotto l'anteprima: il titolo della slide se c'e', il
     // numero altrimenti. La stessa per il testo e per le immagini, cosi'
     // si naviga allo stesso modo prima e dopo il rendering.
+    // Un titolo tagliato a meta' parola ("La domanda vera viene prim") fa
+    // sembrare rotto quello che c'e' sotto. Si taglia allo spazio, e si
+    // mette il segno che continua.
+    const accorcia = (s, max) => {
+      const x = String(s || '').trim();
+      if (x.length <= max) return x;
+      const t = x.slice(0, max);
+      const spazio = t.lastIndexOf(' ');
+      return (spazio > max * 0.5 ? t.slice(0, spazio) : t).trimEnd() + '…';
+    };
+
     const linguette = (quante, scelta) =>
       `<div class="rg-slide-strip">${Array.from({ length: quante }, (_, k) =>
-        `<button class="rg-slide-min" data-slide="${k}" aria-current="${k === scelta}">
-           ${esc(String((slides[k]?.title || slides[k]?.titolo) || ('Slide ' + (k + 1))).slice(0, 26))}
+        `<button class="rg-slide-min" data-slide="${k}" aria-current="${k === scelta}"
+                 title="${esc(String((slides[k]?.title || slides[k]?.titolo) || ('Slide ' + (k + 1))))}">
+           ${esc(accorcia((slides[k]?.title || slides[k]?.titolo) || ('Slide ' + (k + 1)), 24))}
          </button>`).join('')}</div>`;
 
     // Le immagini rese vengono prima del testo: quando esistono sono il
@@ -763,19 +775,31 @@
     if (slides.length) {
       const i = Math.min(ui.slideScelta, slides.length - 1);
       const s = slides[i] || {};
-      const corpo = s.body || s.testo || '';
+      // Gli agenti scrivono in italiano e non sempre con le stesse chiavi:
+      // qui si legge tutto quello che può esserci, altrimenti la scheda
+      // resta un riquadro nero con il solo titolo e sembra rotta.
+      const corpo = s.body || s.testo || s.sottotitolo || s.subtitle || '';
+      const punti = Array.isArray(s.bullets) ? s.bullets : null;
       const stats = Array.isArray(s.stats) ? s.stats : null;
+      const invito = s.ctaLine || s.cta || '';
       return `<div class="rg-lettore">
         <div class="rg-anteprima-slide">
           ${s.badge ? `<div class="rg-as-badge">${esc(s.badge)}</div>` : ''}
           <div class="rg-as-titolo">${esc(s.title || s.titolo || '')}</div>
           ${stats
             ? stats.map(x => `<div class="rg-as-corpo"><b style="color:#b5ff00">${esc(x.value)}</b> ${esc(x.label)} — ${esc(x.desc || '')}</div>`).join('')
-            : `<div class="rg-as-corpo">${esc(corpo)}</div>`}
+            : punti
+              ? punti.map(x => `<div class="rg-as-corpo">• ${esc(x)}</div>`).join('')
+              : `<div class="rg-as-corpo">${esc(corpo)}</div>`}
+          ${invito ? `<div class="rg-as-corpo" style="margin-top:9px;color:#b5ff00;font-weight:800">${esc(invito)}</div>` : ''}
         </div>
       </div>
       ${linguette(slides.length, i)}
-      <div class="rg-voce-fonte">È il testo scritto dall'agente. Le immagini non ci sono ancora: si fanno con «Prepara le immagini».</div>`;
+      <div class="rg-voce-fonte">
+        Questo è <b>il testo</b>, non la grafica: serve a rileggere cosa ha scritto l'agente.
+        Le immagini vere le fa il generatore con «Prepara le immagini», con misure, colori e
+        impaginazione del marchio.
+      </div>`;
     }
 
     // Niente slide e niente file: e' il caso di un contenuto appena aperto
