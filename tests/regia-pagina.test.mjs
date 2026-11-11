@@ -88,5 +88,29 @@ test('ogni elemento che il codice cerca per id esiste da qualche parte', () => {
   if (mancanti.length) throw new Error('il codice li cerca ma non ci sono: ' + mancanti.join(', '));
 });
 
+test('i gestori dei clic hanno a chi attaccarsi', () => {
+  // Un ascoltatore si attacca a un elemento trovato per classe. Se quella
+  // classe non viene scritta da nessuna parte, querySelector risponde null,
+  // non si attacca niente, e i tasti smettono di rispondere senza che
+  // niente fallisca: e' il genere di errore che si scopre cliccando.
+  const ui = readFileSync(join(ROOT, 'js/regia-ui.js'), 'utf8');
+  const bersagli = [...ui.matchAll(/querySelector\('\.(rg-[a-z0-9-]+)'\)/g)].map(m => m[1]);
+  const classi = new Set(
+    [...ui.matchAll(/class="([^"${}]+)"/g), ...html.matchAll(/class="([^"]+)"/g)]
+      .flatMap(m => m[1].split(/\s+/)));
+  const mancanti = [...new Set(bersagli)].filter(c => !classi.has(c));
+  if (mancanti.length) throw new Error('cercate ma mai scritte: ' + mancanti.join(', '));
+});
+
+test('ogni classe che il pannello usa ha uno stile', () => {
+  // Una classe senza stile non rompe niente, si vede male e basta: che e'
+  // il modo piu' facile per accorgersene tardi.
+  const ui = readFileSync(join(ROOT, 'js/regia-ui.js'), 'utf8');
+  const usate = new Set([...ui.matchAll(/class="(rg-foto[^"${}]*)"/g)]
+    .flatMap(m => m[1].split(/\s+/)).filter(c => c.startsWith('rg-foto')));
+  const mancanti = [...usate].filter(c => !css.includes('.' + c));
+  if (mancanti.length) throw new Error('senza stile: ' + mancanti.join(', '));
+});
+
 console.log(`\n${passati} passati, ${falliti} falliti\n`);
 process.exit(falliti ? 1 : 0);

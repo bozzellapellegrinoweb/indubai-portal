@@ -1412,15 +1412,16 @@
     // Chi e' approvata ma non ancora in uso: e' il motivo per cui il tasto
     // "Mettile in uso" esiste, quindi si dice quante sono.
     const inAttesaDiUso = foto.filter(f => f.stato === 'APPROVED' && !f.attiva).length;
+    // "foto" non cambia al plurale: a cambiare e' il verbo intorno.
+    const una = (n, singolare, plurale) => (n === 1 ? singolare : plurale);
 
     apriPannello('Le tue foto', 'Quelle che aprono le storie', `
       <div class="rg-voce">
         ${attive
-          ? `Le storie aprono con una di <b>${attive}</b> ${D.plurale(attive, 'foto', 'foto')},
-             scelta a caso ogni volta.`
+          ? `Le storie aprono con ${una(attive, 'l&#39;unica foto in uso', `una di <b>${attive}</b> foto, scelta a caso ogni volta`)}.`
           : `<b>Nessuna foto in uso.</b> Le storie partono senza la slide di apertura:
              comincerebbero da meta&#768; discorso.`}
-        ${daVedere ? `<div class="rg-voce-fonte">${daVedere} ${D.plurale(daVedere, 'foto aspetta', 'foto aspettano')} che tu le guardi.</div>` : ''}
+        ${daVedere ? `<div class="rg-voce-fonte">${daVedere} ${una(daVedere, 'foto aspetta', 'foto aspettano')} che tu ${una(daVedere, 'la guardi', 'le guardi')}.</div>` : ''}
       </div>
 
       <div class="rg-sez">Fanne di nuove</div>
@@ -1438,8 +1439,8 @@
         ? `<div class="rg-sez">Mettile in uso</div>
            <div class="rg-voce">
              ${inAttesaDiUso
-               ? `${inAttesaDiUso} ${D.plurale(inAttesaDiUso, 'foto approvata', 'foto approvate')}
-                  ${D.plurale(inAttesaDiUso, 'non e&#768;', 'non sono')} ancora fra le sorgenti.`
+               ? `${inAttesaDiUso} ${una(inAttesaDiUso, 'foto approvata non e&#768;', 'foto approvate non sono')}
+                  ancora fra le sorgenti.`
                : 'Le sorgenti sono allineate alle approvate.'}
              <div class="rg-voce-azioni">
                <button class="btn btn-ghost btn-sm" data-foto-attiva="1">Rifai l&#39;elenco delle sorgenti</button>
@@ -1487,7 +1488,10 @@
       }
     });
 
-    corpo.addEventListener('click', async (ev) => {
+    // Sulla griglia, non sul corpo del pannello: il corpo e' sempre lo
+    // stesso elemento, e un ascoltatore in piu' a ogni riapertura vuol dire
+    // la stessa richiesta mandata due volte, poi tre.
+    corpo.querySelector('.rg-foto-griglia')?.addEventListener('click', async (ev) => {
       const b = ev.target.closest('[data-foto], [data-foto-elimina]');
       if (!b) return;
       b.disabled = true;
