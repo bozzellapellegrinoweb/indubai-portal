@@ -646,12 +646,39 @@
   let ws = null, battito = null, riferimento = 0, vivo = false, giro = null;
   let intervallo = 6000;
 
+  let ultimoRisveglio = 0;
+
+  /**
+   * Finche' c'e' qualcosa in coda, il worker va richiamato.
+   *
+   * Un giro del worker dura al massimo cinquanta secondi: se il primo
+   * lavoro se li prende quasi tutti, i lavori figli restano fermi. Il
+   * worker adesso si richiama da solo, ma questa e' la seconda rete: se
+   * quella chiamata si perde, finche' la pagina e' aperta la coda riparte
+   * comunque.
+   *
+   * Non piu' di una volta ogni venti secondi: un giro a vuoto non fa danni,
+   * ma nemmeno serve a qualcosa.
+   */
+  function risvegliaSeServe() {
+    if (!stato.lavori.some(j => j.stato === 'in_coda')) return;
+    if (stato.impostazioni?.stop_tutto) return;
+    const adesso = Date.now();
+    if (adesso - ultimoRisveglio < 20000) return;
+    ultimoRisveglio = adesso;
+    svegliaWorker();
+  }
+
   function ricaricaPresto() {
     clearTimeout(giro);
     giro = setTimeout(async () => {
-      try { await carica(); } catch (e) { console.warn('[regia] ricarico:', e.message); }
+      try { await carica(); risvegliaSeServe(); }
+      catch (e) { console.warn('[regia] ricarico:', e.message); }
       // Col websocket vivo il giro periodico serve solo da rete di sicurezza.
-      intervallo = vivo ? 45000 : 6000;
+      // Ma se c'e' lavoro in coda si guarda piu' spesso: e' il momento in
+      // cui la scena deve muoversi.
+      const inCoda = stato.lavori.some(j => ['in_coda', 'in_corso'].includes(j.stato));
+      intervallo = inCoda ? 6000 : (vivo ? 45000 : 6000);
       ricaricaPresto();
     }, intervallo);
   }

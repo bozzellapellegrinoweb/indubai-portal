@@ -732,13 +732,37 @@
     }
 
     const slides = Array.isArray(c.slides) ? c.slides : [];
+
+    // La linguetta sotto l'anteprima: il titolo della slide se c'e', il
+    // numero altrimenti. La stessa per il testo e per le immagini, cosi'
+    // si naviga allo stesso modo prima e dopo il rendering.
+    const linguette = (quante, scelta) =>
+      `<div class="rg-slide-strip">${Array.from({ length: quante }, (_, k) =>
+        `<button class="rg-slide-min" data-slide="${k}" aria-current="${k === scelta}">
+           ${esc(String((slides[k]?.title || slides[k]?.titolo) || ('Slide ' + (k + 1))).slice(0, 26))}
+         </button>`).join('')}</div>`;
+
+    // Le immagini rese vengono prima del testo: quando esistono sono il
+    // contenuto vero, e il testo l'ha gia' letto chi le ha fatte fare.
+    // Prima il testo vinceva sempre e le immagini non si vedevano mai.
+    if (immagini.length) {
+      const i = Math.min(ui.slideScelta, immagini.length - 1);
+      const m = immagini[i];
+      // Le immagini del generatore stanno su Cloudinary con un indirizzo
+      // pubblico, perche' da li' le scarica GoHighLevel. Quelle caricate a
+      // mano stanno nel deposito privato e vogliono un link che scade: il
+      // link firmato non sa niente di Cloudinary e falliva in silenzio.
+      const tag = m.cloudinary_url
+        ? `<img alt="Anteprima del contenuto" src="${esc(m.cloudinary_url)}">`
+        : `<img alt="Anteprima del contenuto" data-media-path="${esc(m.path)}">`;
+      return `<div class="rg-lettore">${tag}</div>
+        ${immagini.length > 1 ? linguette(immagini.length, i) : ''}
+        <div class="rg-voce-fonte">${immagini.length} ${immagini.length === 1 ? 'immagine pronta' : 'immagini pronte'} per la pubblicazione.</div>`;
+    }
+
     if (slides.length) {
       const i = Math.min(ui.slideScelta, slides.length - 1);
       const s = slides[i] || {};
-      const strip = slides.map((sl, k) =>
-        `<button class="rg-slide-min" data-slide="${k}" aria-current="${k === i}">
-           ${esc((sl.title || sl.titolo || ('Slide ' + (k + 1))).slice(0, 26))}
-         </button>`).join('');
       const corpo = s.body || s.testo || '';
       const stats = Array.isArray(s.stats) ? s.stats : null;
       return `<div class="rg-lettore">
@@ -749,17 +773,19 @@
             ? stats.map(x => `<div class="rg-as-corpo"><b style="color:#b5ff00">${esc(x.value)}</b> ${esc(x.label)} — ${esc(x.desc || '')}</div>`).join('')
             : `<div class="rg-as-corpo">${esc(corpo)}</div>`}
         </div>
-        <div class="rg-slide-strip">${strip}</div>
-      </div>`;
+      </div>
+      ${linguette(slides.length, i)}
+      <div class="rg-voce-fonte">È il testo scritto dall'agente. Le immagini non ci sono ancora: si fanno con «Prepara le immagini».</div>`;
     }
 
-    if (immagini.length) {
-      return `<div class="rg-lettore">
-        <img alt="Anteprima del contenuto" data-media-path="${esc(immagini[0].path)}">
-      </div>`;
-    }
-
-    return '<div class="rg-vuoto-tocca">Non c\'è ancora niente da guardare: il contenuto è solo un\'idea.</div>';
+    // Niente slide e niente file: e' il caso di un contenuto appena aperto
+    // dal Direttore, che aspetta che il Copywriter lo scriva. Dirlo e'
+    // meglio che lasciare un riquadro vuoto da interpretare.
+    return `<div class="rg-vuoto-tocca">
+      ${c.caption
+        ? esc(c.caption)
+        : 'Qui non c\'è ancora niente perché nessuno l\'ha ancora scritto: il Direttore ha aperto il contenuto e l\'ha passato a chi lo scrive. Quando il Copywriter avrà finito, il testo compare qui.'}
+    </div>`;
   }
 
   /** Confronto fra due round: le differenze parola per parola. */

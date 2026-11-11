@@ -508,6 +508,46 @@ async function inoltraAPubblicazione(db: SupabaseClient, job: Job) {
   };
 }
 
+
+/**
+ * Se restano lavori in coda, il worker si richiama da solo.
+ *
+ * Un giro dura al massimo cinquanta secondi. Se il primo lavoro se li
+ * prende quasi tutti - e il Direttore che smista una settimana intera ci
+ * mette tanto - i lavori figli che ha appena creato restano fermi.
+ *
+ * Doveva pensarci pg_cron, che pero' non e' installato: quella migrazione
+ * ha bisogno di due segreti nel Vault. Senza questo, la catena si ferma
+ * dopo il primo anello e i sette Copywriter restano in coda finche'
+ * qualcuno non riapre la pagina. E' successo davvero.
+ *
+ * Riparte solo se questo giro ha concluso qualcosa: se non ha combinato
+ * niente, richiamarsi sarebbe un ciclo infinito che spende. Il resto lo
+ * tengono il budget del giorno e il conteggio dei tentativi.
+ */
+async function forseRiparti(db: SupabaseClient, fatti: number) {
+  if (fatti === 0) return;
+  try {
+    const restano = await db.select("smm_jobs", "stato=eq.in_coda&select=id&limit=1");
+    if (!restano?.length) return;
+
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !key) return;
+
+    const chiamata = fetch(`${url}/functions/v1/smm-worker`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      body: JSON.stringify({ origine: "catena" }),
+    }).catch(() => { /* il prossimo risveglio ci riprova */ });
+
+    // Senza waitUntil l'istanza puo' morire prima che la richiesta parta.
+    const rt = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+    if (typeof rt?.waitUntil === "function") rt.waitUntil(chiamata);
+    else await chiamata;
+  } catch { /* un risveglio mancato non fa fallire il giro appena fatto */ }
+}
+
 // ============================================================
 // L'ingresso
 // ============================================================
@@ -544,6 +584,7 @@ Deno.serve(async (req: Request) => {
     const db = clientDaAmbiente();
     const anthropic = new Anthropic({ apiKey: chiave });
     const esito = await unGiro(db, anthropic);
+    await forseRiparti(db, esito.fatti);
 
     return new Response(JSON.stringify({ ok: true, ...esito }), { headers: CORS });
   } catch (e) {
