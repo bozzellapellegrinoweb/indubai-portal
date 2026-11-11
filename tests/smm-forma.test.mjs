@@ -103,5 +103,42 @@ dev(conBadge(null, null, null) === 'FISCALITÀ UAE', 'senza niente, il generico'
 dev([conBadge('COMPLIANCE'), conBadge(null, 'strutture'), conBadge('INVENTATO')]
       .every(b => mod.BADGE_AMMESSI.includes(b)), 'nessuna via d\'uscita dall\'elenco');
 
+console.log('\nI RESIDUI — un rendering rifatto non lascia pagine fantasma');
+
+// salvaMedia sta sotto, e la sua firma e' l'unico punto con i tipi: la
+// riscrivo tutta invece di inseguirla con le espressioni regolari.
+const jsSalva = src
+  .slice(src.indexOf('async function salvaMedia'), src.indexOf('Deno.serve'))
+  .replace(/async function salvaMedia\([\s\S]*?\n\)\s*\{/, 'async function salvaMedia(db, c, media, chi) {');
+const salvaMedia = new Function(`${jsSalva}; return salvaMedia;`)();
+
+function dbFinto(gia) {
+  return {
+    cancellati: [], scritte: 0,
+    async insert() { this.scritte++; },
+    async update() {},
+    async select() { return gia; },
+    async delete(_t, filtro) { this.cancellati.push(filtro); },
+  };
+}
+const unFile = (n) => ({
+  url: `https://res.cloudinary.com/x/raw/upload/v1/indubai-smm/story_abc_${n}.mp4`,
+  mime: 'video/mp4', ruolo: 'derivato', ordine: n - 1,
+});
+
+const dopo = dbFinto([
+  { id: 'vecchio-4', path: 'indubai-smm/story_abc_4' },
+  { id: 'vecchio-5', path: 'indubai-smm/story_abc_5' },
+  { id: 'tenuto-1',  path: 'indubai-smm/story_abc_1' },
+]);
+await salvaMedia(dopo, { id: 'abc', brand_id: 'b' }, [unFile(1), unFile(2), unFile(3)], null);
+dev(dopo.scritte === 3, 'i tre file nuovi sono scritti');
+dev(dopo.cancellati.length === 2, `i due residui sono tolti (tolti: ${dopo.cancellati.length})`);
+dev(dopo.cancellati.every(f => /vecchio-[45]/.test(f)), 'tolti proprio quelli vecchi');
+
+const stesso = dbFinto([{ id: 'tenuto-1', path: 'indubai-smm/story_abc_1' }]);
+await salvaMedia(stesso, { id: 'abc', brand_id: 'b' }, [unFile(1)], null);
+dev(stesso.cancellati.length === 0, 'se non avanza niente non si cancella niente');
+
 console.log(ko ? `\n${ko} problemi di forma\n` : '\nLa forma e\' giusta per tutti e due.\n');
 process.exit(ko ? 1 : 0);

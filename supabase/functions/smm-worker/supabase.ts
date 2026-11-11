@@ -68,6 +68,13 @@ export class SupabaseClient {
     }) as Promise<any[]>;
   }
 
+  delete(tabella: string, filtro: string): Promise<any[]> {
+    return this.chiama(`/rest/v1/${tabella}?${filtro}`, {
+      method: "DELETE",
+      prefer: "return=representation",
+    }) as Promise<any[]>;
+  }
+
   rpc(funzione: string, argomenti: Record<string, unknown>): Promise<any> {
     return this.chiama(`/rest/v1/rpc/${funzione}`, {
       method: "POST",

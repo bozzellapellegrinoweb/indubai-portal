@@ -191,6 +191,21 @@ async function salvaMedia(
         { cloudinary_url: r.cloudinary_url, mime: r.mime, content_id: r.content_id });
     }
   }
+  // I file di un rendering precedente che questo non ha rifatto.
+  //
+  // Succede quando il contenuto viene riscritto con meno slide: le righe
+  // vecchie resterebbero in elenco, e l'anteprima mostrerebbe in coda una
+  // pagina che nel contenuto non c'e' piu'. Chi guarda non ha modo di
+  // capire che e' un residuo: sembra una slide sbagliata.
+  const tenuti = new Set(righe.map((r) => r.path));
+  try {
+    const vecchi = await db.select("smm_media",
+      `content_id=eq.${c.id}&ruolo=eq.derivato&select=id,path`);
+    for (const v of vecchi ?? []) {
+      if (!tenuti.has(v.path)) await db.delete("smm_media", `id=eq.${v.id}`);
+    }
+  } catch { /* un residuo in elenco e' meno grave di un rendering perso */ }
+
   return righe.length;
 }
 
