@@ -108,6 +108,7 @@ try {
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_brief_copywriter.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_cervello_quote.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_montaggio_automatico.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_avatar.sql')]);
   // La pianificazione vive in una migrazione a parte perche' ha bisogno di
   // pg_cron e pg_net. Sul banco di prova quelli non ci sono: si prende solo
   // la funzione che mette in coda le uscite arrivate a scadenza, che e' la
@@ -1228,6 +1229,59 @@ test('riapplicare la migrazione non raddoppia niente', () => {
 });
 
 // ============================================================
+gruppo('Le foto del manager: chi puo\' chiederle');
+
+// Generare foto costa. La funzione lato server gira con la chiave di
+// servizio, quindi auth.uid() li' non dice niente: deve poter chiedere il
+// permesso DI UNA PERSONA PRECISA, letta dal suo token.
+
+test('un admin puo usare la Regia', () => {
+  eq(one(`select smm_puo_usare('${ADMIN}')`), 't', 'admin');
+});
+
+test('il social media manager puo usarla', () => {
+  eq(one(`select smm_puo_usare('${MANAGER}')`), 't', 'manager');
+});
+
+test('un contabile junior no, e quindi non fa spendere', () => {
+  eq(one(`select smm_puo_usare('${JUNIOR}')`), 'f', 'junior');
+});
+
+test('la matrice dei permessi decide davvero', () => {
+  psql(DB, ['-c', `insert into role_permissions (role, allowed_pages)
+                   values ('junior', array['clienti']::text[])
+                   on conflict (role) do update set allowed_pages = excluded.allowed_pages`]);
+  eq(one(`select smm_puo_usare('${JUNIOR}')`), 'f', 'senza regia fra le pagine');
+  psql(DB, ['-c', `update role_permissions set allowed_pages = array['clienti','regia']::text[]
+                    where role = 'junior'`]);
+  eq(one(`select smm_puo_usare('${JUNIOR}')`), 't', 'concessa dalla matrice');
+  psql(DB, ['-c', `delete from role_permissions where role = 'junior'`]);
+});
+
+test('un utente che non esiste non puo niente', () => {
+  eq(one(`select smm_puo_usare('00000000-0000-0000-0000-000000000000')`), 'f', 'sconosciuto');
+  eq(one(`select smm_puo_usare(null)`), 'f', 'nessuno');
+});
+
+test('can_see_smm continua a rispondere per chi chiama', () => {
+  // Non e' una riscrittura del comportamento: e' la stessa regola, con
+  // l'utente esplicito invece che implicito. Le policy RLS la usano.
+  vero(one(`select exists (select 1 from pg_proc where proname = 'can_see_smm')`), 'c e ancora');
+  eq(one(`select can_see_smm()`), 'f', 'senza nessuno collegato, falso');
+});
+
+test('chiedere il permesso di un altro non e concesso in sala', () => {
+  // E' una domanda sul conto di qualcun altro: la fa il server, non il
+  // browser di un collega.
+  eq(one(`select has_function_privilege('authenticated', 'smm_puo_usare(uuid)', 'execute')`),
+     'f', 'authenticated');
+  eq(one(`select has_function_privilege('anon', 'smm_puo_usare(uuid)', 'execute')`),
+     'f', 'anon');
+  eq(one(`select has_function_privilege('service_role', 'smm_puo_usare(uuid)', 'execute')`),
+     't', 'service_role');
+});
+
+// ============================================================
 gruppo('Reversibilita');
 
 test('la migrazione di rollback riporta il database come prima', () => {
@@ -1237,6 +1291,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_avatar_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_montaggio_automatico_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_cervello_quote_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_brief_copywriter_down.sql')]);

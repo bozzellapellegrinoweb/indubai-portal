@@ -32,3 +32,21 @@ export function eUnaPersona(token: string): boolean {
   const ruolo = ruoloDelToken(token);
   return ruolo !== null && ruolo !== "anon";
 }
+
+/**
+ * Chi e' la persona, non solo se e' una persona.
+ *
+ * Serve dove l'azione costa: una funzione che gira con la chiave di
+ * servizio vede auth.uid() vuoto, quindi l'identita' va letta dal token di
+ * chi ha premuto il tasto e poi verificata contro i permessi del portale.
+ */
+export function utenteDelToken(token: string): string | null {
+  const parti = token.split(".");
+  if (parti.length !== 3) return null;
+  try {
+    const b64 = parti[1].replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(b64.padEnd(Math.ceil(b64.length / 4) * 4, "=")));
+    const sub = payload.sub;
+    return typeof sub === "string" && sub.length > 0 ? sub : null;
+  } catch { return null; }
+}

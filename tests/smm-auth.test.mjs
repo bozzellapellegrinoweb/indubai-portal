@@ -12,7 +12,8 @@
  *
  *   node --experimental-strip-types tests/smm-auth.test.mjs
  */
-import { ruoloDelToken, eUnaPersona } from "../supabase/functions/smm-worker/auth.ts";
+import { ruoloDelToken, eUnaPersona, utenteDelToken } from "../supabase/functions/smm-worker/auth.ts";
+import { readFileSync } from "node:fs";
 
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const jwt = (payload) => `${b64({ alg: "HS256", typ: "JWT" })}.${b64(payload)}.firma`;
@@ -56,4 +57,61 @@ if (ko) {
   console.log(`${ko} casi sbagliati su ${casi.length}.`);
   process.exit(1);
 }
-console.log(`${casi.length} casi, tutti giusti. La chiave pubblica non autorizza niente.`);
+
+// ── Chi e' la persona ──────────────────────────────────────────────────
+//
+// Dove l'azione costa non basta sapere che e' una persona: la funzione
+// gira con la chiave di servizio, quindi auth.uid() e' vuoto e l'identita'
+// va letta dal token e poi verificata contro i permessi.
+
+const chiCasi = [
+  ["un token con il suo utente", jwt({ role: "authenticated", sub: "u-123" }), "u-123"],
+  ["un token senza utente", jwt({ role: "authenticated" }), null],
+  ["la chiave pubblica", jwt({ role: "anon" }), null],
+  ["spazzatura", "a.b.c", null],
+  ["niente", "", null],
+  ["un sub che non e' una stringa", jwt({ role: "authenticated", sub: 7 }), null],
+  ["un sub vuoto", jwt({ role: "authenticated", sub: "" }), null],
+];
+for (const [nome, token, atteso] of chiCasi) {
+  const r = utenteDelToken(token);
+  const ok = r === atteso;
+  if (!ok) ko++;
+  console.log(`${ok ? "  ok" : "  KO"}  ${nome}: ${r}`);
+}
+// La chiave pubblica porta un sub? No, ma se un domani lo portasse non deve
+// comunque passare: chi autorizza e' eUnaPersona, questo dice solo chi e'.
+if (eUnaPersona(jwt({ role: "anon", sub: "u-1" })) !== false) {
+  ko++; console.log("  KO  la chiave pubblica con un sub non deve essere una persona");
+}
+
+// ── L'indirizzo delle foto ─────────────────────────────────────────────
+//
+// Si ricava da quello del rendering invece di chiedere un secondo segreto
+// quasi uguale, che e' un modo per farne sbagliare uno. Se non si puo'
+// ricavare, si deve dire, non indovinare.
+
+const sorgenteAvatar = readFileSync(
+  new URL("../supabase/functions/smm-avatar/index.ts", import.meta.url), "utf8");
+const indirizzoAvatar = new Function(
+  sorgenteAvatar
+    .slice(sorgenteAvatar.indexOf("function indirizzoAvatar"),
+           sorgenteAvatar.indexOf("Deno.serve"))
+    .replace(/:\s*string\s*\|\s*null/g, "").replace(/\(render:\s*string\)/, "(render)")
+  + "; return indirizzoAvatar;")();
+
+const indCasi = [
+  ["l'indirizzo giusto", "https://x.vercel.app/api/regia/render", "https://x.vercel.app/api/regia/avatar"],
+  ["con la barra in fondo", "https://x.vercel.app/api/regia/render/", "https://x.vercel.app/api/regia/avatar"],
+  ["un indirizzo che non finisce per render", "https://x.vercel.app/api/altro", null],
+  ["la parola render in mezzo", "https://x.vercel.app/render/api", null],
+  ["vuoto", "", null],
+];
+for (const [nome, dentro, atteso] of indCasi) {
+  const r = indirizzoAvatar(dentro);
+  const ok = r === atteso;
+  if (!ok) ko++;
+  console.log(`${ok ? "  ok" : "  KO"}  ${nome}: ${r}`);
+}
+
+console.log(`${casi.length + chiCasi.length + indCasi.length + 1} casi, tutti giusti. La chiave pubblica non autorizza niente.`);

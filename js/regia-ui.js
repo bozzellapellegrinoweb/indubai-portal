@@ -1359,6 +1359,150 @@
   const GIORNI = [[1, 'Lun'], [2, 'Mar'], [3, 'Mer'], [4, 'Gio'], [5, 'Ven'], [6, 'Sab'], [7, 'Dom']];
   const TIPI = [['carosello', 'Carosello'], ['reel', 'Reel'], ['storia', 'Storia'], ['post', 'Post']];
 
+  // ── Le foto del manager ───────────────────────────────────────────────
+  //
+  // La sezione c'era nel pannello del generatore e si e' persa quando quel
+  // progetto e' diventato un motore senza voce di menu. Il flusso resta
+  // quello: si generano, si guardano, si approvano, e solo allora
+  // diventano sorgenti per le storie.
+
+  const STATO_FOTO = {
+    PENDING:  { et: 'Da vedere', classe: 'rg-foto-attesa' },
+    APPROVED: { et: 'Approvata', classe: 'rg-foto-ok' },
+    REJECTED: { et: 'Scartata',  classe: 'rg-foto-no' },
+  };
+
+  function fotoHtml(f) {
+    const s = STATO_FOTO[f.stato] || STATO_FOTO.PENDING;
+    return `
+      <figure class="rg-foto ${s.classe}${f.attiva ? ' rg-foto-viva' : ''}">
+        <img src="${esc(f.url)}" alt="Foto avatar" loading="lazy">
+        <figcaption>
+          <span class="rg-foto-et">${s.et}${f.attiva ? ' · in uso' : ''}</span>
+          <span class="rg-foto-azioni">
+            ${f.stato !== 'APPROVED'
+              ? `<button class="btn btn-accent btn-sm" data-foto="APPROVED" data-id="${esc(f.id)}">Approva</button>` : ''}
+            ${f.stato !== 'REJECTED'
+              ? `<button class="btn btn-ghost btn-sm" data-foto="REJECTED" data-id="${esc(f.id)}">Scarta</button>` : ''}
+            ${f.stato === 'REJECTED'
+              ? `<button class="btn btn-ghost btn-sm" data-foto-elimina="${esc(f.id)}">Elimina</button>` : ''}
+          </span>
+        </figcaption>
+      </figure>`;
+  }
+
+  async function apriAvatar(dati = null) {
+    ui.pannello = { tipo: 'avatar' };
+    if (!dati) {
+      apriPannello('Le tue foto', 'Quelle che aprono le storie',
+        '<div class="rg-vuoto-tocca">Carico…</div>');
+      try { dati = await D.avatar('elenco'); }
+      catch (e) {
+        corpoPannello().innerHTML =
+          `<div class="rg-vuoto-tocca">Non riesco a leggere le foto: ${esc(pulisciErrore(e.message))}</div>`;
+        return;
+      }
+      if (ui.pannello?.tipo !== 'avatar') return;
+    }
+
+    const foto = dati.foto || [];
+    const attive = Number(dati.attive || 0);
+    const daVedere = Number(dati.da_vedere || 0);
+    const max = Number(dati.massimo_per_volta || 8);
+    // Chi e' approvata ma non ancora in uso: e' il motivo per cui il tasto
+    // "Mettile in uso" esiste, quindi si dice quante sono.
+    const inAttesaDiUso = foto.filter(f => f.stato === 'APPROVED' && !f.attiva).length;
+
+    apriPannello('Le tue foto', 'Quelle che aprono le storie', `
+      <div class="rg-voce">
+        ${attive
+          ? `Le storie aprono con una di <b>${attive}</b> ${D.plurale(attive, 'foto', 'foto')},
+             scelta a caso ogni volta.`
+          : `<b>Nessuna foto in uso.</b> Le storie partono senza la slide di apertura:
+             comincerebbero da meta&#768; discorso.`}
+        ${daVedere ? `<div class="rg-voce-fonte">${daVedere} ${D.plurale(daVedere, 'foto aspetta', 'foto aspettano')} che tu le guardi.</div>` : ''}
+      </div>
+
+      <div class="rg-sez">Fanne di nuove</div>
+      <div class="rg-voce">
+        Nascono da vedere, non in uso: le guardi tu e decidi.
+        <div class="rg-voce-azioni rg-foto-genera">
+          <label class="rg-campo-et" for="rg-foto-quante">Quante</label>
+          <input class="rg-campo" id="rg-foto-quante" type="number" min="1" max="${max}" value="4" style="width:84px">
+          <button class="btn btn-accent btn-sm" data-foto-genera="1">Genera</button>
+        </div>
+        <div class="rg-voce-fonte">Ognuna costa: chiedine poche e guarda come vengono.</div>
+      </div>
+
+      ${inAttesaDiUso || attive
+        ? `<div class="rg-sez">Mettile in uso</div>
+           <div class="rg-voce">
+             ${inAttesaDiUso
+               ? `${inAttesaDiUso} ${D.plurale(inAttesaDiUso, 'foto approvata', 'foto approvate')}
+                  ${D.plurale(inAttesaDiUso, 'non e&#768;', 'non sono')} ancora fra le sorgenti.`
+               : 'Le sorgenti sono allineate alle approvate.'}
+             <div class="rg-voce-azioni">
+               <button class="btn btn-ghost btn-sm" data-foto-attiva="1">Rifai l&#39;elenco delle sorgenti</button>
+             </div>
+             <div class="rg-voce-fonte">
+               Le sorgenti diventano tutte e sole le approvate: togliere un&#39;approvazione
+               e rifare l&#39;elenco basta a togliere la foto dalle storie.
+             </div>
+           </div>`
+        : ''}
+
+      <div class="rg-sez">Tutte (${foto.length})</div>
+      ${foto.length
+        ? `<div class="rg-foto-griglia">${foto.map(fotoHtml).join('')}</div>`
+        : '<div class="rg-vuoto-tocca">Non ce n&#39;e&#768; nessuna. Generane qualcuna qui sopra.</div>'}
+    `);
+
+    const corpo = corpoPannello();
+
+    corpo.querySelector('[data-foto-genera]')?.addEventListener('click', async (ev) => {
+      const quante = Math.max(1, Math.min(max, Number($('rg-foto-quante')?.value) || 4));
+      const tasto = ev.currentTarget;
+      tasto.disabled = true;
+      tasto.textContent = 'Le sto facendo…';
+      try {
+        const d = await D.avatar('genera', { quante });
+        window.ui.showToast(d.messaggio || 'Fatte.', 'success');
+        await apriAvatar(d);
+      } catch (e) {
+        window.ui.showToast(pulisciErrore(e.message), 'error');
+        tasto.disabled = false;
+        tasto.textContent = 'Genera';
+      }
+    });
+
+    corpo.querySelector('[data-foto-attiva]')?.addEventListener('click', async (ev) => {
+      ev.currentTarget.disabled = true;
+      try {
+        const d = await D.avatar('attiva');
+        window.ui.showToast(d.messaggio || 'Elenco rifatto.', 'success');
+        await apriAvatar(d);
+      } catch (e) {
+        window.ui.showToast(pulisciErrore(e.message), 'error');
+        ev.currentTarget.disabled = false;
+      }
+    });
+
+    corpo.addEventListener('click', async (ev) => {
+      const b = ev.target.closest('[data-foto], [data-foto-elimina]');
+      if (!b) return;
+      b.disabled = true;
+      try {
+        const d = b.dataset.fotoElimina
+          ? await D.avatar('elimina', { id: b.dataset.fotoElimina })
+          : await D.avatar('stato', { id: b.dataset.id, stato: b.dataset.foto });
+        await apriAvatar(d);
+      } catch (e) {
+        window.ui.showToast(pulisciErrore(e.message), 'error');
+        b.disabled = false;
+      }
+    });
+  }
+
   async function apriDirezione() {
     ui.pannello = { tipo: 'direzione' };
     apriPannello('Direzione', 'Il piano di questa settimana',
@@ -1846,6 +1990,7 @@
     $('rg-btn-reference').addEventListener('click', nuovaReference);
     $('rg-btn-cervello').addEventListener('click', apriCervello);
     $('rg-btn-direzione').addEventListener('click', apriDirezione);
+    $('rg-btn-avatar')?.addEventListener('click', () => apriAvatar());
     $('rg-interruttore').addEventListener('click', () => cambiaInterruttore());
     $('rg-fermo-riparti').addEventListener('click', () => cambiaInterruttore(false));
     $('rg-pan-chiudi').addEventListener('click', chiudiPannello);

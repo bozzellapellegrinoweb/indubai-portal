@@ -762,6 +762,31 @@
     try { ws?.close(); } catch { /* niente */ }
   }
 
+  /**
+   * Le foto del manager.
+   *
+   * Non stanno qui: vivono nel database del generatore, che e' il pool da
+   * cui le storie pescano da sempre. Tenerne una copia nel portale
+   * vorrebbe dire avere due elenchi che divergono, e la storia uscirebbe
+   * con una foto che qui risulta scartata.
+   *
+   * Generare costa, quindi la funzione lato server controlla che chi
+   * chiede abbia la Regia fra le pagine concesse: non basta essere
+   * entrati nel portale.
+   */
+  async function avatar(azione = 'elenco', extra = {}) {
+    const r = await fetch(`${SB}/functions/v1/smm-avatar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({ azione, ...extra }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d?.ok === false) {
+      throw new Error(d?.error || `Le foto non rispondono (${r.status}).`);
+    }
+    return d;
+  }
+
   window.regiaDati = {
     stato, carica, avvia, fermati,
     ascolta: (f) => { ascoltatori.add(f); return () => ascoltatori.delete(f); },
@@ -773,6 +798,6 @@
     nuovaReference, risultati, salvaRisultato, salvaImpostazioni,
     plurale, piano, nuovaRigaPiano, salvaRigaPiano, eliminaRigaPiano, lanciaQuelloCheManca,
     interruttore, accendiAgente, pianoAutomatico,
-    caricaFile, linkFirmato, svegliaWorker, rendi,
+    caricaFile, linkFirmato, svegliaWorker, rendi, avatar,
   };
 })();

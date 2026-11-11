@@ -335,6 +335,27 @@
     .rg-tocca.piena { border-color:var(--danger); }
     .rg-tocca.piena .rg-tocca-testa { color:var(--danger); }
 
+    /* ── Le foto del manager ─────────────────────────────── */
+    /* Le foto si guardano, quindi stanno larghe: il giudizio su una foto
+       venuta male non si da' su un francobollo. Due per riga su schermo
+       stretto, perche' una sola costringe a scorrere all'infinito. */
+    .rg-foto-griglia { display:grid; gap:10px; margin-top:8px;
+      grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
+    .rg-foto { margin:0; border:1px solid var(--border); border-radius:10px;
+      overflow:hidden; background:var(--bg-2); display:flex; flex-direction:column; }
+    .rg-foto img { width:100%; aspect-ratio:4/5; object-fit:cover; display:block; }
+    .rg-foto figcaption { padding:8px; display:flex; flex-direction:column; gap:7px; }
+    .rg-foto-et { font-size:11px; font-weight:800; text-transform:uppercase;
+      letter-spacing:.4px; color:var(--text-3); }
+    .rg-foto-azioni { display:flex; gap:6px; flex-wrap:wrap; }
+    /* Lo stato si legge dal bordo prima che dalla scritta: con venti foto
+       davanti, leggerne venti etichette non e' guardare le foto. */
+    .rg-foto-ok     { border-color:rgba(34,197,94,.55); }
+    .rg-foto-no     { opacity:.5; }
+    .rg-foto-attesa { border-color:rgba(234,179,8,.55); }
+    .rg-foto-viva .rg-foto-et { color:var(--accent); }
+    .rg-foto-genera { align-items:center; gap:8px; }
+
     /* ── Direzione: il piano della settimana ─────────────── */
     .rg-piano-riga { border:1.5px solid var(--border); border-radius:11px; padding:10px 12px;
       margin-bottom:9px; background:var(--surface2); }
@@ -388,6 +409,7 @@
         </button>
         <button class="btn btn-ghost btn-sm" id="rg-btn-direzione">Direzione</button>
         <button class="btn btn-ghost btn-sm" id="rg-btn-cervello">Cervello</button>
+        <button class="btn btn-ghost btn-sm" id="rg-btn-avatar">Le tue foto</button>
         <button class="btn btn-ghost btn-sm" id="rg-btn-reference">Reference</button>
       </div>
     </div>
