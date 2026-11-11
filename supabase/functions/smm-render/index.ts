@@ -150,6 +150,23 @@ async function salvaMedia(
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
+  // Un colpo a vuoto che dice solo i NOMI delle variabili che iniziano per
+  // REGIA, mai i valori. Serve a distinguere "non l'ho messa" da "l'ho
+  // scritta storta" da "l'ho messa su un altro progetto", che da fuori sono
+  // tre errori identici: ci abbiamo perso mezz'ora sul lato Vercel.
+  //
+  // Non e' aperto a chiunque: il gateway di Supabase accetta solo un token
+  // vero del progetto, altrimenti non si arriva nemmeno qui.
+  if (req.method === "GET") {
+    let nomi: string[] = [];
+    try {
+      nomi = Object.keys(Deno.env.toObject()).filter((k) => k.startsWith("REGIA")).sort();
+    } catch { /* se l'ambiente non si legge, resta vuoto */ }
+    return new Response(JSON.stringify({
+      ok: true, servizio: "smm-render", variabili: nomi,
+    }), { headers: CORS });
+  }
+
   try {
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
