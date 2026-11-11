@@ -620,7 +620,8 @@
       html.push('<div class="rg-sez">File</div>');
       html.push(media.map(m => `<div class="rg-voce">
         <b>${esc(m.nome_file || m.path.split('/').pop())}</b>
-        <div class="rg-voce-fonte">${esc(m.ruolo)} · ${esc(m.mime || '')} · ${pesoLeggibile(m.bytes)}</div>
+        <div class="rg-voce-fonte">${esc(m.ruolo)} · ${esc(m.mime || '')}${
+          Number(m.bytes) > 0 ? ' · ' + pesoLeggibile(m.bytes) : ''}</div>
       </div>`).join(''));
     }
 
@@ -684,11 +685,13 @@
         await D.risolviNota(b.dataset.risolvi);
         apriContenuto(c.id);
       }));
-    corpoPannello().querySelectorAll('[data-slide]').forEach(b =>
-      b.addEventListener('click', () => {
-        ui.slideScelta = Number(b.dataset.slide);
-        disegnaContenuto(c, versioni, note, media);
-      }));
+    for (const quale of ['data-slide', 'data-video']) {
+      corpoPannello().querySelectorAll(`[${quale}]`).forEach(b =>
+        b.addEventListener('click', () => {
+          ui.slideScelta = Number(b.dataset.slide ?? b.dataset.video);
+          disegnaContenuto(c, versioni, note, media);
+        }));
+    }
     const selA = $('rg-round-a'), selB = $('rg-round-b');
     if (selA && selB) {
       const aggiorna = () => {
@@ -718,6 +721,17 @@
     return 'sul contenuto';
   }
 
+  /** Le linguette per sfogliare piu' video: una storia ne ha uno per slide. */
+  function linguetteVideo(media, c) {
+    const v = media.filter(x => (x.mime || '').startsWith('video') && x.ruolo !== 'reference');
+    const slides = Array.isArray(c.slides) ? c.slides : [];
+    const i = Math.min(ui.slideScelta, v.length - 1);
+    return `<div class="rg-slide-strip">${v.map((m, k) =>
+      `<button class="rg-slide-min" data-video="${k}" aria-current="${k === i}">
+         ${esc(String((slides[k]?.titolo || slides[k]?.title) || ('Slide ' + (k + 1))).slice(0, 22))}
+       </button>`).join('')}</div>`;
+  }
+
   function lettore(c, media) {
     const video = media.find(m => (m.mime || '').startsWith('video') && m.ruolo !== 'reference');
     const anteprima = media.find(m => m.ruolo === 'anteprima');
@@ -725,10 +739,22 @@
 
     if (video || anteprima) {
       const m = anteprima || video;
+      // Stesso difetto che avevo sistemato per le immagini e non qui: i
+      // file del generatore stanno su Cloudinary con un indirizzo
+      // pubblico, e il link firmato sa costruire solo indirizzi del
+      // deposito privato. Falliva in silenzio, e restava scritto
+      // "Anteprima non disponibile" sopra tre file che c'erano.
+      const sorgente = m.cloudinary_url
+        ? `src="${esc(m.cloudinary_url)}"`
+        : `data-media-path="${esc(m.path)}"`;
+      const quanti = media.filter(x => (x.mime || '').startsWith('video') && x.ruolo !== 'reference').length;
       return `<div class="rg-lettore">
-        <video id="rg-video" controls preload="metadata" data-media-path="${esc(m.path)}"></video>
+        <video id="rg-video" controls preload="metadata" playsinline ${sorgente}></video>
       </div>
-      <div class="rg-voce-fonte">L'anteprima si apre con un indirizzo che scade: i file non sono pubblici.</div>`;
+      ${quanti > 1 ? linguetteVideo(media, c) : ''}
+      <div class="rg-voce-fonte">${m.cloudinary_url
+        ? `${quanti} ${quanti === 1 ? 'video pronto' : 'video pronti'} per la pubblicazione.`
+        : 'L\'anteprima si apre con un indirizzo che scade: i file non sono pubblici.'}</div>`;
     }
 
     const slides = Array.isArray(c.slides) ? c.slides : [];

@@ -416,6 +416,8 @@ async function unGiro(db: SupabaseClient, anthropic: Anthropic): Promise<{ fatti
       } else if (job.tipo === "pubblicazione") {
         // La pubblicazione la fa smm-publish: qui si gira la palla.
         esito = await inoltraAPubblicazione(db, job);
+      } else if (job.tipo === "montaggio") {
+        esito = await eseguiMontaggio(db, job);
       } else {
         esito = await eseguiLavoroAgente(db, anthropic, job);
       }
@@ -488,6 +490,34 @@ async function unGiro(db: SupabaseClient, anthropic: Anthropic): Promise<{ fatti
   }
 
   return { fatti, dettagli };
+}
+
+/**
+ * Il montaggio: le slide diventano file.
+ *
+ * Non passa da un agente. Rendere non e' una decisione, e' un passaggio
+ * meccanico: far scegliere a un modello se rendere costa venti centesimi
+ * per sentirsi rispondere "si'". Qui si chiama il motore e basta, senza
+ * token e senza spesa.
+ */
+async function eseguiMontaggio(db: SupabaseClient, job: Job) {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Manca la configurazione del progetto.");
+
+  const r = await fetch(`${url}/functions/v1/smm-render`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+    body: JSON.stringify({ content_id: job.content_id, ...job.payload }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || d?.ok === false) {
+    throw new Error(d?.error ?? `Il motore ha risposto ${r.status}.`);
+  }
+  return {
+    testo: d?.messaggio ?? "File pronti.",
+    costoUsd: 0, tokenIn: 0, tokenOut: 0,
+  };
 }
 
 async function inoltraAPubblicazione(db: SupabaseClient, job: Job) {

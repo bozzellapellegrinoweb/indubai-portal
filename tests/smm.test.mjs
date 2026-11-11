@@ -107,6 +107,7 @@ try {
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_knowledge_intera.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_brief_copywriter.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_cervello_quote.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_montaggio_automatico.sql')]);
   // La pianificazione vive in una migrazione a parte perche' ha bisogno di
   // pg_cron e pg_net. Sul banco di prova quelli non ci sono: si prende solo
   // la funzione che mette in coda le uscite arrivate a scadenza, che e' la
@@ -1099,6 +1100,74 @@ test('i bullet restano vietati nella caption e ammessi nelle slide', () => {
 });
 
 // ============================================================
+gruppo('Le immagini si fanno da sole');
+
+// Il manager ha dovuto premere lui "Prepara le immagini". Un lavoro in
+// piu' su ogni contenuto, ogni volta: esattamente quello che la Regia
+// doveva togliere.
+
+/** Un contenuto con le slide, pronto a passare in approvazione. */
+function contenutoConSlide(titolo = 'Da montare') {
+  const id = one(`
+    insert into smm_contents (brand_id, titolo, caption, categoria, stato, slides, created_by)
+    values ('${BRAND}', '${titolo}',
+            'La Corporate Tax negli Emirati e al 9 per cento sopra 375.000 AED.',
+            'normativa', 'in_lavorazione',
+            '[{"tipo":"intro","titolo":"Uno"},{"tipo":"cta","titolo":"Due"}]'::jsonb,
+            '${MANAGER}')
+    returning id`);
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${id}'`]);
+  return id;
+}
+const montaggiDi = (id) =>
+  one(`select count(*) from smm_jobs where content_id = '${id}' and tipo = 'montaggio'`);
+
+test('entrando in approvazione, il montaggio si mette in coda da solo', () => {
+  const c = contenutoConSlide('Da montare 1');
+  eq(montaggiDi(c), '0', 'prima');
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${c}'`]);
+  eq(montaggiDi(c), '1', 'dopo');
+  eq(one(`select priorita from smm_jobs where content_id = '${c}' and tipo = 'montaggio'`),
+     '75', 'priorita');
+});
+
+test('il lavoro di montaggio non ha un agente: non costa un modello', () => {
+  const c = contenutoConSlide('Da montare 2');
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${c}'`]);
+  eq(one(`select agent_id is null from smm_jobs
+           where content_id = '${c}' and tipo = 'montaggio'`), 't', 'senza agente');
+  eq(one(`select payload->>'formato' from smm_jobs
+           where content_id = '${c}' and tipo = 'montaggio'`), 'carosello', 'formato');
+});
+
+test('un salvataggio qualunque non rimette in coda niente', () => {
+  const c = contenutoConSlide('Da montare 3');
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${c}'`]);
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare', caption = 'ritocco' where id = '${c}'`]);
+  eq(montaggiDi(c), '1', 'montaggi in tutto');
+});
+
+test('se i file ci sono gia, non si rifa niente', () => {
+  const c = contenutoConSlide('Da montare 4');
+  psql(DB, ['-c', `
+    insert into smm_media (brand_id, content_id, ruolo, bucket, path, mime)
+    values ('${BRAND}', '${c}', 'derivato', 'cloudinary', 'prova/montato-${Date.now()}', 'image/jpeg')`]);
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${c}'`]);
+  eq(montaggiDi(c), '0', 'montaggi');
+});
+
+test('senza slide non si monta niente', () => {
+  const c = one(`
+    insert into smm_contents (brand_id, titolo, caption, categoria, stato, created_by)
+    values ('${BRAND}', 'Senza slide', 'Testo conforme sulla Corporate Tax.',
+            'normativa', 'in_lavorazione', '${MANAGER}')
+    returning id`);
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${c}'`]);
+  eq(montaggiDi(c), '0', 'montaggi');
+});
+
+// ============================================================
 gruppo('Il motore: chi lo puo chiamare');
 
 test('il Grafico e il Video hanno lo strumento, il Copywriter no', () => {
@@ -1134,6 +1203,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_montaggio_automatico_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_cervello_quote_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_brief_copywriter_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_knowledge_intera_down.sql')]);
