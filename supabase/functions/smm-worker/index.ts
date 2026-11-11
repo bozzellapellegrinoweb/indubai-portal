@@ -10,8 +10,8 @@
  *    lavoro, cosi' la scena si muove nell'istante in cui si scrive al
  *    Direttore;
  *  - a ripetizione, da pg_cron ogni minuto (vedi
- *    20261110_smm_cron.sql), cosi' un lavoro non si perde se il browser si
- *    chiude, e i lavori figli vengono raccolti comunque.
+ *    20261112_smm_cron_automatico.sql), cosi' un lavoro non si perde se il
+ *    browser si chiude, e i lavori figli vengono raccolti comunque.
  *
  * Un giro prende i lavori uno alla volta con smm_claim_job(), che rispetta
  * l'interruttore generale e il budget del giorno, e si ferma quando scade il
@@ -516,10 +516,9 @@ async function inoltraAPubblicazione(db: SupabaseClient, job: Job) {
  * prende quasi tutti - e il Direttore che smista una settimana intera ci
  * mette tanto - i lavori figli che ha appena creato restano fermi.
  *
- * Doveva pensarci pg_cron, che pero' non e' installato: quella migrazione
- * ha bisogno di due segreti nel Vault. Senza questo, la catena si ferma
- * dopo il primo anello e i sette Copywriter restano in coda finche'
- * qualcuno non riapre la pagina. E' successo davvero.
+ * Adesso c'e' anche pg_cron che sveglia ogni minuto, ma questa resta: fra
+ * un giro e l'altro passerebbe fino a un minuto buono, e la scena deve
+ * muoversi mentre il manager guarda.
  *
  * Riparte solo se questo giro ha concluso qualcosa: se non ha combinato
  * niente, richiamarsi sarebbe un ciclo infinito che spende. Il resto lo
@@ -556,7 +555,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    // Chi puo' svegliare il worker: pg_cron con il segreto, oppure una
+    // Chi puo' svegliare il worker: pg_cron col suo token, oppure una
     // persona autenticata del portale. Un'esecuzione a vuoto non fa danni,
     // ma una coda che gira per chiunque si', perche' spende.
     const auth = req.headers.get("Authorization") ?? "";
