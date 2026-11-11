@@ -312,6 +312,21 @@ drop policy if exists smm_piano_all on smm_piano;
 create policy smm_piano_all on smm_piano
   for all using (can_see_smm()) with check (can_see_smm());
 
+-- ── 5b. I permessi di tabella ───────────────────────────────
+-- La RLS dice quali righe, i grant dicono se puoi toccare la tabella: sono
+-- due cose diverse e servono tutte e due. Senza questi, dal browser la
+-- Direzione risponde "permission denied for table smm_piano" anche se la
+-- policy sarebbe perfetta. Le altre tabelle della Regia li prendono dal
+-- ciclo nella migrazione di prima; questa, nata dopo, no.
+
+grant select, insert, update, delete on smm_piano to authenticated;
+grant all on smm_piano to service_role;
+
+grant execute on function smm_piano_settimana(uuid, int) to authenticated, service_role;
+grant execute on function smm_piano_in_parole(uuid)      to authenticated, service_role;
+grant execute on function smm_interruttore(uuid, boolean) to authenticated;
+grant execute on function smm_puo_leggere()               to authenticated, service_role;
+
 -- ── 6. Realtime ─────────────────────────────────────────────
 do $$
 begin

@@ -836,6 +836,32 @@ test('una riga spenta non entra nel piano in parole', () => {
   psql(DB, ['-c', `update smm_piano set attivo = true where id = '${PIANO}'`]);
 });
 
+test('il manager puo leggere e scrivere la tabella del piano, non solo la funzione', () => {
+  // La RLS dice quali righe, i grant dicono se puoi toccare la tabella.
+  // Senza il grant la policy e' perfetta e il browser risponde lo stesso
+  // "permission denied": e' successo, la tabella era nata dopo il ciclo
+  // che li assegna.
+  const riga = comeUno(MANAGER, `insert into smm_piano (brand_id, nome, tipo, quanti_a_settimana)
+                                 values ('${BRAND}', 'Prova permessi', 'post', 1) returning id`);
+  if (!riga) throw new Error('il manager non riesce a inserire nel piano');
+  eq(comeUno(MANAGER, `select nome from smm_piano where id = '${riga}'`), 'Prova permessi', 'rilettura');
+  come(MANAGER, `update smm_piano set quanti_a_settimana = 3 where id = '${riga}'`);
+  eq(one(`select quanti_a_settimana from smm_piano where id = '${riga}'`), '3', 'aggiornamento');
+  come(MANAGER, `delete from smm_piano where id = '${riga}'`);
+  eq(one(`select count(*) from smm_piano where id = '${riga}'`), '0', 'cancellazione');
+});
+
+test('un contabile junior non puo toccare la tabella del piano', () => {
+  // Su INSERT la policy alza un errore, non filtra in silenzio come fa su
+  // UPDATE: il with check non ha righe da nascondere, ha una riga nuova da
+  // rifiutare.
+  comeFallisce(JUNIOR, `insert into smm_piano (brand_id, nome, tipo, quanti_a_settimana)
+                        values ('${BRAND}', 'Non deve entrare', 'post', 1)`,
+               'row-level security');
+  eq(one(`select count(*) from smm_piano where nome = 'Non deve entrare'`), '0',
+     'righe inserite da un junior');
+});
+
 test('un contabile junior non vede il piano', () => {
   eq(come(JUNIOR, `select count(*) from smm_piano_settimana('${BRAND}', 0)`)[0][0], '0',
      'righe del piano per un junior');
