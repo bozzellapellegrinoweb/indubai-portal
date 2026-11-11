@@ -76,7 +76,11 @@ function datiCarosello(c: Contenuto, b: Brand): Record<string, unknown> {
     slides: elenco.map((x) => {
       const o = (x ?? {}) as Record<string, unknown>;
       return {
-        type: typeof o.type === "string" ? o.type : "standard",
+        // Gli agenti parlano italiano e scrivono le chiavi in italiano:
+        // tipo, titolo, testo. Qui si accettano tutte e due le lingue,
+        // perche' far fallire il rendering per il nome di un campo
+        // sarebbe fallire per una forma, non per un contenuto.
+        type: typeof (o.type ?? o.tipo) === "string" ? String(o.type ?? o.tipo) : "standard",
         title: String(o.title ?? o.titolo ?? ""),
         body: String(o.body ?? o.testo ?? ""),
         ...(o.stats ? { stats: o.stats } : {}),
@@ -99,8 +103,9 @@ function datiStoria(c: Contenuto, b: Brand, avatar?: string): Record<string, unk
     slides: elenco.length
       ? elenco.map((x, i) => {
           const o = (x ?? {}) as Record<string, unknown>;
+          const dichiarato = o.type ?? o.tipo;
           return {
-            type: typeof o.type === "string" ? o.type
+            type: typeof dichiarato === "string" ? String(dichiarato)
                 : i === 0 ? "intro" : i === elenco.length - 1 ? "cta" : "content",
             title: String(o.title ?? o.titolo ?? ""),
             body: String(o.body ?? o.testo ?? ""),
