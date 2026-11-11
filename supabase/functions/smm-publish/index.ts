@@ -19,6 +19,7 @@
  */
 
 import { clientDaAmbiente, type SupabaseClient } from "../smm-worker/supabase.ts";
+import { eUnaPersona } from "../smm-worker/auth.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -102,7 +103,7 @@ Deno.serve(async (req: Request) => {
   try {
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-    const autorizzato = (service && token === service) || token.split(".").length === 3;
+    const autorizzato = (service && token === service) || eUnaPersona(token);
     if (!autorizzato) {
       return new Response(JSON.stringify({ ok: false, error: "Non autorizzato" }),
         { status: 401, headers: CORS });

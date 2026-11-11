@@ -23,6 +23,7 @@ import Anthropic from "npm:@anthropic-ai/sdk@1.6.0";
 import { clientDaAmbiente, type SupabaseClient } from "./supabase.ts";
 import { definizioniPer, STRUMENTI, type Contesto } from "./strumenti.ts";
 import { costo } from "./prezzi.ts";
+import { eUnaPersona } from "./auth.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -492,14 +493,13 @@ Deno.serve(async (req: Request) => {
     // ma una coda che gira per chiunque si', perche' spende.
     const auth = req.headers.get("Authorization") ?? "";
     const segreto = Deno.env.get("CRON_SECRET");
-    const anon = Deno.env.get("SUPABASE_ANON_KEY");
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const token = auth.replace(/^Bearer\s+/i, "");
     const autorizzato =
       (segreto && token === segreto) ||
       (service && token === service) ||
-      // un JWT di utente: lo valida Supabase quando il worker legge i dati
-      (token.split(".").length === 3 && token !== anon);
+      // una persona autenticata del portale, non la chiave pubblica
+      eUnaPersona(token);
     if (!autorizzato) {
       return new Response(JSON.stringify({ ok: false, error: "Non autorizzato" }),
         { status: 401, headers: CORS });
