@@ -1195,9 +1195,123 @@ export function creaScena(contenitore, opzioni = {}) {
     }
   }
 
+  // ── Targhette: chi e' chi, e dove sono le zone ──────────
+  // Stesso livello dei fumetti e stessa meccanica, per lo stesso motivo:
+  // il testo dentro la scena non si legge. Il nome dipinto sul monitor e'
+  // un canvas 384x228 su un piano di 0.62 unita' mondo, e alla scala di
+  // resa esce a circa tre pixel.
+  const targhe = new Map();
+  function targaDi(id) {
+    if (targhe.has(id)) return targhe.get(id);
+    const el = document.createElement('div');
+    el.className = 'regia-targa';
+    el.innerHTML = '<span class="rt-pallino"></span>'
+                 + '<span class="rt-nome"></span><span class="rt-che"></span>';
+    livello.appendChild(el);
+    const t = { el, pallino: el.querySelector('.rt-pallino'),
+                nome: el.querySelector('.rt-nome'), che: el.querySelector('.rt-che') };
+    targhe.set(id, t);
+    return t;
+  }
+
+  const targheZona = new Map();
+  function targaZonaDi(chiave, nome) {
+    if (targheZona.has(chiave)) return targheZona.get(chiave);
+    const el = document.createElement('div');
+    el.className = 'regia-zona';
+    el.textContent = nome;
+    livello.appendChild(el);
+    targheZona.set(chiave, el);
+    return el;
+  }
+
   const vettore = new THREE.Vector3();
   function posizionaFumetti() {
     const r = renderer.domElement.getBoundingClientRect();
+
+    // La scala si calcola una volta sola e vale per tutti: i fumetti, le
+    // targhette e i nomi delle zone devono rimpicciolire insieme, e il
+    // controllo delle sovrapposizioni ha bisogno delle misure *rese*, non
+    // di quelle di layout.
+    //
+    // Il minimo era 0.62: con l'inquadratura d'insieme il testo usciva fra
+    // i 7 e i 9 pixel e il tasto "Guarda" misurava 43x18, cioe' sotto la
+    // soglia di quello che si riesce a centrare col dito o col mouse. Il
+    // fumetto e' l'unico punto della scena da cui si avvia un'azione: se
+    // non si legge e non si preme, il 3D e' decorazione e si lavora dalla
+    // fascia laterale.
+    const scala = THREE.MathUtils.clamp(1.2 - orbita.raggio / 70, 0.9, 1.1);
+
+    // Le targhette: una per agente visibile, e solo per chi non ha gia'
+    // un fumetto. Il fumetto il nome lo dice da se': due cartellini per la
+    // stessa persona sono rumore, ed era proprio il difetto della Sala —
+    // lo stesso fatto scritto in quattro posti.
+    const cartelli = [];
+    for (const [id, a] of avatarPerAgente) {
+      const t = targaDi(id);
+      if (!a.gruppo.visible || fumetti.has(id)) { t.el.style.display = 'none'; continue; }
+      a.gruppo.getWorldPosition(vettore);
+      vettore.y += 0.04;
+      vettore.project(camera);
+      if (vettore.z > 1) { t.el.style.display = 'none'; continue; }
+      const p = POSA[a.posa] || POSA.libero;
+      if (t.nome.textContent !== (a.agente.nome || '')) t.nome.textContent = a.agente.nome || '';
+      if (t.che.textContent !== p.etichetta) t.che.textContent = p.etichetta;
+      t.pallino.style.background = '#' + p.colore.toString(16).padStart(6, '0');
+      t.el.style.display = '';
+      t.el.style.zIndex = String(500 - Math.round(vettore.z * 200));
+      cartelli.push({
+        t,
+        x: (vettore.x * 0.5 + 0.5) * r.width,
+        y: (-vettore.y * 0.5 + 0.5) * r.height + 6,
+        w: (t.el.offsetWidth || 120) * scala,
+        h: (t.el.offsetHeight || 22) * scala,
+      });
+    }
+    // Chi sta davanti tiene il suo posto, chi sta dietro scende quel tanto
+    // che basta. Le misure sono rese, non di layout: e' lo stesso errore
+    // che faceva sbagliare bersaglio alla correzione dei fumetti.
+    cartelli.sort((a, b) => a.y - b.y);
+    for (let i = 0; i < cartelli.length; i++) {
+      const c = cartelli[i];
+      for (let j = 0; j < i; j++) {
+        const d = cartelli[j];
+        const vicinoX = Math.abs(c.x - d.x) < (c.w + d.w) / 2 - 8;
+        if (vicinoX && c.y < d.y + d.h + 3 && c.y + c.h > d.y) c.y = d.y + d.h + 3;
+      }
+      c.t.el.style.transform =
+        `translate(${c.x.toFixed(1)}px, ${c.y.toFixed(1)}px) `
+        + `scale(${scala.toFixed(3)}) translate(-50%, 0)`;
+    }
+    for (const [id, t] of targhe) {
+      if (!avatarPerAgente.has(id)) { t.el.remove(); targhe.delete(id); }
+    }
+
+    // I nomi delle zone, sul pavimento. Solo quelle che hanno qualcuno
+    // dentro: una zona vuota con il cartello e' un posto che non esiste.
+    const abitate = new Set();
+    for (const a of avatarPerAgente.values()) {
+      if (a.gruppo.visible && a.agente.zona) abitate.add(a.agente.zona);
+    }
+    for (const [chiave, z] of Object.entries(ZONE)) {
+      const el = targaZonaDi(chiave, z.nome);
+      if (!abitate.has(chiave)) { el.style.display = 'none'; continue; }
+      // Spostato in fuori dal centro della stanza, cosi' il cartello non
+      // finisce sopra le teste di chi ci lavora.
+      const lungo = Math.hypot(z.x, z.z) || 1;
+      vettore.set(z.x + (z.x / lungo) * 2.1, 0.02, z.z + (z.z / lungo) * 2.1);
+      vettore.project(camera);
+      if (vettore.z > 1) { el.style.display = 'none'; continue; }
+      el.style.display = '';
+      el.style.zIndex = '1';
+      // Dentro l'inquadratura: "Studio creativo" finiva mezzo fuori dal
+      // bordo destro, e mezzo nome di zona non dice niente.
+      const mezza = ((el.offsetWidth || 90) * scala) / 2 + 8;
+      const sx = Math.min(Math.max((vettore.x * 0.5 + 0.5) * r.width, mezza), r.width - mezza);
+      el.style.transform = `translate(${sx.toFixed(1)}px, `
+        + `${((-vettore.y * 0.5 + 0.5) * r.height).toFixed(1)}px) `
+        + `scale(${scala.toFixed(3)}) translate(-50%, -50%)`;
+    }
 
     // Si calcolano prima tutte le posizioni, poi si sistemano le
     // sovrapposizioni: tre agenti vicini nella stessa zona avevano i fumetti
@@ -1216,8 +1330,14 @@ export function creaScena(contenitore, opzioni = {}) {
         x: (vettore.x * 0.5 + 0.5) * r.width,
         y: (-vettore.y * 0.5 + 0.5) * r.height,
         z: vettore.z,
-        h: f.el.offsetHeight || 64,
-        w: f.el.offsetWidth || 180,
+        // Misure *rese*: offsetHeight e offsetWidth sono di layout, e
+        // confrontarle con posizioni in pixel di schermo era confrontare
+        // due sistemi di coordinate diversi. Con la scala a 0.67 i fumetti
+        // si credevano larghi 216 ed erano 145: la correzione mirava al
+        // posto sbagliato e due fumetti si sovrapponevano lo stesso, col
+        // tasto "Guarda" di uno finito sotto l'altro.
+        h: (f.el.offsetHeight || 64) * scala,
+        w: (f.el.offsetWidth || 180) * scala,
       });
     }
 
@@ -1226,21 +1346,35 @@ export function creaScena(contenitore, opzioni = {}) {
     piazzati.sort((p, q) => p.z - q.z);
     for (let i = 0; i < piazzati.length; i++) {
       const p = piazzati[i];
-      for (let j = 0; j < i; j++) {
-        const q = piazzati[j];
-        const vicinoX = Math.abs(p.x - q.x) < (p.w + q.w) / 2 - 12;
-        const sopra = q.y - q.h - 8;          // bordo alto del fumetto gia' messo
-        if (vicinoX && p.y > sopra && p.y - p.h < q.y) {
-          p.y = sopra;                        // lo si alza sopra l'altro
+      // Tre giri bastano: ogni giro o separa o si ferma. Prima era un
+      // passaggio solo, e si alzava il fumetto sopra l'altro — ma se sopra
+      // non c'era spazio, il "non uscire dall'inquadratura" lo rimetteva
+      // giu' esattamente dov'era. Su una scena alta 360 pixel, cioe'
+      // quella di un portatile, succedeva sempre: due fumetti sovrapposti
+      // per il trentun per cento, col tasto "Guarda" di uno sotto
+      // l'altro. Se sopra non c'e' posto ci si scosta di lato, che e' la
+      // cosa che un essere umano farebbe.
+      for (let giro = 0; giro < 3; giro++) {
+        let mosso = false;
+        for (let j = 0; j < i; j++) {
+          const q = piazzati[j];
+          const limiteX = (p.w + q.w) / 2 - 10;
+          if (Math.abs(p.x - q.x) >= limiteX) continue;
+          if (p.y <= q.y - q.h || p.y - p.h >= q.y) continue;
+          const sopra = q.y - q.h - 8;        // bordo alto del fumetto gia' messo
+          if (sopra - p.h >= 6) { p.y = sopra; mosso = true; continue; }
+          const verso = p.x >= q.x ? 1 : -1;
+          p.x = Math.min(Math.max(q.x + verso * limiteX, p.w / 2 + 4),
+                         r.width - p.w / 2 - 4);
+          mosso = true;
         }
+        if (!mosso) break;
       }
       // Non deve uscire dall'inquadratura in alto.
       p.y = Math.max(p.h + 6, p.y);
       p.f.el.style.transform =
-        `translate(-50%, -100%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
-      // Piu' lontano, piu' piccolo.
-      const scala = THREE.MathUtils.clamp(1.15 - orbita.raggio / 60, 0.62, 1);
-      p.f.el.style.setProperty('--scala', scala.toFixed(2));
+        `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) `
+        + `scale(${scala.toFixed(3)}) translate(-50%, -100%)`;
       p.f.el.style.zIndex = String(1000 - Math.round(p.z * 500));
     }
   }

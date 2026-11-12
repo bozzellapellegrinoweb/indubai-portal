@@ -26,6 +26,11 @@
       --liv-pannello:1001;  /* il pannello laterale */
       --liv-modale: 1100;   /* le finestre, sempre sopra il pannello */
       --liv-toast:  1200;   /* gli avvisi, sempre in cima a tutto */
+      /* Quanto consuma l'intestazione sopra la scena: testata del portale,
+         linguette, barra della Zona, "Tocca a te". La scena prende quello
+         che resta. In modalita' concentrata questo numero scende, perche'
+         testata e menu non ci sono piu'. */
+      --rg-sopra:    404px;
     }
     /* La Regia alza il modale e i toast del portale sopra il proprio
        pannello: senza, finiscono dietro. */
@@ -39,6 +44,11 @@
 
     .rg-barra { display:flex; gap:10px; align-items:center; flex-wrap:wrap;
                 padding:12px 0 14px; border-bottom:1.5px solid var(--border); margin-bottom:14px; }
+    /* display:flex batte l'attributo hidden: e' gia' successo tre volte in
+       questa pagina, e la quarta era la barra della Zona, che restava
+       accesa in Calendario e in Risultati con sei filtri che non filtrano
+       niente. Quarantadue pixel di comandi morti in cima a due viste. */
+    .rg-barra[hidden] { display:none; }
     .rg-schede { display:flex; gap:4px; background:var(--surface2); padding:4px;
                  border-radius:11px; }
     .rg-scheda { border:0; background:transparent; font:inherit; font-size:13.5px; font-weight:700;
@@ -74,6 +84,11 @@
     /* La scheda di un agente: ritratto, nome, cosa sta facendo. */
     .rg-tess { display:flex; gap:9px; align-items:center; text-align:left;
       width:100%; padding:8px 9px; border:1.5px solid var(--border);
+      /* Sono flex-item in colonna: senza questo, a 1366 l'altezza scendeva
+         da 56 a 35 pixel e l'anello di stato, che e' inset:-3px su una foto
+         di 38, veniva tagliato sopra e sotto. L'anello e' la cosa che si
+         guarda prima: era la prima a rompersi. */
+      flex-shrink:0;
       border-radius:12px; background:var(--surface); cursor:pointer;
       /* Senza, una domanda lunga esce dal bordo della scheda. */
       overflow:hidden;
@@ -114,6 +129,27 @@
     .rg-barra-dentro.piena { background:#16a34a; }
     .rg-barra-fonte { font-size:10.5px; color:var(--text-muted); margin-top:5px; }
 
+    /* La soglia si misurava sulla finestra, ma il contenuto vive dentro
+       .main-content, che su desktop parte 240 pixel piu' a destra piu' 36
+       di margine per lato: a 1200 di finestra il contenuto e' 888, ben
+       sotto la soglia, e la griglia a tre colonne restava con una scena di
+       386 per 396 pixel, piu' piccola di un telefono. Due soglie, allora:
+       una per la pagina col menu del portale, una per la Regia concentrata,
+       che quei 312 pixel non li perde. */
+    /* A una colonna la scena va messa per prima: con le fasce sopra, su un
+       portatile a 1366 la stanza cominciava a 652 pixel, cioe' sotto la
+       piega, e per vedere gli agenti bisognava scorrere. Le fasce sono la
+       lettura di contorno: stanno sotto. */
+    .rg-sala-guscio.una-colonna > .rg-palco,
+    .rg-sala-guscio.una-colonna > .rg-lista { order:-1; }
+
+    @media (max-width:1492px) {
+      body:not(.rg-solo) .rg-sala-guscio { grid-template-columns:1fr; }
+      body:not(.rg-solo) .rg-fascia { max-height:none; flex-direction:row; flex-wrap:wrap; }
+      body:not(.rg-solo) .rg-fascia-testa { width:100%; }
+      body:not(.rg-solo) .rg-tess { width:calc(50% - 4px); }
+      body:not(.rg-solo) .rg-barra-riga { flex:1; min-width:200px; }
+    }
     @media (max-width:1180px) {
       .rg-sala-guscio { grid-template-columns:1fr; }
       .rg-fascia { max-height:none; flex-direction:row; flex-wrap:wrap; }
@@ -128,7 +164,7 @@
                    le linguette e "tocca a te". Prima era 48vh con un tetto
                    di 560: su un portatile faceva 430 pixel su 900, cioe'
                    meno di meta' finestra per l'unica cosa che si guarda. */
-                height:clamp(360px, calc(100vh - 404px), 900px); }
+                height:clamp(360px, calc(100vh - var(--rg-sopra)), 900px); }
     .rg-palco.nascosto { display:none; }
     .rg-scena { position:absolute; inset:0; }
     /* vignettatura leggera: il post-processing sobrio, in CSS */
@@ -148,20 +184,62 @@
     .regia-fumetto { position:absolute; top:0; left:0; pointer-events:auto;
       background:var(--surface); border:1.5px solid var(--border); border-radius:11px;
       padding:7px 10px 8px; box-shadow:0 6px 18px rgba(20,22,26,.13);
-      max-width:216px; transform-origin:bottom center;
-      scale:var(--scala,1); will-change:transform; }
+      max-width:216px;
+      /* L'origine e' l'angolo, e la scala sta dentro il transform, non
+         nella proprieta' scale.
+         La proprieta' scale e' una trasformazione a se', e il browser la
+         compone DOPO il translate del transform: il riquadro veniva prima
+         portato sopra la testa e poi ridimensionato attorno al proprio
+         bordo inferiore, che per un elemento in top:0 left:0 sta
+         all'angolo della scena. Risultato: alla scala 0.9 un fumetto
+         atteso a 800,400 finiva a 731,368 — settanta pixel piu' a
+         sinistra. Ecco perche' la correzione delle sovrapposizioni non
+         funzionava: calcolava posizioni giuste per riquadri che poi
+         andavano altrove. Dentro il transform l'ordine e' quello scritto,
+         e la scala agisce attorno al punto d'aggancio. */
+      transform-origin:0 0; will-change:transform; }
     .regia-fumetto::after { content:''; position:absolute; left:50%; bottom:-6px;
       width:10px; height:10px; background:var(--surface); border-right:1.5px solid var(--border);
       border-bottom:1.5px solid var(--border); transform:translateX(-50%) rotate(45deg); }
     .regia-fumetto.urgente { border-color:var(--danger); }
     .regia-fumetto.urgente::after { border-color:var(--danger); }
-    .rf-nome  { font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+    /* Le misure sono pensate per la resa, non per il layout: alla scala
+       minima di 0.9 questi diventano 9.9, 11.7 e 11.3 pixel, e il tasto
+       resta sopra i 24 pixel di altezza. Prima la scala arrivava a 0.62 e
+       il tasto misurava 43x18: si vedeva che c'era, non si riusciva a
+       premerlo. */
+    .rf-nome  { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
                 color:var(--text-muted); }
-    .rf-testo { font-size:12.5px; font-weight:600; line-height:1.35; margin-top:1px; }
-    .rf-azione { margin-top:6px; border:0; border-radius:7px; background:var(--primary);
-                 color:#fff; font:inherit; font-size:11.5px; font-weight:800; padding:5px 11px;
+    .rf-testo { font-size:13px; font-weight:600; line-height:1.35; margin-top:1px; }
+    .rf-azione { margin-top:7px; border:0; border-radius:8px; background:var(--primary);
+                 color:#fff; font:inherit; font-size:12.5px; font-weight:800; padding:7px 14px;
                  cursor:pointer; }
     .regia-fumetto.urgente .rf-azione { background:var(--danger); }
+
+    /* ── Targhette: chi e' chi, e dove sono le zone ───────── */
+    /* Gli otto agenti sono di spalle e hanno tutti la stessa sagoma: si
+       distinguevano solo dal colore della maglia e dall'anello a terra.
+       Il nome c'era, dipinto sui monitor in un canvas 384x228 su un piano
+       di 0.62 unita': alla scala di resa quel titolo usciva a circa tre
+       pixel. Qui i nomi sono HTML come i fumetti, per lo stesso motivo per
+       cui lo sono i fumetti: il testo piccolo in una scena 3D non si
+       legge, e questa stanza deve dire chi sta facendo cosa. */
+    .regia-targa { position:absolute; top:0; left:0; pointer-events:none;
+      transform-origin:0 0;
+      display:flex; align-items:center; gap:6px; white-space:nowrap;
+      background:rgba(255,255,255,.93); border:1px solid var(--border);
+      border-radius:999px; padding:3px 10px;
+      box-shadow:0 2px 7px rgba(20,22,26,.12); }
+    .rt-pallino { width:7px; height:7px; border-radius:50%; flex:0 0 auto; }
+    .rt-nome { font-size:11.5px; font-weight:800; letter-spacing:-.1px; }
+    .rt-che  { font-size:10.5px; color:var(--text-muted); }
+    /* Il nome della zona sta sul pavimento, scritto in grande e tenue:
+       il filtro offriva sei zone e nel mondo 3D non c'era niente che
+       dicesse dove fosse "Montaggio". */
+    .regia-zona { position:absolute; top:0; left:0; pointer-events:none;
+      transform-origin:0 0;
+      font-size:11.5px; font-weight:800; text-transform:uppercase;
+      letter-spacing:.14em; color:rgba(20,22,26,.3); white-space:nowrap; }
 
     
     
@@ -218,8 +296,14 @@
                 background:var(--surface); padding:11px 13px; }
     .rg-tocca-testa { font-size:11px; font-weight:800; text-transform:uppercase;
                       letter-spacing:.06em; color:var(--text-muted); margin-bottom:9px; }
-    .rg-tocca-righe { display:flex; gap:9px; overflow-x:auto; padding-bottom:3px; }
-    .rg-tessera { flex:0 0 auto; min-width:214px; max-width:290px; border:1.5px solid var(--border);
+    /* Era display:flex con overflow-x:auto e tessere da 214 pixel: con una
+       cosa da fare la striscia restava vuota per l'ottanta per cento della
+       larghezza, e con otto si scorreva in orizzontale il cuore della
+       giornata. Una griglia che si riempie da se' fa le due cose giuste:
+       una tessera sola si allarga, otto vanno a capo. */
+    .rg-tocca-righe { display:grid; gap:9px; padding-bottom:3px;
+                      grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); }
+    .rg-tessera { min-width:0; border:1.5px solid var(--border);
                   border-radius:11px; padding:9px 11px; background:var(--surface2);
                   display:flex; flex-direction:column; gap:5px; }
     .rg-tessera.urgente { border-color:var(--danger); background:var(--danger-bg); }
@@ -229,12 +313,63 @@
        te, verde = c'e' qualcosa di buono da guardare. */
     .rg-tessera.urgente .btn-accent { background:var(--danger); border-color:var(--danger); }
     .rg-tessera.urgente .btn-accent:hover { background:#b91c1c; }
+    /* Da quando la striscia e' una griglia, una tessera sola si allarga
+       per tutta la riga: il tasto dentro non deve allargarsi con lei, o
+       diventa una barra rossa da mille pixel. */
+    .rg-tessera > .btn { align-self:flex-start; }
+    /* E se e' sola, sta su una riga invece che su tre: trentacinque pixel
+       di altezza che vanno alla scena, e su un portatile a 1366 quelli si
+       vedono. Con due o piu' tessere la colonna torna, perche' li' la
+       riga sarebbe un elenco illeggibile. */
+    .rg-tessera:only-child { flex-direction:row; align-items:center; gap:13px; }
+    .rg-tessera:only-child .rg-tessera-testo { flex:1 1 auto; }
+    .rg-tessera:only-child > .btn { align-self:center; margin-left:auto; }
     .rg-tessera-titolo { font-size:13px; font-weight:800; line-height:1.25; }
     .rg-tessera-testo  { font-size:12px; color:var(--text-muted); line-height:1.4; }
     .rg-vuoto-tocca { font-size:12.5px; color:var(--text-muted); }
 
+    /* ── Solo social: la pagina si concentra ─────────────── */
+    /* Non e' il fullscreen del browser. Quello chiedeva requestFullscreen
+       sulla sola tela 3D, e il pannello laterale, che sta fuori da quel
+       nodo, restava aperto e invisibile mentre .app-layout — che contiene
+       la tela — diventava inerte: si premeva un tasto, non succedeva
+       niente di visibile, e la stanza smetteva di rispondere.
+       Qui si concentra la pagina, non il canvas: va via il menu del
+       portale (chi ha la Regia ha due voci in tutto nel menu, 240 pixel
+       fissi per due link) e va via la testata, con i suoi comandi spostati
+       nella barra delle linguette. Misurato: la scena passa da 552x364 a
+       832x538 su un portatile a 1366. */
+    body.rg-solo .sidebar         { transform:translateX(-100%) !important; }
+    body.rg-solo .sidebar-overlay { display:none !important; }
+    /* Deve battere il !important di css/style.css nel blocco min-width:901px. */
+    body.rg-solo .main-content    { margin-left:0 !important; }
+    body.rg-solo .topbar          { display:none !important; }
+    body.rg-solo .hamburger       { display:none !important; }
+    body.rg-solo { --rg-sopra:190px; }
+    /* Senza il menu del portale la scena ha trecento pixel in piu' di
+       larghezza, e le due fasce — misurate vuote dallo zero al sessanta per
+       cento — non hanno bisogno di crescere con lei: stringendole la scena
+       guadagna altri ottanta pixel. */
+    body.rg-solo .rg-sala-guscio { grid-template-columns:204px minmax(0,1fr) 216px; }
+    /* E qualche pixel di respiro in meno sopra la scena, che a 1366 sono
+       la differenza fra una stanza che si guarda e una striscia. */
+    body.rg-solo .rg-barra      { padding:9px 0 10px; margin-bottom:10px; }
+    body.rg-solo .rg-barra-vista{ padding-bottom:8px; }
+    body.rg-solo .rg-tocca      { margin-bottom:10px; padding:9px 11px; }
+    body.rg-solo .page-content  { padding-top:12px; }
+    /* I comandi della testata, trasferiti qui dentro, non devono scavalcare
+       le linguette: vanno a capo quando non ci stanno. */
+    body.rg-solo .topbar-actions  { display:flex; align-items:center; gap:8px;
+                                    flex-wrap:wrap; justify-content:flex-end; }
+    .rg-solo-tasto { font-weight:800 !important; }
+
     /* ── Pannello laterale ───────────────────────────────── */
-    .rg-pannello { position:fixed; top:0; right:0; bottom:0; width:min(480px,100vw);
+    /* Era width:min(480px,100vw), fisso su qualunque schermo: a 1920 il
+       pannello era esattamente un quarto della pagina, con tre quarti di
+       schermo spento e inerte dietro. Adesso cresce, con un tetto: oltre
+       820 pixel una riga di testo diventa troppo lunga da leggere. */
+    .rg-pannello { position:fixed; top:0; right:0; bottom:0;
+      width:min(clamp(480px, 42vw, 820px), 100vw);
       background:var(--surface); border-left:1.5px solid var(--border); z-index:var(--liv-pannello);
       transform:translateX(102%); transition:transform .22s ease; display:flex;
       flex-direction:column; box-shadow:var(--shadow-lg); }
@@ -287,7 +422,13 @@
     /* ── Lettore delle revisioni ─────────────────────────── */
     .rg-lettore { border:1.5px solid var(--border); border-radius:12px; overflow:hidden;
                   background:var(--surface2); }
-    .rg-lettore video, .rg-lettore img { width:100%; display:block; background:#13131f; }
+    /* width:100% su un file 9:16 dentro un pannello di 480 pixel faceva un
+       lettore alto 791: a 1440 per 900 era il 95 per cento dell'altezza
+       visibile, e le linguette delle slide, le note e i due tasti che
+       decidono (e' a posto / butta) finivano sotto due schermate di scroll.
+       Il tetto e' sull'altezza, perche' il problema non era la larghezza. */
+    .rg-lettore video, .rg-lettore img { display:block; background:#13131f;
+      max-width:100%; max-height:min(56vh, 520px); width:auto; margin:0 auto; }
     .rg-slide-strip { display:flex; gap:7px; padding:9px; overflow-x:auto; }
     .rg-slide-min { flex:0 0 auto; width:62px; aspect-ratio:4/5; border-radius:7px;
       border:2px solid transparent; background:#13131f; color:#b5ff00; font-size:10px;
@@ -501,7 +642,7 @@
 <body>
 <div class="app-layout">
   <div class="main-content">
-    <div class="topbar">
+    <div class="topbar" id="rg-topbar">
       <div>
         <div class="rg-saluto" id="rg-saluto">Regia Social</div>
         <div class="rg-stato" id="rg-stato">Apro la sala…</div>
@@ -540,6 +681,13 @@
           <button class="rg-scheda" role="tab" aria-selected="false" data-vista="risultati">Risultati</button>
         </div>
         <div class="rg-spazio"></div>
+        <!-- In modalita' concentrata i comandi della testata vengono
+             spostati qui dentro, prima di questi due: il fermo d'emergenza
+             che devi cercare non e' un fermo d'emergenza. -->
+        <div id="rg-ospite-testata"></div>
+        <button class="btn btn-ghost btn-sm rg-solo-tasto" id="rg-solo"
+                type="button" aria-pressed="false"
+                title="Da' tutta la pagina alla Regia e nasconde il menu del portale (tasto F)">Schermo intero</button>
         <button class="btn btn-accent btn-sm" id="rg-btn-nuovo">Nuovo lavoro</button>
       </div>
 
@@ -581,7 +729,6 @@
             <button type="button" id="rg-zoom-piu"  title="Avvicina"      aria-label="Avvicina">+</button>
             <button type="button" id="rg-zoom-meno" title="Allontana"     aria-label="Allontana">&minus;</button>
             <button type="button" id="rg-cam-reset" title="Vista d'insieme" aria-label="Torna alla vista d'insieme">&#8962;</button>
-            <button type="button" id="rg-schermo"   title="Schermo intero"  aria-label="Schermo intero">&#9974;</button>
           </div>
           <div class="rg-fatica" id="rg-fatica" hidden></div>
         </div>

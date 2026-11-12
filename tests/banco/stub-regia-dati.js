@@ -122,7 +122,16 @@
       const liberi = accesi.filter(a => !occupati.has(a.id)).length;
       return { domande, lavorano, inCoda, daGuardare, liberi, spenti, totale: agenti.length };
     },
-    toccaATe: () => [{ tipo: 'domanda', jobId: 'j2', testo: 'Il Revisore ha una domanda' }],
+    // La forma e' quella vera di D.toccaATe() in js/regia-dati.js:172-178.
+    // Prima qui mancavano titolo, id e azione: la tessera usciva senza
+    // titolo e con un tasto senza scritta, e sembrava un difetto del
+    // prodotto. E' la trappola del mestiere scritta in LEGGIMI.md: una
+    // finta che non somiglia all'originale fa cercare il guasto nel posto
+    // sbagliato.
+    toccaATe: () => [{ tipo: 'domanda', id: 'j2', agente: agenti[5],
+                       titolo: 'Revisore di conformita ha una domanda',
+                       testo: 'Posso dire che il Fisco vede il conto, o e troppo netto?',
+                       azione: 'Rispondi' }],
     contenuto: async () => contenuto,
     versioni: vuoto, note: vuoto, messaggiDi: vuoto,
     lavoriDi: async (id) => lavori.filter(j => j.content_id === id),

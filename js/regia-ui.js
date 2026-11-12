@@ -344,6 +344,9 @@
         <button class="btn btn-accent btn-sm" ${attr}>${esc(v.azione)}</button>
       </div>`;
     }).join('');
+    // La striscia cambia altezza quando le tessere vanno a capo: la scena
+    // prende quello che resta e deve ricontarlo.
+    requestAnimationFrame(misuraSopra);
   }
 
   // ── Il pannello laterale ──────────────────────────────────
@@ -2202,20 +2205,98 @@
   }
 
   /**
-   * Schermo intero sulla scena.
-   * Va chiesto da un gesto dell'utente, e il browser puo' rifiutare: in quel
-   * caso si dice perche' invece di non fare niente.
+   * Tutta la pagina alla Regia.
+   *
+   * Non e' il fullscreen del browser, ed e' un cambio deliberato. Quello
+   * chiedeva requestFullscreen sulla sola tela 3D: il pannello laterale sta
+   * fuori da quel nodo e non entrava nel top layer, quindi restava aperto e
+   * invisibile, mentre .app-layout — che contiene la tela — diventava
+   * inerte. Si premeva un tasto, non succedeva niente di visibile, e la
+   * stanza smetteva di rispondere. Non era aggiustabile senza spostare
+   * pannello e velo dentro il palco, e a quel punto tanto valeva fare la
+   * cosa che serviva davvero: togliere il menu del portale e la testata,
+   * che su un portatile a 1366 si prendono 240 pixel di larghezza per due
+   * voci di menu e 106 di altezza per un saluto.
+   *
+   * Misurato: la scena passa da 552x364 a 832x538 a 1366, e da 1106x676 a
+   * 1386x850 a 1920. La scelta si ricorda, perche' chi passa la giornata
+   * qui la fa una volta.
    */
-  async function schermoIntero() {
-    const palco = $('rg-palco');
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else if (palco.requestFullscreen) await palco.requestFullscreen();
-      else if (palco.webkitRequestFullscreen) palco.webkitRequestFullscreen();
-      else window.ui.showToast('Questo browser non apre lo schermo intero.', 'error');
-    } catch (e) {
-      window.ui.showToast('Schermo intero non disponibile qui.', 'error');
+  function concentrato(acceso, ricorda = true) {
+    const giaCosi = document.body.classList.contains('rg-solo');
+    if (acceso === undefined) acceso = !giaCosi;
+    if (acceso === giaCosi) return;
+
+    document.body.classList.toggle('rg-solo', acceso);
+    const tasto = $('rg-solo');
+    tasto.setAttribute('aria-pressed', String(acceso));
+    tasto.textContent = acceso ? 'Esci da schermo intero' : 'Schermo intero';
+
+    // I comandi della testata si spostano, non si duplicano: l'interruttore
+    // generale deve restare raggiungibile, e un secondo interruttore
+    // sarebbe un secondo stato da tenere allineato. appendChild muove il
+    // nodo con i suoi ascoltatori.
+    const comandi = document.querySelector('.topbar-actions');
+    if (comandi) {
+      (acceso ? $('rg-ospite-testata') : $('rg-topbar')).appendChild(comandi);
     }
+
+    if (ricorda) {
+      try { localStorage.setItem('regia_solo', acceso ? '1' : '0'); } catch { /* niente */ }
+    }
+    // Il contenitore ha cambiato dimensione: la tela va rimisurata, e
+    // l'intestazione va ricontata perche' e' cambiata anche lei.
+    requestAnimationFrame(misuraSopra);
+    setTimeout(() => { misuraSopra(); ui.tridi?.ridimensiona?.(); }, 60);
+  }
+
+  function concentratoRicordato() {
+    try { return localStorage.getItem('regia_solo') === '1'; } catch { return false; }
+  }
+
+  /**
+   * Quanto spazio c'e' sopra la scena, misurato invece che indovinato.
+   *
+   * Prima era una costante nel CSS: clamp(360px, calc(100vh - 404px), 900px).
+   * Quei 404 erano il peso dell'intestazione contato a mano, e contarlo a
+   * mano vuol dire sbagliarlo ogni volta che qualcosa cambia: la testata del
+   * portale e' alta 85 pixel a 1440 e 106 a 1366 perche' la riga di stato va
+   * a capo; la barra delle linguette diventa due righe quando ci entrano i
+   * comandi della testata; la barra della Zona sparisce in Calendario. Con
+   * un numero fisso la pagina scorreva sempre di qualche pixel — e di 134
+   * in modalita' concentrata — e la rotellina sulla scena, che e' catturata
+   * dallo zoom, faceva ballare la pagina.
+   *
+   * La scena e' l'ultima cosa del flusso, quindi la sua altezza non cambia
+   * la propria posizione: una misura sola basta, non oscilla.
+   */
+  function misuraSopra() {
+    const palco = $('rg-palco');
+    if (!palco || palco.classList.contains('nascosto')) return;
+    // Quando la griglia collassa a una colonna, la scena va per prima.
+    // Il CSS da solo non sa dirlo: le soglie sono due (con e senza il menu
+    // del portale) e cambiano con la modalita'. Una colonna sola si
+    // riconosce dal numero di tracce calcolate.
+    const guscio = palco.parentElement;
+    if (guscio) {
+      const colonne = getComputedStyle(guscio).gridTemplateColumns.split(' ').length;
+      guscio.classList.toggle('una-colonna', colonne <= 1);
+    }
+    const sopra = palco.getBoundingClientRect().top + window.scrollY;
+    // Il respiro sotto la scena, cioe' il padding in fondo alla pagina.
+    const sotto = 20;
+    // Sullo stile di body e non su :root: body.rg-solo porta un valore di
+    // ripiego, e per batterlo serve lo stile in linea.
+    const metti = (v) => document.body.style.setProperty('--rg-sopra', `${Math.round(v)}px`);
+    metti(sopra + sotto);
+    // Secondo passaggio: se la pagina scorre ancora, quello che avanza e'
+    // respiro che non avevo contato — un margine, un bordo, la barra di
+    // scorrimento stessa. Si corregge da se' invece di cercare il pixel
+    // mancante nel CSS, che e' come sono nati i 404 di prima.
+    requestAnimationFrame(() => {
+      const avanzo = document.body.scrollHeight - window.innerHeight;
+      if (avanzo > 2) metti(sopra + sotto + avanzo);
+    });
   }
 
   // ══════════════════════════════════════════════════════════
@@ -2235,6 +2316,9 @@
     if (quale === 'calendario') disegnaCalendario();
     if (quale === 'risultati') disegnaRisultati();
     if (quale === 'sala' && ui.usaTridi) accendiTridi();
+    // La barra della Zona compare e sparisce con la vista: l'intestazione
+    // cambia peso, e la scena deve saperlo.
+    requestAnimationFrame(misuraSopra);
   }
 
   // ══════════════════════════════════════════════════════════
@@ -2352,7 +2436,19 @@
     $('rg-cam-reset').addEventListener('click', () => ui.tridi?.torna());
     $('rg-zoom-piu').addEventListener('click', () => ui.tridi?.zoom(1));
     $('rg-zoom-meno').addEventListener('click', () => ui.tridi?.zoom(-1));
-    $('rg-schermo').addEventListener('click', schermoIntero);
+    $('rg-solo').addEventListener('click', () => concentrato());
+
+    // F, perche' e' una cosa che si accende e si spegne decine di volte al
+    // giorno. Non dentro una casella di testo, dove F e' una lettera.
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'f' && ev.key !== 'F') return;
+      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      const dove = ev.target;
+      if (dove && (dove.isContentEditable
+          || /^(INPUT|TEXTAREA|SELECT)$/.test(dove.tagName || ''))) return;
+      ev.preventDefault();
+      concentrato();
+    });
 
     // La rotellina sulla scena non deve far scorrere la pagina: la scena se
     // la prende per lo zoom. Fuori dalla scena la pagina scorre normale.
@@ -2375,16 +2471,14 @@
       if ($('rg-modale').style.display !== 'none') return chiudiModale();
       if ($('rg-riquadro')) return chiudiRiquadro();
       if ($('rg-pannello').classList.contains('aperto')) return chiudiPannello();
-      if (document.fullscreenElement) document.exitFullscreen?.();
+      if (document.body.classList.contains('rg-solo')) return concentrato(false);
     });
 
-    document.addEventListener('fullscreenchange', () => {
-      const dentro = !!document.fullscreenElement;
-      $('rg-schermo').setAttribute('aria-pressed', String(dentro));
-      $('rg-schermo').title = dentro ? 'Esci da schermo intero' : 'Schermo intero';
-      // La tela deve rimisurarsi: il contenitore ha cambiato dimensione.
-      setTimeout(() => ui.tridi?.ridimensiona?.(), 60);
-    });
+    // La scelta della volta prima. Si applica senza riscriverla, cosi' un
+    // errore di lettura non la cancella.
+    if (concentratoRicordato()) concentrato(true, false);
+    requestAnimationFrame(misuraSopra);
+    window.addEventListener('resize', misuraSopra);
     // Il pannello si aggancia anche al tasto Guarda dentro un fumetto 3D.
     avvia();
   });
