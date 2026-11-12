@@ -1438,6 +1438,145 @@
   const GIORNI = [[1, 'Lun'], [2, 'Mar'], [3, 'Mer'], [4, 'Gio'], [5, 'Ven'], [6, 'Sab'], [7, 'Dom']];
   const TIPI = [['carosello', 'Carosello'], ['reel', 'Reel'], ['storia', 'Storia'], ['post', 'Post']];
 
+  // ── La newsletter ─────────────────────────────────────────────────────
+  //
+  // Era l'ultima cosa che esisteva solo nel pannello. Il flusso resta
+  // quello: si sceglie il taglio, si genera, si rilegge, e solo allora si
+  // invia. L'invio va a tutti i contatti con i tag della newsletter e non
+  // si annulla: per questo il numero di destinatari sta scritto sul tasto,
+  // non in una nota sotto.
+
+  const TAGLI = {
+    news:       ['Dalle notizie', 'Parte dall&#39;attualit&agrave; della settimana.'],
+    originale:  ['Da esperto', 'Posizionamento: dice una cosa che gli altri non dicono.'],
+    conversion: ['Per convertire', 'Rassicurante: smonta le obiezioni di chi ci sta pensando.'],
+  };
+
+  function newsletterHtml(dati, bozza) {
+    const destinatari = dati?.destinatari;
+    const cfg = dati?.configurazione || {};
+    const manca = [];
+    if (cfg.anthropic === false) manca.push('ANTHROPIC_API_KEY');
+    if (cfg.ghl === false) manca.push('GHL_API_KEY');
+
+    const storico = (dati?.storico || []).slice(0, 6);
+    const c = bozza?.contenuto;
+    const controllo = bozza?.controllo;
+
+    return `
+      ${manca.length ? `<div class="rg-voce"><b>Non si pu&ograve; lavorare:</b> al motore
+         ${manca.length === 1 ? 'manca' : 'mancano'} ${manca.map(x => `<code>${esc(x)}</code>`).join(' e ')}.</div>` : ''}
+
+      <div class="rg-sez">Scrivine una</div>
+      <div class="rg-voce">
+        ${Object.entries(TAGLI).map(([k, [et, spieg]]) => `
+          <div class="rg-nl-taglio">
+            <button class="btn btn-ghost btn-sm" data-nl-genera="${k}" ${manca.length ? 'disabled' : ''}>${et}</button>
+            <span class="rg-voce-fonte">${spieg}</span>
+          </div>`).join('')}
+        <div class="rg-voce-fonte">Nasce come bozza: non parte niente finch&eacute; non lo decidi tu.</div>
+      </div>
+
+      ${c ? `
+        <div class="rg-sez">La bozza</div>
+        <div class="rg-voce">
+          <div class="rg-nl-oggetto">${esc(c.subject || '')}</div>
+          <div class="rg-voce-fonte">${esc(c.previewText || '')}</div>
+          ${c.hook ? `<p class="rg-nl-hook">${esc(c.hook)}</p>` : ''}
+          ${c.answer ? `<p>${esc(c.answer)}</p>` : ''}
+          ${Array.isArray(c.bullets) && c.bullets.length
+            ? `<ul class="rg-nl-punti">${c.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}
+          ${c.ps ? `<div class="rg-voce-fonte">PS: ${esc(c.ps)}</div>` : ''}
+        </div>
+
+        ${controllo && controllo.approved === false ? `
+          <div class="rg-voce rg-nl-allarme">
+            <b>Il controllo dei fatti ha trovato qualcosa.</b>
+            ${Array.isArray(controllo.errors) && controllo.errors.length
+              ? `<ul class="rg-nl-punti">${controllo.errors.slice(0, 5).map(e =>
+                  `<li>${esc(typeof e === 'string' ? e : (e.message || e.issue || JSON.stringify(e)))}</li>`).join('')}</ul>`
+              : ''}
+            <div class="rg-voce-fonte">Rigenerala o correggila dal pannello completo prima di spedire.</div>
+          </div>` : ''}
+
+        <div class="rg-sez">Spedire</div>
+        <div class="rg-voce">
+          ${destinatari === null || destinatari === undefined
+            ? 'Non riesco a contare i destinatari: controlla la chiave di GoHighLevel.'
+            : `Va a <b>${destinatari}</b> ${destinatari === 1 ? 'persona' : 'persone'}, quelle con i tag della newsletter.`}
+          <b> Non si annulla.</b>
+          <div class="rg-voce-azioni">
+            <button class="btn btn-accent btn-sm" data-nl-invia="1"
+              ${manca.length || !destinatari ? 'disabled' : ''}>
+              Spedisci a ${destinatari ?? '—'}</button>
+            <button class="btn btn-ghost btn-sm" data-nl-scarta="1">Butta la bozza</button>
+          </div>
+        </div>` : ''}
+
+      <div class="rg-sez">Ultime partite</div>
+      ${storico.length
+        ? storico.map(n => `<div class="rg-voce">
+             <div>${esc(n.oggetto || '(senza oggetto)')}</div>
+             <div class="rg-voce-fonte">${n.inviata ? window.ui.formatDate(n.inviata) : ''}${
+               n.quanti ? ' · ' + n.quanti + ' destinatari' : ''}</div>
+           </div>`).join('')
+        : '<div class="rg-vuoto-tocca">Non ne &egrave; ancora partita nessuna da qui.</div>'}
+    `;
+  }
+
+  async function apriNewsletter(dati = null, bozza = null) {
+    ui.pannello = { tipo: 'newsletter', bozza };
+    if (!dati) {
+      apriPannello('Newsletter', 'Si scrive, si rilegge, si spedisce',
+        '<div class="rg-vuoto-tocca">Carico…</div>');
+      try { dati = await D.newsletter('elenco'); }
+      catch (e) {
+        corpoPannello().innerHTML =
+          `<div class="rg-vuoto-tocca">Non riesco a leggere: ${esc(pulisciErrore(e.message))}</div>`;
+        return;
+      }
+      if (ui.pannello?.tipo !== 'newsletter') return;
+    }
+
+    apriPannello('Newsletter', 'Si scrive, si rilegge, si spedisce', newsletterHtml(dati, bozza));
+    const corpo = corpoPannello();
+
+    corpo.querySelectorAll('[data-nl-genera]').forEach(b =>
+      b.addEventListener('click', async (ev) => {
+        const quale = ev.currentTarget.dataset.nlGenera;
+        corpo.querySelectorAll('[data-nl-genera]').forEach(x => { x.disabled = true; });
+        ev.currentTarget.textContent = 'La sto scrivendo…';
+        try {
+          const nuova = await D.newsletter('genera', { tipo: quale });
+          await apriNewsletter(dati, nuova);
+        } catch (e) {
+          window.ui.showToast(pulisciErrore(e.message), 'error');
+          await apriNewsletter(dati, bozza);
+        }
+      }));
+
+    corpo.querySelector('[data-nl-scarta]')?.addEventListener('click', () => apriNewsletter(dati, null));
+
+    corpo.querySelector('[data-nl-invia]')?.addEventListener('click', async (ev) => {
+      const quanti = dati?.destinatari;
+      // Una conferma che dice il numero e l'oggetto: "sei sicuro?" non
+      // informa nessuno.
+      if (!window.confirm(
+        `Spedire "${bozza?.contenuto?.subject || ''}" a ${quanti} persone?\n\n` +
+        `Parte subito e non si annulla.`)) return;
+      ev.currentTarget.disabled = true;
+      ev.currentTarget.textContent = 'Sto spedendo…';
+      try {
+        const esito = await D.newsletter('invia', { contenuto: bozza.contenuto });
+        window.ui.showToast(esito.messaggio || 'Partita.', 'success');
+        await apriNewsletter({ ...dati, storico: esito.storico || dati.storico }, null);
+      } catch (e) {
+        window.ui.showToast(pulisciErrore(e.message), 'error');
+        await apriNewsletter(dati, bozza);
+      }
+    });
+  }
+
   // ── Le foto del manager ───────────────────────────────────────────────
   //
   // La sezione c'era nel pannello del generatore e si e' persa quando quel
@@ -2088,6 +2227,7 @@
     $('rg-btn-direzione').addEventListener('click', apriDirezione);
     $('rg-calma-direzione')?.addEventListener('click', apriDirezione);
     $('rg-btn-avatar')?.addEventListener('click', () => apriAvatar());
+    $('rg-btn-newsletter')?.addEventListener('click', () => apriNewsletter());
     $('rg-interruttore').addEventListener('click', () => cambiaInterruttore());
     $('rg-fermo-riparti').addEventListener('click', () => cambiaInterruttore(false));
     $('rg-pan-chiudi').addEventListener('click', chiudiPannello);

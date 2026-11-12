@@ -787,6 +787,26 @@
     return d;
   }
 
+  /**
+   * La newsletter.
+   *
+   * Lo stato vive nel motore, come le foto. L'invio lo puo' chiedere solo
+   * una persona con la Regia fra le pagine concesse: una mail partita a
+   * centinaia di contatti non si annulla.
+   */
+  async function newsletter(azione = 'elenco', extra = {}) {
+    const r = await fetch(`${SB}/functions/v1/smm-newsletter`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({ azione, ...extra }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d?.ok === false) {
+      throw new Error(d?.error || `La newsletter non risponde (${r.status}).`);
+    }
+    return d;
+  }
+
   window.regiaDati = {
     stato, carica, avvia, fermati,
     ascolta: (f) => { ascoltatori.add(f); return () => ascoltatori.delete(f); },
@@ -798,6 +818,6 @@
     nuovaReference, risultati, salvaRisultato, salvaImpostazioni,
     plurale, piano, nuovaRigaPiano, salvaRigaPiano, eliminaRigaPiano, lanciaQuelloCheManca,
     interruttore, accendiAgente, pianoAutomatico,
-    caricaFile, linkFirmato, svegliaWorker, rendi, avatar,
+    caricaFile, linkFirmato, svegliaWorker, rendi, avatar, newsletter,
   };
 })();

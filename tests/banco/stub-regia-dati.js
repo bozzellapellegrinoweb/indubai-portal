@@ -129,6 +129,25 @@
     plurale: (t, n) => (n === 1 ? t : t),
     piano: vuoto, risultati: vuoto, cervelloCerca: vuoto, cervelloDaConfermare: vuoto,
     avatar: async () => ({ ok: true, foto: [], attive: 0, da_vedere: 0, massimo_per_volta: 8 }),
+    newsletter: async (azione, extra) => {
+      if (azione === 'genera') return { ok: true, tipo: extra.tipo, contenuto: {
+        subject: 'Il visto non ti rende residente fiscale',
+        previewText: 'E la differenza te la fa pagare il Fisco italiano',
+        hook: 'Hai il visto, hai l\'Emirates ID. Per l\'Italia dove sei residente?',
+        answer: 'Dove hai il centro dei tuoi interessi, non dove hai il permesso di soggiorno.',
+        bullets: ['Il certificato di residenza fiscale vuole 183 giorni di presenza',
+                  'L\'AIRE e\' necessaria ma non basta da sola',
+                  'La convenzione Italia-Emirati ha un ordine preciso di criteri'],
+        ps: 'Se stai gia\' facendo avanti e indietro, il tempo gioca contro di te.',
+      }, html: '<p>…</p>', controllo: extra.tipo === 'originale'
+        ? { approved: false, errors: ['La soglia citata non corrisponde al testo vigente'] } : null };
+      if (azione === 'invia') return { ok: true, sent: 412, failed: 0,
+        messaggio: 'Inviata a 412 persone.', storico: [] };
+      return { ok: true, tagli: ['news','originale','conversion'], destinatari: 412,
+        storico: [{ id: '1', oggetto: 'Corporate Tax: la soglia dei 375.000',
+                    inviata: '2026-11-05T09:00:00Z', quanti: 408 }],
+        configurazione: { anthropic: true, ghl: true } };
+    },
     linkFirmato: async (p) => null,
     aggiungiNota: nulla, risolviNota: nulla, approva: nulla, approvaComeAdmin: nulla,
     rimandaIndietro: nulla, spostaInCalendario: nulla, pubblicaOra: nulla,
