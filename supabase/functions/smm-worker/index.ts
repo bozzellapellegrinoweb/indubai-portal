@@ -277,6 +277,7 @@ function attivitaPerStrumento(nome: string, agente: Agente): string {
     case "pubblica":           return "prepara la pubblicazione";
     case "cervello_proponi":   return "scrive una nota per il Cervello";
     case "rendi_immagini":     return agente.slug === "video" ? "monta il video" : "prepara le immagini";
+    case "cerca_notizie":      return "legge le notizie";
     default:                   return "sta lavorando";
   }
 }

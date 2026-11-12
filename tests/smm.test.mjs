@@ -109,6 +109,7 @@ try {
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_cervello_quote.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_montaggio_automatico.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_avatar.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_notizie.sql')]);
   // La pianificazione vive in una migrazione a parte perche' ha bisogno di
   // pg_cron e pg_net. Sul banco di prova quelli non ci sono: si prende solo
   // la funzione che mette in coda le uscite arrivate a scadenza, che e' la
@@ -1282,6 +1283,54 @@ test('chiedere il permesso di un altro non e concesso in sala', () => {
 });
 
 // ============================================================
+gruppo('Le notizie: chi le puo\' leggere');
+
+const haStrumento = (slug, nome) =>
+  one(`select '${nome}' = any (coalesce(strumenti, '{}'))
+         from smm_agents where slug = '${slug}'`);
+
+test('chi decide di cosa si parla ha le notizie', () => {
+  for (const slug of ['direttore', 'stratega', 'copywriter']) {
+    eq(haStrumento(slug, 'cerca_notizie'), 't', slug);
+  }
+});
+
+test('chi monta e chi controlla non cambia argomento', () => {
+  // Il Grafico monta quello che gli danno, il Revisore controlla: nessuno
+  // dei due deve poter decidere di cosa si parla.
+  for (const slug of ['grafico', 'revisore', 'pubblicatore']) {
+    eq(haStrumento(slug, 'cerca_notizie'), 'f', slug);
+  }
+});
+
+test('lo strumento non cancella quelli che c erano gia', () => {
+  // La migrazione riscrive l'array: se si perdesse un nome, quell'agente
+  // smetterebbe di saper fare il suo mestiere senza che niente fallisca.
+  eq(haStrumento('copywriter', 'contenuto_aggiorna'), 't', 'copywriter scrive ancora');
+  eq(haStrumento('copywriter', 'cervello_cerca'), 't', 'copywriter cerca ancora');
+  eq(haStrumento('direttore', 'coinvolgi_agente'), 't', 'il direttore smista ancora');
+});
+
+test('non si duplica se la migrazione si riapplica', () => {
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_notizie.sql')]);
+  eq(one(`select (select count(*) from unnest(strumenti) x where x = 'cerca_notizie')
+            from smm_agents where slug = 'copywriter'`), '1', 'una volta sola');
+  eq(one(`select (select count(*) from regexp_matches(system_prompt, 'LE NOTIZIE', 'g'))
+            from smm_agents where slug = 'copywriter'`), '1', 'il prompt non si ripete');
+});
+
+test('il prompt lo dice, non solo il permesso', () => {
+  // Uno strumento concesso ma non nominato nel prompt non viene usato: e'
+  // successo col rendering, che nessuno chiamava mai.
+  vero(one(`select system_prompt like '%cerca_notizie%'
+              from smm_agents where slug = 'copywriter'`), 'il copywriter lo sa');
+  vero(one(`select system_prompt like '%inventata%'
+              from smm_agents where slug = 'stratega'`), 'e sa di non inventarle');
+  eq(one(`select system_prompt like '%cerca_notizie%'
+            from smm_agents where slug = 'revisore'`), 'f', 'al revisore non si dice');
+});
+
+// ============================================================
 gruppo('Reversibilita');
 
 test('la migrazione di rollback riporta il database come prima', () => {
@@ -1291,6 +1340,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_notizie_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_avatar_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_montaggio_automatico_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_cervello_quote_down.sql')]);

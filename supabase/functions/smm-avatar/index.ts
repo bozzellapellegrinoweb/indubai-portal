@@ -16,25 +16,13 @@
 
 import { clientDaAmbiente } from "../smm-worker/supabase.ts";
 import { eUnaPersona, utenteDelToken } from "../smm-worker/auth.ts";
+import { indirizzoMotore } from "../smm-worker/motore.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, content-type",
   "Content-Type": "application/json",
 };
-
-/**
- * L'indirizzo del motore si ricava da quello del rendering.
- *
- * Sono due rotte dello stesso progetto, e chiedere al manager di impostare
- * un secondo segreto con dentro quasi la stessa cosa e' un modo per farne
- * sbagliare uno. Se il primo non finisce per /render non si indovina: si
- * dice che non si sa dove andare.
- */
-function indirizzoAvatar(render: string): string | null {
-  const pulito = render.replace(/\/+$/, "");
-  return pulito.endsWith("/render") ? pulito.slice(0, -"/render".length) + "/avatar" : null;
-}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -64,7 +52,7 @@ Deno.serve(async (req: Request) => {
 
     const render = Deno.env.get("REGIA_RENDER_URL");
     const segreto = Deno.env.get("REGIA_SECRET");
-    const motore = render ? indirizzoAvatar(render) : null;
+    const motore = indirizzoMotore("avatar");
     if (!render || !segreto) {
       return new Response(JSON.stringify({
         ok: false,

@@ -17,6 +17,7 @@
 
 import type Anthropic from "npm:@anthropic-ai/sdk@1.6.0";
 import type { SupabaseClient } from "./supabase.ts";
+import { indirizzoMotore } from "./motore.ts";
 
 export interface Contesto {
   db: SupabaseClient;
@@ -31,6 +32,7 @@ export interface Contesto {
     figli: { slug: string; richiesta: string }[];
     contenutoTocca?: string;
     verdetto?: { ok: boolean; violazioni: unknown[] };
+    notizieViste?: number;
   };
 }
 
@@ -452,10 +454,66 @@ const rendiImmagini: Strumento = {
   },
 };
 
+// ── cerca_notizie ─────────────────────────────────────────
+const cercaNotizie: Strumento = {
+  nome: "cerca_notizie",
+  definizione: {
+    name: "cerca_notizie",
+    description:
+      "Legge le notizie del settore dalle fonti che il brand segue da sempre: testate degli Emirati, " +
+      "l'autorita' fiscale FTA, le free zone, e i blog dei concorrenti. Serve quando il contenuto deve " +
+      "partire dall'attualita' invece che dalla memoria: una notizia di ieri e' il motivo per cui qualcuno " +
+      "si ferma a leggere oggi. Non inventare mai una notizia: se qui non c'e', non e' successa.",
+    input_schema: schema({
+      argomento: {
+        type: "string",
+        description: "Le parole da cercare fra titolo e sommario, tutte presenti. " +
+                     "Vuoto per vedere tutto quello che c'e' oggi.",
+      },
+      quante: { type: "integer", description: "Quante riceverne, da 1 a 25. Dodici e' una buona misura." },
+    }, ["argomento", "quante"]),
+    strict: true,
+  },
+  async esegui(input, ctx) {
+    const motore = indirizzoMotore("notizie");
+    const segreto = Deno.env.get("REGIA_SECRET");
+    if (!motore || !segreto) {
+      return "Non riesco a raggiungere le fonti: manca la configurazione del motore. " +
+             "Dillo al manager invece di scrivere a memoria.";
+    }
+    try {
+      const r = await fetch(motore, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${segreto}` },
+        body: JSON.stringify({ argomento: input.argomento ?? "", quante: input.quante ?? 12 }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || d?.ok === false) {
+        return `Le fonti non hanno risposto: ${d?.error ?? "HTTP " + r.status}. ` +
+               "Non inventare una notizia al loro posto.";
+      }
+      const notizie = Array.isArray(d.notizie) ? d.notizie : [];
+      if (!notizie.length) {
+        return input.argomento
+          ? `Nessuna notizia su "${input.argomento}" fra quelle di oggi. ` +
+            "Prova parole piu' larghe, oppure scrivi di qualcosa che non dipende dall'attualita'."
+          : "Oggi le fonti non danno niente di rilevante.";
+      }
+      ctx.effetti.notizieViste = notizie.length;
+      return notizie.map((n: Record<string, string>) =>
+        `[${n.fonte}${n.quando ? " · " + String(n.quando).slice(0, 10) : ""}] ${n.titolo}\n` +
+        `    ${n.sommario ?? ""}\n    ${n.indirizzo ?? ""}`
+      ).join("\n\n");
+    } catch (e) {
+      return `Non ho raggiunto le fonti: ${(e as Error).message}. Non inventare una notizia al loro posto.`;
+    }
+  },
+};
+
 export const STRUMENTI: Record<string, Strumento> = Object.fromEntries(
   [cervelloCerca, contenutoLeggi, contenutoCrea, contenutoAggiorna, coinvolgiAgente,
    chiediAlManager, revisoreVerdetto, calendarioProponi, pubblica, cervelloProponi,
-   rendiImmagini]
+   rendiImmagini, cercaNotizie]
     .map((s) => [s.nome, s]),
 );
 
