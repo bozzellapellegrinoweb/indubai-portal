@@ -102,6 +102,28 @@ function sottotitolo(c: Contenuto): string {
  * i testi. Rifiutare il secondo vorrebbe dire far fallire il rendering per
  * una forma, non per un contenuto.
  */
+/**
+ * Il titolo come lo deve leggere chi guarda, senza il nome interno.
+ *
+ * Il Direttore chiama i contenuti "Reel - Corporate Tax UAE: gettito 2025
+ * su di un terzo" o "Storia 6/7 - Confronto Italia Dubai", ed e' giusto:
+ * nella Regia serve sapere cosa si sta guardando. Ma quel titolo finiva
+ * dritto sulla copertina, e il primo reel mai uscito aveva scritto sopra
+ * "Reel -" a caratteri di 96 pixel. Si vede solo guardando il video: non
+ * c'e' errore, non c'e' test che fallisce, esce e basta.
+ *
+ * Si toglie solo il prefisso vero e proprio, cioe' la parola del formato
+ * seguita al massimo da numeri e barre e poi da un trattino. "Post Brexit
+ * - cosa cambia" resta intero, perche' "Brexit" non e' un numero.
+ */
+function titoloInChiaro(t: unknown): string {
+  const intero = String(t ?? "").trim();
+  const senza = intero
+    .replace(/^(reel|reels|storia|storie|carosello|caroselli|post)\s*[0-9/ ]*[–—-]\s*/i, "")
+    .trim();
+  return senza || intero;
+}
+
 /** I punti elenco di una slide, uno per riga, come corpo del testo. */
 function puntiInCorpo(p: unknown): string {
   if (!Array.isArray(p)) return "";
@@ -136,7 +158,7 @@ function datiCarosello(c: Contenuto, b: Brand): Record<string, unknown> {
   const elenco = Array.isArray(s) ? s : [];
   return {
     badge: badge(c),
-    coverTitle: c.titolo,
+    coverTitle: titoloInChiaro(c.titolo),
     coverSubtitle: sottotitolo(c),
     teasers: [],
     slides: elenco.map((x) => {
@@ -170,7 +192,7 @@ function datiStoria(c: Contenuto, b: Brand, avatar?: string): Record<string, unk
   const s = c.slides;
   const elenco = Array.isArray(s) ? s : [];
   return {
-    theme: c.titolo,
+    theme: titoloInChiaro(c.titolo),
     badge: badge(c),
     ...(avatar ? { avatarUrl: avatar } : {}),
     slides: elenco.length
@@ -186,7 +208,7 @@ function datiStoria(c: Contenuto, b: Brand, avatar?: string): Record<string, unk
             ...(o.ctaLine ? { ctaLine: o.ctaLine } : {}),
           };
         })
-      : [{ type: "intro", title: c.titolo, body: sottotitolo(c) },
+      : [{ type: "intro", title: titoloInChiaro(c.titolo), body: sottotitolo(c) },
          { type: "cta", title: b.cta_default ?? "Parliamone", ctaLine: b.sito ?? "" }],
   };
 }

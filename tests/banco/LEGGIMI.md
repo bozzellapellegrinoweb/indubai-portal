@@ -21,7 +21,18 @@ node tests/banco/prova.cjs 1440 900            # misure + schermata
 node tests/banco/prova.cjs 1920 1080           # su uno schermo grande
 node tests/banco/prova.cjs 1440 900 calma=1    # la sala senza lavori
 node tests/banco/prova-anteprima.cjs           # le linguette dei video
+node tests/banco/prova-tutti.cjs               # i pannelli, e dove esce un contenuto
+node tests/banco/prova-calendario.cjs          # il giorno giusto da quattro fusi
+node tests/banco/prova-concentrato.cjs         # schermo intero, e la stanza leggibile
 ```
+
+`prova-concentrato.cjs` e' quello che misura invece di guardare, su tre
+schermi (1366, 1440, 1920): quanto e' grande la scena e che forma ha, se
+la pagina scorre, se **il tasto di ogni fumetto si puo' davvero premere** e
+se il testo sta sopra gli undici pixel. Quell'ultimo controllo mancava, ed
+e' per questo che il difetto dei fumetti sovrapposti e' sopravvissuto a
+tre giri di correzioni: la pagina si caricava, i test passavano, e il
+tasto "Guarda" del Copywriter stava sotto il fumetto del Grafico.
 
 Le schermate finiscono qui accanto. Serve Playwright (`require('playwright')`).
 
@@ -33,7 +44,13 @@ esiste, e `riepilogo` con le chiavi sbagliate, che l'interfaccia non legge.
 Una finta che si comporta diversamente fa perdere tempo su difetti
 inventati e nasconde quelli veri.
 
+Poi ci sono ricascato due volte ancora: `toccaATe` senza titolo ne' azione
+— e la tessera usciva senza titolo e con un tasto senza scritta, che
+sembrava un difetto della pagina — e `riepilogo` di nuovo, dopo che il
+vero aveva cambiato il modo di contare.
+
 Quando `js/regia-dati.js` cambia una di queste, va cambiata anche qui:
-`posaDi`, `lavoroVivoDi`, `riepilogo`, e la forma di `stato`.
+`posaDi`, `lavoroVivoDi`, `riepilogo`, `toccaATe`, `accountCollegati`,
+`piattaformeImposta`, e la forma di `stato` e di un contenuto.
 Le posizioni e le zone degli agenti sono copiate da `smm_agents`: senza,
 finiscono tutti nello stesso punto e la stanza sembra un grappolo.

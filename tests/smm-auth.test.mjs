@@ -122,4 +122,57 @@ for (const [nome, dentro, rotta, atteso] of indCasi) {
   console.log(`${ok ? "  ok" : "  KO"}  ${nome}: ${r}`);
 }
 
-console.log(`${casi.length + chiCasi.length + indCasi.length + 1} casi, tutti giusti. La chiave pubblica non autorizza niente.`);
+// ── Il titolo che si vede sulla copertina ──────────────────
+//
+// Il Direttore chiama i contenuti "Reel - Corporate Tax UAE: gettito 2025
+// su di un terzo", ed e' giusto: nella Regia serve sapere cosa si sta
+// guardando. Ma quel titolo finiva dritto sulla copertina, e il primo reel
+// mai uscito aveva scritto sopra "Reel -" a caratteri di 96 pixel. Non c'e'
+// un errore, non c'e' un test che fallisce: esce e basta, e si vede solo
+// guardando il video.
+//
+// La funzione si ritaglia dal sorgente vero, come sopra: una copia qui
+// proverebbe la copia.
+
+const sorgenteRender = readFileSync(
+  new URL("../supabase/functions/smm-render/index.ts", import.meta.url), "utf8");
+const inizio = sorgenteRender.indexOf("function titoloInChiaro");
+const fine = sorgenteRender.indexOf("\n}", inizio) + 2;
+const titoloInChiaro = new Function(
+  sorgenteRender.slice(inizio, fine)
+    .replace(/\(t: unknown\)/, "(t)")
+    .replace(/:\s*string\s*\{/, " {")
+  + "; return titoloInChiaro;")();
+
+const titCasi = [
+  // I due reel veri usciti il 12 novembre 2026.
+  ["Reel \u2013 Corporate Tax UAE: gettito 2025 su di un terzo",
+   "Corporate Tax UAE: gettito 2025 su di un terzo"],
+  ["Reel \u2013 Golden Visa non basta per uscire dal fisco italiano",
+   "Golden Visa non basta per uscire dal fisco italiano"],
+  // Le storie, numerate.
+  ["Storia 6/7 \u2013 Confronto Italia Dubai", "Confronto Italia Dubai"],
+  ["Storia 2/7 - Confronto Italia Dubai", "Confronto Italia Dubai"],
+  ["Carosello \u2014 Monaco o Dubai?", "Monaco o Dubai?"],
+  // E questi devono restare interi: "Brexit" non e' un numero, e un
+  // titolo senza trattino non ha nessun prefisso da togliere.
+  ["Post Brexit \u2013 cosa cambia per chi apre a Dubai",
+   "Post Brexit \u2013 cosa cambia per chi apre a Dubai"],
+  ["Monaco o Dubai? Residenza fiscale e impresa",
+   "Monaco o Dubai? Residenza fiscale e impresa"],
+  ["Storia quotidiana mancante della settimana (7 di 7)",
+   "Storia quotidiana mancante della settimana (7 di 7)"],
+  // Togliere tutto lascerebbe una copertina senza titolo: meglio il nome
+  // interno che il vuoto.
+  ["Reel", "Reel"],
+  ["Reel \u2013 ", "Reel \u2013"],
+  ["", ""],
+];
+for (const [dentro, atteso] of titCasi) {
+  const r = titoloInChiaro(dentro);
+  const ok = r === atteso;
+  if (!ok) ko++;
+  console.log(`${ok ? "  ok" : "  KO"}  "${dentro}" -> "${r}"`);
+}
+
+console.log(`${casi.length + chiCasi.length + indCasi.length + titCasi.length + 1} casi, tutti giusti. La chiave pubblica non autorizza niente.`);
