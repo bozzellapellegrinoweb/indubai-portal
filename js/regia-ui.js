@@ -1438,6 +1438,106 @@
   const GIORNI = [[1, 'Lun'], [2, 'Mar'], [3, 'Mer'], [4, 'Gio'], [5, 'Ven'], [6, 'Sab'], [7, 'Dom']];
   const TIPI = [['carosello', 'Carosello'], ['reel', 'Reel'], ['storia', 'Storia'], ['post', 'Post']];
 
+  // ── Le fasce della sala ───────────────────────────────────────────────
+  //
+  // A sinistra chi c'e' e cosa sta facendo, a destra come sta andando la
+  // settimana. La scena in mezzo resta quello che e': un omino che si
+  // muove non dice chi e' ne' a che punto sta, e per saperlo bisognava
+  // avvicinarsi a leggere un fumetto.
+
+  /** Un mezzobusto, tinto del colore dell'agente. */
+  function ritratto(colore) {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="${esc(colore || '#6b7280')}">
+      <circle cx="12" cy="8" r="4.2"/>
+      <path d="M3.6 21c0-4.3 3.8-6.6 8.4-6.6s8.4 2.3 8.4 6.6z"/>
+    </svg>`;
+  }
+
+  const CHE_FA = {
+    lavora:      'sta lavorando',
+    mano_alzata: 'ha una domanda',
+    attende:     'ha un lavoro in attesa',
+    libero:      'libero',
+    spento:      'spento',
+  };
+  const CLASSE_POSA = {
+    lavora: 'lavora', mano_alzata: 'domanda', attende: 'attende',
+    libero: '', spento: 'spento',
+  };
+
+  function disegnaFasciaAgenti() {
+    const dove = $('rg-fascia-agenti');
+    if (!dove) return;
+    const agenti = D.stato.agenti || [];
+    dove.innerHTML = `<div class="rg-fascia-testa">In sala (${agenti.length})</div>` +
+      agenti.map(a => {
+        const posa = D.posaDi(a.id);
+        const lavoro = D.lavoroVivoDi(a.id);
+        const che = posa === 'mano_alzata'
+          ? (lavoro?.domanda || CHE_FA.mano_alzata)
+          : (lavoro?.attivita || CHE_FA[posa] || '');
+        return `<button class="rg-tess ${CLASSE_POSA[posa] || ''}" data-tess="${esc(a.id)}"
+                        title="${esc(a.descrizione || a.ruolo || '')}">
+          <span class="rg-tess-foto" style="background:${esc((a.colore || '#6b7280') + '1f')}">
+            ${ritratto(a.colore)}
+          </span>
+          <span class="rg-tess-corpo">
+            <span class="rg-tess-nome">${esc(a.nome)}</span>
+            <span class="rg-tess-che">${esc(che)}</span>
+          </span>
+        </button>`;
+      }).join('');
+
+    dove.querySelectorAll('[data-tess]').forEach(b =>
+      b.addEventListener('click', () => apriAgente(b.dataset.tess)));
+  }
+
+  /**
+   * L'avanzamento della settimana.
+   *
+   * Il piano e' una chiamata al database, non un dato che gira col resto:
+   * si rilegge ogni due minuti e quando si chiude la Direzione, non a ogni
+   * battito.
+   */
+  async function disegnaFasciaSettimana(forza = false) {
+    const dove = $('rg-fascia-settimana');
+    if (!dove) return;
+    const adesso = Date.now();
+    if (forza || !ui.pianoFascia || adesso - (ui.pianoFasciaQuando || 0) > 120000) {
+      ui.pianoFasciaQuando = adesso;
+      try { ui.pianoFascia = await D.piano(0) || []; }
+      catch { ui.pianoFascia = ui.pianoFascia || []; }
+    }
+    const righe = (ui.pianoFascia || []).filter(r => r.attivo);
+    const s = D.stato.impostazioni || {};
+    const speso = Number(s.speso_oggi_usd || 0);
+    const tetto = Number(s.budget_giorno_usd || 0);
+
+    dove.innerHTML = `<div class="rg-fascia-testa">La settimana</div>` +
+      (righe.length ? righe.map(r => {
+        const fatti = Number(r.usciti || 0) + Number(r.in_calendario || 0) + Number(r.in_lavorazione || 0);
+        const quanti = Number(r.quanti_a_settimana || 0) || 1;
+        const perc = Math.min(100, Math.round((fatti / quanti) * 100));
+        return `<div class="rg-barra-riga">
+          <div class="rg-barra-et"><span>${esc(r.nome)}</span><span>${fatti}/${quanti}</span></div>
+          <div class="rg-barra-sfondo">
+            <div class="rg-barra-dentro ${perc >= 100 ? 'piena' : ''}" style="width:${perc}%"></div>
+          </div>
+          <div class="rg-barra-fonte">${r.mancanti > 0
+            ? `Mancano ${r.mancanti}.`
+            : 'Coperta.'}${r.usciti ? ` ${r.usciti} gia&#768; ${r.usciti === 1 ? 'uscito' : 'usciti'}.` : ''}</div>
+        </div>`;
+      }).join('')
+      : `<div class="rg-barra-riga"><div class="rg-barra-fonte">
+           Il piano e&#768; vuoto: dalla Direzione dici quanto deve uscire.</div></div>`) +
+      `<div class="rg-barra-riga">
+        <div class="rg-barra-et"><span>Spesa di oggi</span><span>${speso.toFixed(2)} $</span></div>
+        ${tetto ? `<div class="rg-barra-sfondo">
+          <div class="rg-barra-dentro" style="width:${Math.min(100, Math.round(speso / tetto * 100))}%"></div>
+        </div><div class="rg-barra-fonte">Tetto ${tetto.toFixed(2)} $. Oltre, la coda si ferma da sola.</div>` : ''}
+      </div>`;
+  }
+
   // ── La newsletter ─────────────────────────────────────────────────────
   //
   // Era l'ultima cosa che esisteva solo nel pannello. Il flusso resta
@@ -2131,6 +2231,8 @@
     disegnaTocca();
     if (ui.vista === 'sala') {
       disegnaLista();
+      disegnaFasciaAgenti();
+      disegnaFasciaSettimana().catch(() => {});
       sincronizzaTridi(cambiatiGliAgenti());
     }
     if (ui.vista === 'calendario') disegnaCalendario();

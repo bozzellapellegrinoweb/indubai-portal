@@ -60,6 +60,68 @@
                background:var(--surface2); }
 
     /* ── Scena ───────────────────────────────────────────── */
+    /* ── La sala: scena in mezzo, due fasce ai lati ──────── */
+    /* Il riferimento che mi ha mandato Pellegrino: a sinistra chi c'e' con
+       il suo stato, a destra l'avanzamento. La scena da sola non si legge -
+       un omino che si muove non dice chi e' ne' a che punto sta. */
+    .rg-sala-guscio { display:grid; gap:12px;
+      grid-template-columns:232px minmax(0,1fr) 246px; align-items:stretch; }
+    .rg-fascia { display:flex; flex-direction:column; gap:8px; min-width:0;
+      max-height:clamp(360px, calc(100vh - 404px), 900px); overflow:auto; }
+    .rg-fascia-testa { font-size:10.5px; font-weight:800; letter-spacing:.6px;
+      text-transform:uppercase; color:var(--text-muted); padding:2px 2px 0; }
+
+    /* La scheda di un agente: ritratto, nome, cosa sta facendo. */
+    .rg-tess { display:flex; gap:9px; align-items:center; text-align:left;
+      width:100%; padding:8px 9px; border:1.5px solid var(--border);
+      border-radius:12px; background:var(--surface); cursor:pointer;
+      /* Senza, una domanda lunga esce dal bordo della scheda. */
+      overflow:hidden;
+      transition:border-color .12s, transform .12s; }
+    .rg-tess:hover { border-color:var(--text-muted); transform:translateY(-1px); }
+    .rg-tess-foto { position:relative; width:38px; height:38px; flex-shrink:0;
+      border-radius:50%; display:grid; place-items:center; }
+    .rg-tess-foto svg { width:26px; height:26px; }
+    /* L'anello dice lo stato senza leggere: e' la cosa che si guarda prima. */
+    .rg-tess-foto::after { content:''; position:absolute; inset:-3px;
+      border-radius:50%; border:2px solid transparent; }
+    .rg-tess.lavora   .rg-tess-foto::after { border-color:#16a34a; }
+    .rg-tess.domanda  .rg-tess-foto::after { border-color:#dc2626;
+      animation:rg-batte 1.6s ease-in-out infinite; }
+    .rg-tess.attende  .rg-tess-foto::after { border-color:#d97706; }
+    .rg-tess.spento   { opacity:.5; }
+    @keyframes rg-batte { 0%,100% { opacity:1 } 50% { opacity:.35 } }
+    /* display:block su tutti e tre: overflow non vale sugli elementi
+       inline, quindi una domanda lunga usciva dal bordo invece di finire
+       con i puntini. */
+    .rg-tess-corpo { min-width:0; flex:1; display:block; }
+    .rg-tess-nome { display:block; font-size:12.5px; font-weight:800; line-height:1.2;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .rg-tess-che { display:block; font-size:11px; color:var(--text-muted); line-height:1.3;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .rg-tess.domanda .rg-tess-che { color:#dc2626; font-weight:700; }
+
+    /* L'avanzamento della settimana. */
+    .rg-barra-riga { padding:8px 10px; border:1.5px solid var(--border);
+      border-radius:12px; background:var(--surface); }
+    .rg-barra-et { display:flex; justify-content:space-between; gap:6px;
+      font-size:11.5px; font-weight:700; margin-bottom:6px; }
+    .rg-barra-et span:last-child { color:var(--text-muted); font-weight:800; }
+    .rg-barra-sfondo { height:7px; border-radius:4px; background:var(--bg-2);
+      overflow:hidden; }
+    .rg-barra-dentro { height:100%; border-radius:4px; background:var(--primary);
+      transition:width .4s ease; }
+    .rg-barra-dentro.piena { background:#16a34a; }
+    .rg-barra-fonte { font-size:10.5px; color:var(--text-muted); margin-top:5px; }
+
+    @media (max-width:1180px) {
+      .rg-sala-guscio { grid-template-columns:1fr; }
+      .rg-fascia { max-height:none; flex-direction:row; flex-wrap:wrap; }
+      .rg-fascia-testa { width:100%; }
+      .rg-tess { width:calc(50% - 4px); }
+      .rg-barra-riga { flex:1; min-width:200px; }
+    }
+
     .rg-palco { position:relative; border:1.5px solid var(--border); border-radius:var(--radius);
                 overflow:hidden; background:linear-gradient(170deg,#fbfaf7,#f2efe8);
                 /* La scena prende l'altezza che resta sotto l'intestazione,
@@ -498,6 +560,12 @@
           <div class="rg-tocca-righe" id="rg-tocca"></div>
         </div>
 
+        <!-- La sala con le due fasce: a sinistra chi c'e' e cosa fa, a
+             destra come sta andando la settimana. La scena da sola non si
+             legge: un omino che si muove non dice chi e' ne' a che punto
+             sta. -->
+        <div class="rg-sala-guscio">
+          <aside class="rg-fascia rg-fascia-sx" id="rg-fascia-agenti" aria-label="Gli agenti"></aside>
         <div class="rg-palco" id="rg-palco">
           <div class="rg-scena" id="rg-scena"></div>
           <!-- Perche' non si muove niente. La stanza ferma non e' un
@@ -516,6 +584,8 @@
             <button type="button" id="rg-schermo"   title="Schermo intero"  aria-label="Schermo intero">&#9974;</button>
           </div>
           <div class="rg-fatica" id="rg-fatica" hidden></div>
+        </div>
+          <aside class="rg-fascia rg-fascia-dx" id="rg-fascia-settimana" aria-label="La settimana"></aside>
         </div>
 
         <div class="rg-lista nascosto" id="rg-lista" aria-live="polite"></div>

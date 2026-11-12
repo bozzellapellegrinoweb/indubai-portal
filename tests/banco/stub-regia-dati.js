@@ -14,6 +14,7 @@
     ['d44e9f8d-831b-4466-8acd-3e7c5f0ad9d0','analista','Analista','Analista',7,'uscita',2.6,4.8],
   ].map(([id, slug, nome, ruolo, ordine, zona, x, z]) => ({
     id, slug, nome, ruolo, ordine, zona, posizione: { x, z },
+    colore: ({'direttore':'#2563a8','stratega':'#7c3aed','copywriter':'#16a34a','grafico':'#d97706','video':'#db2777','revisore':'#dc2626','pubblicatore':'#0369a1','analista':'#6b7280'})[slug],
     attivo: true, brand_id: BRAND,
     model: 'claude-opus-5-5', descrizione: ruolo, strumenti: [],
   }));
@@ -127,7 +128,12 @@
     lavoriDi: async (id) => lavori.filter(j => j.content_id === id),
     mediaDi: async () => media,
     plurale: (t, n) => (n === 1 ? t : t),
-    piano: vuoto, risultati: vuoto, cervelloCerca: vuoto, cervelloDaConfermare: vuoto,
+    piano: async () => ([
+      { id:'p1', nome:'Storie quotidiane', tipo:'storia', quanti_a_settimana:7, attivo:true,
+        usciti:1, in_calendario:1, in_lavorazione:5, mancanti:0 },
+      { id:'p2', nome:'Caroselli dalle notizie', tipo:'carosello', quanti_a_settimana:3, attivo:true,
+        usciti:0, in_calendario:0, in_lavorazione:1, mancanti:2 },
+    ]), risultati: vuoto, cervelloCerca: vuoto, cervelloDaConfermare: vuoto,
     avatar: async () => ({ ok: true, foto: [], attive: 0, da_vedere: 0, massimo_per_volta: 8 }),
     newsletter: async (azione, extra) => {
       if (azione === 'genera') return { ok: true, tipo: extra.tipo, contenuto: {
