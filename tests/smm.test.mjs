@@ -118,6 +118,10 @@ try {
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_scartato.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_reel_e_piattaforme.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_icone_slide.sql')]);
+  // La ripresa dei contenuti fermi vive in una migrazione che schedula un
+  // lavoro con pg_cron: sul banco quell'estensione non c'e', e si prende
+  // solo la funzione, che e' la parte da provare.
+  psql(DB, ['-f', join(ROOT, 'tests/smm/11_fermi_senza_estensioni.sql')]);
 } catch (e) {
   console.error('Le migrazioni non si applicano:\n' + (e.stderr || e.stdout || e.message));
   process.exit(1);
@@ -1615,6 +1619,108 @@ test('il Cervello dice com e fatto un reel, e non manda piu su -apple-system', (
 });
 
 // ============================================================
+gruppo('Chi resta fermo per strada');
+
+// La catena fra agenti la muovono gli agenti, con coinvolgi_agente. Sui
+// primi due reel il Copywriter ha scritto sei slide buone e ha chiuso
+// dicendo "ora serve il controllo del Revisore" — scritto, non fatto. I
+// contenuti sono rimasti in lavorazione, senza un lavoro aperto e senza un
+// errore: dalla Regia si legge "tutto fermo", che somiglia a "non
+// funziona" pur essendo tutto a posto.
+
+const pulisciFermi = () => psql(DB, ['-c',
+  `delete from smm_contents where titolo like 'Fermo %'`]);
+
+/** Un contenuto in lavorazione, con le slide e senza lavori aperti. */
+function fermo(opts = {}) {
+  const { slides = '[{"tipo":"intro","titolo":"a","testo":"b"}]',
+          quando = "now() - interval '2 hours'", nome = 'Fermo di prova' } = opts;
+  // updated_at si scrive nell'INSERT e non dopo: il trigger trg_smm_touch_contents
+  // lo riporta a now() a ogni UPDATE, quindi "lo sposto indietro dopo" non
+  // funziona — ci ho perso un giro di test.
+  return one(`
+    insert into smm_contents (brand_id, titolo, tipo, stato, slides, created_by, updated_at)
+    values ('${BRAND}', '${nome}', 'reel', 'in_lavorazione',
+            '${slides}'::jsonb, '${MANAGER}', ${quando})
+    returning id`);
+}
+
+test('un contenuto con le slide pronte e nessuno che lo porti avanti viene ripreso', () => {
+  pulisciFermi();
+  const c = fermo();
+  eq(one(`select smm_riprendi_fermi()`), '1', 'ripresi');
+  eq(one(`select count(*) from smm_jobs where content_id = '${c}'
+           and titolo = 'Ripresa: controllo di conformita'`), '1', 'il lavoro c e');
+  eq(one(`select a.slug from smm_jobs j join smm_agents a on a.id = j.agent_id
+           where j.content_id = '${c}'`), 'revisore', 'e va al Revisore');
+  pulisciFermi();
+});
+
+test('non lo riprende due volte', () => {
+  pulisciFermi();
+  fermo();
+  one(`select smm_riprendi_fermi()`);
+  // Il lavoro appena messo e' in coda: gia' questo lo esclude.
+  eq(one(`select smm_riprendi_fermi()`), '0', 'secondo giro');
+  // E anche quando quel lavoro e' finito, per venti ore non si ripete:
+  // un contenuto rotto non deve diventare una spesa ricorrente.
+  psql(DB, ['-c', `update smm_jobs set stato = 'fatto' where titolo = 'Ripresa: controllo di conformita'`]);
+  eq(one(`select smm_riprendi_fermi()`), '0', 'terzo giro, col lavoro chiuso');
+  pulisciFermi();
+});
+
+test('chi ha un lavoro aperto non si tocca', () => {
+  pulisciFermi();
+  const c = fermo();
+  psql(DB, ['-c', `insert into smm_jobs (brand_id, content_id, tipo, titolo, richiesta)
+                   values ('${BRAND}', '${c}', 'agente', 'Sto lavorando', 'x')`]);
+  eq(one(`select smm_riprendi_fermi()`), '0', 'non ripreso');
+  pulisciFermi();
+});
+
+test('chi non ha ancora le slide non si tocca: il lavoro non e finito', () => {
+  pulisciFermi();
+  fermo({ slides: '[]' });
+  eq(one(`select smm_riprendi_fermi()`), '0', 'senza slide');
+  pulisciFermi();
+});
+
+test('e nemmeno chi e stato toccato un minuto fa', () => {
+  pulisciFermi();
+  fermo({ quando: 'now()' });
+  eq(one(`select smm_riprendi_fermi()`), '0', 'appena toccato');
+  pulisciFermi();
+});
+
+test('con l interruttore alzato non riparte niente', () => {
+  pulisciFermi();
+  fermo();
+  psql(DB, ['-c', `update smm_settings set stop_tutto = true where brand_id = '${BRAND}'`]);
+  eq(one(`select smm_riprendi_fermi()`), '0', 'tutto fermo');
+  psql(DB, ['-c', `update smm_settings set stop_tutto = false where brand_id = '${BRAND}'`]);
+  eq(one(`select smm_riprendi_fermi()`), '1', 'riacceso riparte');
+  pulisciFermi();
+});
+
+test('col Revisore spento non si inventa un destinatario', () => {
+  pulisciFermi();
+  fermo();
+  psql(DB, ['-c', `update smm_agents set attivo = false where brand_id = '${BRAND}' and slug = 'revisore'`]);
+  eq(one(`select smm_riprendi_fermi()`), '0', 'revisore spento');
+  psql(DB, ['-c', `update smm_agents set attivo = true where brand_id = '${BRAND}' and slug = 'revisore'`]);
+  pulisciFermi();
+});
+
+test('un contenuto gia passato dal Revisore non si riprende', () => {
+  pulisciFermi();
+  const c = fermo();
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true where id = '${c}'`]);
+  psql(DB, ['-c', `update smm_contents set updated_at = now() - interval '2 hours' where id = '${c}'`]);
+  eq(one(`select smm_riprendi_fermi()`), '0', 'gia passato');
+  pulisciFermi();
+});
+
+// ============================================================
 gruppo('Reversibilita');
 
 test('la migrazione di rollback riporta il database come prima', () => {
@@ -1624,6 +1730,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261114_smm_riprendi_fermi_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_icone_slide_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_reel_e_piattaforme_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_scartato_down.sql')]);
