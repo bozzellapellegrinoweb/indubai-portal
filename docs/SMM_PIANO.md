@@ -60,14 +60,22 @@ L'upload dal browser non passa più da `/api/upload` (base64, tetto 10 MB): va
 diretto a Supabase Storage via TUS con il JWT dell'utente, con avanzamento
 reale e ripresa dopo una caduta di rete.
 
-**Montaggio video.** ffmpeg non gira nelle edge function. Ritagli, sottotitoli,
-9:16 e compressione richiedono un worker separato con ffmpeg che prende i
-lavori dalla stessa coda (`smm_jobs` con `tipo = 'montaggio'`). Nella
-migrazione la coda e i tipi di lavoro ci sono già; il contenitore ffmpeg è da
-mettere in piedi su un servizio a tua scelta (Fly.io, Railway, un container su
-Hetzner) ed è la cosa che resta aperta. Lo dico nel report finale. Nel
-frattempo i reel semplici si fanno con la pipeline Cloudinary già esistente,
-che non ha bisogno di ffmpeg.
+**Montaggio video.** *Questo paragrafo descriveva un problema che non c'è
+più: lo lascio corretto invece di cancellarlo, perché il ragionamento serve
+ancora.* ffmpeg non gira nelle edge function, ed è vero. Ma il worker
+separato non è stato messo in piedi: il montaggio lo fa il generatore
+(`indubai-social-manager`), che su Vercel ha Puppeteer e ffmpeg e che la
+Regia chiama su `POST /api/regia/render`. Il trigger
+`smm_monta_quando_pronto` (`20261112_smm_montaggio_automatico.sql`) mette in
+coda un lavoro `tipo = 'montaggio'` appena un contenuto entra in
+approvazione senza file, e il worker lo esegue **senza modello e senza
+spesa**. Niente Fly.io, niente Railway, niente contenitore da mantenere.
+
+Quello che resta vero: il reel qui è il carosello animato, cioè le stesse
+slide catturate cinque secondi per volta. Ritagli di un girato, sottotitoli
+impressi su un video vero e compressione di un file caricato da fuori non
+ci sono, e non c'è un campo dove metterli. Se un giorno servono, allora sì
+che serve un worker.
 
 **App desktop.** Non esiste né Electron né Tauri: il portale staff è una **PWA**
 (`manifest-admin.json`, `display: standalone`), l'app Capacitor iOS incapsula

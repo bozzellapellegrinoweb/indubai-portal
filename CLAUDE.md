@@ -109,6 +109,26 @@ controlli nell'interfaccia ma trigger su `smm_contents`, e vanno lasciate li':
 Spostarne una in JavaScript vuol dire toglierla: gli agenti scrivono dal
 server, non dal browser.
 
+### Dove esce un contenuto non si scrive nel codice
+
+Le piattaforme stanno in `smm_contents.piattaforme`, con un predefinito che
+dipende dal formato (`smm_piattaforme_predefinite`): le storie solo dove
+esistono, i reel anche su TikTok e YouTube, i caroselli anche su LinkedIn.
+Il manager le cambia dal pannello del contenuto, con
+`smm_piattaforme_imposta`.
+
+Per mesi quella colonna e' esistita senza che nessuno la leggesse, mentre
+`smm_programmati_in_scadenza` aveva `array['instagram','facebook']` scritto
+dentro la funzione: un reel montato apposta per TikTok non ci sarebbe mai
+arrivato, e non c'era un posto in cui accorgersene. Una colonna che nessuna
+schermata mostra e nessun codice legge e' una colonna morta, e le colonne
+morte tornano morte da sole: quando se ne aggiunge una, serve anche chi la
+scrive, chi la legge e un test che lo verifichi.
+
+Quali account siano davvero collegati su GoHighLevel si chiede a
+`smm-publish` con `{"azione":"account"}`: non tocca nessun contenuto e non
+manda niente. Prima si poteva sapere soltanto tentando una pubblicazione.
+
 Il resto dell'impianto, con le regole editoriali importate dal progetto che
 genera i post, sta in `docs/SMM_INVENTARIO.md`, `docs/SMM_PORTALE.md` e
 `docs/SMM_PIANO.md`. I test sono in `tests/smm.test.mjs` e girano su un
