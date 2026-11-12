@@ -112,10 +112,18 @@ Deno.serve(async (req: Request) => {
     const chiave   = Deno.env.get("GHL_API_KEY");
     const location = Deno.env.get("GHL_LOCATION_ID");
     const userId   = Deno.env.get("GHL_USER_ID");
-    if (!chiave || !location || !userId) {
+    // Dire QUALI mancano, non elencarle tutte e tre: con tre nomi in fila
+    // si va a controllarle tutte, e quella sbagliata resta l'ultima che
+    // guardi. Il nome non e' un segreto; il valore non compare mai.
+    const assenti = [
+      ["GHL_API_KEY", chiave], ["GHL_LOCATION_ID", location], ["GHL_USER_ID", userId],
+    ].filter(([, v]) => !v).map(([n]) => n);
+    if (assenti.length) {
       return new Response(JSON.stringify({
         ok: false,
-        error: "Mancano GHL_API_KEY, GHL_LOCATION_ID o GHL_USER_ID fra i segreti del progetto.",
+        error: `${assenti.length === 1 ? "Manca" : "Mancano"} ${assenti.join(" e ")} `
+             + "fra i segreti del progetto Supabase. Attenzione: una variabile appena aggiunta "
+             + "la vede solo un'istanza avviata dopo, quindi puo' servire un nuovo rilascio.",
       }), { status: 500, headers: CORS });
     }
 
