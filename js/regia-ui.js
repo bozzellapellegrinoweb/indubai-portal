@@ -1123,28 +1123,41 @@
     $('rg-mucchio-lavorazione').innerHTML = inLav.length
       ? inLav.map(pezzo).join('') : vuoto('Niente in lavorazione.');
 
-    // Due settimane a partire dal lunedi' di questa.
-    const oggi = new Date();
-    const lunedi = new Date(oggi);
-    const g = (lunedi.getDay() + 6) % 7;
-    lunedi.setDate(lunedi.getDate() - g);
-    lunedi.setHours(0, 0, 0, 0);
+    // Due settimane a partire dal lunedi' di questa, in ORA DI DUBAI.
+    //
+    // Prima la chiave del giorno si ricavava con toISOString() da una
+    // mezzanotte locale: in un fuso a est di Greenwich quella mezzanotte
+    // cade nel giorno prima, quindi la casella che diceva "12/11" portava
+    // scritto 11/11, e un contenuto lasciato su "oggi" finiva programmato
+    // a ieri. Essendo nel passato usciva subito, oppure non usciva proprio.
+    //
+    // Qui il calendario e' fatto di date pure, senza fusi, e il giorno di
+    // un contenuto si legge in ora di Dubai: cosi' resta lo stesso anche
+    // se il manager apre il portale da un altro paese.
+    const giornoDubai = (quando) => new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dubai', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(quando);
+
+    const oggiDubai = giornoDubai(new Date());
+    const [annoOggi, meseOggi, giornoOggi] = oggiDubai.split('-').map(Number);
+    const lunedi = new Date(Date.UTC(annoOggi, meseOggi - 1, giornoOggi));
+    lunedi.setUTCDate(lunedi.getUTCDate() - ((lunedi.getUTCDay() + 6) % 7));
 
     const giorni = [];
     for (let i = 0; i < 14; i++) {
       const d = new Date(lunedi);
-      d.setDate(d.getDate() + i);
+      d.setUTCDate(lunedi.getUTCDate() + i);
       giorni.push(d);
     }
 
     const NOMI = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
     $('rg-griglia').innerHTML = giorni.map(d => {
-      const chiave = d.toISOString().slice(0, 10);
-      const dentro = contenuti.filter(c =>
-        c.slot_at && new Date(c.slot_at).toISOString().slice(0, 10) === chiave);
-      const eOggi = d.toDateString() === oggi.toDateString();
-      return `<div class="rg-giorno ${eOggi ? 'oggi' : ''}" data-giorno="${chiave}">
-        <div class="rg-giorno-et">${NOMI[(d.getDay() + 6) % 7]} ${d.getDate()}/${d.getMonth() + 1}</div>
+      const chiave = d.toISOString().slice(0, 10);   // costruita in UTC puro: sicura
+      const dentro = contenuti.filter(c => c.slot_at && giornoDubai(new Date(c.slot_at)) === chiave);
+      const eOggi = chiave === oggiDubai;
+      const passato = chiave < oggiDubai;
+      return `<div class="rg-giorno ${eOggi ? 'oggi' : ''} ${passato ? 'passato' : ''}" data-giorno="${chiave}">
+        <div class="rg-giorno-et">${NOMI[(d.getUTCDay() + 6) % 7]} ${d.getUTCDate()}/${d.getUTCMonth() + 1}</div>
         ${dentro.map(pezzo).join('')}
       </div>`;
     }).join('');
@@ -1186,6 +1199,14 @@
         if (!id) return;
         // Ore 18 di Dubai: l'ora buona per i social, e si puo' cambiare
         // aprendo il contenuto.
+        //
+        // Su un giorno passato l'ora di uscita e' gia' trascorsa, quindi il
+        // contenuto parte al primo giro invece di aspettare: e' legittimo
+        // - e' il modo per dire "esci adesso" - ma va detto, altrimenti
+        // sembra che il calendario non abbia funzionato.
+        if (g.classList.contains('passato')) {
+          window.ui.showToast('E\' un giorno gia\' passato: esce entro pochi minuti.', 'success');
+        }
         lascia(id, `${g.dataset.giorno}T18:00:00+04:00`);
       });
     }

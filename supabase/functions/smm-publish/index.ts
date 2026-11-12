@@ -74,16 +74,34 @@ async function creaPost(
 }
 
 /** I media del contenuto, nell'ordine, con l'URL che GHL puo' scaricare. */
+/**
+ * Il numero di pagina, che sta in fondo al nome del file.
+ *
+ * I file di un rendering nascono tutti nello stesso secondo, quindi
+ * ordinarli per data di creazione vuol dire ordinarli a caso. Su una storia
+ * si vedrebbe subito: le slide uscirebbero mescolate.
+ *
+ *   story_<id>_3          -> 3
+ *   post_<id>_2_content   -> 2
+ */
+function numeroPagina(nome: string): number {
+  const m = String(nome ?? "").match(/_(\d+)(?:_[a-z]+)?$/);
+  return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+}
+
 async function mediaDelContenuto(
   db: SupabaseClient, contentId: string, formato: string,
 ): Promise<{ url: string; type: string }[]> {
-  const ruoli = formato === "reel" ? "derivato,originale" : "derivato,originale";
   const righe = await db.select("smm_media",
-    `content_id=eq.${contentId}&ruolo=in.(${ruoli})&select=cloudinary_url,mime,ruolo&order=created_at`);
+    `content_id=eq.${contentId}&ruolo=in.(derivato,originale)` +
+    `&select=cloudinary_url,mime,ruolo,nome_file,path`);
 
   // Solo i media con un URL pubblico: GHL li scarica lui, quindi un link
   // firmato a scadenza non va bene. E' l'unica eccezione al "mai pubblico".
-  const utili = (righe ?? []).filter((m: { cloudinary_url?: string }) => m.cloudinary_url);
+  const utili = (righe ?? [])
+    .filter((m: { cloudinary_url?: string }) => m.cloudinary_url)
+    .sort((a: { nome_file?: string; path?: string }, b: { nome_file?: string; path?: string }) =>
+      numeroPagina(a.nome_file ?? a.path ?? "") - numeroPagina(b.nome_file ?? b.path ?? ""));
 
   const video = utili.filter((m: { mime?: string }) => (m.mime ?? "").startsWith("video"));
   const immagini = utili.filter((m: { mime?: string }) => !(m.mime ?? "").startsWith("video"));
@@ -92,10 +110,27 @@ async function mediaDelContenuto(
     if (!video.length) return [];
     return [{ url: video[0].cloudinary_url, type: "video/mp4" }];
   }
+
+  // Una storia e' fatta di video, uno per slide: il montaggio produce MP4
+  // con l'audio del brand, non immagini. Qui cadeva nel ramo del carosello
+  // e andava a cercare immagini che non esistono, quindi non usciva niente
+  // e il messaggio parlava di caroselli su un contenuto che era una storia.
+  //
+  // Le immagini restano come ripiego, perche' il motore sa rendere una
+  // storia anche come PNG se glielo si chiede.
+  if (formato === "storia") {
+    const scelti = video.length ? video : immagini;
+    return scelti.slice(0, MAX_MEDIA).map((m: { cloudinary_url: string; mime?: string }) => ({
+      url: m.cloudinary_url,
+      type: (m.mime ?? "").startsWith("video") ? "video/mp4" : "image/jpeg",
+    }));
+  }
+
   return immagini.slice(0, MAX_MEDIA).map((m: { cloudinary_url: string }) => ({
     url: m.cloudinary_url, type: "image/jpeg",
   }));
 }
+
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -178,6 +213,8 @@ Deno.serve(async (req: Request) => {
         ok: false,
         error: formato === "reel"
           ? "Non c'e' nessun video pronto per il reel. Serve il montaggio prima della pubblicazione."
+          : formato === "storia"
+          ? "Non c'e' nessun file pronto per la storia. Serve il montaggio prima della pubblicazione."
           : "Non c'e' nessuna immagine pronta con un indirizzo pubblico. Il carosello va generato e caricato prima.",
       }), { status: 409, headers: CORS });
     }

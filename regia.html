@@ -287,6 +287,10 @@
     .rg-giorno { border:1.5px solid var(--border); border-radius:11px; background:var(--surface);
                  min-height:124px; padding:7px; display:flex; flex-direction:column; gap:6px; }
     .rg-giorno.oggi { border-color:var(--primary); }
+    /* I giorni passati restano buoni per dire "esci adesso", ma devono
+       sembrare passati: su una griglia tutta uguale si lascia un contenuto
+       su ieri senza accorgersene. */
+    .rg-giorno.passato { opacity:.55; background:var(--bg-2); }
     .rg-giorno.sopra { border-color:var(--accent-dark); background:var(--success-bg); }
     .rg-giorno-et { font-size:10.5px; font-weight:800; color:var(--text-muted);
                     text-transform:uppercase; letter-spacing:.04em; }
