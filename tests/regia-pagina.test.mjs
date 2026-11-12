@@ -112,5 +112,25 @@ test('ogni classe che il pannello usa ha uno stile', () => {
   if (mancanti.length) throw new Error('senza stile: ' + mancanti.join(', '));
 });
 
+test('i video dell\'anteprima vanno in ordine di pagina', () => {
+  // L'elenco arriva ordinato per created_at, ma i file di un rendering
+  // nascono nello stesso secondo: l'ordine era quello del caso, e il
+  // lettore prendeva comunque sempre il primo. Si vedeva una pagina sola.
+  const ui = readFileSync(join(ROOT, 'js/regia-ui.js'), 'utf8');
+  const sorgente = ui.slice(ui.indexOf('function videoInOrdine'),
+                            ui.indexOf('function linguetteVideo'));
+  const videoInOrdine = new Function(`${sorgente}; return videoInOrdine;`)();
+
+  const m = (n) => ({ nome_file: `story_abc_${n}`, mime: 'video/mp4', ruolo: 'derivato' });
+  const dati = [m(3), m(1), m(10), m(2)];
+  const fuori = videoInOrdine(dati).map(x => x.nome_file.split('_').pop());
+  if (fuori.join(',') !== '1,2,3,10') throw new Error('ordine: ' + fuori.join(','));
+
+  const misti = [m(2), { mime: 'image/jpeg', nome_file: 'x_1', ruolo: 'derivato' },
+                 { mime: 'video/mp4', nome_file: 'r_9', ruolo: 'reference' }, m(1)];
+  const soli = videoInOrdine(misti);
+  if (soli.length !== 2) throw new Error('immagini o reference passate: ' + soli.length);
+});
+
 console.log(`\n${passati} passati, ${falliti} falliti\n`);
 process.exit(falliti ? 1 : 0);

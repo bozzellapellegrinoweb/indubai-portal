@@ -104,6 +104,14 @@
       ? pezzi.join(', ') + '.'
       : 'La sala è tranquilla: nessun lavoro aperto.';
 
+    // La sala ferma non e' un guasto: e' il piano gia' coperto, o
+    // l'interruttore alzato. Da fuori sono identici a "non funziona".
+    const calma = $('rg-calma');
+    if (calma) {
+      const niente = !r.lavorano && !r.inCoda && !r.domande;
+      calma.hidden = !niente;
+    }
+
     const spento = !!D.stato.impostazioni?.stop_tutto;
     if (spento) {
       $('rg-stato').innerHTML =
@@ -722,8 +730,26 @@
   }
 
   /** Le linguette per sfogliare piu' video: una storia ne ha uno per slide. */
+  /**
+   * I video in ordine di pagina.
+   *
+   * L'elenco arriva ordinato per created_at, ma i file di un rendering
+   * nascono nello stesso secondo: l'ordine era quello del caso. Il numero
+   * di pagina sta in fondo al nome del file, ed e' l'unico dato che lo dice
+   * davvero.
+   */
+  function videoInOrdine(media) {
+    const numero = (m) => {
+      const n = String(m.nome_file || m.path || '').match(/_(\d+)$/);
+      return n ? Number(n[1]) : Number.MAX_SAFE_INTEGER;
+    };
+    return media
+      .filter(x => (x.mime || '').startsWith('video') && x.ruolo !== 'reference')
+      .sort((a, b) => numero(a) - numero(b));
+  }
+
   function linguetteVideo(media, c) {
-    const v = media.filter(x => (x.mime || '').startsWith('video') && x.ruolo !== 'reference');
+    const v = videoInOrdine(media);
     const slides = Array.isArray(c.slides) ? c.slides : [];
     const i = Math.min(ui.slideScelta, v.length - 1);
     return `<div class="rg-slide-strip">${v.map((m, k) =>
@@ -733,12 +759,16 @@
   }
 
   function lettore(c, media) {
-    const video = media.find(m => (m.mime || '').startsWith('video') && m.ruolo !== 'reference');
+    // Le linguette cambiavano solo l'evidenziazione: il lettore prendeva
+    // sempre il primo video dell'elenco, quindi si vedeva sempre la stessa
+    // pagina e le altre no.
+    const video = videoInOrdine(media);
     const anteprima = media.find(m => m.ruolo === 'anteprima');
     const immagini = media.filter(m => (m.mime || '').startsWith('image') && m.ruolo !== 'reference');
 
-    if (video || anteprima) {
-      const m = anteprima || video;
+    if (video.length || anteprima) {
+      const scelto = Math.min(Math.max(ui.slideScelta || 0, 0), Math.max(video.length - 1, 0));
+      const m = anteprima || video[scelto];
       // Stesso difetto che avevo sistemato per le immagini e non qui: i
       // file del generatore stanno su Cloudinary con un indirizzo
       // pubblico, e il link firmato sa costruire solo indirizzi del
@@ -747,7 +777,7 @@
       const sorgente = m.cloudinary_url
         ? `src="${esc(m.cloudinary_url)}"`
         : `data-media-path="${esc(m.path)}"`;
-      const quanti = media.filter(x => (x.mime || '').startsWith('video') && x.ruolo !== 'reference').length;
+      const quanti = video.length;
       return `<div class="rg-lettore">
         <video id="rg-video" controls preload="metadata" playsinline ${sorgente}></video>
       </div>
@@ -1994,6 +2024,7 @@
     $('rg-btn-reference').addEventListener('click', nuovaReference);
     $('rg-btn-cervello').addEventListener('click', apriCervello);
     $('rg-btn-direzione').addEventListener('click', apriDirezione);
+    $('rg-calma-direzione')?.addEventListener('click', apriDirezione);
     $('rg-btn-avatar')?.addEventListener('click', () => apriAvatar());
     $('rg-interruttore').addEventListener('click', () => cambiaInterruttore());
     $('rg-fermo-riparti').addEventListener('click', () => cambiaInterruttore(false));

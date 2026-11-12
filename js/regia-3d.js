@@ -99,6 +99,32 @@ export function creaScena(contenitore, opzioni = {}) {
   const bersaglio = new THREE.Vector3(0, 0.6, 0.4);
   const orbita = { raggio: 26, theta: Math.PI * 0.25, phi: Math.PI * 0.30 };
   const orbitaRiposo = { ...orbita };
+  /** Dove torna il tasto "casa": lo decide l'inquadratura, non una costante. */
+  const riposoBersaglio = new THREE.Vector3(0, 0.6, 0.4);
+
+  /**
+   * L'area da inquadrare: dove stanno gli agenti, non la pianta delle zone.
+   *
+   * Le zone coprono tutto il pavimento, ma gli agenti occupano una parte
+   * molto piu' piccola, e la posizione se la portano in tabella. Inquadrare
+   * la pianta vorrebbe dire allontanarsi fino a prendere la nebbia, che
+   * comincia a 22 unita'.
+   *
+   * Si ricalcola quando gli agenti vengono disposti, cosi' segue anche chi
+   * li sposta.
+   */
+  let AREA = { x: 0.2, z: 0.4, mezzaX: 4.4, mezzaZ: 4.4, alto: 2.2 };
+
+  function angoliArea() {
+    const a = [];
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) for (const y of [0, AREA.alto]) {
+      a.push(new THREE.Vector3(AREA.x + sx * AREA.mezzaX, y, AREA.z + sz * AREA.mezzaZ));
+    }
+    return a;
+  }
+
+  /** Vero appena il manager tocca lo zoom: da li' in poi decide lui. */
+  let zoomManuale = false;
 
   function piazzaCamera() {
     const r = orbita.raggio, t = orbita.theta, p = orbita.phi;
@@ -110,6 +136,80 @@ export function creaScena(contenitore, opzioni = {}) {
     camera.lookAt(bersaglio);
   }
   piazzaCamera();
+
+  /**
+   * Da quanto lontano guardare perche' la stanza riempia il riquadro.
+   *
+   * Il raggio era fisso a 26, qualunque fosse la forma del riquadro. Su uno
+   * largo e basso - cioe' quello che si ha davvero, perche' sopra la scena
+   * ci sono intestazione, linguette e "tocca a te" - la stanza occupava un
+   * terzo della larghezza e il resto era pavimento vuoto: la scena c'era ma
+   * era inguardabile.
+   *
+   * Qui si proiettano gli angoli dell'area di lavoro e si cerca il raggio
+   * che li porta appena dentro i bordi. Due passate bastano: a campo visivo
+   * stretto la grandezza sullo schermo e' quasi esattamente inversa alla
+   * distanza.
+   */
+  function raggioCheInquadra(margine = 0.95) {
+    const salva = orbita.raggio;
+    let r = salva;
+    for (let giro = 0; giro < 3; giro++) {
+      orbita.raggio = r;
+      piazzaCamera();
+      camera.updateMatrixWorld();
+      let piuLontano = 0;
+      for (const punto of angoliArea()) {
+        const q = punto.clone().project(camera);
+        piuLontano = Math.max(piuLontano, Math.abs(q.x), Math.abs(q.y));
+      }
+      if (!isFinite(piuLontano) || piuLontano <= 0) break;
+      r = THREE.MathUtils.clamp(r * (piuLontano / margine),
+                                LIMITI.raggioMin, LIMITI.raggioMax);
+    }
+    orbita.raggio = salva;
+    piazzaCamera();
+    return r;
+  }
+
+  /**
+   * Sposta il bersaglio finche' la stanza sta in mezzo allo schermo.
+   *
+   * Inquadrare il centro dell'area non basta: la vista e' obliqua, quindi
+   * il centro del mondo e il centro dell'immagine non coincidono, e la
+   * stanza finiva spostata a destra con mezzo riquadro di pavimento vuoto a
+   * sinistra.
+   *
+   * Si misura dove cade l'ingombro sullo schermo e si sposta il bersaglio a
+   * terra: di lato lungo la destra della camera, in profondita' lungo la
+   * direzione dello sguardo, che sullo schermo sale di quanto dice
+   * l'inclinazione.
+   */
+  function centraInquadratura() {
+    camera.updateMatrixWorld();
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const punto of angoliArea()) {
+      const q = punto.clone().project(camera);
+      minX = Math.min(minX, q.x); maxX = Math.max(maxX, q.x);
+      minY = Math.min(minY, q.y); maxY = Math.max(maxY, q.y);
+    }
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    if (!isFinite(cx) || !isFinite(cy)) return;
+
+    const mezzaAltezza = Math.tan(camera.fov * Math.PI / 360) * orbita.raggio;
+    const destra = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).setY(0);
+    if (destra.lengthSq() < 1e-6) return;
+    destra.normalize();
+    const avanti = new THREE.Vector3().subVectors(bersaglio, camera.position).setY(0);
+    if (avanti.lengthSq() < 1e-6) return;
+    avanti.normalize();
+    // Quanto di uno spostamento a terra si vede come movimento verticale.
+    const salita = Math.max(0.25, Math.cos(orbita.phi + Math.PI / 2) * -1);
+
+    bersaglio.addScaledVector(destra, cx * mezzaAltezza * camera.aspect);
+    bersaglio.addScaledVector(avanti, (cy * mezzaAltezza) / salita);
+    piazzaCamera();
+  }
 
   // ── Luci: seguono l'ora di Dubai ────────────────────────
   const ambiente = new THREE.HemisphereLight(0xffffff, 0xd8d2c4, 0.95);
@@ -700,6 +800,7 @@ export function creaScena(contenitore, opzioni = {}) {
     avatarPerAgente.clear();
     cliccabili.length = 0;
 
+    const messi = [];
     const perZona = new Map();
     for (const a of agenti) {
       const z = ZONE[a.zona] ? a.zona : 'studio';
@@ -737,7 +838,35 @@ export function creaScena(contenitore, opzioni = {}) {
         const variazione = ((h % 100) / 100 - 0.5) * 0.7;   // circa ±20 gradi
         const rotazione = orbitaRiposo.theta + variazione;
         avatarPerAgente.set(agente.id, creaAvatar(agente, x, z, rotazione));
+        messi.push([x, z]);
       });
+    }
+
+    // L'area da inquadrare e' dove sono finiti davvero, non la pianta delle
+    // zone: il margine tiene dentro scrivania e monitor, che stanno intorno
+    // al punto dell'avatar.
+    if (messi.length) {
+      const xs = messi.map(m => m[0]), zs = messi.map(m => m[1]);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+      AREA = {
+        x: (minX + maxX) / 2, z: (minZ + maxZ) / 2,
+        mezzaX: (maxX - minX) / 2 + 1.2,
+        mezzaZ: (maxZ - minZ) / 2 + 1.2,
+        alto: 2.2,
+      };
+      bersaglio.set(AREA.x, 0.6, AREA.z);
+      // Due passate: si inquadra, si centra, e si rimisura perche'
+      // spostando il bersaglio cambia anche quanto serve stare lontani.
+      for (let i = 0; i < 2; i++) {
+        orbita.raggio = raggioCheInquadra();
+        piazzaCamera();
+        centraInquadratura();
+      }
+      orbitaRiposo.raggio = orbita.raggio;
+      riposoBersaglio.copy(bersaglio);
+      if (zoomManuale) { orbita.raggio = orbitaRiposo.raggio; }
+      piazzaCamera();
     }
   }
 
@@ -943,6 +1072,7 @@ export function creaScena(contenitore, opzioni = {}) {
 
   function rotella(ev) {
     ev.preventDefault();
+    zoomManuale = true;
     orbita.raggio = THREE.MathUtils.clamp(
       orbita.raggio * (1 + Math.sign(ev.deltaY) * 0.09), LIMITI.raggioMin, LIMITI.raggioMax);
     piazzaCamera();
@@ -961,6 +1091,7 @@ export function creaScena(contenitore, opzioni = {}) {
     if (ev.touches.length === 2 && pizzico) {
       ev.preventDefault();
       const d = distanza(ev.touches);
+      zoomManuale = true;
       orbita.raggio = THREE.MathUtils.clamp(
         orbita.raggio * (pizzico / d), LIMITI.raggioMin, LIMITI.raggioMax);
       pizzico = d;
@@ -1001,7 +1132,11 @@ export function creaScena(contenitore, opzioni = {}) {
   }
 
   function torna() {
-    inquadra(new THREE.Vector3(0, 0.6, 0.4), orbitaRiposo.raggio);
+    // Torna anche all'inquadratura che si adatta al riquadro: e' il tasto
+    // con cui si rimedia a uno zoom andato storto.
+    zoomManuale = false;
+    orbitaRiposo.raggio = raggioCheInquadra();
+    inquadra(riposoBersaglio.clone(), orbitaRiposo.raggio);
     orbita.theta = orbitaRiposo.theta;
     orbita.phi = orbitaRiposo.phi;
   }
@@ -1138,6 +1273,15 @@ export function creaScena(contenitore, opzioni = {}) {
     renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+
+    // La distanza giusta dipende dalla forma del riquadro, quindi si rifa'
+    // qui: alla prima misura e a ogni cambio di finestra. Se il manager ha
+    // gia' messo mano allo zoom non gliela si sposta sotto le mani.
+    orbitaRiposo.raggio = raggioCheInquadra();
+    if (!zoomManuale) {
+      orbita.raggio = orbitaRiposo.raggio;
+      piazzaCamera();
+    }
   }
   ridimensiona();
   const osservatore = new ResizeObserver(ridimensiona);
@@ -1342,6 +1486,7 @@ export function creaScena(contenitore, opzioni = {}) {
 
   /** Avvicina o allontana di un passo, dentro i limiti dell'orbita. */
   function zoom(passo) {
+    zoomManuale = true;
     orbita.raggio = THREE.MathUtils.clamp(
       orbita.raggio * (passo > 0 ? 0.78 : 1.28),
       LIMITI.raggioMin, LIMITI.raggioMax);
