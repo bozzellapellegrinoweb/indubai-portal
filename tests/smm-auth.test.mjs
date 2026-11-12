@@ -85,30 +85,38 @@ if (eUnaPersona(jwt({ role: "anon", sub: "u-1" })) !== false) {
   ko++; console.log("  KO  la chiave pubblica con un sub non deve essere una persona");
 }
 
-// ── L'indirizzo delle foto ─────────────────────────────────────────────
+// ── L'indirizzo del motore ─────────────────────────────────────────────
 //
 // Si ricava da quello del rendering invece di chiedere un secondo segreto
 // quasi uguale, che e' un modo per farne sbagliare uno. Se non si puo'
 // ricavare, si deve dire, non indovinare.
+//
+// Stava dentro smm-avatar; da quando lo usano in due e' in motore.ts, e
+// questo test e' rimasto a cercarlo dov'era: per un po' non ha provato
+// niente, e' solo esploso.
 
-const sorgenteAvatar = readFileSync(
-  new URL("../supabase/functions/smm-avatar/index.ts", import.meta.url), "utf8");
-const indirizzoAvatar = new Function(
-  sorgenteAvatar
-    .slice(sorgenteAvatar.indexOf("function indirizzoAvatar"),
-           sorgenteAvatar.indexOf("Deno.serve"))
-    .replace(/:\s*string\s*\|\s*null/g, "").replace(/\(render:\s*string\)/, "(render)")
-  + "; return indirizzoAvatar;")();
+const sorgenteMotore = readFileSync(
+  new URL("../supabase/functions/smm-worker/motore.ts", import.meta.url), "utf8");
+const indirizzoMotore = new Function("Deno",
+  sorgenteMotore
+    .replace(/^export /gm, "")
+    .replace(/:\s*string\s*\|\s*null/g, "")
+    .replace(/\(rotta:\s*string\)/, "(rotta)")
+  + "; return indirizzoMotore;")({ env: { get: () => finto } });
 
+let finto = "";
 const indCasi = [
-  ["l'indirizzo giusto", "https://x.vercel.app/api/regia/render", "https://x.vercel.app/api/regia/avatar"],
-  ["con la barra in fondo", "https://x.vercel.app/api/regia/render/", "https://x.vercel.app/api/regia/avatar"],
-  ["un indirizzo che non finisce per render", "https://x.vercel.app/api/altro", null],
-  ["la parola render in mezzo", "https://x.vercel.app/render/api", null],
-  ["vuoto", "", null],
+  ["l'indirizzo giusto", "https://x.vercel.app/api/regia/render", "avatar", "https://x.vercel.app/api/regia/avatar"],
+  ["un'altra rotta", "https://x.vercel.app/api/regia/render", "notizie", "https://x.vercel.app/api/regia/notizie"],
+  ["con la barra in fondo", "https://x.vercel.app/api/regia/render/", "avatar", "https://x.vercel.app/api/regia/avatar"],
+  ["con la barra davanti alla rotta", "https://x.vercel.app/api/regia/render", "/newsletter", "https://x.vercel.app/api/regia/newsletter"],
+  ["un indirizzo che non finisce per render", "https://x.vercel.app/api/altro", "avatar", null],
+  ["la parola render in mezzo", "https://x.vercel.app/render/api", "avatar", null],
+  ["vuoto", "", "avatar", null],
 ];
-for (const [nome, dentro, atteso] of indCasi) {
-  const r = indirizzoAvatar(dentro);
+for (const [nome, dentro, rotta, atteso] of indCasi) {
+  finto = dentro;
+  const r = indirizzoMotore(rotta);
   const ok = r === atteso;
   if (!ok) ko++;
   console.log(`${ok ? "  ok" : "  KO"}  ${nome}: ${r}`);
