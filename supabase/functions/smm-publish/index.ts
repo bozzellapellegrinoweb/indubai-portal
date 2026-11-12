@@ -59,8 +59,17 @@ async function creaPost(
   accountIds: string[], testo: string, media: { url: string; type: string }[],
   tipo: string, quando: Date | null,
 ): Promise<string> {
+  // R-GHL-12: una storia non porta didascalia. GoHighLevel rifiuta con
+  // 422 "Instagram Story will not support caption for publishing post
+  // directly": non e' un consiglio, e' un rifiuto. Il pannello manda
+  // summary vuoto da sempre, su Instagram e su Facebook.
+  //
+  // La caption del contenuto non si perde: resta sul contenuto, e serve
+  // quando lo stesso materiale esce come post o come reel.
   const corpo: Record<string, unknown> = {
-    userId, accountIds, type: tipo, summary: testo, media,
+    userId, accountIds, type: tipo,
+    summary: tipo === "story" ? "" : testo,
+    media,
   };
   // R-GHL-01: le storie non portano scheduleDate, altrimenti diventano post.
   if (quando && tipo !== "story") corpo.scheduleDate = quando.toISOString();
