@@ -158,6 +158,7 @@
     aggiungiNota: nulla, risolviNota: nulla, approva: nulla, approvaComeAdmin: nulla,
     rimandaIndietro: nulla, spostaInCalendario: nulla, pubblicaOra: nulla,
     cervelloConferma: nulla, cervelloScarta: nulla, cervelloAggiungi: nulla,
+    scarta: async () => 'buttato',
     nuovaReference: nulla, salvaRisultato: nulla, salvaImpostazioni: nulla,
     nuovaRigaPiano: nulla, salvaRigaPiano: nulla, eliminaRigaPiano: nulla,
     lanciaQuelloCheManca: nulla, interruttore: nulla, accendiAgente: nulla,

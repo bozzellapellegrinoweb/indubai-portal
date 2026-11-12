@@ -4,3 +4,7 @@ node_modules/
 .vercel/
 *.DS_Store
 *.yml
+
+# Le schermate del banco di prova: le rigenera chi lo lancia, e
+# cambiano a ogni giro. Non sono sorgenti.
+tests/banco/*.png
