@@ -58,13 +58,26 @@
       stato: 'in_coda', titolo: 'Montare le slide', created_at: new Date().toISOString(), priorita: 50 },
   ];
 
+  // Due contenuti in piu' per guardare il calendario: uno approvato che
+  // aspetta una data, uno gia' in calendario per oggi alle 18.
+  const oggi18 = (() => {
+    const d = new Date(); d.setHours(18, 0, 0, 0); return d.toISOString();
+  })();
+  const altri = [
+    { ...contenuto, id: 'c-pronto', titolo: 'Corporate Tax: la soglia che tutti sbagliano',
+      tipo: 'carosello', stato: 'approvato', slot_at: null, approvato_da: 'u-prova' },
+    { ...contenuto, id: 'c-oggi', titolo: 'Residenza fiscale: il visto non basta',
+      tipo: 'storia', stato: 'in_calendario', slot_at: oggi18, approvato_da: 'u-prova' },
+  ];
+
   // ?calma=1 : la sala senza lavori, come la trova il manager a fine
   // giornata quando il piano della settimana e' gia' coperto.
   if (new URLSearchParams(location.search).has('calma')) lavori.length = 0;
 
   const stato = {
+    contenutiExtra: altri,
     brand: { id: BRAND, nome: 'InDubai', cta_default: 'Approfondisci su InDubai.it', sito: 'InDubai.it' },
-    agenti, lavori, contenuti: [contenuto],
+    agenti, lavori, contenuti: [contenuto, ...altri],
     impostazioni: { brand_id: BRAND, stop_tutto: false, budget_giorno_usd: 10,
                     speso_oggi_usd: 0.4798, speso_oggi_data: '2026-11-12', piano_automatico: true },
     piano: [], cervelloContatori: { regola: 51, nota: 3, studio: 0, design: 2, daConfermare: 1 },

@@ -1106,8 +1106,19 @@
   // ══════════════════════════════════════════════════════════
   function disegnaCalendario() {
     const contenuti = D.stato.contenuti;
+    // L'ora di uscita sul pezzo: una casella che dice solo "c'e' qualcosa"
+    // non serve a programmare. E se e' gia' uscito va detto li', non
+    // aprendo il contenuto.
+    const oraDi = (c) => {
+      if (!c.slot_at) return '';
+      const q = new Date(c.slot_at).toLocaleTimeString('it-IT',
+        { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' });
+      const uscito = Boolean(c.pubblicato_at);
+      return `<div class="rg-pezzo-ora ${uscito ? 'uscito' : ''}">${uscito ? 'uscito alle ' : ''}${q}</div>`;
+    };
     const pezzo = (c) => `<div class="rg-pezzo" draggable="true" data-pezzo="${c.id}">
         <div class="rg-pezzo-tit">${esc(c.titolo)}</div>
+        ${oraDi(c)}
         <div class="rg-pezzo-meta">${esc((ETICHETTE_STATO[c.stato] || [c.stato])[0])} · ${esc(c.tipo)}</div>
       </div>`;
 
@@ -1118,8 +1129,25 @@
     const vuoto = (t) => `<div class="rg-vuoto-tocca">${t}</div>`;
     $('rg-mucchio-liberi').innerHTML = liberi.length
       ? liberi.map(pezzo).join('') : vuoto('Niente di approvato in attesa di una data.');
-    $('rg-mucchio-calendario').innerHTML = inCal.length
-      ? inCal.map(pezzo).join('') : vuoto('Nessuna uscita fissata.');
+    // Una riga che dice come sta la settimana, invece di farla contare a
+    // occhio sulle caselle.
+    const prossima = inCal
+      .filter(c => c.slot_at && !c.pubblicato_at && new Date(c.slot_at) > new Date())
+      .sort((a, b) => new Date(a.slot_at) - new Date(b.slot_at))[0];
+    const usciti = contenuti.filter(c => c.pubblicato_at).length;
+    const riass = $('rg-cal-riassunto');
+    if (riass) {
+      const voci = [];
+      voci.push(`<b>${liberi.length}</b> ${liberi.length === 1 ? 'pronto' : 'pronti'} da programmare`);
+      voci.push(`<b>${inCal.length}</b> in calendario`);
+      if (usciti) voci.push(`<b>${usciti}</b> ${usciti === 1 ? 'uscito' : 'usciti'}`);
+      riass.innerHTML = voci.join(' · ') + (prossima
+        ? `. Prossima uscita: <b>${esc(prossima.titolo)}</b>, ${window.ui.formatDate(prossima.slot_at)} alle `
+          + new Date(prossima.slot_at).toLocaleTimeString('it-IT',
+              { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' }) + '.'
+        : '.');
+    }
+
     $('rg-mucchio-lavorazione').innerHTML = inLav.length
       ? inLav.map(pezzo).join('') : vuoto('Niente in lavorazione.');
 

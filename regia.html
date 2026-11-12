@@ -291,6 +291,13 @@
        sembrare passati: su una griglia tutta uguale si lascia un contenuto
        su ieri senza accorgersene. */
     .rg-giorno.passato { opacity:.55; background:var(--bg-2); }
+    .rg-mucchio-aiuto { font-size:11.5px; line-height:1.5; color:var(--text-muted);
+      margin:-2px 0 8px; }
+    .rg-cal-riassunto { font-size:12px; color:var(--text-muted); margin:-4px 0 10px; }
+    /* L'ora di uscita sul pezzo: senza, una casella dice solo "c'e' qualcosa". */
+    .rg-pezzo-ora { font-size:10.5px; font-weight:800; color:var(--primary);
+      letter-spacing:.3px; }
+    .rg-pezzo-ora.uscito { color:var(--success, #16a34a); }
     .rg-giorno.sopra { border-color:var(--accent-dark); background:var(--success-bg); }
     .rg-giorno-et { font-size:10.5px; font-weight:800; color:var(--text-muted);
                     text-transform:uppercase; letter-spacing:.04em; }
@@ -513,11 +520,12 @@
           <div class="rg-cal-colonna">
             <div class="rg-mucchio">
               <div class="rg-mucchio-testa">Da mettere in un giorno</div>
+              <div class="rg-mucchio-aiuto">
+                Qui stanno i contenuti che hai approvato e che aspettano una data.
+                Trascinane uno su un giorno: esce alle <b>18:00</b>, ora di Dubai.
+                Per cambiare l&#39;ora, aprilo.
+              </div>
               <div id="rg-mucchio-liberi"></div>
-            </div>
-            <div class="rg-mucchio">
-              <div class="rg-mucchio-testa">In calendario</div>
-              <div id="rg-mucchio-calendario"></div>
             </div>
             <div class="rg-mucchio">
               <div class="rg-mucchio-testa">In lavorazione</div>
@@ -526,6 +534,7 @@
           </div>
           <div>
             <div class="rg-mucchio-testa" id="rg-cal-titolo">Questa settimana e la prossima</div>
+            <div class="rg-cal-riassunto" id="rg-cal-riassunto"></div>
             <div class="rg-griglia" id="rg-griglia"></div>
           </div>
         </div>
