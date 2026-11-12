@@ -117,6 +117,7 @@ try {
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_notizie.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_scartato.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_reel_e_piattaforme.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_icone_slide.sql')]);
 } catch (e) {
   console.error('Le migrazioni non si applicano:\n' + (e.stderr || e.stdout || e.message));
   process.exit(1);
@@ -1580,6 +1581,24 @@ test('all agente Video si chiede quello che il montaggio sa leggere', () => {
   falso(dice('montaggio vero'), 'non manda piu dal manager per un montaggio che non esiste');
 });
 
+test('a chi scrive le slide si dice anche che icona metterci', () => {
+  // Il Cervello elenca le sei icone da sempre e il rendering le sa mettere,
+  // ma il brief del Copywriter — l'unico posto in cui si spiega la forma
+  // delle slide — non le nominava: nessuno le ha mai scritte, e usciva
+  // "chart" su ogni slide di ogni contenuto.
+  const dice = (slug, pezzo) => one(`select system_prompt like '%${pezzo}%'
+                                       from smm_agents where brand_id = '${BRAND}'
+                                         and slug = '${slug}'`);
+  vero(dice('copywriter', 'icon'), 'il Copywriter sa che esistono');
+  vero(dice('copywriter', 'shield'), 'e quali sono');
+  vero(dice('grafico', 'LE ICONE'), 'il Grafico pure');
+  // Riapplicare la migrazione non deve raddoppiare niente.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_icone_slide.sql')]);
+  eq(one(`select (select count(*) from regexp_matches(system_prompt, 'LE ICONE', 'g'))
+            from smm_agents where brand_id = '${BRAND}' and slug = 'grafico'`),
+     '1', 'una volta sola');
+});
+
 test('il Cervello dice com e fatto un reel, e non manda piu su -apple-system', () => {
   const voce = (codice, pezzo) => one(`select testo like '%${pezzo}%'
                                          from smm_brain where brand_id = '${BRAND}'
@@ -1605,6 +1624,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_icone_slide_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_reel_e_piattaforme_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_scartato_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_notizie_down.sql')]);

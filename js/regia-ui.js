@@ -221,6 +221,9 @@
     ui.usaTridi = !lista;
     $('rg-palco').classList.toggle('nascosto', lista);
     $('rg-lista').classList.toggle('nascosto', !lista);
+    // Il guscio cambia forma: niente fascia di sinistra, che e' lo stesso
+    // elenco che la lista sta per mostrare in grande.
+    $('rg-palco').parentElement?.classList.toggle('lista', lista);
     $('rg-btn-vista').textContent = lista ? 'Vista 3D' : 'Vista a lista';
     $('rg-btn-vista').setAttribute('aria-pressed', String(lista));
     salvaPreferenza(lista ? 'lista' : '3d');

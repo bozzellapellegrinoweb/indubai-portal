@@ -142,6 +142,13 @@
        lettura di contorno: stanno sotto. */
     .rg-sala-guscio.una-colonna > .rg-palco,
     .rg-sala-guscio.una-colonna > .rg-lista { order:-1; }
+    /* In vista a lista la fascia di sinistra sparisce: e' lo stesso elenco
+       di agenti, scritto due volte uno accanto all'altro. */
+    .rg-sala-guscio.lista > .rg-fascia-sx { display:none; }
+    .rg-sala-guscio.lista { grid-template-columns:minmax(0,1fr) 246px; }
+    body.rg-solo .rg-sala-guscio.lista { grid-template-columns:minmax(0,1fr) 216px; }
+    /* La lista si allunga quanto serve: non e' una scena con un'altezza. */
+    .rg-lista { align-content:start; }
 
     @media (max-width:1492px) {
       body:not(.rg-solo) .rg-sala-guscio { grid-template-columns:1fr; }
@@ -747,10 +754,15 @@
           </div>
           <div class="rg-fatica" id="rg-fatica" hidden></div>
         </div>
+          <!-- La lista sta DENTRO il guscio, nella colonna di mezzo, dove
+               sta la scena: prima era un fratello dopo il guscio, quindi
+               premendo "Vista a lista" la scena spariva, il guscio teneva
+               la sua altezza con la colonna di mezzo vuota, e la lista
+               cominciava trecento pixel piu' sotto. Si premeva un tasto e
+               si guardava un buco. -->
+          <div class="rg-lista nascosto" id="rg-lista" aria-live="polite"></div>
           <aside class="rg-fascia rg-fascia-dx" id="rg-fascia-settimana" aria-label="La settimana"></aside>
         </div>
-
-        <div class="rg-lista nascosto" id="rg-lista" aria-live="polite"></div>
 
       </section>
 
