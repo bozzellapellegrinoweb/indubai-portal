@@ -102,6 +102,30 @@ function sottotitolo(c: Contenuto): string {
  * i testi. Rifiutare il secondo vorrebbe dire far fallire il rendering per
  * una forma, non per un contenuto.
  */
+/** I punti elenco di una slide, uno per riga, come corpo del testo. */
+function puntiInCorpo(p: unknown): string {
+  if (!Array.isArray(p)) return "";
+  return p.map((x) => String(x ?? "").trim()).filter(Boolean).join("\n");
+}
+
+/**
+ * Le slide di un contenuto, qualunque forma abbiano.
+ *
+ * Un agente le salva come elenco, oppure come oggetto completo con la
+ * copertina decisa da lui. Il trigger del montaggio accetta tutte e due
+ * (20261112_smm_montaggio_automatico.sql), e datiCarosello pure: la
+ * guardia qui sotto era la sola a vedere soltanto l'elenco, e rispondeva
+ * "non ha ancora nessuna slide" a un contenuto che ne aveva otto.
+ */
+function elencoSlide(s: unknown): unknown[] {
+  if (Array.isArray(s)) return s;
+  if (s && typeof s === "object") {
+    const dentro = (s as Record<string, unknown>).slides;
+    if (Array.isArray(dentro)) return dentro;
+  }
+  return [];
+}
+
 function datiCarosello(c: Contenuto, b: Brand): Record<string, unknown> {
   const s = c.slides as Record<string, unknown> | unknown[] | null;
 
@@ -124,7 +148,14 @@ function datiCarosello(c: Contenuto, b: Brand): Record<string, unknown> {
         // sarebbe fallire per una forma, non per un contenuto.
         type: typeof (o.type ?? o.tipo) === "string" ? String(o.type ?? o.tipo) : "standard",
         title: String(o.title ?? o.titolo ?? ""),
-        body: String(o.body ?? o.testo ?? ""),
+        // I punti elenco sono la forma che il Copywriter scrive di piu'
+        // ("bullets" nel suo brief), e nei template non esiste un campo
+        // per loro: diventano il corpo, una riga per punto. Senza questo
+        // una slide "content" uscirebbe come un titolo sopra il nulla.
+        body: String(o.body ?? o.testo ?? "") || puntiInCorpo(o.bullets ?? o.punti),
+        // L'icona la scegli l'agente fra le sei del Cervello: buttarla
+        // vuol dire mettere "chart" su ogni slide di ogni reel.
+        ...(typeof o.icon === "string" && o.icon ? { icon: o.icon } : {}),
         ...(o.stats ? { stats: o.stats } : {}),
         ...(o.quoteText ? { quoteText: o.quoteText, quoteAuthor: o.quoteAuthor ?? "" } : {}),
         ...(o.items ? { items: o.items, leftLabel: o.leftLabel, rightLabel: o.rightLabel } : {}),
@@ -275,7 +306,7 @@ Deno.serve(async (req: Request) => {
       }), { status: 400, headers: CORS });
     }
 
-    const slides = Array.isArray(c.slides) ? c.slides : [];
+    const slides = elencoSlide(c.slides);
     if (!slides.length && tipo !== "storia") {
       return new Response(JSON.stringify({
         ok: false,

@@ -116,6 +116,7 @@ try {
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_avatar.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_notizie.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_scartato.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_reel_e_piattaforme.sql')]);
 } catch (e) {
   console.error('Le migrazioni non si applicano:\n' + (e.stderr || e.stdout || e.message));
   process.exit(1);
@@ -836,11 +837,16 @@ test('il piano in parole dice il numero, chi lo fa e quanto manca', () => {
 
 test('una riga spenta non entra nel piano in parole', () => {
   psql(DB, ['-c', `update smm_piano set attivo = false where id = '${PIANO}'`]);
-  // Fra parentesi quadre perche' psql stampa il vuoto come niente, e il
-  // lettore dei test non distingue "stringa vuota" da "nessuna riga".
-  eq(comeUno(MANAGER, `select '[' || smm_piano_in_parole('${BRAND}') || ']'`), '[]',
-     'piano con la riga spenta');
+  // Con dei predicati e non leggendo il testo: il piano in parole e' una
+  // riga per voce, e il lettore dei test prenderebbe solo la prima. (Il
+  // test prima dava per scontato che il piano avesse una voce sola, e si e'
+  // rotto il giorno in cui ne sono arrivate due.)
+  const dice = (pezzo) => comeUno(MANAGER,
+    `select coalesce(smm_piano_in_parole('${BRAND}'), '') like '%${pezzo}%'`);
+  falso(dice('Storie quotidiane'), 'la riga spenta non c e');
+  vero(dice('Reel dalle notizie'), 'le altre ci sono ancora');
   psql(DB, ['-c', `update smm_piano set attivo = true where id = '${PIANO}'`]);
+  vero(dice('Storie quotidiane'), 'riaccesa torna');
 });
 
 test('il manager puo leggere e scrivere la tabella del piano, non solo la funzione', () => {
@@ -1286,9 +1292,12 @@ test('chiedere il permesso di un altro non e concesso in sala', () => {
 // ============================================================
 gruppo('Le notizie: chi le puo\' leggere');
 
+// Il filtro sul brand non e' pignoleria: il test multi-brand aggiunge un
+// secondo 'direttore', e senza brand_id questa query ne pescava uno dei due
+// a seconda dell'ordine fisico delle righe. Passava per caso.
 const haStrumento = (slug, nome) =>
   one(`select '${nome}' = any (coalesce(strumenti, '{}'))
-         from smm_agents where slug = '${slug}'`);
+         from smm_agents where brand_id = '${BRAND}' and slug = '${slug}'`);
 
 test('chi decide di cosa si parla ha le notizie', () => {
   for (const slug of ['direttore', 'stratega', 'copywriter']) {
@@ -1425,6 +1434,168 @@ test('il piano non conta piu quello che hai buttato', () => {
 });
 
 // ============================================================
+gruppo('Dove esce un contenuto');
+
+// Le piattaforme stavano scritte dentro smm_programmati_in_scadenza:
+// array['instagram','facebook'], e basta. Su GoHighLevel sono collegati
+// anche LinkedIn, TikTok e YouTube, e la colonna smm_contents.piattaforme
+// esisteva dal primo giorno senza che nessuno la leggesse. Questi test
+// esistono perche' quel genere di dato morto torna morto da solo.
+
+const puliscPiat = () => psql(DB, ['-c',
+  `delete from smm_contents where titolo like 'Prova piattaforme%'`]);
+
+/** Un contenuto pronto a uscire adesso, firmato da chi serve. */
+function prontaAUscire(tipo, piattaforme = null) {
+  const id = one(`
+    insert into smm_contents (brand_id, titolo, tipo, stato, slot_at,
+                              revisore_ok, approvato_da, approvato_at,
+                              created_by${piattaforme ? ', piattaforme' : ''})
+    values ('${BRAND}', 'Prova piattaforme ${tipo}', '${tipo}', 'in_calendario',
+            now() - interval '1 minute', true, '${MANAGER}', now(), '${MANAGER}'
+            ${piattaforme ? `, '${piattaforme}'::text[]` : ''})
+    returning id`);
+  return id;
+}
+const payload = (id, campo) => one(
+  `select payload->>'${campo}' from smm_jobs
+    where content_id = '${id}' and tipo = 'pubblicazione'`);
+
+test('i predefiniti dipendono dal formato, non dal codice della pubblicazione', () => {
+  eq(one(`select smm_piattaforme_predefinite('storia')::text`),
+     '{instagram,facebook}', 'le storie esistono solo su IG e FB');
+  vero(one(`select 'tiktok' = any(smm_piattaforme_predefinite('reel'))`), 'reel su TikTok');
+  vero(one(`select 'youtube' = any(smm_piattaforme_predefinite('reel'))`), 'reel su YouTube');
+  vero(one(`select 'linkedin' = any(smm_piattaforme_predefinite('carosello'))`),
+       'carosello su LinkedIn');
+  // Google Business e' collegato ma prende una foto sola: fuori dai predefiniti.
+  falso(one(`select 'google' = any(smm_piattaforme_predefinite('carosello'))`),
+        'google fuori dai predefiniti');
+});
+
+test('un reel nasce con TikTok e YouTube fra le sue piattaforme', () => {
+  puliscPiat();
+  const r = prontaAUscire('reel');
+  vero(one(`select 'tiktok' = any(piattaforme) from smm_contents where id = '${r}'`),
+       'tiktok sul reel appena nato');
+  const c = prontaAUscire('carosello');
+  falso(one(`select 'tiktok' = any(piattaforme) from smm_contents where id = '${c}'`),
+        'tiktok non va sul carosello');
+  puliscPiat();
+});
+
+test('l uscita programmata porta le piattaforme del contenuto, non due fisse', () => {
+  puliscPiat();
+  const r = prontaAUscire('reel');
+  one(`select smm_programmati_in_scadenza()`);
+  const dove = payload(r, 'piattaforme');
+  if (!dove.includes('tiktok')) throw new Error(`nel payload del reel manca tiktok: ${dove}`);
+  if (!dove.includes('youtube')) throw new Error(`nel payload del reel manca youtube: ${dove}`);
+  eq(payload(r, 'formato'), 'reel', 'formato del reel');
+  puliscPiat();
+});
+
+test('se il manager ha scelto, si rispetta la sua scelta', () => {
+  puliscPiat();
+  const c = prontaAUscire('carosello', '{linkedin}');
+  one(`select smm_programmati_in_scadenza()`);
+  const dove = payload(c, 'piattaforme');
+  if (!dove.includes('linkedin')) throw new Error(`manca linkedin: ${dove}`);
+  if (dove.includes('instagram')) throw new Error(`instagram non era stato scelto: ${dove}`);
+  puliscPiat();
+});
+
+test('una storia non finisce su TikTok, che le storie non le ha', () => {
+  puliscPiat();
+  const st = prontaAUscire('storia');
+  one(`select smm_programmati_in_scadenza()`);
+  const dove = payload(st, 'piattaforme');
+  if (dove.includes('tiktok')) throw new Error(`una storia su tiktok: ${dove}`);
+  if (dove.includes('youtube')) throw new Error(`una storia su youtube: ${dove}`);
+  puliscPiat();
+});
+
+test('le piattaforme le cambia chi ha la Regia, e nessun altro', () => {
+  puliscPiat();
+  const c = prontaAUscire('carosello');
+  comeFallisce(JUNIOR, `select smm_piattaforme_imposta('${c}', array['linkedin'])`,
+               'Regia fra le pagine concesse');
+  eq(comeUno(MANAGER, `select smm_piattaforme_imposta('${c}', array['linkedin','instagram'])::text`),
+     '{instagram,linkedin}', 'ordinate e scritte');
+  puliscPiat();
+});
+
+test('un nome di piattaforma inventato non entra', () => {
+  puliscPiat();
+  const c = prontaAUscire('carosello');
+  // Il nome sbagliato si butta, non fa fallire la chiamata: quello che resta
+  // e' valido. Se non resta niente, allora si', fallisce.
+  eq(comeUno(MANAGER, `select smm_piattaforme_imposta('${c}', array['instagram','telegram'])::text`),
+     '{instagram}', 'telegram buttato');
+  comeFallisce(MANAGER, `select smm_piattaforme_imposta('${c}', array['telegram'])`,
+               'Serve almeno una piattaforma');
+  puliscPiat();
+});
+
+test('su un contenuto gia uscito non si cambia piu niente', () => {
+  puliscPiat();
+  const c = prontaAUscire('carosello');
+  psql(DB, ['-c', `update smm_contents set stato = 'pubblicato',
+                     pubblicato_at = now() where id = '${c}'`]);
+  comeFallisce(MANAGER, `select smm_piattaforme_imposta('${c}', array['linkedin'])`,
+               'gia');
+  puliscPiat();
+});
+
+// ============================================================
+gruppo('I reel: chi li chiede e che forma hanno');
+
+test('il piano ha una riga per i reel, altrimenti nessuno li chiede mai', () => {
+  const riga = one(`select id from smm_piano where brand_id = '${BRAND}'
+                     and nome = 'Reel dalle notizie'`);
+  if (!riga) throw new Error('la riga di piano dei reel non c e');
+  eq(one(`select tipo from smm_piano where id = '${riga}'`), 'reel', 'tipo');
+  eq(one(`select a.slug from smm_piano p join smm_agents a on a.id = p.agente_id
+           where p.id = '${riga}'`), 'copywriter', 'chi li scrive');
+  // Il conteggio del piano e' quello che fa partire il Direttore: senza
+  // mancanti, smm_piano_quotidiano non chiede niente.
+  const mancanti = comeUno(MANAGER,
+    `select mancanti from smm_piano_settimana('${BRAND}', 0) where id = '${riga}'`);
+  if (Number(mancanti) < 1) throw new Error(`i reel non risultano mancanti: ${mancanti}`);
+});
+
+test('all agente Video si chiede quello che il montaggio sa leggere', () => {
+  // Il prompt si interroga con dei predicati e non leggendolo: one() spezza
+  // l'output sugli accapo, e di un prompt su venti righe prenderebbe solo la
+  // prima. (Ci sono cascato scrivendo questo test.)
+  const dice = (pezzo) => one(`select system_prompt like '%${pezzo}%'
+                                 from smm_agents where brand_id = '${BRAND}'
+                                   and slug = 'video'`);
+  // Il montaggio legge le slide di un carosello: non c'e' un campo per lo
+  // script e non c'e' un renderer per i sottotitoli impressi.
+  vero(dice('slides'), 'il prompt dice come si salvano le slide');
+  vero(dice('rendi_immagini'), 'il prompt dice di chiamare rendi_immagini');
+  vero(dice('carosello animato'), 'il prompt dice che cos e un reel qui');
+  falso(dice('sottotitoli sono brevi'), 'non chiede piu i sottotitoli');
+  falso(dice('montaggio vero'), 'non manda piu dal manager per un montaggio che non esiste');
+});
+
+test('il Cervello dice com e fatto un reel, e non manda piu su -apple-system', () => {
+  const voce = (codice, pezzo) => one(`select testo like '%${pezzo}%'
+                                         from smm_brain where brand_id = '${BRAND}'
+                                           and codice = '${codice}'`);
+  vero(voce('D-FMT-12', 'carosello animato'), 'la voce di design del reel');
+  // D-FMT-09 mandava il Grafico su -apple-system, che su Vercel non esiste:
+  // e' il motivo per cui gli stessi contenuti uscivano con lettere diverse.
+  vero(voce('D-FMT-09', 'InDubai Sans'), 'i caratteri sono i nostri');
+  vero(voce('D-FMT-09', 'non si usano font di sistema'), 'e lo dice perche');
+  // D-FMT-05 elencava due tipi di slide su quattro.
+  for (const t of ['standard', 'stats', 'quote', 'comparison']) {
+    vero(voce('D-FMT-05', t), `D-FMT-05 elenca ${t}`);
+  }
+});
+
+// ============================================================
 gruppo('Reversibilita');
 
 test('la migrazione di rollback riporta il database come prima', () => {
@@ -1434,6 +1605,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_reel_e_piattaforme_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_scartato_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_notizie_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_avatar_down.sql')]);

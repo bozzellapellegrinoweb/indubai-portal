@@ -276,7 +276,7 @@ Deno.serve(async (req: Request) => {
     const conImmagini = presenti.filter((p) => !SOLO_VIDEO.includes(p));
 
     const quando = c.slot_at ? new Date(c.slot_at) : null;
-    const esiti: { piattaforme: string[]; tipo: string; post_id: string }[] = [];
+    const esiti: { piattaforme: string[]; tipo: string; post_id: string; errore?: string }[] = [];
 
     if (prova) {
       return new Response(JSON.stringify({
@@ -293,26 +293,37 @@ Deno.serve(async (req: Request) => {
       }), { headers: CORS });
     }
 
+    // Una piattaforma per volta, non tutte in una chiamata sola.
+    //
+    // Mettere tutti gli account dentro la stessa richiesta e' piu' ordinato
+    // e da' un solo identificativo di post, ma se GoHighLevel la rifiuta
+    // per uno degli account — LinkedIn non vuole quel formato, il token di
+    // TikTok e' scaduto — rifiuta tutta la richiesta. Un contenuto che non
+    // esce su Instagram perche' LinkedIn ha detto no e' un danno piu'
+    // grosso del disordine, e da quando le piattaforme sono quattro o
+    // cinque invece di due il caso non e' piu' teorico.
+    const unaPiattaforma = async (
+      p: string, suoiMedia: { url: string; type: string }[], tipo: string,
+    ) => {
+      try {
+        const id = await creaPost(chiave, location, userId,
+          [trova(p)!.id], testo, suoiMedia, tipo, quando);
+        esiti.push({ piattaforme: [p], tipo, post_id: id });
+      } catch (e) {
+        esiti.push({
+          piattaforme: [p], tipo: "rifiutato", post_id: "",
+          errore: (e as Error).message ?? String(e),
+        });
+      }
+    };
+
     // ── piattaforme a immagine ──
-    if (conImmagini.length) {
-      // R-GHL-05/06: reel vuole tipo reel e video, il post vuole immagini.
-      const tipo = formato === "storia" ? "story" : formato === "reel" ? "reel" : "post";
-
+    // R-GHL-05/06: reel vuole tipo reel e video, il post vuole immagini.
+    const tipoImmagini = formato === "storia" ? "story" : formato === "reel" ? "reel" : "post";
+    for (const p of conImmagini) {
       // R-GHL-02/03: su Facebook una storia prende solo la prima slide.
-      const soloFacebook = conImmagini.filter((p) => p === "facebook");
-      const altre = conImmagini.filter((p) => p !== "facebook");
-
-      if (altre.length) {
-        const id = await creaPost(chiave, location, userId,
-          altre.map((p) => trova(p)!.id), testo, media, tipo, quando);
-        esiti.push({ piattaforme: altre, tipo, post_id: id });
-      }
-      if (soloFacebook.length) {
-        const mediaFb = tipo === "story" ? media.slice(0, 1) : media;
-        const id = await creaPost(chiave, location, userId,
-          soloFacebook.map((p) => trova(p)!.id), testo, mediaFb, tipo, quando);
-        esiti.push({ piattaforme: soloFacebook, tipo, post_id: id });
-      }
+      const suoi = tipoImmagini === "story" && p === "facebook" ? media.slice(0, 1) : media;
+      await unaPiattaforma(p, suoi, tipoImmagini);
     }
 
     // ── piattaforme solo video ──
@@ -323,13 +334,18 @@ Deno.serve(async (req: Request) => {
         esiti.push({ piattaforme: videoOnly, tipo: "saltato", post_id: "" });
       } else {
         // R-GHL-04: TikTok vuole tipo reel e nessuna anteprima personalizzata.
-        const id = await creaPost(chiave, location, userId,
-          videoOnly.map((p) => trova(p)!.id), testo, [video], "reel", quando);
-        esiti.push({ piattaforme: videoOnly, tipo: "reel", post_id: id });
+        for (const p of videoOnly) await unaPiattaforma(p, [video], "reel");
       }
     }
 
     const pubblicati = esiti.filter((e) => e.post_id);
+    const rifiutati = esiti.filter((e) => e.tipo === "rifiutato");
+    // Se non e' uscito niente da nessuna parte non si segna come pubblicato:
+    // l'errore torna al chiamante e il contenuto resta in calendario.
+    if (!pubblicati.length && rifiutati.length) {
+      throw new Error("GoHighLevel ha rifiutato tutte le piattaforme. "
+        + rifiutati.map((e) => `${e.piattaforme[0]}: ${e.errore}`).join(" | "));
+    }
     const postId = pubblicati[0]?.post_id ?? null;
 
     // Il passaggio di stato lo valuta il trigger: se rifiuta, non si e'
@@ -353,6 +369,9 @@ Deno.serve(async (req: Request) => {
         ? `Esce il ${quando.toLocaleString("it-IT", { timeZone: "Asia/Dubai" })} (ora di Dubai).`
         : "Pubblicazione immediata.",
       saltate.length ? `Saltate per mancanza del video: ${saltate.join(", ")}.` : "",
+      rifiutati.length
+        ? `Rifiutate da GoHighLevel: ${rifiutati.map((e) => e.piattaforme[0]).join(", ")}.`
+        : "",
       mancanti.length ? `Nessun account collegato per: ${mancanti.join(", ")}.` : "",
     ].filter(Boolean).join(" ");
 
