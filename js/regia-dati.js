@@ -143,19 +143,48 @@
     return coppie;
   }
 
-  /** La riga di stato in cima: "3 ti aspettano, 1 ha fatto una domanda...". */
+  /**
+   * La riga di stato in cima.
+   *
+   * I numeri devono tornare. Prima non tornavano: domande, lavorano e
+   * inCoda contavano LAVORI, daGuardare contava CONTENUTI e liberi
+   * contava AGENTI, tutti nella stessa frase. Con otto agenti in sala la
+   * riga diceva "1 ti aspetta, 1 ha fatto una domanda, 1 sta lavorando, 1
+   * in attesa di partire, 6 sono liberi" — dieci soggetti — mentre la
+   * fascia accanto diceva "IN SALA (8)". E chi aveva la mano alzata era
+   * contato due volte, perche' liberi escludeva solo in_corso e in_coda.
+   *
+   * Adesso le persone si contano una volta sola, in cassetti che non si
+   * sovrappongono e che sommati fanno il totale; le cose da fare si
+   * contano a parte, perche' sono cose e non persone.
+   */
   function riepilogo() {
-    const domande = stato.lavori.filter(j => j.stato === 'attesa_risposta').length;
-    const lavorano = stato.lavori.filter(j => j.stato === 'in_corso').length;
-    const inCoda = stato.lavori.filter(j => j.stato === 'in_coda').length;
-    const daGuardare = stato.contenuti.filter(c => c.stato === 'da_approvare').length;
-    const occupati = new Set(stato.lavori
-      .filter(j => ['in_corso', 'in_coda'].includes(j.stato)).map(j => j.agent_id));
     const accesi = stato.agenti.filter(a => a.attivo !== false);
     const spenti = stato.agenti.length - accesi.length;
-    const liberi = accesi.filter(a => !occupati.has(a.id)).length;
-    return { domande, lavorano, inCoda, daGuardare, liberi, spenti,
-             totale: stato.agenti.length };
+    const conLavoro = (st) => new Set(stato.lavori
+      .filter(j => j.stato === st).map(j => j.agent_id));
+    const chiedono   = conLavoro('attesa_risposta');
+    const inCorso    = conLavoro('in_corso');
+    const inPartenza = conLavoro('in_coda');
+
+    // Un ordine di precedenza, perche' lo stesso agente puo' avere piu'
+    // lavori: chi ha fatto una domanda e' fermo e aspetta te, e questo
+    // viene prima di tutto il resto.
+    let domande = 0, lavorano = 0, inCoda = 0, liberi = 0;
+    for (const a of accesi) {
+      if (chiedono.has(a.id)) domande++;
+      else if (inCorso.has(a.id)) lavorano++;
+      else if (inPartenza.has(a.id)) inCoda++;
+      else liberi++;
+    }
+
+    return {
+      domande, lavorano, inCoda, liberi, spenti,
+      totale: stato.agenti.length,
+      // Cose, non persone: non entrano nella somma degli agenti.
+      daGuardare: stato.contenuti.filter(c => c.stato === 'da_approvare').length,
+      lavoriInCoda: stato.lavori.filter(j => j.stato === 'in_coda').length,
+    };
   }
 
   /** La striscia "Tocca a te". */
@@ -354,6 +383,40 @@
     if (!r.ok || d.ok === false) throw new Error(d.error || `HTTP ${r.status}`);
     await carica();
     return d;
+  }
+
+  /**
+   * Quali social sono davvero collegati su GoHighLevel.
+   *
+   * Prima non c'era modo di saperlo dalla Regia: si scopriva solo
+   * tentando una pubblicazione, cioe' avendo gia' un contenuto approvato e
+   * rischiando di farlo uscire. Questa chiamata non tocca nessun
+   * contenuto e non manda niente.
+   *
+   * Si tiene in memoria per la sessione: gli account collegati cambiano
+   * quando qualcuno va su GoHighLevel a collegarne uno, non ogni minuto, e
+   * la chiamata costa un viaggio a GHL.
+   */
+  let accountRicordati = null;
+  async function accountCollegati(rifai = false) {
+    if (accountRicordati && !rifai) return accountRicordati;
+    const r = await fetch(`${SB}/functions/v1/smm-publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({ azione: 'account' }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.ok === false) throw new Error(d.error || `HTTP ${r.status}`);
+    accountRicordati = d;
+    return d;
+  }
+
+  /** Dove deve uscire un contenuto. Lo decide il manager, non il codice. */
+  async function piattaformeImposta(contentId, piattaforme) {
+    const r = await rpc('smm_piattaforme_imposta',
+      { p_content: contentId, p_piattaforme: piattaforme });
+    await carica();
+    return r;
   }
 
   // ── Il Cervello ───────────────────────────────────────────
@@ -777,17 +840,44 @@
    * chiede abbia la Regia fra le pagine concesse: non basta essere
    * entrati nel portale.
    */
-  async function avatar(azione = 'elenco', extra = {}) {
-    const r = await fetch(`${SB}/functions/v1/smm-avatar`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
-      body: JSON.stringify({ azione, ...extra }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok || d?.ok === false) {
-      throw new Error(d?.error || `Le foto non rispondono (${r.status}).`);
+  /**
+   * Una chiamata a una funzione del portale, con una scadenza.
+   *
+   * Senza, se la catena si impunta il pannello resta su "Carico…" finche'
+   * l'utente non rinuncia: fra il limite della funzione Supabase e i
+   * quattrocentocinquanta secondi della rotta di rendering su Vercel, puo'
+   * voler dire minuti. Una girandola infinita non e' un'informazione; una
+   * frase che nomina chi non ha risposto si'.
+   */
+  async function chiama(funzione, corpo, secondi, cosa) {
+    const taglio = new AbortController();
+    const sveglia = setTimeout(() => taglio.abort(), secondi * 1000);
+    let r;
+    try {
+      r = await fetch(`${SB}/functions/v1/${funzione}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+        body: JSON.stringify(corpo),
+        signal: taglio.signal,
+      });
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        throw new Error(`${cosa}: nessuna risposta dopo ${secondi} secondi. `
+          + 'Riprova fra un minuto.');
+      }
+      throw e;
+    } finally {
+      clearTimeout(sveglia);
     }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d?.ok === false) throw new Error(d?.error || `${cosa} (${r.status}).`);
     return d;
+  }
+
+  async function avatar(azione = 'elenco', extra = {}) {
+    // Generare le foto chiama OpenAI: puo' metterci un minuto buono.
+    const quanto = azione === 'genera' ? 180 : 30;
+    return chiama('smm-avatar', { azione, ...extra }, quanto, 'Le foto non rispondono');
   }
 
   /**
@@ -798,16 +888,12 @@
    * centinaia di contatti non si annulla.
    */
   async function newsletter(azione = 'elenco', extra = {}) {
-    const r = await fetch(`${SB}/functions/v1/smm-newsletter`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
-      body: JSON.stringify({ azione, ...extra }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok || d?.ok === false) {
-      throw new Error(d?.error || `La newsletter non risponde (${r.status}).`);
-    }
-    return d;
+    // Scrivere una newsletter sono fonti piu' due modelli: venti-cinquanta
+    // secondi, e adesso ci sta dentro anche il conteggio dei destinatari.
+    // Spedire sono una chiamata a GoHighLevel per persona.
+    const quanto = azione === 'elenco' ? 30 : azione === 'invia' ? 300 : 180;
+    return chiama('smm-newsletter', { azione, ...extra }, quanto,
+                  'La newsletter non risponde');
   }
 
   /**
@@ -836,5 +922,6 @@
     plurale, piano, nuovaRigaPiano, salvaRigaPiano, eliminaRigaPiano, lanciaQuelloCheManca,
     interruttore, accendiAgente, pianoAutomatico,
     caricaFile, linkFirmato, svegliaWorker, rendi, avatar, newsletter, scarta,
+    accountCollegati, piattaformeImposta,
   };
 })();

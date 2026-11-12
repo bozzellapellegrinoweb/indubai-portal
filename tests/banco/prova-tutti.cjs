@@ -56,6 +56,40 @@ const VISTE = [['Calendario','[data-vista="calendario"]'], ['Risultati','[data-v
   conta(`pannello Contenuto (tasto Butta: ${butta ? 'c\'e\'' : 'MANCA'})`);
   if (!butta) ko++;
 
+  // ── Dove esce ──────────────────────────────────────────
+  // Si vede dove andra' a finire, e si puo' cambiare. La colonna
+  // piattaforme e' rimasta morta per mesi proprio perche' nessuna
+  // schermata la mostrava.
+  await page.waitForTimeout(700);
+  const dove = await page.evaluate(() => {
+    const t = [...document.querySelectorAll('[data-piat]')];
+    return t.map((b) => ({
+      id: b.dataset.piat,
+      scelta: b.getAttribute('aria-pressed') === 'true',
+      nota: b.querySelector('.rg-piat-nota')?.textContent?.trim(),
+      collegato: !b.classList.contains('non-collegato'),
+    }));
+  });
+  if (dove.length !== 5) { ko++; console.log(`  KO  dove esce: ${dove.length} piattaforme`); }
+  else {
+    const ig = dove.find(d => d.id === 'instagram');
+    const tk = dove.find(d => d.id === 'tiktok');
+    const ok = ig?.scelta && ig?.collegato && ig?.nota === 'indubait'
+            && tk?.collegato && !tk?.scelta;
+    if (!ok) { ko++; console.log(`  KO  dove esce: ${JSON.stringify(dove)}`); }
+    else console.log(`  ok  dove esce (${dove.filter(d => d.scelta).map(d => d.id).join(', ')}`
+      + `; collegati: ${dove.filter(d => d.collegato).length}/5)`);
+  }
+  // Un clic cambia davvero la scelta.
+  await page.locator('[data-piat="linkedin"]').click();
+  await page.waitForTimeout(900);
+  const dopo = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-piat]')]
+      .filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.dataset.piat));
+  if (!dopo.includes('linkedin')) {
+    ko++; console.log(`  KO  il clic non ha aggiunto LinkedIn: ${dopo.join(', ')}`);
+  } else console.log(`  ok  si puo' cambiare (${dopo.join(', ')})`);
+
   await b.close();
   console.log(ko ? `\n${ko} pannelli con problemi\n` : '\nTutti i pannelli si aprono puliti.\n');
   process.exit(ko ? 1 : 0);

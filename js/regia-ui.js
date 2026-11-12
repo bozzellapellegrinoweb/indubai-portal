@@ -93,15 +93,23 @@
       : `${salutoDelGiorno()}`;
 
     const r = D.riepilogo();
-    const pezzi = [];
-    if (r.daGuardare) pezzi.push(`<b>${r.daGuardare}</b> ${r.daGuardare === 1 ? 'ti aspetta' : 'ti aspettano'}`);
-    if (r.domande)    pezzi.push(`<b>${r.domande}</b> ${r.domande === 1 ? 'ha fatto una domanda' : 'hanno fatto una domanda'}`);
-    if (r.lavorano)   pezzi.push(`<b>${r.lavorano}</b> ${r.lavorano === 1 ? 'sta lavorando' : 'stanno lavorando'}`);
-    if (r.inCoda)     pezzi.push(`<b>${r.inCoda}</b> in attesa di partire`);
-    if (r.liberi)     pezzi.push(`<b>${r.liberi}</b> ${r.liberi === 1 ? 'è libero' : 'sono liberi'}`);
-    if (r.spenti)     pezzi.push(`<b>${r.spenti}</b> ${r.spenti === 1 ? 'è spento' : 'sono spenti'}`);
-    $('rg-stato').innerHTML = pezzi.length
-      ? pezzi.join(', ') + '.'
+    // Due frasi, non una: le persone da una parte, le cose da fare
+    // dall'altra. Mescolarle faceva una riga in cui i numeri non
+    // tornavano con "IN SALA (8)" scritto due centimetri piu' sotto.
+    const chi = [];
+    if (r.domande)  chi.push(`<b>${r.domande}</b> ${r.domande === 1 ? 'aspetta una tua risposta' : 'aspettano una tua risposta'}`);
+    if (r.lavorano) chi.push(`<b>${r.lavorano}</b> ${r.lavorano === 1 ? 'sta lavorando' : 'stanno lavorando'}`);
+    if (r.inCoda)   chi.push(`<b>${r.inCoda}</b> ${r.inCoda === 1 ? 'sta per cominciare' : 'stanno per cominciare'}`);
+    if (r.liberi)   chi.push(`<b>${r.liberi}</b> ${r.liberi === 1 ? 'libero' : 'liberi'}`);
+    if (r.spenti)   chi.push(`<b>${r.spenti}</b> ${r.spenti === 1 ? 'spento' : 'spenti'}`);
+    const frasi = [];
+    if (chi.length) frasi.push(`Dei <b>${r.totale}</b> in sala: ${chi.join(', ')}.`);
+    if (r.daGuardare) {
+      frasi.push(`<b>${r.daGuardare}</b> ${r.daGuardare === 1
+        ? 'contenuto aspetta te' : 'contenuti aspettano te'}.`);
+    }
+    $('rg-stato').innerHTML = frasi.length
+      ? frasi.join(' ')
       : 'La sala è tranquilla: nessun lavoro aperto.';
 
     // La sala ferma non e' un guasto: e' il piano gia' coperto, o
@@ -660,6 +668,9 @@
       html.push(`<div class="rg-voce-fonte" style="margin-top:7px">${esc(c.hashtags.join(' '))}</div>`);
     }
 
+    // ── dove esce ──
+    if (c.stato !== 'pubblicato' && c.stato !== 'scartato') html.push(dovEsce(c));
+
     // ── dopo l'approvazione: cosa aspetta ──
     if (c.stato === 'approvato' || c.stato === 'in_calendario' || c.stato === 'programmato') {
       html.push(dopoAprovazione(c));
@@ -675,6 +686,11 @@
     $('rg-pan-piede').hidden = true;
 
     // ── agganci ──
+    $('rg-piat')?.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-piat]');
+      if (b) cambiaPiattaforma(c, b.dataset.piat);
+    });
+    annotaPiattaforme();
     $('rg-aggiungi-nota')?.addEventListener('click', () => chiediNota(c, media));
     $('rg-carica-media')?.addEventListener('click', () => caricaSuContenuto(c));
     $('rg-rendi')?.addEventListener('click', () => rendiContenuto(c));
@@ -932,6 +948,96 @@
   }
 
   /** Dopo l'approvazione: i passaggi che restano. */
+  /**
+   * Le piattaforme su cui puo' uscire un contenuto.
+   * instagram_reels e' un canale a se' di GoHighLevel e non e' collegato:
+   * i reel su Instagram passano dall'account Instagram, quindi qui non si
+   * offre. Google Business e' collegato ma prende una foto sola, e un
+   * carosello di otto pagine non ci sta: si sceglie da GoHighLevel, non
+   * da qui.
+   */
+  const PIATTAFORME = [
+    { id: 'instagram', nome: 'Instagram' },
+    { id: 'facebook',  nome: 'Facebook' },
+    { id: 'linkedin',  nome: 'LinkedIn' },
+    { id: 'tiktok',    nome: 'TikTok' },
+    { id: 'youtube',   nome: 'YouTube' },
+  ];
+
+  /**
+   * "Dove esce" — il blocco che non c'era.
+   *
+   * La colonna smm_contents.piattaforme esisteva dal primo giorno e non la
+   * leggeva nessuno: la pubblicazione programmata aveva
+   * array['instagram','facebook'] scritto dentro la funzione del cron.
+   * Quindi un reel montato apposta per TikTok non ci sarebbe mai arrivato,
+   * e non c'era un posto in cui accorgersene.
+   */
+  function dovEsce(c) {
+    const scelte = new Set(c.piattaforme || []);
+    const righe = PIATTAFORME.map(p => `
+      <button type="button" class="rg-piat ${scelte.has(p.id) ? 'scelta' : ''}"
+              data-piat="${p.id}" aria-pressed="${scelte.has(p.id)}">
+        <span class="rg-piat-nome">${esc(p.nome)}</span>
+        <span class="rg-piat-nota" data-nota="${p.id}">&nbsp;</span>
+      </button>`).join('');
+    const avvisi = [];
+    if (c.tipo === 'storia') {
+      avvisi.push('Le storie esistono solo su Instagram e Facebook: '
+        + 'altrove GoHighLevel le rifiuta.');
+    }
+    if (c.tipo === 'reel') {
+      avvisi.push('TikTok e YouTube prendono solo il video: '
+        + 'il montaggio va fatto prima dell\'uscita, o quelle due vengono saltate.');
+    }
+    return `<div class="rg-sez">Dove esce</div>
+      <div class="rg-piat-righe" id="rg-piat">${righe}</div>
+      ${avvisi.map(a => `<div class="rg-voce-fonte">${esc(a)}</div>`).join('')}
+      <div class="rg-voce-fonte" id="rg-piat-stato">Guardo quali account sono collegati…</div>`;
+  }
+
+  /** Riempie le note delle piattaforme con gli account veri di GoHighLevel. */
+  async function annotaPiattaforme() {
+    const stato = $('rg-piat-stato');
+    if (!stato) return;
+    try {
+      const d = await D.accountCollegati();
+      const perPiattaforma = new Map(
+        (d.collegati || []).map(a => [a.piattaforma, a.nome]));
+      for (const p of PIATTAFORME) {
+        const nota = document.querySelector(`[data-nota="${p.id}"]`);
+        const tasto = document.querySelector(`[data-piat="${p.id}"]`);
+        if (!nota || !tasto) continue;
+        const nome = perPiattaforma.get(p.id);
+        nota.textContent = nome || 'non collegato';
+        tasto.classList.toggle('non-collegato', !nome);
+        tasto.title = nome
+          ? `Account collegato su GoHighLevel: ${nome}`
+          : 'Nessun account collegato su GoHighLevel: verrebbe saltata.';
+      }
+      stato.textContent = '';
+      stato.hidden = true;
+    } catch (e) {
+      stato.textContent = 'Non riesco a chiedere a GoHighLevel quali account '
+        + `sono collegati: ${e.message}`;
+    }
+  }
+
+  async function cambiaPiattaforma(c, quale) {
+    const scelte = new Set(c.piattaforme || []);
+    if (scelte.has(quale)) scelte.delete(quale); else scelte.add(quale);
+    if (!scelte.size) {
+      return window.ui.showToast('Serve almeno una piattaforma: '
+        + 'un contenuto che non esce da nessuna parte non esce.', 'error');
+    }
+    try {
+      await D.piattaformeImposta(c.id, [...scelte]);
+      apriContenuto(c.id);
+    } catch (e) {
+      window.ui.showToast(pulisciErrore(e.message), 'error');
+    }
+  }
+
   function dopoAprovazione(c) {
     const passi = [];
     if (!c.slot_at) passi.push('Trascinalo su un giorno nel Calendario per decidere quando esce.');
@@ -942,7 +1048,16 @@
     if (doppia && sensibile && !c.approvato_admin_da) {
       passi.push('Questa categoria è sensibile: serve anche la conferma dell\'amministratore prima dell\'uscita.');
     }
-    passi.push('Il Pubblicatore lo manda su GoHighLevel quando arriva l\'ora.');
+    const dove = (c.piattaforme || []).length
+      ? c.piattaforme.map(p => (PIATTAFORME.find(x => x.id === p)?.nome || p)).join(', ')
+      : 'le piattaforme predefinite del suo tipo';
+    // Prima qui c'era scritto "Il Pubblicatore lo manda su GoHighLevel
+    // quando arriva l'ora". Non e' quello che succede: lo manda il cron,
+    // ogni cinque minuti, con un lavoro che non usa nessun modello e non
+    // costa niente. Dire il nome di un agente che non c'entra fa cercare
+    // il guasto nel posto sbagliato quando qualcosa non esce.
+    passi.push(`All'ora giusta esce da solo su ${dove}. `
+      + 'Non lo fa un agente: lo fa il portale, ogni cinque minuti, e non costa niente.');
     return `<div class="rg-dopo">
       <div class="rg-sez" style="margin-top:0">Dopo ti aspettano</div>
       <ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.6">
@@ -1570,7 +1685,12 @@
   };
 
   function newsletterHtml(dati, bozza) {
-    const destinatari = dati?.destinatari;
+    // Il conteggio adesso viaggia con la bozza, non con l'apertura del
+    // pannello: contarlo all'apertura voleva dire diciotto chiamate a
+    // GoHighLevel, una per tag, per un numero che alla prima apertura non
+    // si vede nemmeno, perche' sta nel blocco "Spedire" che si disegna
+    // solo quando una bozza c'e'. Quattro-dieci secondi per niente.
+    const destinatari = bozza?.destinatari ?? dati?.destinatari;
     const cfg = dati?.configurazione || {};
     const manca = [];
     if (cfg.anthropic === false) manca.push('ANTHROPIC_API_KEY');
@@ -1641,12 +1761,19 @@
     `;
   }
 
+  /** L'elenco della newsletter, ricordato per la sessione. */
+  let newsletterRicordata = null;
+
   async function apriNewsletter(dati = null, bozza = null) {
     ui.pannello = { tipo: 'newsletter', bozza };
+    if (!dati) dati = newsletterRicordata;
     if (!dati) {
+      // "Carico…" in dodici pixel smorzati non dice niente, e qui c'e'
+      // un viaggio fino a GoHighLevel: se uno non sa cosa sta aspettando,
+      // sei secondi sembrano un blocco.
       apriPannello('Newsletter', 'Si scrive, si rilegge, si spedisce',
-        '<div class="rg-vuoto-tocca">Carico…</div>');
-      try { dati = await D.newsletter('elenco'); }
+        '<div class="rg-vuoto-tocca">Apro la newsletter…</div>');
+      try { dati = await D.newsletter('elenco'); newsletterRicordata = dati; }
       catch (e) {
         corpoPannello().innerHTML =
           `<div class="rg-vuoto-tocca">Non riesco a leggere: ${esc(pulisciErrore(e.message))}</div>`;
@@ -1675,7 +1802,7 @@
     corpo.querySelector('[data-nl-scarta]')?.addEventListener('click', () => apriNewsletter(dati, null));
 
     corpo.querySelector('[data-nl-invia]')?.addEventListener('click', async (ev) => {
-      const quanti = dati?.destinatari;
+      const quanti = bozza?.destinatari ?? dati?.destinatari;
       // Una conferma che dice il numero e l'oggetto: "sei sicuro?" non
       // informa nessuno.
       if (!window.confirm(

@@ -158,6 +158,26 @@ const MISURE = [{ width: 1366, height: 768 }, { width: 1440, height: 900 },
         .map((t) => t.querySelector('.rt-nome')?.textContent));
     dice(targhe.length > 0, 'gli agenti hanno un nome scritto nella stanza',
          targhe.slice(0, 3).join(', '));
+
+    // I numeri della riga di stato devono tornare con quelli della fascia:
+    // erano dieci soggetti per otto agenti, e l'agente con la mano alzata
+    // era contato due volte.
+    const conti = await page.evaluate(() => {
+      const r = window.regiaDati?.riepilogo?.();
+      const testa = document.getElementById('rg-fascia-agenti')?.textContent || '';
+      const inSala = /IN SALA \((\d+)\)/i.exec(testa.replace(/\s+/g, ' '));
+      return r ? { ...r, inSala: inSala ? Number(inSala[1]) : null } : null;
+    });
+    if (conti) {
+      const somma = conti.domande + conti.lavorano + conti.inCoda + conti.liberi + conti.spenti;
+      dice(somma === conti.totale, 'le persone contate fanno il totale',
+           `${conti.domande}+${conti.lavorano}+${conti.inCoda}+${conti.liberi}`
+           + `+${conti.spenti} = ${somma}, totale ${conti.totale}`);
+      if (conti.inSala !== null) {
+        dice(conti.inSala === conti.totale, 'e lo stesso numero della fascia',
+             `fascia ${conti.inSala}, riga ${conti.totale}`);
+      }
+    }
     const zone = await page.evaluate(() =>
       [...document.querySelectorAll('.regia-zona')]
         .filter((z) => z.style.display !== 'none').map((z) => z.textContent));

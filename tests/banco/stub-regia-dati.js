@@ -34,6 +34,10 @@
     categoria: 'residenza', slides, caption: 'Il visto per Dubai arriva in poche settimane…',
     hashtags: [], revisore_ok: true, approvato_da: null, slot_at: null,
     created_at: '2026-11-11T19:58:51Z', brief: null, revisore_note: null,
+    // Una storia nasce con le piattaforme del suo tipo: le storie esistono
+    // solo qui (smm_piattaforme_predefinite in
+    // 20261113_smm_reel_e_piattaforme.sql).
+    piattaforme: ['instagram', 'facebook'],
   };
 
   // L'ordine di arrivo NON e' quello delle pagine: e' il caso che
@@ -111,16 +115,28 @@
       return 'attende';
     },
     collaborazioni: () => [],
+    // Copiata parola per parola da js/regia-dati.js: una finta che calcola
+    // in modo diverso dall'originale fa fallire test buoni e passare test
+    // cattivi. E' gia' successo due volte, LEGGIMI.md lo racconta.
     riepilogo() {
-      const domande = lavori.filter(j => j.stato === 'attesa_risposta').length;
-      const lavorano = lavori.filter(j => j.stato === 'in_corso').length;
-      const inCoda = lavori.filter(j => j.stato === 'in_coda').length;
-      const daGuardare = stato.contenuti.filter(c => c.stato === 'da_approvare').length;
-      const occupati = new Set(lavori.filter(j => ['in_corso','in_coda'].includes(j.stato)).map(j => j.agent_id));
       const accesi = agenti.filter(a => a.attivo !== false);
       const spenti = agenti.length - accesi.length;
-      const liberi = accesi.filter(a => !occupati.has(a.id)).length;
-      return { domande, lavorano, inCoda, daGuardare, liberi, spenti, totale: agenti.length };
+      const conLavoro = (st) => new Set(lavori.filter(j => j.stato === st).map(j => j.agent_id));
+      const chiedono = conLavoro('attesa_risposta');
+      const inCorso = conLavoro('in_corso');
+      const inPartenza = conLavoro('in_coda');
+      let domande = 0, lavorano = 0, inCoda = 0, liberi = 0;
+      for (const a of accesi) {
+        if (chiedono.has(a.id)) domande++;
+        else if (inCorso.has(a.id)) lavorano++;
+        else if (inPartenza.has(a.id)) inCoda++;
+        else liberi++;
+      }
+      return {
+        domande, lavorano, inCoda, liberi, spenti, totale: agenti.length,
+        daGuardare: stato.contenuti.filter(c => c.stato === 'da_approvare').length,
+        lavoriInCoda: lavori.filter(j => j.stato === 'in_coda').length,
+      };
     },
     // La forma e' quella vera di D.toccaATe() in js/regia-dati.js:172-178.
     // Prima qui mancavano titolo, id e azione: la tessera usciva senza
@@ -173,5 +189,26 @@
     lanciaQuelloCheManca: nulla, interruttore: nulla, accendiAgente: nulla,
     pianoAutomatico: nulla, caricaFile: nulla, svegliaWorker: nulla, rendi: nulla,
     scriviAlDirettore: nulla, scriviAdAgente: nulla, rispondiAlLavoro: nulla,
+    // Gli account veri letti da GoHighLevel il 12 novembre 2026 con
+    // {"azione":"account"} su smm-publish: sono questi, e instagram_reels
+    // non c'e'.
+    accountCollegati: async () => ({
+      ok: true,
+      collegati: [
+        { piattaforma: 'google',    nome: 'InDubai - Apertura e consulenza societa' },
+        { piattaforma: 'facebook',  nome: 'In Dubai' },
+        { piattaforma: 'instagram', nome: 'indubait' },
+        { piattaforma: 'linkedin',  nome: 'Pellegrino B. InDubai' },
+        { piattaforma: 'tiktok',    nome: 'Pellegrino B. InDubai' },
+        { piattaforma: 'youtube',   nome: 'Pellegrino B - InDubai' },
+      ],
+      mancanti: ['instagram_reels'],
+      solo_video: ['tiktok', 'youtube', 'instagram_reels'],
+    }),
+    piattaformeImposta: async (id, piattaforme) => {
+      // Come smm_piattaforme_imposta: ripulisce, ordina e scrive.
+      contenuto.piattaforme = [...new Set(piattaforme)].sort();
+      return contenuto.piattaforme;
+    },
   };
 })();
