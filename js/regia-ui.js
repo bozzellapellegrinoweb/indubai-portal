@@ -1442,6 +1442,12 @@
     // Chi e' approvata ma non ancora in uso: e' il motivo per cui il tasto
     // "Mettile in uso" esiste, quindi si dice quante sono.
     const inAttesaDiUso = foto.filter(f => f.stato === 'APPROVED' && !f.attiva).length;
+    // Il motore dice quali chiavi ha, per nome: meglio dirlo prima che far
+    // fallire la generazione dopo aver premuto.
+    const cfg = dati.configurazione || {};
+    const manca = [];
+    if (cfg.openai === false) manca.push('OPENAI_API_KEY');
+    if (cfg.cloudinary === false) manca.push('CLOUDINARY_API_KEY');
     // "foto" non cambia al plurale: a cambiare e' il verbo intorno.
     const una = (n, singolare, plurale) => (n === 1 ? singolare : plurale);
 
@@ -1456,13 +1462,20 @@
 
       <div class="rg-sez">Fanne di nuove</div>
       <div class="rg-voce">
-        Nascono da vedere, non in uso: le guardi tu e decidi.
+        ${manca.length
+          ? `<b>Non si possono generare:</b> al motore ${manca.length === 1 ? 'manca' : 'mancano'}
+             ${manca.map(x => `<code>${esc(x)}</code>`).join(' e ')}.
+             ${manca.length === 1 ? 'Va messa' : 'Vanno messe'} fra le variabili d&#39;ambiente del
+             progetto Vercel <b>indubai-social-manager</b>, con la spunta su Production, e poi serve
+             una nuova pubblicazione.`
+          : 'Nascono da vedere, non in uso: le guardi tu e decidi.'}
         <div class="rg-voce-azioni rg-foto-genera">
           <label class="rg-campo-et" for="rg-foto-quante">Quante</label>
-          <input class="rg-campo" id="rg-foto-quante" type="number" min="1" max="${max}" value="4" style="width:84px">
-          <button class="btn btn-accent btn-sm" data-foto-genera="1">Genera</button>
+          <input class="rg-campo" id="rg-foto-quante" type="number" min="1" max="${max}" value="4"
+                 style="width:84px" ${manca.length ? 'disabled' : ''}>
+          <button class="btn btn-accent btn-sm" data-foto-genera="1" ${manca.length ? 'disabled' : ''}>Genera</button>
         </div>
-        <div class="rg-voce-fonte">Ognuna costa: chiedine poche e guarda come vengono.</div>
+        ${manca.length ? '' : '<div class="rg-voce-fonte">Ognuna costa: chiedine poche e guarda come vengono.</div>'}
       </div>
 
       ${inAttesaDiUso || attive
