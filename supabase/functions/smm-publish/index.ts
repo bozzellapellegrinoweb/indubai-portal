@@ -19,7 +19,7 @@
  */
 
 import { clientDaAmbiente, type SupabaseClient } from "../smm-worker/supabase.ts";
-import { eUnaPersona } from "../smm-worker/auth.ts";
+import { eUnaPersona, utenteDelToken } from "../smm-worker/auth.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -145,12 +145,25 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
+    // Pubblicare e' la cosa piu' irreversibile che si faccia da qui, e
+    // bastava essere entrati nel portale: smm-avatar controlla che chi
+    // preme abbia la Regia fra le pagine concesse, questa no. Adesso si'.
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-    const autorizzato = (service && token === service) || eUnaPersona(token);
+    const servizio = Boolean(service && token === service);
+    let autorizzato = servizio;
     if (!autorizzato) {
-      return new Response(JSON.stringify({ ok: false, error: "Non autorizzato" }),
-        { status: 401, headers: CORS });
+      const chi = eUnaPersona(token) ? utenteDelToken(token) : null;
+      if (chi) {
+        try {
+          autorizzato = await clientDaAmbiente().rpc("smm_puo_usare", { p_user: chi }) === true;
+        } catch { autorizzato = false; }
+      }
+    }
+    if (!autorizzato) {
+      return new Response(JSON.stringify({
+        ok: false, error: "La Regia non e' fra le pagine che ti sono state concesse.",
+      }), { status: 403, headers: CORS });
     }
 
     const chiave   = Deno.env.get("GHL_API_KEY");
@@ -171,7 +184,24 @@ Deno.serve(async (req: Request) => {
       }), { status: 500, headers: CORS });
     }
 
-    const corpo = await req.json();
+    const corpo = await req.json().catch(() => ({}));
+
+    // "Quali social sono collegati?" non aveva risposta: si poteva sapere
+    // solo tentando una pubblicazione, cioe' avendo gia' un contenuto
+    // approvato e rischiando di farlo uscire. Qui si chiede e basta: non
+    // tocca nessun contenuto e non manda niente.
+    if (corpo?.azione === "account") {
+      const trovati = await accountCollegati(chiave, location);
+      const noti = ["instagram", "facebook", "linkedin", "tiktok", "youtube", "instagram_reels"];
+      const presenti = trovati.map((a) => (a.platform ?? "").toLowerCase());
+      return new Response(JSON.stringify({
+        ok: true,
+        collegati: trovati.map((a) => ({ piattaforma: (a.platform ?? "").toLowerCase(), nome: a.name })),
+        mancanti: noti.filter((p) => !presenti.includes(p)),
+        solo_video: SOLO_VIDEO,
+      }), { headers: CORS });
+    }
+
     const contentId: string = corpo.content_id;
     const piattaforme: string[] = (corpo.piattaforme ?? ["instagram", "facebook"])
       .map((p: string) => String(p).toLowerCase());

@@ -410,7 +410,8 @@ async function unGiro(db: SupabaseClient, anthropic: Anthropic): Promise<{ fatti
       const s = impostazioni?.[0];
       if (s?.stop_tutto) throw new Error("Interruttore generale alzato: non parte niente.");
 
-      let esito: { testo: string; costoUsd: number; tokenIn: number; tokenOut: number; attivita?: string };
+      let esito: { testo: string; costoUsd: number; tokenIn: number; tokenOut: number;
+                    attivita?: string; dettaglio?: unknown };
 
       if (job.tipo === "nota_cervello") {
         esito = await eseguiNotaCervello(db, anthropic, job);
@@ -430,7 +431,12 @@ async function unGiro(db: SupabaseClient, anthropic: Anthropic): Promise<{ fatti
 
       await db.update("smm_jobs", `id=eq.${job.id}`, {
         ...(inAttesa ? {} : { stato: "fatto", finished_at: new Date().toISOString() }),
-        risultato: { testo: esito.testo },
+        risultato: {
+          testo: esito.testo,
+          // Quello che ha risposto chi ha fatto il lavoro, quando c'e':
+          // senza, per capire cos'e' successo bisogna rifarlo.
+          ...(esito.dettaglio ? { dettaglio: esito.dettaglio } : {}),
+        },
         token_in: esito.tokenIn,
         token_out: esito.tokenOut,
         costo_usd: Number(esito.costoUsd.toFixed(5)),
@@ -533,8 +539,27 @@ async function inoltraAPubblicazione(db: SupabaseClient, job: Job) {
   if (!r.ok || dati?.ok === false) {
     throw new Error(dati?.error ?? `La pubblicazione non e' andata: HTTP ${r.status}`);
   }
+  // Di tutta la risposta si teneva solo il messaggio, e il resto spariva.
+  // In modalita' prova il messaggio e' "non ho pubblicato niente": utile
+  // quanto il silenzio, mentre il dettaglio dice quali account GoHighLevel
+  // ha trovato e quali no, che e' l'unica ragione per fare una prova.
+  // Vale anche per una pubblicazione vera: su quali piattaforme e' andata
+  // e quali sono rimaste fuori.
+  const { ok: _ok, messaggio: _m, ...dettaglio } = dati ?? {};
+  const pezzi: string[] = [];
+  if (Array.isArray(dati?.account_mancanti) && dati.account_mancanti.length) {
+    pezzi.push(`Su GoHighLevel non c'e' un account collegato per: ${dati.account_mancanti.join(", ")}.`);
+  }
+  if (dati?.avrei_inviato) {
+    const a = dati.avrei_inviato;
+    pezzi.push(`Avrei mandato ${a.media} file come "${a.tipo}"` +
+      (Array.isArray(a.immagini) && a.immagini.length ? ` a ${a.immagini.join(", ")}` : "") +
+      (Array.isArray(a.solo_video) && a.solo_video.length ? `, e come video a ${a.solo_video.join(", ")}` : "") + ".");
+  }
+
   return {
-    testo: dati?.messaggio ?? "Pubblicazione inviata a GoHighLevel.",
+    testo: [dati?.messaggio ?? "Pubblicazione inviata a GoHighLevel.", ...pezzi].join(" "),
+    dettaglio,
     costoUsd: 0, tokenIn: 0, tokenOut: 0,
   };
 }
