@@ -614,6 +614,8 @@
         ? '<button class="btn btn-accent btn-sm" id="rg-a-posto">È a posto così</button>' : ''}
       ${c.stato === 'respinto'
         ? '<button class="btn btn-ghost btn-sm" id="rg-rimanda">Rimanda a chi l\'ha scritto</button>' : ''}
+      ${c.stato !== 'pubblicato' && c.stato !== 'scartato'
+        ? '<button class="btn btn-ghost btn-sm rg-butta" id="rg-butta">Butta</button>' : ''}
     </div>`);
     html.push(note.length
       ? note.map(n => `<div class="rg-nota ${n.risolta ? 'risolta' : ''}">
@@ -700,6 +702,18 @@
           disegnaContenuto(c, versioni, note, media);
         }));
     }
+    // Buttare e' definitivo abbastanza da chiedere conferma, e la conferma
+    // dice il titolo: "sei sicuro?" su una lista di dieci non informa.
+    $('rg-butta')?.addEventListener('click', async () => {
+      if (!window.confirm(`Buttare "${c.titolo}"?\n\n`
+          + 'Sparisce dalle liste, i lavori aperti su di lui si fermano e perde la data di uscita.')) return;
+      try {
+        await D.scarta(c.id);
+        window.ui.showToast('Buttato.', 'success');
+        chiudiPannello();
+      } catch (e) { window.ui.showToast(pulisciErrore(e.message), 'error'); }
+    });
+
     const selA = $('rg-round-a'), selB = $('rg-round-b');
     if (selA && selB) {
       const aggiorna = () => {

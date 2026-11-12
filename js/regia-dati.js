@@ -79,7 +79,10 @@
       sel('smm_agents', `brand_id=eq.${b}&select=*&order=ordine`),
       // I lavori chiusi da piu' di un giorno non servono alla scena
       sel('smm_jobs', `brand_id=eq.${b}&or=(stato.in.(in_coda,in_corso,attesa_risposta),updated_at.gte.${ieri()})&select=*&order=created_at.desc&limit=200`),
-      sel('smm_contents', `brand_id=eq.${b}&select=*&order=updated_at.desc&limit=300`),
+      // Quelli buttati non si caricano nemmeno: non servono a nessuna
+      // vista e occuperebbero posti dentro il limite, spingendo fuori
+      // quelli veri man mano che la lista cresce.
+      sel('smm_contents', `brand_id=eq.${b}&stato=neq.scartato&select=*&order=updated_at.desc&limit=300`),
       sel('smm_settings', `brand_id=eq.${b}&select=*`),
       sel('smm_brain', `brand_id=eq.${b}&attivo=eq.true&select=tipo,confermata`),
       // Il piano con quanto manca: lo guarda la testata, non solo il
@@ -807,6 +810,20 @@
     return d;
   }
 
+  /**
+   * Butta un contenuto.
+   *
+   * Lo fa il database con una funzione sola, perche' tre cose vanno
+   * insieme: sparisce dalle liste, i lavori aperti si fermano e perde la
+   * data di uscita. Farle da qui, una per una, vuol dire che se la pagina
+   * si chiude a meta' resta un montaggio in coda su una cosa buttata.
+   */
+  async function scarta(contentId, perche = null) {
+    const r = await rpc('smm_scarta', { p_content: contentId, p_perche: perche });
+    await carica();
+    return r;
+  }
+
   window.regiaDati = {
     stato, carica, avvia, fermati,
     ascolta: (f) => { ascoltatori.add(f); return () => ascoltatori.delete(f); },
@@ -818,6 +835,6 @@
     nuovaReference, risultati, salvaRisultato, salvaImpostazioni,
     plurale, piano, nuovaRigaPiano, salvaRigaPiano, eliminaRigaPiano, lanciaQuelloCheManca,
     interruttore, accendiAgente, pianoAutomatico,
-    caricaFile, linkFirmato, svegliaWorker, rendi, avatar, newsletter,
+    caricaFile, linkFirmato, svegliaWorker, rendi, avatar, newsletter, scarta,
   };
 })();

@@ -108,13 +108,14 @@ try {
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_brief_copywriter.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_cervello_quote.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_montaggio_automatico.sql')]);
-  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_avatar.sql')]);
-  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_notizie.sql')]);
   // La pianificazione vive in una migrazione a parte perche' ha bisogno di
   // pg_cron e pg_net. Sul banco di prova quelli non ci sono: si prende solo
   // la funzione che mette in coda le uscite arrivate a scadenza, che e' la
   // parte da provare.
   psql(DB, ['-f', join(ROOT, 'tests/smm/10_cron_senza_estensioni.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_avatar.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_notizie.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_scartato.sql')]);
 } catch (e) {
   console.error('Le migrazioni non si applicano:\n' + (e.stderr || e.stdout || e.message));
   process.exit(1);
@@ -1331,6 +1332,99 @@ test('il prompt lo dice, non solo il permesso', () => {
 });
 
 // ============================================================
+gruppo('Buttare un contenuto');
+
+// Non si poteva: quello che il Direttore apriva e nessuno scriveva restava
+// in lista per sempre. Il disordine non e' estetico: ci si perde dentro
+// quello che aspetta davvero.
+
+/** Un contenuto in uno stato qualunque, con un lavoro aperto sopra. */
+function daButtare(stato = 'idea', conLavoro = true) {
+  const id = one(`
+    insert into smm_contents (brand_id, titolo, tipo, categoria, stato, created_by)
+    values ('${BRAND}', 'Da buttare ${Math.random().toString(36).slice(2, 7)}',
+            'storia', 'normativa', '${stato}', '${MANAGER}')
+    returning id`);
+  if (conLavoro) {
+    psql(DB, ['-c', `insert into smm_jobs (brand_id, content_id, tipo, titolo, richiesta, stato)
+                     values ('${BRAND}', '${id}', 'agente', 'Lavoro aperto', 'x', 'in_coda')`]);
+  }
+  return id;
+}
+const comeManager = (sql) => psql(DB, ['-c',
+  `set role authenticated; set local test.uid = '${MANAGER}'; ${sql}`]);
+
+test('il manager puo buttare un contenuto', () => {
+  const c = daButtare('idea', false);
+  comeManager(`select smm_scarta('${c}', 'non serve piu')`);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'scartato', 'stato');
+});
+
+test('buttandolo si fermano i lavori che lo riguardano', () => {
+  // Un montaggio lasciato in coda su una cosa buttata e' un rendering
+  // pagato per niente.
+  const c = daButtare('in_lavorazione');
+  comeManager(`select smm_scarta('${c}')`);
+  eq(one(`select stato from smm_jobs where content_id = '${c}'`), 'annullato', 'il lavoro');
+});
+
+test('e perde la data di uscita', () => {
+  // Con la data addosso il cron lo pubblicherebbe lo stesso.
+  const c = daButtare('approvato', false);
+  psql(DB, ['-c', `update smm_contents set slot_at = now() - interval '1 hour' where id = '${c}'`]);
+  comeManager(`select smm_scarta('${c}')`);
+  eq(one(`select slot_at is null from smm_contents where id = '${c}'`), 't', 'senza data');
+});
+
+test('quello gia uscito non si butta', () => {
+  const c = daButtare('pubblicato', false);
+  mustFail(`set role authenticated; set local test.uid = '${MANAGER}';
+            select smm_scarta('${c}')`, 'gia');
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'pubblicato', 'resta pubblicato');
+});
+
+test('un contabile junior non butta niente', () => {
+  const c = daButtare('idea', false);
+  mustFail(`set role authenticated; set local test.uid = '${JUNIOR}';
+            select smm_scarta('${c}')`, 'accesso');
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'idea', 'intatto');
+});
+
+test('buttarlo due volte non e un errore', () => {
+  const c = daButtare('idea', false);
+  comeManager(`select smm_scarta('${c}')`);
+  comeManager(`select smm_scarta('${c}')`);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'scartato', 'stato');
+});
+
+test('resta scritto chi l ha buttato e perche', () => {
+  const c = daButtare('idea', false);
+  comeManager(`select smm_scarta('${c}', 'era una prova')`);
+  eq(one(`select count(*) from activity_log
+           where action = 'smm_scartato' and details->>'content_id' = '${c}'`), '1', 'una riga');
+  eq(one(`select details->>'perche' from activity_log
+           where action = 'smm_scartato' and details->>'content_id' = '${c}'`),
+     'era una prova', 'il perche');
+});
+
+test('il piano non conta piu quello che hai buttato', () => {
+  // Altrimenti una settimana risulterebbe coperta da roba buttata, e gli
+  // agenti non la rifarebbero.
+  psql(DB, ['-c', `insert into smm_piano (brand_id, nome, tipo, quanti_a_settimana, attivo, ordine)
+                   values ('${BRAND}', 'Prova scarto', 'reel', 2, true, 90)`]);
+  const c = one(`
+    insert into smm_contents (brand_id, titolo, tipo, stato, created_by)
+    values ('${BRAND}', 'Reel che poi butto', 'reel', 'in_lavorazione', '${MANAGER}')
+    returning id`);
+  eq(one(`select mancanti from smm_piano_settimana_interna('${BRAND}', 0)
+           where nome = 'Prova scarto'`), '1', 'prima: uno fatto, uno manca');
+  comeManager(`select smm_scarta('${c}')`);
+  eq(one(`select mancanti from smm_piano_settimana_interna('${BRAND}', 0)
+           where nome = 'Prova scarto'`), '2', 'dopo: mancano tutti e due');
+  psql(DB, ['-c', `delete from smm_piano where nome = 'Prova scarto'`]);
+});
+
+// ============================================================
 gruppo('Reversibilita');
 
 test('la migrazione di rollback riporta il database come prima', () => {
@@ -1340,6 +1434,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_scartato_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_notizie_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_avatar_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261112_smm_montaggio_automatico_down.sql')]);
