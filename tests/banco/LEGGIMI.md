@@ -28,12 +28,19 @@ node tests/banco/prova-movimento.cjs           # chi si alza, dove va, chi resta
 node tests/banco/prova-vetrina.cjs             # lo schermo da appendere in ufficio
 ```
 
-`prova-movimento.cjs` guarda per un minuto e mezzo, perche' le pause sono
+`prova-movimento.cjs` guarda per due minuti e mezzo, perche' le pause sono
 rade di proposito. Controlla che qualcuno si alzi davvero, che chi lavora
 resti al suo posto, che non ci siano mai piu' di due persone in piedi
 insieme e che nessuno esca dalla stanza. E' anche il test che ha preso un
 `Identifier 'dx' has already been declared` nel ciclo di animazione: la
 scena non si apriva affatto, e `node --check` non se n'era accorto.
+
+Attenzione a misurare le velocita' in secondi veri: `dt` e' tagliato a un
+decimo di secondo, e il banco rende via software a pochi fotogrammi al
+secondo, quindi la scena va al rallentatore — circa la meta' del tempo
+vero. Per questo `prova-vetrina.cjs` misura la rotazione della camera
+sull'orologio della scena (`dovEGuarda().tempo`) e non sul cronometro: in
+secondi veri direbbe che la camera e' ferma quando non lo e'.
 
 `prova-concentrato.cjs` e' quello che misura invece di guardare, su tre
 schermi (1366, 1440, 1920): quanto e' grande la scena e che forma ha, se

@@ -121,8 +121,18 @@ Quindi il movimento segue lo stato vero e non il caso:
 - chi ha `posa` `lavora`, `mano_alzata` o `spento` **resta al suo posto**;
 - si alza solo chi e' libero, e per un motivo che esiste — una
   collaborazione vera fra i lavori aperti, o una pausa;
-- mai piu' di due in piedi insieme: con otto che si alzano a turno il
-  movimento c'e' sempre e smette di dire qualcosa.
+- mai piu' di due **in piedi** che partono insieme, e quattro fuori posto
+  in tutto. Il tetto riguarda chi cammina o sta ritto, non chi e' seduto
+  altrove: tre che camminano insieme sono un corteo, tre seduti al tavolo
+  riunioni sono una riunione. Chi e' seduto fuori posto e ha finito il suo
+  tempo aspetta che il tetto si liberi, ma dopo quaranta secondi si alza
+  comunque — un tetto che inchioda qualcuno al divano non e' un tetto, e'
+  un guasto — quindi di fatto si arriva a tre.
+
+E chi resta alla scrivania senza lavorare non sta immobile: si stiracchia,
+si appoggia allo schienale, guarda il telefono, pensa. Erano cinque agenti
+liberi su otto nella stessa identica posa, e le uscite verso il caffe' o il
+divano sono rade di proposito — quindi la stanza stava ferma quasi sempre.
 
 `tests/banco/prova-movimento.cjs` guarda la stanza per due minuti e mezzo
 e verifica proprio questo. I muri sono piani a faccia singola di

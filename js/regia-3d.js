@@ -706,11 +706,9 @@ export function creaScena(contenitore, opzioni = {}) {
     }
 
     // Le sedie: tre per lato lungo, una per testa.
-    const sedie = [
-      [-0.95, 0.95, 0], [0, 0.95, 0], [0.95, 0.95, 0],
-      [-0.95, -0.95, Math.PI], [0, -0.95, Math.PI], [0.95, -0.95, Math.PI],
-      [-1.85, 0, Math.PI / 2], [1.85, 0, -Math.PI / 2],
-    ];
+    // Le stesse posizioni servono dopo per farci sedere qualcuno: una
+    // sedia che non si puo' usare e' un oggetto di scena.
+    const sedie = SEDIE_TAVOLO;
     for (const [sx, sz, sr] of sedie) {
       const sedia = new THREE.Group();
       sedia.position.set(sx, 0, sz);
@@ -732,6 +730,13 @@ export function creaScena(contenitore, opzioni = {}) {
     g.add(ombraContatto(0, 0, 3.2));
     return g;
   }
+
+  /** Dove stanno le sedie del tavolo riunioni, in coordinate del tavolo. */
+  const SEDIE_TAVOLO = [
+    [-0.95, 0.95, 0], [0, 0.95, 0], [0.95, 0.95, 0],
+    [-0.95, -0.95, Math.PI], [0, -0.95, Math.PI], [0.95, -0.95, Math.PI],
+    [-1.85, 0, Math.PI / 2], [1.85, 0, -Math.PI / 2],
+  ];
 
   /**
    * Una credenza bassa contro il muro.
@@ -1278,7 +1283,7 @@ export function creaScena(contenitore, opzioni = {}) {
       base: { x, z }, posa: 'libero', fase: Math.random() * Math.PI * 2,
       // Dove sta quando e' al suo posto, e dove sta andando se non ci sta.
       // Il giro e' null quando e' seduto: vedi decidiGiri.
-      giro: null, passo: Math.random() * 6.28, inPiedi: 0, steso: 0,
+      giro: null, passo: Math.random() * 6.28, inPiedi: 0, steso: 0, ozio: null,
       prossimaIdea: 4 + Math.random() * 20,
     };
   }
@@ -1941,7 +1946,8 @@ export function creaScena(contenitore, opzioni = {}) {
    * @param guardaMondo dove girarsi una volta arrivati (un punto del mondo)
    * @param sdraio      se ci si stende: l'altezza e l'orientamento del divano
    */
-  function mandaIn(a, mondo, secondi, tipo = 'pausa', guardaMondo = null, sdraio = null) {
+  function mandaIn(a, mondo, secondi, tipo = 'pausa', guardaMondo = null,
+                   sdraio = null, siede = null) {
     const locale = a.gruppo.worldToLocal(mondo.clone());
     let guarda = null;
     if (guardaMondo) {
@@ -1954,6 +1960,9 @@ export function creaScena(contenitore, opzioni = {}) {
       guarda,
       // L'angolo del divano e' nel mondo: qui serve relativo alla scrivania.
       sdraio: sdraio ? { ...sdraio, y: sdraio.y - a.gruppo.rotation.y } : null,
+      // Quanto in alto sta la seduta: uno sgabello e' sedici centimetri
+      // sopra la sedia della scrivania, una sedia da riunione quasi uguale.
+      siede,
       fino: 0, durata: secondi, torna: false, arrivato: false,
     };
     return a.giro;
@@ -1961,7 +1970,11 @@ export function creaScena(contenitore, opzioni = {}) {
 
   // Un posto alla volta: due agenti sdraiati nello stesso punto del divano
   // sono una persona sola con quattro gambe.
-  const occupato = { relax: null, caffe: [null, null] };
+  const occupato = {
+    relax: null,
+    caffe: [null, null],
+    tavolo: SEDIE_TAVOLO.map(() => null),
+  };
 
   function liberaPosti() {
     for (const [chiave, a] of Object.entries(occupato)) {
@@ -1985,17 +1998,60 @@ export function creaScena(contenitore, opzioni = {}) {
     };
   }
 
-  /** Davanti al bancone, dal lato degli sgabelli. */
+  /** Sullo sgabello del bancone: ci si siede, non si sta in piedi davanti. */
   function postoCaffe(i) {
-    return mobiliCaffe.localToWorld(new THREE.Vector3(i ? 0.55 : -0.55, 0, 0.95));
+    return mobiliCaffe.localToWorld(new THREE.Vector3(i ? 0.55 : -0.55, 0, 0.42));
   }
 
-  /** Quante persone al massimo stanno in giro insieme. */
-  const IN_GIRO_MAX = 2;
+  /** Una sedia libera al tavolo riunioni, col verso giusto. */
+  function postoTavolo(i) {
+    const [sx, sz] = SEDIE_TAVOLO[i];
+    return {
+      dove: mobiliRiunioni.localToWorld(new THREE.Vector3(sx, 0, sz)),
+      guarda: mobiliRiunioni.localToWorld(new THREE.Vector3(sx * 0.2, 0, sz * 0.2)),
+    };
+  }
+
+  /**
+   * Quante persone al massimo stanno IN PIEDI fuori posto insieme.
+   *
+   * Il tetto riguarda chi cammina o sta all'impiedi, non chi e' seduto
+   * altrove: tre che camminano insieme sono un corteo, tre seduti al
+   * tavolo riunioni sono una riunione. Da quando ci si puo' sedere al
+   * bancone e al tavolo, distinguere le due cose e' la differenza fra un
+   * ufficio dove non succede mai niente e uno dove si lavora.
+   */
+  const IN_PIEDI_MAX = 2;
+  // Chi parte si ferma a due; chi deve TORNARE, se ha aspettato troppo,
+  // parte lo stesso. Si arriva a tre, e tre su otto non sono un corteo.
+  const ASPETTA_AL_MASSIMO = 40;
+  /** E quante al massimo stanno comunque lontane dalla scrivania. */
+  const FUORI_MAX = 4;
+
+  /**
+   * Chi e' fuori posto e in piedi.
+   *
+   * Cioe' chiunque abbia un giro in corso, tranne chi in questo momento e'
+   * arrivato e sta seduto o sdraiato. Il "non sta tornando" e' la parte
+   * che avevo dimenticato: uno che si alza dallo sgabello e torna alla
+   * scrivania e' in piedi come tutti gli altri, e contarlo ancora come
+   * seduto faceva salire a quattro le persone che camminavano insieme.
+   * L'ha trovato prova-movimento.cjs.
+   */
+  const staRitto = (a) => Boolean(a.giro)
+    && !(a.giro.arrivato && !a.giro.torna && (a.giro.siede || a.giro.sdraio));
+
+  /**
+   * Quanti stanno in piedi fuori posto adesso, aggiornato a ogni
+   * decisione. Serve anche a chi deve alzarsi per tornare: il tetto vale
+   * per loro come per chi parte, se no due seduti che si alzano insieme lo
+   * sfondano senza passare da qui.
+   */
+  let quantiRitti = 0;
 
   function decidiGiri(t) {
     const liberi = [];
-    let inGiro = 0;
+    let inPiedi = 0, fuori = 0;
     for (const a of avatarPerAgente.values()) {
       if (!a.gruppo.visible) { a.giro = null; continue; }
       // Chi lavora, chi ha una domanda in sospeso e chi e' spento sta al
@@ -2004,7 +2060,7 @@ export function creaScena(contenitore, opzioni = {}) {
         if (a.giro) a.giro.torna = true;
         continue;
       }
-      if (a.giro) inGiro++; else liberi.push(a);
+      if (a.giro) { fuori++; if (staRitto(a)) inPiedi++; } else liberi.push(a);
     }
     liberaPosti();
     if (!liberi.length) return;
@@ -2016,26 +2072,43 @@ export function creaScena(contenitore, opzioni = {}) {
       if (!chi || !verso || chi === verso) continue;
       if (chi.giro || !liberi.includes(chi)) continue;
       if (!chi.gruppo.visible || !verso.gruppo.visible) continue;
-      if (inGiro >= IN_GIRO_MAX) break;
-      mandaIn(chi, accantoA(verso), 7 + Math.random() * 6);
+      if (inPiedi >= IN_PIEDI_MAX || fuori >= FUORI_MAX) break;
+      mandaIn(chi, accantoA(verso), 7 + Math.random() * 6, 'collega');
       chi.prossimaIdea = t + 40;
-      inGiro++;
+      inPiedi++; fuori++;
+      quantiRitti = inPiedi;
     }
 
     // Poi le pause: non spesso, e mai piu' di due persone in piedi insieme.
     // Con otto che si alzano a turno la stanza sembra un corteo, e il
     // movimento smette di dire qualcosa proprio perche' c'e' sempre.
-    if (inGiro >= IN_GIRO_MAX) return;
+    if (fuori >= FUORI_MAX) return;
     for (const a of liberi) {
       if (a.giro || t < a.prossimaIdea) continue;
-      a.prossimaIdea = t + 45 + Math.random() * 70;
+      // Piu' spesso di prima: con cinque o sei liberi e una pausa ogni
+      // ottanta secondi a testa, la stanza stava ferma quasi sempre.
+      a.prossimaIdea = t + 22 + Math.random() * 45;
 
       const altri = liberi.filter(x => x !== a && !x.giro && x.gruppo.visible);
+      const sedieLibere = occupato.tavolo
+        .map((x, i) => (x ? -1 : i)).filter(i => i >= 0);
       const posti = [];
+      // Le cose che si fanno da seduti non contano nel tetto di chi sta in
+      // piedi, quindi si possono offrire anche quando qualcuno gia' gira.
       if (!occupato.relax) posti.push('relax');
       if (occupato.caffe.some(x => !x)) posti.push('caffe', 'caffe');
-      if (altri.length && inGiro + 1 < IN_GIRO_MAX) posti.push('parla');
-      posti.push('cervello');
+      if (sedieLibere.length) posti.push('tavolo', 'tavolo');
+      if (inPiedi < IN_PIEDI_MAX) {
+        // Chiacchierare costa DUE posti, non uno: partono in due. Contarne
+        // uno faceva arrivare a tre persone in piedi e a cinque fuori
+        // posto, con i tetti a due e a quattro. L'ha trovato
+        // prova-movimento.cjs, che li controlla fotogramma per fotogramma.
+        if (altri.length && inPiedi + 2 <= IN_PIEDI_MAX && fuori + 2 <= FUORI_MAX) {
+          posti.push('parla');
+        }
+        posti.push('cervello');
+      }
+      if (!posti.length) break;
 
       switch (posti[Math.floor(Math.random() * posti.length)]) {
         case 'relax': {
@@ -2043,13 +2116,29 @@ export function creaScena(contenitore, opzioni = {}) {
           const { dove, sdraio } = postoSdraiato();
           mandaIn(a, dove, 30 + Math.random() * 30, 'relax', null, sdraio);
           occupato.relax = a;
+          fuori++; inPiedi++;   // finche' ci arriva e' in piedi come gli altri
           break;
         }
         case 'caffe': {
           const i = occupato.caffe[0] ? 1 : 0;
-          mandaIn(a, postoCaffe(i), 14 + Math.random() * 10, 'caffe',
-                  mobiliCaffe.localToWorld(new THREE.Vector3(0, 0, -0.5)));
+          // Sullo sgabello, non in piedi davanti al bancone: uno che beve
+          // il caffe' in piedi in mezzo alla stanza sembra di passaggio.
+          mandaIn(a, postoCaffe(i), 18 + Math.random() * 16, 'caffe',
+                  mobiliCaffe.localToWorld(new THREE.Vector3(0, 0, -0.5)),
+                  null, { altezza: 0.16 });
           occupato.caffe[i] = a;
+          fuori++; inPiedi++;
+          break;
+        }
+        case 'tavolo': {
+          // Al tavolo riunioni, seduto, a leggere qualcosa. E' la cosa che
+          // rende un ufficio un ufficio anche quando non succede niente.
+          const i = sedieLibere[Math.floor(Math.random() * sedieLibere.length)];
+          const { dove, guarda } = postoTavolo(i);
+          mandaIn(a, dove, 30 + Math.random() * 45, 'tavolo', guarda,
+                  null, { altezza: 0.03 });
+          occupato.tavolo[i] = a;
+          fuori++; inPiedi++;
           break;
         }
         case 'parla': {
@@ -2065,6 +2154,7 @@ export function creaScena(contenitore, opzioni = {}) {
           mandaIn(a, meta.clone().sub(versoB), quanto, 'parla', meta.clone().add(versoB));
           mandaIn(b, meta.clone().add(versoB), quanto, 'parla', meta.clone().sub(versoB));
           b.prossimaIdea = t + 60;
+          inPiedi += 2; fuori += 2;
           break;
         }
         default:
@@ -2072,9 +2162,16 @@ export function creaScena(contenitore, opzioni = {}) {
             ZONE.cervello.x + (Math.random() - 0.5) * 1.6, 0,
             ZONE.cervello.z + 1.5 + Math.random() * 0.6),
             8 + Math.random() * 8, 'cervello');
+          fuori++; inPiedi++;
       }
       break;   // una persona alla volta: otto che si alzano insieme e' un corteo
     }
+
+    // Il conto aggiornato dopo le partenze di questo giro: lo legge chi e'
+    // seduto e deve decidere se puo' alzarsi per tornare. Scriverlo prima,
+    // com'era, voleva dire che chi si alzava non vedeva chi era appena
+    // partito.
+    quantiRitti = inPiedi;
   }
 
   // ── Stato degli avatar ──────────────────────────────────
@@ -2093,6 +2190,7 @@ export function creaScena(contenitore, opzioni = {}) {
   let orologio = new THREE.Clock();
   let ultimaDecisione = 0;
   let giroAvanti = true;
+  let tempoScena = 0;
   let attivo = true;
   let ultimaLuce = 0;
   let fotogrammi = 0, ultimoControllo = performance.now(), dprCorrente = dprMax;
@@ -2125,6 +2223,14 @@ export function creaScena(contenitore, opzioni = {}) {
     if (!attivo) return;
     requestAnimationFrame(ciclo);
     const dt = Math.min(orologio.getDelta(), 0.1);
+    // Il tempo della scena, cioe' la somma dei dt davvero applicati. Non
+    // coincide col tempo dell'orologio da polso: dt e' tagliato a un
+    // decimo di secondo, quindi se la macchina rende a pochi fotogrammi
+    // al secondo la scena va al rallentatore. Serve al banco di prova per
+    // misurare le velocita' — per esempio quella della camera della
+    // vetrina — senza che il risultato dipenda da quanto e' lenta la
+    // macchina su cui gira il test.
+    tempoScena += dt;
     const t = orologio.elapsedTime;
 
     // La luce di Dubai si ricalcola ogni mezzo minuto, non ogni fotogramma.
@@ -2199,14 +2305,88 @@ export function creaScena(contenitore, opzioni = {}) {
           a.persona.rotation.z = 0;
 
         } else {
-          // in pausa: si stacca dalla scrivania, braccia rilassate, si
-          // guarda intorno
-          sx.spalla.rotation.x = -0.12; sx.spalla.rotation.z =  0.2;
-          dx.spalla.rotation.x = -0.12; dx.spalla.rotation.z = -0.2;
-          sx.gomito.rotation.x = -0.3;
-          dx.gomito.rotation.x = -0.3;
-          a.testa.rotation.x = -0.03;
-          a.testa.rotation.y = Math.sin(a.fase * 0.45) * 0.45;
+          // ── in pausa, alla scrivania ──
+          //
+          // Qui prima c'era una posa sola: braccia rilassate e la testa che
+          // gira. Cinque agenti liberi su otto, tutti identici e immobili
+          // per minuti interi — e le uscite verso il caffe' o il divano
+          // sono rade di proposito, quindi la stanza stava ferma quasi
+          // sempre. Adesso c'e' un piccolo repertorio: nessuna di queste
+          // pose dice niente sul lavoro, dicono solo che li' c'e' una
+          // persona e non un manichino.
+          if (!a.ozio || t > a.ozio.fino) {
+            const scelte = [
+              ['guarda',     6, 12],
+              ['stiracchia', 2.5, 2],
+              ['indietro',   7, 10],
+              ['telefono',   9, 10],
+              ['pensa',      6, 7],
+              ['guarda',     6, 10],
+            ];
+            const [tipo, base, extra] = scelte[Math.floor(Math.random() * scelte.length)];
+            a.ozio = { tipo, fino: t + base + Math.random() * extra };
+          }
+          // Le pose non si sostituiscono di scatto: ogni articolazione
+          // insegue il valore nuovo. Senza, il passaggio da una posa
+          // all'altra sembra un salto del video.
+          const verso = (nodo, campo, meta, quanto = 5) => {
+            nodo.rotation[campo] += (meta - nodo.rotation[campo]) * Math.min(1, dt * quanto);
+          };
+
+          const posa = {
+            guarda: () => {
+              verso(sx.spalla, 'x', -0.12); verso(sx.spalla, 'z',  0.2);
+              verso(dx.spalla, 'x', -0.12); verso(dx.spalla, 'z', -0.2);
+              verso(sx.gomito, 'x', -0.3);  verso(dx.gomito, 'x', -0.3);
+              verso(a.testa, 'x', -0.03);
+              verso(a.testa, 'y', Math.sin(a.fase * 0.45) * 0.45, 2);
+              verso(a.busto, 'x', -0.1);
+            },
+            // Si stiracchia: braccia in alto e indietro, testa all'insu'.
+            stiracchia: () => {
+              const su = Math.sin(Math.min(Math.PI, Math.max(0, a.ozio.fino - t) * 1.3));
+              verso(sx.spalla, 'x', -0.12 - 2.6 * su, 8);
+              verso(dx.spalla, 'x', -0.12 - 2.6 * su, 8);
+              verso(sx.spalla, 'z',  0.2 + 0.25 * su, 8);
+              verso(dx.spalla, 'z', -0.2 - 0.25 * su, 8);
+              verso(sx.gomito, 'x', -0.3 + 0.2 * su, 8);
+              verso(dx.gomito, 'x', -0.3 + 0.2 * su, 8);
+              verso(a.testa, 'x', -0.03 - 0.3 * su, 8);
+              verso(a.testa, 'y', 0);
+              verso(a.busto, 'x', -0.1 - 0.12 * su, 8);
+            },
+            // Appoggiato allo schienale, mani dietro la nuca.
+            indietro: () => {
+              verso(sx.spalla, 'x', -2.25); verso(sx.spalla, 'z',  0.85);
+              verso(dx.spalla, 'x', -2.25); verso(dx.spalla, 'z', -0.85);
+              verso(sx.gomito, 'x', -2.1);  verso(dx.gomito, 'x', -2.1);
+              verso(a.testa, 'x', -0.12);
+              verso(a.testa, 'y', Math.sin(a.fase * 0.3) * 0.18, 2);
+              verso(a.busto, 'x', 0.06);
+            },
+            // Guarda il telefono: mani davanti, testa china, pollice che
+            // scorre.
+            telefono: () => {
+              verso(sx.spalla, 'x', -0.78); verso(sx.spalla, 'z',  0.26);
+              verso(dx.spalla, 'x', -0.78); verso(dx.spalla, 'z', -0.26);
+              verso(sx.gomito, 'x', -1.32 + Math.sin(a.fase * 2.6) * 0.04, 9);
+              verso(dx.gomito, 'x', -1.32);
+              verso(a.testa, 'x', 0.34);
+              verso(a.testa, 'y', 0);
+              verso(a.busto, 'x', 0.02);
+            },
+            // Mano sul mento, testa inclinata.
+            pensa: () => {
+              verso(sx.spalla, 'x', -0.35); verso(sx.spalla, 'z',  0.18);
+              verso(dx.spalla, 'x', -1.5);  verso(dx.spalla, 'z', -0.1);
+              verso(sx.gomito, 'x', -1.1);
+              verso(dx.gomito, 'x', -1.75);
+              verso(a.testa, 'x', 0.08);
+              verso(a.testa, 'y', 0.2 + Math.sin(a.fase * 0.25) * 0.1, 2);
+              verso(a.busto, 'x', -0.05);
+            },
+          };
+          (posa[a.ozio.tipo] || posa.guarda)();
           a.persona.rotation.z = 0;
         }
 
@@ -2249,7 +2429,18 @@ export function creaScena(contenitore, opzioni = {}) {
                      : g.guarda !== null && g.guarda !== undefined ? g.guarda
                      : Math.atan2(-p.x, -p.z);
           a.persona.rotation.y = versoAngolo(a.persona.rotation.y, dove, dt * 3);
-          if (t > g.fino) g.torna = true;
+          // Finito il tempo si torna, ma non se ci sono gia' due persone
+          // in piedi: chi sta comodo aspetta un momento. Dopo quaranta
+          // secondi di attesa si alza comunque, perche' un tetto che
+          // inchioda qualcuno al divano per sempre non e' un tetto, e' un
+          // guasto.
+          const puoAlzarsi = !g.siede && !g.sdraio
+            ? true
+            : quantiRitti < IN_PIEDI_MAX || t > g.fino + ASPETTA_AL_MASSIMO;
+          if (t > g.fino && puoAlzarsi) {
+            g.torna = true;
+            if (g.siede || g.sdraio) quantiRitti++;
+          }
         } else if (g && g.torna) {
           a.giro = null;
         } else {
@@ -2261,7 +2452,10 @@ export function creaScena(contenitore, opzioni = {}) {
         // In piedi o seduto: una sola grandezza da cui dipendono l'altezza,
         // le gambe e le braccia. Passa da 0 a 1 in mezzo secondo, cosi'
         // alzarsi si vede ma non e' uno scatto.
-        const vuole = a.giro ? 1 : 0;
+        // In piedi finche' cammina; seduto quando e' arrivato in un posto
+        // dove ci si siede — uno sgabello, una sedia del tavolo riunioni.
+        const sedutoLi = Boolean(g && g.siede && g.arrivato && !g.torna && !cammina);
+        const vuole = (a.giro && !sedutoLi) ? 1 : 0;
         a.inPiedi += (vuole - a.inPiedi) * Math.min(1, dt * 3.4);
         const seduto = 1 - a.inPiedi;
         // 0.16 e' quanto manca alle scarpe per toccare terra con le gambe
@@ -2274,9 +2468,13 @@ export function creaScena(contenitore, opzioni = {}) {
         const vuoleSteso = Boolean(g && g.sdraio && g.arrivato && !g.torna && !cammina);
         a.steso += ((vuoleSteso ? 1 : 0) - a.steso) * Math.min(1, dt * 1.6);
         a.persona.rotation.x = a.steso * (Math.PI / 2);
-        const altezzaDivano = g && g.sdraio ? g.sdraio.altezza : 0.69;
-        a.persona.position.y = (1 - a.steso) * (a.inPiedi * (0.16 + saltello))
-                             + a.steso * altezzaDivano;
+        const altezzaDivano = g && g.sdraio ? g.sdraio.altezza : 0.70;
+        // La quota della seduta: zero alla propria scrivania, sedici
+        // centimetri su uno sgabello, tre su una sedia da riunione.
+        const quota = sedutoLi ? g.siede.altezza : 0;
+        a.persona.position.y =
+          (1 - a.steso) * (a.inPiedi * (0.16 + saltello) + (1 - a.inPiedi) * quota)
+          + a.steso * altezzaDivano;
 
         const ANCA_SEDUTA = Math.PI / 2;
         const GIN_SEDUTO = -Math.PI / 2 + 0.12;
@@ -2305,26 +2503,38 @@ export function creaScena(contenitore, opzioni = {}) {
           dx.gomito.rotation.x = misc(dx.gomito.rotation.x, -0.22);
           a.testa.rotation.x = misc(a.testa.rotation.x, 0);
 
-          // Arrivato e fermo: cosa fa dipende da perche' e' venuto. Senza
-          // questo, uno davanti alla macchina del caffe' e uno che
-          // chiacchiera sono la stessa identica posa, e il posto in cui
-          // stanno e' l'unica cosa che li distingue.
-          if (g && g.arrivato && !g.torna && !cammina) {
-            if (g.tipo === 'caffe') {
-              // Beve: il braccio destro sale alla bocca ogni tanto.
-              const sorso = Math.max(0, Math.sin(a.fase * 0.5));
-              dx.spalla.rotation.x = -0.18 - sorso * 1.0;
-              dx.spalla.rotation.z = -0.22;
-              dx.gomito.rotation.x = -0.3 - sorso * 1.45;
-              a.testa.rotation.x = -0.1 * sorso;
-            } else if (g.tipo === 'parla') {
-              // Gesticola: una mano che accompagna quello che dice.
-              const gesto = Math.sin(a.fase * 1.4);
-              dx.spalla.rotation.x = -0.5 + gesto * 0.22;
-              dx.spalla.rotation.z = -0.3;
-              dx.gomito.rotation.x = -1.0 - Math.max(0, gesto) * 0.35;
-              a.testa.rotation.y = Math.sin(a.fase * 0.65) * 0.14;
-            }
+        }
+
+        // Arrivato e fermo: cosa fa dipende da perche' e' venuto. Senza
+        // questo, uno al bancone del caffe' e uno che chiacchiera hanno la
+        // stessa identica posa, e il posto e' l'unica cosa che li
+        // distingue. Sta fuori dal blocco "in piedi" perche' al bancone e
+        // al tavolo adesso ci si siede.
+        if (g && g.arrivato && !g.torna && !cammina && !g.sdraio) {
+          if (g.tipo === 'caffe') {
+            // Beve: il braccio destro sale alla bocca ogni tanto.
+            const sorso = Math.max(0, Math.sin(a.fase * 0.5));
+            dx.spalla.rotation.x = -0.18 - sorso * 1.0;
+            dx.spalla.rotation.z = -0.22;
+            dx.gomito.rotation.x = -0.3 - sorso * 1.45;
+            a.testa.rotation.x = -0.1 * sorso;
+          } else if (g.tipo === 'parla') {
+            // Gesticola: una mano che accompagna quello che dice.
+            const gesto = Math.sin(a.fase * 1.4);
+            dx.spalla.rotation.x = -0.5 + gesto * 0.22;
+            dx.spalla.rotation.z = -0.3;
+            dx.gomito.rotation.x = -1.0 - Math.max(0, gesto) * 0.35;
+            a.testa.rotation.y = Math.sin(a.fase * 0.65) * 0.14;
+          } else if (g.tipo === 'tavolo') {
+            // Al tavolo: mani appoggiate, testa china su quello che legge,
+            // e ogni tanto si guarda intorno come si fa in riunione.
+            const alza = Math.max(0, Math.sin(a.fase * 0.22));
+            sx.spalla.rotation.x = -0.62; sx.spalla.rotation.z =  0.16;
+            dx.spalla.rotation.x = -0.62; dx.spalla.rotation.z = -0.16;
+            sx.gomito.rotation.x = -1.05;
+            dx.gomito.rotation.x = -1.05 + Math.sin(a.fase * 1.8) * 0.05;
+            a.testa.rotation.x = 0.26 - 0.3 * alza;
+            a.testa.rotation.y = Math.sin(a.fase * 0.3) * 0.3 * alza;
           }
         }
 
@@ -2484,7 +2694,10 @@ export function creaScena(contenitore, opzioni = {}) {
     },
     zone: ZONE,
     /** Dove guarda la camera adesso: serve al banco per dire se gira. */
-    dovEGuarda: () => ({ theta: +orbita.theta.toFixed(4), raggio: +orbita.raggio.toFixed(2) }),
+    dovEGuarda: () => ({
+      theta: +orbita.theta.toFixed(4), raggio: +orbita.raggio.toFixed(2),
+      tempo: +tempoScena.toFixed(3),
+    }),
     /** La vetrina accende il giro lento della camera. */
     giraDaSola: (acceso) => {
       giraDaSe = Boolean(acceso);
@@ -2505,6 +2718,7 @@ export function creaScena(contenitore, opzioni = {}) {
         mx: +m.x.toFixed(2), my: +m.y.toFixed(2), mz: +m.z.toFixed(2),
         inPiedi: +a.inPiedi.toFixed(2),
         steso: +a.steso.toFixed(2),
+        ozio: a.ozio ? a.ozio.tipo : null,
         perche: a.giro ? a.giro.tipo : null,
         inGiro: Boolean(a.giro),
       };

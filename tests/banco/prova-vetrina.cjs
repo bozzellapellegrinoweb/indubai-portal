@@ -81,10 +81,19 @@ const dice = (ok, che, extra = '') => {
   const a = await page.evaluate(() => window.regiaScena?.dovEGuarda?.());
   await page.waitForTimeout(12000);
   const bq = await page.evaluate(() => window.regiaScena?.dovEGuarda?.());
+  // Al secondo DELLA SCENA, non dell'orologio da polso: dt e' tagliato a
+  // un decimo di secondo, quindi su una macchina lenta — e il banco, che
+  // rende via software, lo e' — la scena va al rallentatore e misurare in
+  // secondi veri direbbe che la camera e' ferma quando non lo e'.
   const girato = a && bq ? Math.abs(bq.theta - a.theta) : 0;
-  dice(girato > 0.1, 'la camera si muove da sola', `${girato.toFixed(3)} rad in 12s`);
-  // Un grado e mezzo al secondo: oltre i tre gradi diventa una giostra.
-  dice(girato < 0.75, 'ma piano, non e una giostra', `${(girato / 12 * 57.3).toFixed(1)} gradi al secondo`);
+  const quanto = a && bq ? bq.tempo - a.tempo : 0;
+  const alSecondo = quanto > 0.5 ? girato / quanto : 0;
+  dice(girato > 0.02, 'la camera si muove da sola',
+       `${girato.toFixed(3)} rad in ${quanto.toFixed(1)}s di scena`);
+  // Un grado e mezzo al secondo: oltre i tre gradi diventa una giostra,
+  // sotto il mezzo grado non si vede che si muove.
+  dice(alSecondo > 0.008 && alSecondo < 0.055, 'alla velocita giusta, non una giostra',
+       `${(alSecondo * 57.3).toFixed(2)} gradi al secondo di scena`);
 
   // Si preme ancora: e' il punto di avere uno schermo in ufficio.
   const tasti = await page.locator('.regia-fumetto button').count();
