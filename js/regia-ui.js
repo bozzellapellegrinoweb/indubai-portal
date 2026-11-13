@@ -193,6 +193,10 @@
         onClickCervello: () => apriCervello(),
       });
       fatica.hidden = true;
+      // Il banco di prova deve poter misurare la scena invece di guardarla:
+      // senza un appiglio, "gli agenti camminano?" resta un'impressione.
+      // Non apre niente che non sia gia' pubblico nell'oggetto della scena.
+      window.regiaScena = ui.tridi;
       sincronizzaTridi(true);
     } catch (e) {
       console.warn('[regia] la scena non si apre:', e);
@@ -213,6 +217,7 @@
   function spegniTridi() {
     ui.tridi?.distruggi();
     ui.tridi = null;
+    if (window.regiaScena) delete window.regiaScena;
   }
 
   function cambiaVistaSala(quale) {

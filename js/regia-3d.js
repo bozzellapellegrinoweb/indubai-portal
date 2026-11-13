@@ -745,20 +745,45 @@ export function creaScena(contenitore, opzioni = {}) {
     }
     const braccioSx = braccio(-1), braccioDx = braccio(1);
 
-    // ── gambe: cosce in avanti sotto la scrivania, polpacci in giu' ──
-    for (const lato of [-1, 1]) {
+    /**
+     * Una gamba con l'anca e il ginocchio.
+     *
+     * Erano tre pezzi incollati nella posa da seduto: cosce orizzontali
+     * sotto la scrivania, polpacci in giu', scarpe. Andava bene finche'
+     * nessuno si alzava. Adesso sono snodate come le braccia, e la posa da
+     * seduto e' semplicemente la loro rotazione di riposo: in piedi
+     * l'anca torna a zero e la gamba si distende.
+     */
+    const matScarpa = new THREE.MeshLambertMaterial({ color: 0x3a3832 });
+    function gamba(lato) {
+      const anca = new THREE.Group();
+      anca.position.set(0.085 * lato, 0.54, -0.02);
+
       const coscia = new THREE.Mesh(new THREE.CapsuleGeometry(0.063, 0.24, 3, 8), matPantaloni);
-      coscia.position.set(0.085 * lato, 0.5, -0.17);
-      coscia.rotation.x = Math.PI / 2;
-      persona.add(coscia);
+      coscia.position.y = -0.185;
+      coscia.castShadow = !movimentoRidotto;
+      anca.add(coscia);
+
+      const ginocchio = new THREE.Group();
+      ginocchio.position.y = -0.37;
+      anca.add(ginocchio);
+
       const polpaccio = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.22, 3, 8), matPantaloni);
-      polpaccio.position.set(0.085 * lato, 0.28, -0.3);
-      polpaccio.rotation.x = 0.12;
-      persona.add(polpaccio);
-      const scarpa = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.055, 0.19), new THREE.MeshLambertMaterial({ color: 0x3a3832 }));
-      scarpa.position.set(0.085 * lato, 0.14, -0.36);
-      persona.add(scarpa);
+      polpaccio.position.y = -0.16;
+      ginocchio.add(polpaccio);
+
+      const scarpa = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.055, 0.19), matScarpa);
+      scarpa.position.set(0, -0.325, 0.04);
+      ginocchio.add(scarpa);
+
+      // Riposo = seduto: coscia in avanti, polpaccio in giu'. Gli stessi
+      // angoli di prima, scritti come rotazioni invece che come posizioni.
+      anca.rotation.x = Math.PI / 2;
+      ginocchio.rotation.x = -Math.PI / 2 + 0.12;
+      persona.add(anca);
+      return { anca, ginocchio };
     }
+    const gambaSx = gamba(-1), gambaDx = gamba(1);
 
     gruppo.add(persona);
 
@@ -784,8 +809,12 @@ export function creaScena(contenitore, opzioni = {}) {
 
     return {
       agente, gruppo, persona, testa, busto, sedia,
-      braccioSx, braccioDx, anello, schermo,
+      braccioSx, braccioDx, gambaSx, gambaDx, anello, schermo,
       base: { x, z }, posa: 'libero', fase: Math.random() * Math.PI * 2,
+      // Dove sta quando e' al suo posto, e dove sta andando se non ci sta.
+      // Il giro e' null quando e' seduto: vedi decidiGiri.
+      giro: null, passo: Math.random() * 6.28, inPiedi: 0,
+      prossimaIdea: 4 + Math.random() * 20,
     };
   }
 
@@ -958,7 +987,11 @@ export function creaScena(contenitore, opzioni = {}) {
   scena.add(gruppoLinee);
   let linee = [];
 
+  /** L'ultima fotografia di chi sta lavorando con chi. La usa decidiGiri. */
+  let ultimeCoppie = [];
+
   function aggiornaCollaborazioni(coppie) {
+    ultimeCoppie = Array.isArray(coppie) ? coppie : [];
     for (const l of linee) {
       gruppoLinee.remove(l.mesh);
       l.mesh.geometry.dispose();
@@ -1250,8 +1283,10 @@ export function creaScena(contenitore, opzioni = {}) {
     for (const [id, a] of avatarPerAgente) {
       const t = targaDi(id);
       if (!a.gruppo.visible || fumetti.has(id)) { t.el.style.display = 'none'; continue; }
-      a.gruppo.getWorldPosition(vettore);
-      vettore.y += 0.04;
+      // Segue la persona, non la scrivania: da quando si alzano e vanno in
+      // giro, il nome fermo al posto vuoto era il cartellino di nessuno.
+      a.persona.getWorldPosition(vettore);
+      vettore.y = 0.04;
       vettore.project(camera);
       if (vettore.z > 1) { t.el.style.display = 'none'; continue; }
       const p = POSA[a.posa] || POSA.libero;
@@ -1379,6 +1414,90 @@ export function creaScena(contenitore, opzioni = {}) {
     }
   }
 
+  // ── Chi si alza e dove va ───────────────────────────────
+  //
+  // La stanza aveva otto persone che respiravano alla scrivania e non si
+  // muovevano mai. Il movimento non e' decorazione: e' l'unica cosa che
+  // dice, guardando e basta, che qualcosa sta succedendo. Chi lavora resta
+  // al suo posto — li' la verita' e' che e' al suo posto — ma chi e' libero
+  // si alza, e chi e' stato coinvolto da un collega va davvero da lui.
+  //
+  // Nessuno di questi giri inventa un fatto: o c'e' una collaborazione
+  // vera nei lavori aperti, o e' una pausa, e una pausa non dice niente di
+  // falso su un agente libero.
+
+  const PASSO = 1.15;          // metri al secondo, un passo tranquillo
+  const vTmp = new THREE.Vector3();
+
+  /** Un angolo che si avvicina a un altro per la via piu' corta. */
+  function versoAngolo(da, a, quanto) {
+    let d = ((a - da + Math.PI) % (Math.PI * 2)) - Math.PI;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return da + d * Math.min(1, quanto);
+  }
+
+  /** Il posto dove ci si ferma per parlare con qualcuno: di fianco a lui. */
+  function accantoA(altro) {
+    return altro.gruppo.localToWorld(new THREE.Vector3(1.05, 0, 1.25));
+  }
+
+  function mandaIn(a, mondo, secondi) {
+    const locale = a.gruppo.worldToLocal(mondo.clone());
+    a.giro = {
+      locale: new THREE.Vector3(locale.x, 0, locale.z),
+      fino: 0, durata: secondi, torna: false, arrivato: false,
+    };
+  }
+
+  /** Quante persone al massimo stanno in giro insieme. */
+  const IN_GIRO_MAX = 2;
+
+  function decidiGiri(t) {
+    const liberi = [];
+    let inGiro = 0;
+    for (const a of avatarPerAgente.values()) {
+      if (!a.gruppo.visible) { a.giro = null; continue; }
+      // Chi lavora, chi ha una domanda in sospeso e chi e' spento sta al
+      // suo posto: alzarsi racconterebbe una cosa che non e' vera.
+      if (a.posa === 'lavora' || a.posa === 'mano_alzata' || a.posa === 'spento') {
+        if (a.giro) a.giro.torna = true;
+        continue;
+      }
+      if (a.giro) inGiro++; else liberi.push(a);
+    }
+    if (!liberi.length) return;
+
+    // Prima le collaborazioni vere: chi e' stato coinvolto va dal collega.
+    for (const c of ultimeCoppie) {
+      const chi = avatarPerAgente.get(c.a);
+      const verso = avatarPerAgente.get(c.da);
+      if (!chi || !verso || chi === verso) continue;
+      if (chi.giro || !liberi.includes(chi)) continue;
+      if (!chi.gruppo.visible || !verso.gruppo.visible) continue;
+      if (inGiro >= IN_GIRO_MAX) break;
+      mandaIn(chi, accantoA(verso), 7 + Math.random() * 6);
+      chi.prossimaIdea = t + 40;
+      inGiro++;
+    }
+
+    // Poi le pause: non spesso, e mai piu' di due persone in piedi insieme.
+    // Con otto che si alzano a turno la stanza sembra un corteo, e il
+    // movimento smette di dire qualcosa proprio perche' c'e' sempre.
+    if (inGiro >= IN_GIRO_MAX) return;
+    for (const a of liberi) {
+      if (a.giro || t < a.prossimaIdea) continue;
+      a.prossimaIdea = t + 45 + Math.random() * 70;
+      const altri = liberi.filter(x => x !== a && !x.giro && x.gruppo.visible);
+      const alCervello = Math.random() < 0.45 || !altri.length;
+      const meta = alCervello
+        ? new THREE.Vector3(ZONE.cervello.x + (Math.random() - 0.5) * 1.6, 0,
+                            ZONE.cervello.z + 1.5 + Math.random() * 0.6)
+        : accantoA(altri[Math.floor(Math.random() * altri.length)]);
+      mandaIn(a, meta, 6 + Math.random() * 8);
+      break;   // una persona alla volta: otto che si alzano insieme e' un corteo
+    }
+  }
+
   // ── Stato degli avatar ──────────────────────────────────
   function aggiornaStato(agenti, datiPerAgente) {
     for (const [id, a] of avatarPerAgente) {
@@ -1393,6 +1512,7 @@ export function creaScena(contenitore, opzioni = {}) {
 
   // ── Il ciclo ────────────────────────────────────────────
   let orologio = new THREE.Clock();
+  let ultimaDecisione = 0;
   let attivo = true;
   let ultimaLuce = 0;
   let fotogrammi = 0, ultimoControllo = performance.now(), dprCorrente = dprMax;
@@ -1503,12 +1623,94 @@ export function creaScena(contenitore, opzioni = {}) {
           a.persona.rotation.z = 0;
         }
 
+        // ── stare al proprio posto, o andare da qualche parte ──
+        //
         // Chi lavora sta vicino alla scrivania, chi e' in pausa si allontana
-        // un po' con tutta la sedia.
+        // un po' con tutta la sedia. E chi ha un giro da fare ci va: a
+        // piedi, guardando dove cammina, e poi torna a sedersi.
         const zRiposo = (a.posa === 'libero' || a.posa === 'spento') ? 0.98 : 0.8;
-        a.persona.position.z += (zRiposo - a.persona.position.z) * dt * 2.4;
         a.sedia.position.z += ((zRiposo + 0.04) - a.sedia.position.z) * dt * 2.4;
+
+        const g = a.giro;
+        const andando = g && !g.torna;
+        const bx = andando ? g.locale.x : 0;
+        const bz = andando ? g.locale.z : zRiposo;
+        const p = a.persona.position;
+        // vx/vz e non dx/dz: dx qui sopra e' gia' il braccio destro, e
+        // ridichiararlo faceva fallire tutto il modulo con un
+        // "Identifier 'dx' has already been declared". La scena non si
+        // apriva affatto, e node --check non se n'era accorto: l'ha preso
+        // il banco, aprendo la pagina in un browser vero.
+        const vx = bx - p.x, vz = bz - p.z;
+        const lontano = Math.hypot(vx, vz);
+        const cammina = lontano > 0.1;
+
+        if (cammina) {
+          const avanti = Math.min(1, (PASSO * dt) / lontano);
+          p.x += vx * avanti;
+          p.z += vz * avanti;
+          a.persona.rotation.y = versoAngolo(a.persona.rotation.y,
+                                             Math.atan2(vx, vz), dt * 5);
+          a.passo += dt * 7.5;
+        } else if (g && !g.torna) {
+          // Arrivato: si ferma li' e guarda verso la scrivania da cui e'
+          // venuto, che e' quello che fa una persona che e' andata a dire
+          // una cosa a qualcuno.
+          if (!g.arrivato) { g.arrivato = true; g.fino = t + g.durata; }
+          a.persona.rotation.y = versoAngolo(a.persona.rotation.y,
+                                             Math.atan2(-p.x, -p.z), dt * 3);
+          if (t > g.fino) g.torna = true;
+        } else if (g && g.torna) {
+          a.giro = null;
+        } else {
+          p.x += (0 - p.x) * dt * 2.4;
+          p.z += (zRiposo - p.z) * dt * 2.4;
+          a.persona.rotation.y = versoAngolo(a.persona.rotation.y, 0, dt * 4);
+        }
+
+        // In piedi o seduto: una sola grandezza da cui dipendono l'altezza,
+        // le gambe e le braccia. Passa da 0 a 1 in mezzo secondo, cosi'
+        // alzarsi si vede ma non e' uno scatto.
+        const vuole = a.giro ? 1 : 0;
+        a.inPiedi += (vuole - a.inPiedi) * Math.min(1, dt * 3.4);
+        const seduto = 1 - a.inPiedi;
+        // 0.16 e' quanto manca alle scarpe per toccare terra con le gambe
+        // distese: seduto l'anca sta a 0.54 e la gamba e' lunga 0.70.
+        const saltello = cammina ? Math.abs(Math.sin(a.passo)) * 0.022 : 0;
+        a.persona.position.y = a.inPiedi * (0.16 + saltello);
+
+        const ANCA_SEDUTA = Math.PI / 2;
+        const GIN_SEDUTO = -Math.PI / 2 + 0.12;
+        let ancaS = 0, ancaD = 0, ginS = 0, ginD = 0;
+        if (cammina) {
+          const o = Math.sin(a.passo);
+          ancaS = o * 0.5;  ancaD = -o * 0.5;
+          ginS = -Math.max(0, -o) * 0.75;
+          ginD = -Math.max(0,  o) * 0.75;
+        }
+        a.gambaSx.anca.rotation.x      = ANCA_SEDUTA * seduto + ancaS * a.inPiedi;
+        a.gambaDx.anca.rotation.x      = ANCA_SEDUTA * seduto + ancaD * a.inPiedi;
+        a.gambaSx.ginocchio.rotation.x = GIN_SEDUTO  * seduto + ginS * a.inPiedi;
+        a.gambaDx.ginocchio.rotation.x = GIN_SEDUTO  * seduto + ginD * a.inPiedi;
+
+        // In piedi le braccia non stanno sulla tastiera: pendono, e
+        // camminando oscillano al contrario delle gambe.
+        if (a.inPiedi > 0.02) {
+          const o = cammina ? Math.sin(a.passo) : 0;
+          const misc = (fermo, mosso) => fermo * seduto + mosso * a.inPiedi;
+          sx.spalla.rotation.x = misc(sx.spalla.rotation.x, -o * 0.42);
+          dx.spalla.rotation.x = misc(dx.spalla.rotation.x,  o * 0.42);
+          sx.spalla.rotation.z = misc(sx.spalla.rotation.z,  0.1);
+          dx.spalla.rotation.z = misc(dx.spalla.rotation.z, -0.1);
+          sx.gomito.rotation.x = misc(sx.gomito.rotation.x, -0.22);
+          dx.gomito.rotation.x = misc(dx.gomito.rotation.x, -0.22);
+          a.testa.rotation.x = misc(a.testa.rotation.x, 0);
+        }
       }
+
+      // Chi si alza lo si decide ogni secondo e mezzo, non sessanta volte
+      // al secondo: e' una decisione, non un'animazione.
+      if (t - ultimaDecisione > 1.5) { decidiGiri(t); ultimaDecisione = t; }
 
       // ── il Cervello pulsa ──
       const base = 1 + Math.sin(t * 1.25) * 0.035;
@@ -1636,5 +1838,22 @@ export function creaScena(contenitore, opzioni = {}) {
       if (a) inquadra(new THREE.Vector3(a.base.x, 1.0, a.base.z), 13);
     },
     zone: ZONE,
+    /**
+     * Dove stanno le persone, adesso. Esiste per il banco di prova: senza,
+     * "camminano?" si puo' solo guardare, e guardare non e' una misura.
+     */
+    dovEsono: () => [...avatarPerAgente.values()].map((a) => {
+      const m = a.persona.getWorldPosition(new THREE.Vector3());
+      return {
+        id: a.agente.id, chi: a.agente.nome, posa: a.posa,
+        x: +a.persona.position.x.toFixed(2),
+        z: +a.persona.position.z.toFixed(2),
+        // In coordinate del mondo: servono per inquadrare e per sapere se
+        // qualcuno e' finito fuori dalla stanza.
+        mx: +m.x.toFixed(2), my: +m.y.toFixed(2), mz: +m.z.toFixed(2),
+        inPiedi: +a.inPiedi.toFixed(2),
+        inGiro: Boolean(a.giro),
+      };
+    }),
   };
 }

@@ -24,7 +24,15 @@ node tests/banco/prova-anteprima.cjs           # le linguette dei video
 node tests/banco/prova-tutti.cjs               # i pannelli, e dove esce un contenuto
 node tests/banco/prova-calendario.cjs          # il giorno giusto da quattro fusi
 node tests/banco/prova-concentrato.cjs         # schermo intero, e la stanza leggibile
+node tests/banco/prova-movimento.cjs           # chi si alza, dove va, chi resta seduto
 ```
+
+`prova-movimento.cjs` guarda per un minuto e mezzo, perche' le pause sono
+rade di proposito. Controlla che qualcuno si alzi davvero, che chi lavora
+resti al suo posto, che non ci siano mai piu' di due persone in piedi
+insieme e che nessuno esca dalla stanza. E' anche il test che ha preso un
+`Identifier 'dx' has already been declared` nel ciclo di animazione: la
+scena non si apriva affatto, e `node --check` non se n'era accorto.
 
 `prova-concentrato.cjs` e' quello che misura invece di guardare, su tre
 schermi (1366, 1440, 1920): quanto e' grande la scena e che forma ha, se
