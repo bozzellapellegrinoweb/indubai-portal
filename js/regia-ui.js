@@ -2474,6 +2474,43 @@
     setTimeout(() => { misuraSopra(); ui.tridi?.ridimensiona?.(); }, 60);
   }
 
+  /**
+   * La vetrina: la Regia appesa a uno schermo in ufficio.
+   *
+   * Diversa dallo "schermo intero", che serve a lavorare. Qui davanti ci
+   * passa la gente: resta la stanza, chi c'e' e cosa manca, e spariscono
+   * linguette, filtri e strumenti. In piu' si chiede al browser il vero
+   * schermo intero, cosi' non si vedono nemmeno le sue barre — che e'
+   * esattamente quello che serve su un monitor appeso.
+   *
+   * Si preme ancora: i fumetti sopra la testa degli agenti e la striscia
+   * "Tocca a te" restano vivi, e toccando un agente si apre la sua scheda.
+   */
+  function vetrina(acceso) {
+    const gia = document.body.classList.contains('rg-vetrina');
+    if (acceso === undefined) acceso = !gia;
+    if (acceso === gia) return;
+
+    // Le due modalita' non si sommano: in vetrina i comandi della testata
+    // devono tornare al loro posto, altrimenti restano dentro una barra
+    // che qui non si vede, e all'uscita non si trovano piu'.
+    if (acceso && document.body.classList.contains('rg-solo')) concentrato(false, false);
+
+    document.body.classList.toggle('rg-vetrina', acceso);
+    $('rg-vetrina').setAttribute('aria-pressed', String(acceso));
+    $('rg-vetrina').textContent = acceso ? 'Esci' : 'Vetrina';
+
+    // Lo schermo intero vero lo da' il browser, e lo puo' rifiutare: se
+    // rifiuta, la vetrina resta comunque — e' gia' quasi tutto quello che
+    // serve.
+    if (acceso) document.documentElement.requestFullscreen?.().catch(() => {});
+    else if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+
+    ui.tridi?.giraDaSola?.(acceso);
+    requestAnimationFrame(misuraSopra);
+    setTimeout(() => { misuraSopra(); ui.tridi?.ridimensiona?.(); }, 140);
+  }
+
   function concentratoRicordato() {
     try { return localStorage.getItem('regia_solo') === '1'; } catch { return false; }
   }
@@ -2661,6 +2698,17 @@
     $('rg-zoom-piu').addEventListener('click', () => ui.tridi?.zoom(1));
     $('rg-zoom-meno').addEventListener('click', () => ui.tridi?.zoom(-1));
     $('rg-solo').addEventListener('click', () => concentrato());
+    $('rg-vetrina').addEventListener('click', () => vetrina());
+    $('rg-esci-vetrina').addEventListener('click', () => vetrina(false));
+
+    // Uscendo dallo schermo intero con Esc o col tasto del browser, la
+    // vetrina si spegne da se': restare in vetrina dentro una finestra
+    // normale vorrebbe dire una pagina senza nessun comando per uscirne.
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && document.body.classList.contains('rg-vetrina')) {
+        vetrina(false);
+      }
+    });
 
     // F, perche' e' una cosa che si accende e si spegne decine di volte al
     // giorno. Non dentro una casella di testo, dove F e' una lettera.
@@ -2672,6 +2720,17 @@
           || /^(INPUT|TEXTAREA|SELECT)$/.test(dove.tagName || ''))) return;
       ev.preventDefault();
       concentrato();
+    });
+
+    // V come vetrina, con la stessa regola: non dentro una casella di testo.
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'v' && ev.key !== 'V') return;
+      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      const dove = ev.target;
+      if (dove && (dove.isContentEditable
+          || /^(INPUT|TEXTAREA|SELECT)$/.test(dove.tagName || ''))) return;
+      ev.preventDefault();
+      vetrina();
     });
 
     // La rotellina sulla scena non deve far scorrere la pagina: la scena se
@@ -2695,6 +2754,7 @@
       if ($('rg-modale').style.display !== 'none') return chiudiModale();
       if ($('rg-riquadro')) return chiudiRiquadro();
       if ($('rg-pannello').classList.contains('aperto')) return chiudiPannello();
+      if (document.body.classList.contains('rg-vetrina')) return vetrina(false);
       if (document.body.classList.contains('rg-solo')) return concentrato(false);
     });
 

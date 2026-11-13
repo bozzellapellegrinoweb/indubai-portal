@@ -39,6 +39,14 @@ const COLORI = {
   vaso:       0xcfc6b4,
   divisorio:  0xe3ddd0,
   tappeto:    0xece7dc,
+  legno:      0x8a6a4a,   // il bancone del caffe' e il tavolino
+  // Il divano era crema come il pavimento e spariva dentro: da lontano
+  // sembrava una macchia. Verde salvia scuro, come i mobili della
+  // reference: si vede da sei metri che li' c'e' un posto dove sedersi.
+  divano:     0x6e7a62,
+  cuscino:    0xe7e1d2,
+  macchina:   0x3f434b,
+  tappetoCaldo: 0xe3dac6,
 };
 
 const POSA = {
@@ -49,6 +57,20 @@ const POSA = {
   // Spento non e' "libero": libero vuol dire che puo' partire da un momento
   // all'altro, spento vuol dire che non partira' finche' non lo riaccendi.
   spento:      { colore: 0x4b5563, etichetta: 'spento' },
+};
+
+/**
+ * I posti dove si va quando non si sta alla scrivania.
+ *
+ * Non sono zone di lavoro e non stanno nel filtro: sono arredo con un
+ * significato. Un ufficio dove tutti stanno sempre seduti al monitor non
+ * somiglia a un ufficio, somiglia a un grafico; e su uno schermo appeso al
+ * muro la differenza fra "sta lavorando" e "sta facendo una pausa" si deve
+ * vedere da sei metri di distanza, senza leggere niente.
+ */
+const POSTI = {
+  caffe: { x:  6.3, z: -2.0, nome: 'Caffe' },
+  relax: { x: -6.3, z:  2.4, nome: 'Relax' },
 };
 
 /** Il centro di ogni zona. Gli agenti si disperdono attorno al loro. */
@@ -134,6 +156,18 @@ export function creaScena(contenitore, opzioni = {}) {
       bersaglio.z + r * Math.sin(p) * Math.sin(t),
     );
     camera.lookAt(bersaglio);
+    // La foschia sta SEMPRE dietro la stanza, non dentro.
+    //
+    // Era fissa a 22-42 unita', tarata su una camera che stava a sedici.
+    // Appena l'inquadratura si e' allargata — il caffe' e il relax sono
+    // piu' lontani delle scrivanie — la camera e' finita oltre le ventidue
+    // e la foschia ha cominciato a mangiarsi i mobili invece dei muri: la
+    // stanza usciva slavata, come dietro un vetro appannato. Legandola al
+    // raggio, l'atmosfera resta e il soggetto no.
+    if (scena.fog) {
+      scena.fog.near = r * 1.35;
+      scena.fog.far  = r * 3.2;
+    }
   }
   piazzaCamera();
 
@@ -367,11 +401,138 @@ export function creaScena(contenitore, opzioni = {}) {
     ufficio.add(telaio);
   }
 
+  // ── Il caffe' e il relax ────────────────────────────────
+  //
+  // Due posti veri, con mobili veri, perche' una pausa che succede in
+  // mezzo al pavimento vuoto non si legge: sembra che l'agente si sia
+  // fermato per sbaglio. Con un bancone e un divano, invece, si capisce
+  // a colpo d'occhio cosa sta facendo — che e' il punto di appendere
+  // questa schermata a un muro.
+
+  /** Il bancone del caffe', la macchina, due sgabelli. */
+  function zonaCaffe(cx, cz) {
+    const g = new THREE.Group();
+    g.position.set(cx, 0, cz);
+    g.rotation.y = -Math.PI / 2.6;     // rivolto verso il centro della stanza
+
+    const tappeto = new THREE.Mesh(new THREE.CircleGeometry(2.3, 36), mat.tappetoCaldo);
+    tappeto.rotation.x = -Math.PI / 2;
+    tappeto.position.y = 0.006;
+    g.add(tappeto);
+
+    const bancone = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.92, 0.62), mat.legno);
+    bancone.position.set(0, 0.46, -0.5);
+    bancone.castShadow = bancone.receiveShadow = !movimentoRidotto;
+    g.add(bancone);
+    const piano = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.06, 0.7), mat.scrivania);
+    piano.position.set(0, 0.95, -0.5);
+    g.add(piano);
+
+    // La macchina del caffe': un corpo, una testa, una tazza sotto.
+    const corpo = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.46, 0.36), mat.macchina);
+    corpo.position.set(-0.6, 1.21, -0.52);
+    corpo.castShadow = !movimentoRidotto;
+    g.add(corpo);
+    const beccuccio = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.14), mat.macchina);
+    beccuccio.position.set(-0.6, 1.02, -0.38);
+    g.add(beccuccio);
+    const spia = new THREE.Mesh(new THREE.CircleGeometry(0.035, 12),
+      new THREE.MeshBasicMaterial({ color: 0xb5ff00 }));
+    spia.position.set(-0.6, 1.3, -0.335);
+    g.add(spia);
+
+    // Tazze: piccole, ma sono quelle che dicono "qui si prende il caffe'".
+    for (const [tx, tz] of [[-0.6, -0.33], [0.1, -0.44], [0.3, -0.36]]) {
+      const tazza = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.04, 0.075, 10), mat.sedia);
+      tazza.position.set(tx, 1.015, tz);
+      g.add(tazza);
+    }
+    // Una brocca e un paio di bicchieri, per non lasciare il piano vuoto.
+    const brocca = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.26, 12), mat.vetro);
+    brocca.position.set(0.85, 1.11, -0.5);
+    g.add(brocca);
+
+    for (const sx of [-0.55, 0.55]) {
+      const sgabello = new THREE.Group();
+      sgabello.position.set(sx, 0, 0.42);
+      const seduta = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.08, 14), mat.cuscino);
+      seduta.position.y = 0.62;
+      seduta.castShadow = !movimentoRidotto;
+      sgabello.add(seduta);
+      const palo = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.6, 8), mat.gambe);
+      palo.position.y = 0.3;
+      sgabello.add(palo);
+      const piede = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.03, 14), mat.gambe);
+      piede.position.y = 0.02;
+      sgabello.add(piede);
+      g.add(sgabello);
+    }
+    g.add(ombraContatto(0, -0.5, 2.6));
+    return g;
+  }
+
+  /** Il divano, un tavolino, una pianta: dove si sta sdraiati. */
+  function zonaRelax(cx, cz) {
+    const g = new THREE.Group();
+    g.position.set(cx, 0, cz);
+    g.rotation.y = Math.PI / 2.4;
+
+    const tappeto = new THREE.Mesh(new THREE.CircleGeometry(2.6, 36), mat.tappetoCaldo);
+    tappeto.rotation.x = -Math.PI / 2;
+    tappeto.position.y = 0.006;
+    g.add(tappeto);
+
+    // Il divano e' lungo 2.6: ci si deve poter stendere, non sedere e basta.
+    const seduta = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.26, 0.92), mat.divano);
+    seduta.position.set(0, 0.35, 0);
+    seduta.castShadow = seduta.receiveShadow = !movimentoRidotto;
+    g.add(seduta);
+    const schienale = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.62, 0.22), mat.divano);
+    schienale.position.set(0, 0.68, -0.37);
+    schienale.castShadow = !movimentoRidotto;
+    g.add(schienale);
+    for (const bx of [-1.25, 1.25]) {
+      const bracciolo = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.44, 0.92), mat.divano);
+      bracciolo.position.set(bx, 0.52, 0);
+      g.add(bracciolo);
+    }
+    for (const px of [-0.78, 0.78]) {
+      const cuscino = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.12, 0.42), mat.cuscino);
+      cuscino.position.set(px, 0.54, -0.2);
+      cuscino.rotation.x = -0.18;
+      g.add(cuscino);
+    }
+    for (const [px, pz] of [[-1.1, 0.36], [1.1, 0.36], [-1.1, -0.36], [1.1, -0.36]]) {
+      const piede = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.22, 8), mat.gambe);
+      piede.position.set(px, 0.11, pz);
+      g.add(piede);
+    }
+
+    const tavolino = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 20), mat.legno);
+    tavolino.position.set(0, 0.42, 1.25);
+    tavolino.castShadow = !movimentoRidotto;
+    g.add(tavolino);
+    const gambaT = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 0.4, 10), mat.gambe);
+    gambaT.position.set(0, 0.2, 1.25);
+    g.add(gambaT);
+    const tazzina = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.07, 10), mat.sedia);
+    tazzina.position.set(0.12, 0.485, 1.3);
+    g.add(tazzina);
+
+    g.add(ombraContatto(0, 0, 2.9));
+    g.add(ombraContatto(0, 1.25, 1.0));
+    return g;
+  }
+
+  const mobiliCaffe = zonaCaffe(POSTI.caffe.x, POSTI.caffe.z);
+  const mobiliRelax = zonaRelax(POSTI.relax.x, POSTI.relax.z);
+  ufficio.add(mobiliCaffe, mobiliRelax);
+
   // ── Piante e lampade, con instancing ────────────────────
   // Sono gli oggetti che si ripetono: una sola chiamata di disegno per tutte.
   const puntiPianta = [
     [-6.6, -4.4], [6.8, -4.6], [-6.8, 5.2], [6.6, 6.2], [0.2, -6.4],
-    [-3.4, 6.6], [7.2, 1.6], [-7.0, 0.8],
+    [-3.4, 6.6], [7.2, 1.6], [-8.2, -0.6],
   ];
   const vasi = new THREE.InstancedMesh(
     new THREE.CylinderGeometry(0.26, 0.19, 0.42, 12), mat.vaso, puntiPianta.length);
@@ -390,7 +551,9 @@ export function creaScena(contenitore, opzioni = {}) {
   });
   ufficio.add(vasi, fronde);
 
-  const puntiLampada = [[-4.2, -3.0], [3.6, -5.0], [-5.0, 4.0], [4.2, 5.6]];
+  // La terza stava a (-5.0, 4.0), cioe' dentro il divano: il palo usciva
+  // dal cuscino. Spostata di un metro e mezzo.
+  const puntiLampada = [[-4.2, -3.0], [3.6, -5.0], [-4.0, 5.4], [4.2, 5.6]];
   const paliLampada = new THREE.InstancedMesh(
     new THREE.CylinderGeometry(0.045, 0.045, 1.9, 8), mat.gambe, puntiLampada.length);
   const cappelli = new THREE.InstancedMesh(
@@ -636,6 +799,11 @@ export function creaScena(contenitore, opzioni = {}) {
     // Seduta: il bacino sta sul sedile, il busto si inclina appena in avanti.
     const persona = new THREE.Group();
     persona.position.set(0, 0, 0.8);
+    // YXZ e non XYZ: cosi' rotation.y resta "da che parte e' girato" e
+    // rotation.x diventa "quanto e' steso", uno indipendente dall'altro.
+    // Con l'ordine normale il corpo si sdraiava sempre verso nord,
+    // qualunque fosse il verso del divano.
+    persona.rotation.order = 'YXZ';
 
     const bacino = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.14, 0.26), matPantaloni);
     bacino.position.y = 0.54;
@@ -813,7 +981,7 @@ export function creaScena(contenitore, opzioni = {}) {
       base: { x, z }, posa: 'libero', fase: Math.random() * Math.PI * 2,
       // Dove sta quando e' al suo posto, e dove sta andando se non ci sta.
       // Il giro e' null quando e' seduto: vedi decidiGiri.
-      giro: null, passo: Math.random() * 6.28, inPiedi: 0,
+      giro: null, passo: Math.random() * 6.28, inPiedi: 0, steso: 0,
       prossimaIdea: 4 + Math.random() * 20,
     };
   }
@@ -875,7 +1043,11 @@ export function creaScena(contenitore, opzioni = {}) {
     // zone: il margine tiene dentro scrivania e monitor, che stanno intorno
     // al punto dell'avatar.
     if (messi.length) {
-      const xs = messi.map(m => m[0]), zs = messi.map(m => m[1]);
+      // Dentro l'inquadratura ci vanno anche il caffe' e il relax: se
+      // restano fuori, un agente che va in pausa esce dal campo e
+      // sembra sparito.
+      const punti = messi.concat(Object.values(POSTI).map(p => [p.x, p.z]));
+      const xs = punti.map(m => m[0]), zs = punti.map(m => m[1]);
       const minX = Math.min(...xs), maxX = Math.max(...xs);
       const minZ = Math.min(...zs), maxZ = Math.max(...zs);
       AREA = {
@@ -1068,12 +1240,28 @@ export function creaScena(contenitore, opzioni = {}) {
   // e bloccava tutti i click successivi.
   let premutoSuTela = false;
   let trascina = null;
+  /**
+   * La camera gira da sola.
+   *
+   * Serve alla vetrina, cioe' allo schermo appeso al muro dell'ufficio:
+   * un'immagine ferma, per quanto animata al centro, dopo dieci secondi
+   * smette di essere guardata. Un giro lento — meno di tre gradi al
+   * secondo, un giro completo in due minuti — la tiene viva senza
+   * diventare una giostra.
+   *
+   * Si ferma mentre qualcuno trascina, e riparte venti secondi dopo che ha
+   * smesso: chi si avvicina allo schermo per guardare una cosa non deve
+   * inseguirla.
+   */
+  let giraDaSe = false;
+  let riprendiAGirare = 0;
   const LIMITI = { thetaMin: -0.35, thetaMax: Math.PI * 0.9, phiMin: 0.22, phiMax: 1.12,
                    raggioMin: 9, raggioMax: 38 };
 
   function giuMouse(ev) {
     premuto(ev);
     premutoSuTela = true;
+    riprendiAGirare = orologio.getElapsedTime() + 20;
     const c = coordinate(ev);
     trascina = { x: c.cx, y: c.cy, pan: ev.shiftKey || ev.button === 1 };
   }
@@ -1104,6 +1292,7 @@ export function creaScena(contenitore, opzioni = {}) {
   }
 
   function rotella(ev) {
+    riprendiAGirare = orologio.getElapsedTime() + 20;
     ev.preventDefault();
     zoomManuale = true;
     orbita.raggio = THREE.MathUtils.clamp(
@@ -1441,12 +1630,61 @@ export function creaScena(contenitore, opzioni = {}) {
     return altro.gruppo.localToWorld(new THREE.Vector3(1.05, 0, 1.25));
   }
 
-  function mandaIn(a, mondo, secondi) {
+  /**
+   * Manda qualcuno da qualche parte.
+   *
+   * Le coordinate sono quelle della sua postazione e non del mondo, perche'
+   * persona e' figlia del gruppo della scrivania: convertire qui una volta
+   * sola evita di farlo sessanta volte al secondo nel ciclo.
+   *
+   * @param guardaMondo dove girarsi una volta arrivati (un punto del mondo)
+   * @param sdraio      se ci si stende: l'altezza e l'orientamento del divano
+   */
+  function mandaIn(a, mondo, secondi, tipo = 'pausa', guardaMondo = null, sdraio = null) {
     const locale = a.gruppo.worldToLocal(mondo.clone());
+    let guarda = null;
+    if (guardaMondo) {
+      const gl = a.gruppo.worldToLocal(guardaMondo.clone());
+      guarda = Math.atan2(gl.x - locale.x, gl.z - locale.z);
+    }
     a.giro = {
+      tipo,
       locale: new THREE.Vector3(locale.x, 0, locale.z),
+      guarda,
+      // L'angolo del divano e' nel mondo: qui serve relativo alla scrivania.
+      sdraio: sdraio ? { ...sdraio, y: sdraio.y - a.gruppo.rotation.y } : null,
       fino: 0, durata: secondi, torna: false, arrivato: false,
     };
+    return a.giro;
+  }
+
+  // Un posto alla volta: due agenti sdraiati nello stesso punto del divano
+  // sono una persona sola con quattro gambe.
+  const occupato = { relax: null, caffe: [null, null] };
+
+  function liberaPosti() {
+    for (const [chiave, a] of Object.entries(occupato)) {
+      if (Array.isArray(a)) {
+        a.forEach((x, i) => { if (x && !x.giro) a[i] = null; });
+      } else if (a && !a.giro) occupato[chiave] = null;
+    }
+  }
+
+  /** Il divano: dove si appoggiano i piedi, dove va la testa, quanto in alto. */
+  function postoSdraiato() {
+    const ry = mobiliRelax.rotation.y;
+    return {
+      dove: mobiliRelax.localToWorld(new THREE.Vector3(1.0, 0, 0)),
+      // Il corpo si stende lungo il divano: la testa verso l'altro
+      // bracciolo. L'angolo lo ricavo dal mobile, cosi' se il divano si
+      // gira un giorno, chi ci dorme si gira con lui.
+      sdraio: { y: Math.atan2(-Math.cos(ry), Math.sin(ry)), altezza: 0.69 },
+    };
+  }
+
+  /** Davanti al bancone, dal lato degli sgabelli. */
+  function postoCaffe(i) {
+    return mobiliCaffe.localToWorld(new THREE.Vector3(i ? 0.55 : -0.55, 0, 0.95));
   }
 
   /** Quante persone al massimo stanno in giro insieme. */
@@ -1465,6 +1703,7 @@ export function creaScena(contenitore, opzioni = {}) {
       }
       if (a.giro) inGiro++; else liberi.push(a);
     }
+    liberaPosti();
     if (!liberi.length) return;
 
     // Prima le collaborazioni vere: chi e' stato coinvolto va dal collega.
@@ -1487,13 +1726,50 @@ export function creaScena(contenitore, opzioni = {}) {
     for (const a of liberi) {
       if (a.giro || t < a.prossimaIdea) continue;
       a.prossimaIdea = t + 45 + Math.random() * 70;
+
       const altri = liberi.filter(x => x !== a && !x.giro && x.gruppo.visible);
-      const alCervello = Math.random() < 0.45 || !altri.length;
-      const meta = alCervello
-        ? new THREE.Vector3(ZONE.cervello.x + (Math.random() - 0.5) * 1.6, 0,
-                            ZONE.cervello.z + 1.5 + Math.random() * 0.6)
-        : accantoA(altri[Math.floor(Math.random() * altri.length)]);
-      mandaIn(a, meta, 6 + Math.random() * 8);
+      const posti = [];
+      if (!occupato.relax) posti.push('relax');
+      if (occupato.caffe.some(x => !x)) posti.push('caffe', 'caffe');
+      if (altri.length && inGiro + 1 < IN_GIRO_MAX) posti.push('parla');
+      posti.push('cervello');
+
+      switch (posti[Math.floor(Math.random() * posti.length)]) {
+        case 'relax': {
+          // Sdraiarsi dura: e' una pausa vera, non un giro dell'isolato.
+          const { dove, sdraio } = postoSdraiato();
+          mandaIn(a, dove, 30 + Math.random() * 30, 'relax', null, sdraio);
+          occupato.relax = a;
+          break;
+        }
+        case 'caffe': {
+          const i = occupato.caffe[0] ? 1 : 0;
+          mandaIn(a, postoCaffe(i), 14 + Math.random() * 10, 'caffe',
+                  mobiliCaffe.localToWorld(new THREE.Vector3(0, 0, -0.5)));
+          occupato.caffe[i] = a;
+          break;
+        }
+        case 'parla': {
+          // Si incontrano a meta' strada e si guardano: nessuno dei due va
+          // "a casa dell'altro", perche' non e' una consegna, e' una
+          // chiacchiera.
+          const b = altri[Math.floor(Math.random() * altri.length)];
+          const pa = new THREE.Vector3(); a.gruppo.getWorldPosition(pa);
+          const pb = new THREE.Vector3(); b.gruppo.getWorldPosition(pb);
+          const meta = pa.clone().add(pb).multiplyScalar(0.5);
+          const versoB = pb.clone().sub(pa).normalize().multiplyScalar(0.42);
+          const quanto = 12 + Math.random() * 10;
+          mandaIn(a, meta.clone().sub(versoB), quanto, 'parla', meta.clone().add(versoB));
+          mandaIn(b, meta.clone().add(versoB), quanto, 'parla', meta.clone().sub(versoB));
+          b.prossimaIdea = t + 60;
+          break;
+        }
+        default:
+          mandaIn(a, new THREE.Vector3(
+            ZONE.cervello.x + (Math.random() - 0.5) * 1.6, 0,
+            ZONE.cervello.z + 1.5 + Math.random() * 0.6),
+            8 + Math.random() * 8, 'cervello');
+      }
       break;   // una persona alla volta: otto che si alzano insieme e' un corteo
     }
   }
@@ -1513,6 +1789,7 @@ export function creaScena(contenitore, opzioni = {}) {
   // ── Il ciclo ────────────────────────────────────────────
   let orologio = new THREE.Clock();
   let ultimaDecisione = 0;
+  let giroAvanti = true;
   let attivo = true;
   let ultimaLuce = 0;
   let fotogrammi = 0, ultimoControllo = performance.now(), dprCorrente = dprMax;
@@ -1653,12 +1930,15 @@ export function creaScena(contenitore, opzioni = {}) {
                                              Math.atan2(vx, vz), dt * 5);
           a.passo += dt * 7.5;
         } else if (g && !g.torna) {
-          // Arrivato: si ferma li' e guarda verso la scrivania da cui e'
-          // venuto, che e' quello che fa una persona che e' andata a dire
-          // una cosa a qualcuno.
+          // Arrivato. Dove guarda dipende dal perche' e' venuto: chi
+          // chiacchiera guarda l'altro, chi prende il caffe' guarda il
+          // bancone, chi non ha un motivo preciso si gira verso la
+          // scrivania da cui e' venuto.
           if (!g.arrivato) { g.arrivato = true; g.fino = t + g.durata; }
-          a.persona.rotation.y = versoAngolo(a.persona.rotation.y,
-                                             Math.atan2(-p.x, -p.z), dt * 3);
+          const dove = g.sdraio ? g.sdraio.y
+                     : g.guarda !== null && g.guarda !== undefined ? g.guarda
+                     : Math.atan2(-p.x, -p.z);
+          a.persona.rotation.y = versoAngolo(a.persona.rotation.y, dove, dt * 3);
           if (t > g.fino) g.torna = true;
         } else if (g && g.torna) {
           a.giro = null;
@@ -1677,7 +1957,16 @@ export function creaScena(contenitore, opzioni = {}) {
         // 0.16 e' quanto manca alle scarpe per toccare terra con le gambe
         // distese: seduto l'anca sta a 0.54 e la gamba e' lunga 0.70.
         const saltello = cammina ? Math.abs(Math.sin(a.passo)) * 0.022 : 0;
-        a.persona.position.y = a.inPiedi * (0.16 + saltello);
+
+        // Sdraiato: il corpo si stende sul divano. Ci si mette e ci si
+        // rialza in un secondo abbondante, perche' uno che scatta in piedi
+        // da sdraiato non sembra una persona, sembra un difetto.
+        const vuoleSteso = Boolean(g && g.sdraio && g.arrivato && !g.torna && !cammina);
+        a.steso += ((vuoleSteso ? 1 : 0) - a.steso) * Math.min(1, dt * 1.6);
+        a.persona.rotation.x = a.steso * (Math.PI / 2);
+        const altezzaDivano = g && g.sdraio ? g.sdraio.altezza : 0.69;
+        a.persona.position.y = (1 - a.steso) * (a.inPiedi * (0.16 + saltello))
+                             + a.steso * altezzaDivano;
 
         const ANCA_SEDUTA = Math.PI / 2;
         const GIN_SEDUTO = -Math.PI / 2 + 0.12;
@@ -1705,12 +1994,58 @@ export function creaScena(contenitore, opzioni = {}) {
           sx.gomito.rotation.x = misc(sx.gomito.rotation.x, -0.22);
           dx.gomito.rotation.x = misc(dx.gomito.rotation.x, -0.22);
           a.testa.rotation.x = misc(a.testa.rotation.x, 0);
+
+          // Arrivato e fermo: cosa fa dipende da perche' e' venuto. Senza
+          // questo, uno davanti alla macchina del caffe' e uno che
+          // chiacchiera sono la stessa identica posa, e il posto in cui
+          // stanno e' l'unica cosa che li distingue.
+          if (g && g.arrivato && !g.torna && !cammina) {
+            if (g.tipo === 'caffe') {
+              // Beve: il braccio destro sale alla bocca ogni tanto.
+              const sorso = Math.max(0, Math.sin(a.fase * 0.5));
+              dx.spalla.rotation.x = -0.18 - sorso * 1.0;
+              dx.spalla.rotation.z = -0.22;
+              dx.gomito.rotation.x = -0.3 - sorso * 1.45;
+              a.testa.rotation.x = -0.1 * sorso;
+            } else if (g.tipo === 'parla') {
+              // Gesticola: una mano che accompagna quello che dice.
+              const gesto = Math.sin(a.fase * 1.4);
+              dx.spalla.rotation.x = -0.5 + gesto * 0.22;
+              dx.spalla.rotation.z = -0.3;
+              dx.gomito.rotation.x = -1.0 - Math.max(0, gesto) * 0.35;
+              a.testa.rotation.y = Math.sin(a.fase * 0.65) * 0.14;
+            }
+          }
+        }
+
+        // Sdraiato: braccia lungo il corpo, non piegate come alla tastiera.
+        if (a.steso > 0.3) {
+          const q = a.steso;
+          const giu = (v) => v * (1 - q);
+          sx.spalla.rotation.x = giu(sx.spalla.rotation.x);
+          dx.spalla.rotation.x = giu(dx.spalla.rotation.x);
+          sx.gomito.rotation.x = giu(sx.gomito.rotation.x) - 0.12 * q;
+          dx.gomito.rotation.x = giu(dx.gomito.rotation.x) - 0.12 * q;
+          sx.spalla.rotation.z = giu(sx.spalla.rotation.z) + 0.16 * q;
+          dx.spalla.rotation.z = giu(dx.spalla.rotation.z) - 0.16 * q;
+          a.testa.rotation.x = giu(a.testa.rotation.x);
         }
       }
 
       // Chi si alza lo si decide ogni secondo e mezzo, non sessanta volte
       // al secondo: e' una decisione, non un'animazione.
       if (t - ultimaDecisione > 1.5) { decidiGiri(t); ultimaDecisione = t; }
+
+      if (giraDaSe && !trascina && t > riprendiAGirare && !inquadratura) {
+        // Avanti e indietro fra i limiti, non un giro completo: da dietro
+        // si vedrebbero le nuche e i monitor di spalle. Un grado e mezzo al
+        // secondo: l'intera corsa in cinquanta secondi, andata e ritorno in
+        // un minuto e quaranta. Piu' veloce diventa una giostra.
+        orbita.theta += dt * 0.026 * (giroAvanti ? 1 : -1);
+        if (orbita.theta > LIMITI.thetaMax) { orbita.theta = LIMITI.thetaMax; giroAvanti = false; }
+        if (orbita.theta < LIMITI.thetaMin) { orbita.theta = LIMITI.thetaMin; giroAvanti = true; }
+        piazzaCamera();
+      }
 
       // ── il Cervello pulsa ──
       const base = 1 + Math.sin(t * 1.25) * 0.035;
@@ -1838,6 +2173,13 @@ export function creaScena(contenitore, opzioni = {}) {
       if (a) inquadra(new THREE.Vector3(a.base.x, 1.0, a.base.z), 13);
     },
     zone: ZONE,
+    /** Dove guarda la camera adesso: serve al banco per dire se gira. */
+    dovEGuarda: () => ({ theta: +orbita.theta.toFixed(4), raggio: +orbita.raggio.toFixed(2) }),
+    /** La vetrina accende il giro lento della camera. */
+    giraDaSola: (acceso) => {
+      giraDaSe = Boolean(acceso);
+      if (giraDaSe) riprendiAGirare = orologio.getElapsedTime() + 1.5;
+    },
     /**
      * Dove stanno le persone, adesso. Esiste per il banco di prova: senza,
      * "camminano?" si puo' solo guardare, e guardare non e' una misura.
@@ -1852,6 +2194,8 @@ export function creaScena(contenitore, opzioni = {}) {
         // qualcuno e' finito fuori dalla stanza.
         mx: +m.x.toFixed(2), my: +m.y.toFixed(2), mz: +m.z.toFixed(2),
         inPiedi: +a.inPiedi.toFixed(2),
+        steso: +a.steso.toFixed(2),
+        perche: a.giro ? a.giro.tipo : null,
         inGiro: Boolean(a.giro),
       };
     }),

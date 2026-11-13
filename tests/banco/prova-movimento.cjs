@@ -55,7 +55,11 @@ const dice = (ok, che, extra = '') => {
   const nonDovevano = new Set();
   let visteGambe = false;
 
-  for (let i = 0; i < 45; i++) {
+  const perche = new Map();        // perche' si sono alzati, e quante volte
+  let maxStesi = 0;
+  let altezzeSbagliate = [];
+
+  for (let i = 0; i < 75; i++) {
     await page.waitForTimeout(2000);
     const ora = await leggi();
     if (!ora) break;
@@ -72,14 +76,21 @@ const dice = (ok, che, extra = '') => {
       if (Math.abs(a.mx) > MURO || Math.abs(a.mz) > MURO) fuori.push(`${a.chi} a (${a.mx},${a.mz})`);
       // In piedi vuol dire alzato da terra di 16 centimetri: e' la misura
       // che fa toccare le scarpe al pavimento con le gambe distese.
-      if (a.inPiedi > 0.95) {
+      if (a.inPiedi > 0.95 && a.steso < 0.1) {
         visteGambe = true;
         if (Math.abs(a.my - 0.16) > 0.05) {
           nonDovevano.add(`${a.chi} in piedi ma a y=${a.my}`);
         }
       }
+      if (a.perche) perche.set(a.perche, (perche.get(a.perche) || 0) + 1);
+      // Sdraiato sul divano: il corpo sta all'altezza del cuscino, non per
+      // aria e non dentro.
+      if (a.steso > 0.9 && Math.abs(a.my - 0.69) > 0.08) {
+        altezzeSbagliate.push(`${a.chi} steso a y=${a.my}`);
+      }
     }
     massimoInGiro = Math.max(massimoInGiro, inGiro);
+    maxStesi = Math.max(maxStesi, ora.filter(a => a.steso > 0.5).length);
   }
 
   const mossi = [...lontananza].filter(([, d]) => d > 1).map(([c, d]) => `${c} ${d.toFixed(1)}m`);
@@ -90,6 +101,14 @@ const dice = (ok, che, extra = '') => {
   dice(massimoInGiro <= IN_GIRO_MAX, `mai piu' di ${IN_GIRO_MAX} in giro insieme`,
        `visti ${massimoInGiro}`);
   dice(fuori.length === 0, 'nessuno esce dalla stanza', fuori.slice(0, 3).join('; '));
+
+  // Non basta che camminino: devono andare da qualche parte per un motivo.
+  // Un ufficio dove tutti fanno la stessa cosa non e' vivo, e' un ciclo.
+  dice(perche.size >= 2, 'si alzano per motivi diversi',
+       [...perche.keys()].join(', ') || 'nessuno');
+  dice(maxStesi <= 1, 'sul divano ci sta una persona sola', `visti ${maxStesi}`);
+  dice(altezzeSbagliate.length === 0, 'chi e sdraiato sta sul divano, non per aria',
+       altezzeSbagliate.slice(0, 2).join('; '));
   dice(errori.length === 0, 'nessun errore in pagina', errori.slice(0, 2).join(' | '));
 
   await page.screenshot({ path: path.join(BANCO, 'movimento.png') });

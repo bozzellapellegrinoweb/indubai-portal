@@ -22,6 +22,7 @@
       --liv-scena:    1;    /* la tela 3D */
       --liv-fumetti:  3;    /* i fumetti sopra le teste */
       --liv-controlli:6;    /* zoom, schermo intero, orologio */
+      --liv-vetrina: 990;   /* l'uscita dalla vetrina, sopra la pagina */
       --liv-velo:   1000;   /* il velo che spegne la pagina dietro */
       --liv-pannello:1001;  /* il pannello laterale */
       --liv-modale: 1100;   /* le finestre, sempre sopra il pannello */
@@ -369,6 +370,45 @@
     body.rg-solo .topbar-actions  { display:flex; align-items:center; gap:8px;
                                     flex-wrap:wrap; justify-content:flex-end; }
     .rg-solo-tasto { font-weight:800 !important; }
+
+    /* ── Vetrina: la Regia appesa al muro ─────────────────── */
+    /* Non e' la modalita' di lavoro. Qui lo schermo sta in ufficio e la
+       gente ci passa davanti: niente linguette, niente filtri, niente
+       strumenti. Resta quello che si guarda — la stanza, chi c'e', cosa
+       manca — e quello su cui si preme passando: i fumetti sopra la testa
+       degli agenti e la striscia "Tocca a te". La camera gira piano da
+       sola, perche' un'immagine ferma dopo dieci secondi non la guarda
+       piu' nessuno. */
+    body.rg-vetrina .sidebar         { transform:translateX(-100%) !important; }
+    body.rg-vetrina .sidebar-overlay,
+    body.rg-vetrina .hamburger       { display:none !important; }
+    body.rg-vetrina .main-content    { margin-left:0 !important; }
+    body.rg-vetrina .topbar          { padding:12px 24px 8px; border-bottom:0; }
+    body.rg-vetrina .rg-saluto,
+    body.rg-vetrina .topbar-actions,
+    body.rg-vetrina .rg-barra        { display:none !important; }
+    body.rg-vetrina .rg-stato        { font-size:17px; line-height:1.45; }
+    body.rg-vetrina .page-content    { padding:0 24px 16px; }
+    body.rg-vetrina .rg-tocca        { margin-bottom:12px; }
+    body.rg-vetrina .rg-tessera-titolo { font-size:15px; }
+    body.rg-vetrina .rg-tessera-testo  { font-size:14px; }
+    body.rg-vetrina .rg-sala-guscio  { grid-template-columns:230px minmax(0,1fr) 244px; }
+    body.rg-vetrina .rg-fascia-testa { font-size:12px; }
+    body.rg-vetrina .rg-tess-nome    { font-size:14px; }
+    /* I comandi della scena non servono a chi passa: li vede solo chi si
+       avvicina, e intanto non sporcano l'immagine da lontano. */
+    body.rg-vetrina #rg-comandi      { opacity:0; transition:opacity .2s; }
+    body.rg-vetrina #rg-palco:hover #rg-comandi { opacity:1; }
+
+    /* Sopra la testata, non sotto: a 6 stava dietro e il click finiva sul
+       saluto. Tutto cio' che sta sopra il contenuto va dichiarato nella
+       scala in cima, non inventato qui. */
+    .rg-esci-vetrina { position:fixed; top:10px; right:12px; z-index:var(--liv-vetrina);
+      border:1.5px solid var(--border); background:var(--surface); color:var(--text-muted);
+      border-radius:9px; padding:6px 11px; font:inherit; font-size:12.5px; font-weight:700;
+      cursor:pointer; opacity:.25; transition:opacity .2s; }
+    .rg-esci-vetrina:hover { opacity:1; }
+    body:not(.rg-vetrina) .rg-esci-vetrina { display:none; }
 
     /* ── Pannello laterale ───────────────────────────────── */
     /* Era width:min(480px,100vw), fisso su qualunque schermo: a 1920 il
@@ -754,6 +794,8 @@
         <button class="btn btn-ghost btn-sm rg-solo-tasto" id="rg-solo"
                 type="button" aria-pressed="false"
                 title="Da' tutta la pagina alla Regia e nasconde il menu del portale (tasto F)">Schermo intero</button>
+        <button class="btn btn-ghost btn-sm" id="rg-vetrina" type="button" aria-pressed="false"
+                title="Da appendere a uno schermo in ufficio: resta solo la stanza, e la camera gira piano (tasto V)">Vetrina</button>
         <button class="btn btn-accent btn-sm" id="rg-btn-nuovo">Nuovo lavoro</button>
       </div>
 
@@ -846,6 +888,8 @@
 
 <!-- ── Pannello laterale ───────────────────────────────── -->
 <div class="rg-velo" id="rg-velo"></div>
+<button class="rg-esci-vetrina" id="rg-esci-vetrina" type="button">Esci dalla vetrina</button>
+
 <aside class="rg-pannello" id="rg-pannello" role="dialog" aria-modal="false" aria-labelledby="rg-pan-titolo">
   <div class="rg-pan-testa">
     <div style="flex:1">

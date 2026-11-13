@@ -25,6 +25,7 @@ node tests/banco/prova-tutti.cjs               # i pannelli, e dove esce un cont
 node tests/banco/prova-calendario.cjs          # il giorno giusto da quattro fusi
 node tests/banco/prova-concentrato.cjs         # schermo intero, e la stanza leggibile
 node tests/banco/prova-movimento.cjs           # chi si alza, dove va, chi resta seduto
+node tests/banco/prova-vetrina.cjs             # lo schermo da appendere in ufficio
 ```
 
 `prova-movimento.cjs` guarda per un minuto e mezzo, perche' le pause sono
