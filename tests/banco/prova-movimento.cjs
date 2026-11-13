@@ -85,7 +85,7 @@ const dice = (ok, che, extra = '') => {
       if (a.perche) perche.set(a.perche, (perche.get(a.perche) || 0) + 1);
       // Sdraiato sul divano: il corpo sta all'altezza del cuscino, non per
       // aria e non dentro.
-      if (a.steso > 0.9 && Math.abs(a.my - 0.69) > 0.08) {
+      if (a.steso > 0.9 && Math.abs(a.my - 0.70) > 0.08) {
         altezzeSbagliate.push(`${a.chi} steso a y=${a.my}`);
       }
     }

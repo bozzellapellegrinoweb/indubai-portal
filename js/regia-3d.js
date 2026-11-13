@@ -28,23 +28,35 @@
 
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js';
 
+/**
+ * La tavolozza.
+ *
+ * Era tutta crema su crema: pareti bianche, mobili crema, tappeti crema.
+ * Da lontano — e questa schermata sta appesa a un muro — spariva tutto.
+ * La reference che mi ha mandato Pellegrino fa l'opposto, e funziona:
+ * pareti verde scuro, pavimento chiaro, legno caldo, ottone, sedute
+ * bianche. Il contrasto e' fra il guscio scuro e quello che ci sta dentro.
+ */
 const COLORI = {
   pavimento:  0xf4f2ec,
-  muro:       0xffffff,
-  scrivania:  0xe9e4d8,
-  gambe:      0xbdb6a6,
+  muro:       0x2a3527,   // verde scuro: e' il colore che fa la stanza
+  scrivania:  0xf2eee5,
+  gambe:      0xb4924f,   // ottone
   monitor:    0x2b2e35,
-  sedia:      0xd6d0c2,
-  pianta:     0x6aa84f,
+  sedia:      0xf0ece1,
+  pianta:     0x4f8f3e,
   vaso:       0xcfc6b4,
   divisorio:  0xe3ddd0,
-  tappeto:    0xece7dc,
-  legno:      0x8a6a4a,   // il bancone del caffe' e il tavolino
+  tappeto:    0xdde3d3,   // salvia chiarissimo: si deve distinguere dal pavimento
+  bordoTappeto: 0x4a5c42,  // il bordo verde dei tappeti della reference
+  legno:      0x7b5634,   // noce caldo: bancone, tavolini, tavolo riunioni
   // Il divano era crema come il pavimento e spariva dentro: da lontano
   // sembrava una macchia. Verde salvia scuro, come i mobili della
   // reference: si vede da sei metri che li' c'e' un posto dove sedersi.
-  divano:     0x6e7a62,
-  cuscino:    0xe7e1d2,
+  // Il divano della reference e' bianco e curvo, non un parallelepipedo
+  // verde: il verde sta sui muri, e dentro la stanza fa da fondo.
+  divano:     0xf1ede3,
+  cuscino:    0xdfd8c6,
   macchina:   0x3f434b,
   tappetoCaldo: 0xe3dac6,
 };
@@ -69,8 +81,9 @@ const POSA = {
  * vedere da sei metri di distanza, senza leggere niente.
  */
 const POSTI = {
-  caffe: { x:  6.3, z: -2.0, nome: 'Caffe' },
-  relax: { x: -6.3, z:  2.4, nome: 'Relax' },
+  caffe:    { x:  6.3, z: -2.0, nome: 'Caffe' },
+  relax:    { x: -6.3, z:  2.4, nome: 'Relax' },
+  riunioni: { x:  5.4, z:  5.0, nome: 'Riunioni' },
 };
 
 /** Il centro di ogni zona. Gli agenti si disperdono attorno al loro. */
@@ -439,13 +452,32 @@ export function creaScena(contenitore, opzioni = {}) {
   }
 
   // Lo schermo del brand, come quello appeso nella sala riunioni vera.
-  const schermoMuro = alMuro(3.4, 1.95,
-    new THREE.MeshLambertMaterial({ color: 0x1c2029 }), 3.2, 2.05, 'fondo');
-  stacca(schermoMuro, 'fondo', 0.012);
-  const logo = new THREE.Mesh(new THREE.CircleGeometry(0.46, 28),
-    new THREE.MeshBasicMaterial({ color: 0xb5ff00 }));
+  const cornice = alMuro(3.5, 2.05,
+    new THREE.MeshLambertMaterial({ color: 0x1a1d22 }), 3.2, 2.05, 'fondo');
+  stacca(cornice, 'fondo', 0.012);
+  const schermoMuro = alMuro(3.3, 1.86,
+    new THREE.MeshBasicMaterial({ color: 0xf7f5ef }), 3.2, 2.05, 'fondo');
+  stacca(schermoMuro, 'fondo', 0.024);
+  const logo = new THREE.Mesh(new THREE.CircleGeometry(0.52, 32),
+    new THREE.MeshBasicMaterial({ color: 0x1a1d22 }));
   logo.position.set(3.2, 2.05, -MURO + 0.05);
   ufficio.add(logo);
+  const logoDentro = new THREE.Mesh(new THREE.CircleGeometry(0.3, 32),
+    new THREE.MeshBasicMaterial({ color: 0xb5ff00 }));
+  logoDentro.position.set(3.2, 2.05, -MURO + 0.06);
+  ufficio.add(logoDentro);
+
+  // I quadri: tre, piccoli, allineati. Nella reference sono la cosa che
+  // dice "qui ci lavora qualcuno" piu' di qualunque mobile.
+  for (const [i, dove] of [[0, -0.6], [1, 0.6], [2, 1.8]]) {
+    const telaio = alMuro(0.82, 1.0,
+      new THREE.MeshLambertMaterial({ color: 0xe8e2d4 }), dove, 2.1, 'lato');
+    stacca(telaio, 'lato', 0.012);
+    const dentro = alMuro(0.66, 0.84,
+      new THREE.MeshLambertMaterial({ color: [0xcbd9e2, 0xe6d5c2, 0xd6dfc8][i] }),
+      dove, 2.1, 'lato');
+    stacca(dentro, 'lato', 0.024);
+  }
 
   /** Il colore del cielo fuori, all'ora che e' adesso a Dubai. */
   function coloraFinestre() {
@@ -457,13 +489,41 @@ export function creaScena(contenitore, opzioni = {}) {
   }
   coloraFinestre();
 
+  /**
+   * Un tappeto rettangolare col bordo, come quelli della reference.
+   *
+   * Erano cerchi crema su pavimento crema: non si vedevano, quindi non
+   * dicevano dove finisse una zona e cominciasse l'altra — che e' l'unico
+   * motivo per cui un tappeto sta in un ufficio open space. Due piani
+   * sovrapposti: quello sotto, verde, sporge di quindici centimetri e fa
+   * il bordo.
+   */
+  function tappetoDiZona(x, z, larghezza, profondita, ruota = 0) {
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    g.rotation.y = ruota;
+    const bordo = new THREE.Mesh(
+      new THREE.PlaneGeometry(larghezza, profondita),
+      new THREE.MeshLambertMaterial({ color: COLORI.bordoTappeto }));
+    bordo.rotation.x = -Math.PI / 2;
+    bordo.position.y = 0.004;
+    g.add(bordo);
+    const dentro = new THREE.Mesh(
+      new THREE.PlaneGeometry(larghezza - 0.42, profondita - 0.42), mat.tappeto);
+    dentro.rotation.x = -Math.PI / 2;
+    dentro.position.y = 0.007;
+    g.add(dentro);
+    ufficio.add(g);
+    return g;
+  }
+
   // Tappeti di zona: dicono dove finisce una zona e comincia l'altra.
   for (const [chiave, z] of Object.entries(ZONE)) {
     if (chiave === 'cervello') continue;
-    const t = new THREE.Mesh(new THREE.CircleGeometry(3.1, 40), mat.tappeto);
-    t.rotation.x = -Math.PI / 2;
-    t.position.set(z.x, 0.006, z.z);
-    ufficio.add(t);
+    // Piccoli abbastanza da non toccarsi: a 5.8 per 5.0 si sovrapponevano,
+    // e dei bordi sovrapposti non sono tappeti, sono nastro adesivo per
+    // terra.
+    tappetoDiZona(z.x, z.z, 3.9, 3.3);
   }
 
   // Divisori in vetro fra lo studio e il montaggio.
@@ -557,57 +617,219 @@ export function creaScena(contenitore, opzioni = {}) {
     tappeto.position.y = 0.006;
     g.add(tappeto);
 
-    // Il divano e' lungo 2.6: ci si deve poter stendere, non sedere e basta.
-    const seduta = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.26, 0.92), mat.divano);
+    // Il divano e' curvo, come quello della reference: una mezzaluna
+    // bianca. Era un parallelepipedo, e un parallelepipedo in mezzo a una
+    // stanza non somiglia a un posto dove ci si siede. Resta lungo
+    // abbastanza da starci stesi, perche' li' ci si stende davvero.
+    //
+    // Il mezzo disco va da -90 a +90 gradi: il lato dritto e' lungo l'asse
+    // X, la pancia verso +Z. Chi ci si stende si allunga lungo la X.
+    const R = 1.55;
+    const seduta = new THREE.Mesh(
+      new THREE.CylinderGeometry(R, R, 0.3, 30, 1, false, -Math.PI / 2, Math.PI),
+      mat.divano);
     seduta.position.set(0, 0.35, 0);
     seduta.castShadow = seduta.receiveShadow = !movimentoRidotto;
     g.add(seduta);
-    const schienale = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.62, 0.22), mat.divano);
-    schienale.position.set(0, 0.68, -0.37);
+    // Lo schienale: un mezzo tubo aperto, cioe' la curva vista da dentro.
+    const schienale = new THREE.Mesh(
+      new THREE.CylinderGeometry(R, R, 0.66, 30, 1, true, -Math.PI / 2, Math.PI),
+      new THREE.MeshLambertMaterial({ color: COLORI.divano, side: THREE.DoubleSide }));
+    schienale.position.set(0, 0.76, 0);
     schienale.castShadow = !movimentoRidotto;
     g.add(schienale);
-    for (const bx of [-1.25, 1.25]) {
-      const bracciolo = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.44, 0.92), mat.divano);
-      bracciolo.position.set(bx, 0.52, 0);
-      g.add(bracciolo);
-    }
-    for (const px of [-0.78, 0.78]) {
-      const cuscino = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.12, 0.42), mat.cuscino);
-      cuscino.position.set(px, 0.54, -0.2);
-      cuscino.rotation.x = -0.18;
+    // Il bordo in cima, cosi' lo schienale non finisce con uno spigolo
+    // sottile come un foglio.
+    const bordo = new THREE.Mesh(
+      new THREE.TorusGeometry(R, 0.07, 8, 30, Math.PI), mat.divano);
+    bordo.position.set(0, 1.09, 0);
+    bordo.rotation.set(-Math.PI / 2, 0, -Math.PI / 2);
+    g.add(bordo);
+    for (const [px, pz] of [[-0.95, 0.5], [0.95, 0.5], [0, 0.95]]) {
+      const cuscino = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.13, 0.4), mat.cuscino);
+      cuscino.position.set(px, 0.56, pz);
+      cuscino.rotation.set(-0.2, -px * 0.5, 0);
       g.add(cuscino);
     }
-    for (const [px, pz] of [[-1.1, 0.36], [1.1, 0.36], [-1.1, -0.36], [1.1, -0.36]]) {
-      const piede = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.22, 8), mat.gambe);
-      piede.position.set(px, 0.11, pz);
-      g.add(piede);
-    }
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(R - 0.12, R - 0.2, 0.2, 30, 1, false, -Math.PI / 2, Math.PI),
+      new THREE.MeshLambertMaterial({ color: COLORI.cuscino }));
+    base.position.set(0, 0.1, 0);
+    g.add(base);
 
     const tavolino = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 20), mat.legno);
-    tavolino.position.set(0, 0.42, 1.25);
+    tavolino.position.set(0, 0.42, -1.3);
     tavolino.castShadow = !movimentoRidotto;
     g.add(tavolino);
     const gambaT = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 0.4, 10), mat.gambe);
-    gambaT.position.set(0, 0.2, 1.25);
+    gambaT.position.set(0, 0.2, -1.3);
     g.add(gambaT);
     const tazzina = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.07, 10), mat.sedia);
-    tazzina.position.set(0.12, 0.485, 1.3);
+    tazzina.position.set(0.12, 0.485, -1.25);
     g.add(tazzina);
 
     g.add(ombraContatto(0, 0, 2.9));
-    g.add(ombraContatto(0, 1.25, 1.0));
+    g.add(ombraContatto(0, -1.3, 1.0));
     return g;
   }
 
+  /** Il tavolo lungo con le sedie intorno: la sala riunioni della reference. */
+  function zonaRiunioni(cx, cz) {
+    const g = new THREE.Group();
+    g.position.set(cx, 0, cz);
+    g.rotation.y = -Math.PI / 7;
+
+    tappetoDiZona(cx, cz, 4.6, 3.1, g.rotation.y);
+
+    const piano = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.08, 1.15), mat.legno);
+    piano.position.y = 0.75;
+    piano.castShadow = piano.receiveShadow = !movimentoRidotto;
+    g.add(piano);
+    // Due gambe a cavalletto invece di quattro: il tavolo lungo della
+    // reference poggia cosi', e sotto si vedono le sedie.
+    for (const gx of [-1.1, 1.1]) {
+      const palo = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.72, 0.1), mat.gambe);
+      palo.position.set(gx, 0.36, 0);
+      g.add(palo);
+      const piede = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 0.9), mat.gambe);
+      piede.position.set(gx, 0.03, 0);
+      g.add(piede);
+    }
+    // Qualcosa sul tavolo: un blocco di fogli e due bicchieri.
+    const fogli = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.015, 0.22), mat.scrivania);
+    fogli.position.set(-0.5, 0.8, 0.1);
+    g.add(fogli);
+    for (const bx of [0.3, 0.75]) {
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.038, 0.11, 10), mat.vetro);
+      b.position.set(bx, 0.845, -0.15);
+      g.add(b);
+    }
+
+    // Le sedie: tre per lato lungo, una per testa.
+    const sedie = [
+      [-0.95, 0.95, 0], [0, 0.95, 0], [0.95, 0.95, 0],
+      [-0.95, -0.95, Math.PI], [0, -0.95, Math.PI], [0.95, -0.95, Math.PI],
+      [-1.85, 0, Math.PI / 2], [1.85, 0, -Math.PI / 2],
+    ];
+    for (const [sx, sz, sr] of sedie) {
+      const sedia = new THREE.Group();
+      sedia.position.set(sx, 0, sz);
+      sedia.rotation.y = sr;
+      const sed = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.07, 0.42), mat.sedia);
+      sed.position.y = 0.45;
+      sed.castShadow = !movimentoRidotto;
+      sedia.add(sed);
+      const sch = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.06), mat.sedia);
+      sch.position.set(0, 0.69, 0.19);
+      sedia.add(sch);
+      for (const [px, pz] of [[-0.16, 0.16], [0.16, 0.16], [-0.16, -0.16], [0.16, -0.16]]) {
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.44, 6), mat.gambe);
+        p.position.set(px, 0.22, pz);
+        sedia.add(p);
+      }
+      g.add(sedia);
+    }
+    g.add(ombraContatto(0, 0, 3.2));
+    return g;
+  }
+
+  /**
+   * Una credenza bassa contro il muro.
+   *
+   * Nella reference sono la cosa che toglie il vuoto fra le scrivanie e la
+   * parete: senza, il pavimento lungo i muri e' una fascia nuda e la
+   * stanza sembra un magazzino con dentro degli uffici.
+   */
+  function credenza(cx, cz, larghezza, ruota) {
+    const g = new THREE.Group();
+    g.position.set(cx, 0, cz);
+    g.rotation.y = ruota;
+
+    const corpo = new THREE.Mesh(new THREE.BoxGeometry(larghezza, 0.68, 0.46), mat.legno);
+    corpo.position.y = 0.42;
+    corpo.castShadow = corpo.receiveShadow = !movimentoRidotto;
+    g.add(corpo);
+    const piano = new THREE.Mesh(new THREE.BoxGeometry(larghezza + 0.06, 0.05, 0.52), mat.scrivania);
+    piano.position.y = 0.78;
+    g.add(piano);
+    // Le ante: due solchi chiari sul fronte, che bastano a farlo leggere
+    // come un mobile e non come un parallelepipedo.
+    for (const ax of [-larghezza / 4, larghezza / 4]) {
+      const anta = new THREE.Mesh(new THREE.BoxGeometry(larghezza / 2 - 0.08, 0.56, 0.02),
+        new THREE.MeshLambertMaterial({ color: 0x8c6540 }));
+      anta.position.set(ax, 0.42, 0.235);
+      g.add(anta);
+      const maniglia = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.025, 0.025), mat.gambe);
+      maniglia.position.set(ax, 0.58, 0.252);
+      g.add(maniglia);
+    }
+    for (const px of [-larghezza / 2 + 0.12, larghezza / 2 - 0.12]) {
+      const piede = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.16, 6), mat.gambe);
+      piede.position.set(px, 0.08, 0.16);
+      g.add(piede);
+    }
+    // Qualcosa sopra: una pianta bassa e due libri appoggiati.
+    const vasetto = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.18, 10), mat.vaso);
+    vasetto.position.set(-larghezza / 2 + 0.4, 0.89, 0);
+    g.add(vasetto);
+    const cespuglio = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0),
+      new THREE.MeshLambertMaterial({ color: 0x4f8f3e }));
+    cespuglio.position.set(-larghezza / 2 + 0.4, 1.08, 0);
+    g.add(cespuglio);
+    const libri = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.09, 0.22), mat.sedia);
+    libri.position.set(larghezza / 2 - 0.5, 0.85, 0);
+    libri.rotation.y = 0.2;
+    g.add(libri);
+
+    g.add(ombraContatto(0, 0, 1.9));
+    return g;
+  }
+
+  /** La palma dell'angolo: alta, con le fronde aperte. */
+  function palma(cx, cz) {
+    const g = new THREE.Group();
+    g.position.set(cx, 0, cz);
+    const vaso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.34, 0.6, 14), mat.vaso);
+    vaso.position.y = 0.3;
+    vaso.castShadow = !movimentoRidotto;
+    g.add(vaso);
+    const tronco = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 1.7, 9), mat.legno);
+    tronco.position.y = 1.4;
+    tronco.rotation.z = 0.05;
+    tronco.castShadow = !movimentoRidotto;
+    g.add(tronco);
+    for (let i = 0; i < 7; i++) {
+      const fronda = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.25, 5),
+        new THREE.MeshLambertMaterial({ color: 0x4f8f3e }));
+      const a = (i / 7) * Math.PI * 2;
+      fronda.position.set(Math.cos(a) * 0.5, 2.38, Math.sin(a) * 0.5);
+      fronda.rotation.set(Math.cos(a) * 1.05, -a, Math.sin(a) * -1.05);
+      fronda.scale.set(1, 1, 0.42);
+      fronda.castShadow = !movimentoRidotto;
+      g.add(fronda);
+    }
+    g.add(ombraContatto(0, 0, 1.5));
+    return g;
+  }
+
+  // Le palme stanno dove stavano due piante tonde: cosi' sono dentro
+  // l'inquadratura e non aggiungono larghezza alla stanza.
+  const ALBERI = [[-6.6, -4.4], [5.2, -4.8]];
   const mobiliCaffe = zonaCaffe(POSTI.caffe.x, POSTI.caffe.z);
   const mobiliRelax = zonaRelax(POSTI.relax.x, POSTI.relax.z);
-  ufficio.add(mobiliCaffe, mobiliRelax);
+  const mobiliRiunioni = zonaRiunioni(POSTI.riunioni.x, POSTI.riunioni.z);
+  ufficio.add(mobiliCaffe, mobiliRelax, mobiliRiunioni,
+              palma(ALBERI[0][0], ALBERI[0][1]), palma(ALBERI[1][0], ALBERI[1][1]),
+              credenza(-2.4, -MURO + 0.35, 2.8, 0),
+              credenza(5.0, -MURO + 0.35, 2.0, 0),
+              credenza(-MURO + 0.35, 1.2, 2.6, Math.PI / 2),
+              credenza(-MURO + 0.35, 6.4, 1.8, Math.PI / 2));
 
   // ── Piante e lampade, con instancing ────────────────────
   // Sono gli oggetti che si ripetono: una sola chiamata di disegno per tutte.
   const puntiPianta = [
-    [-6.6, -4.4], [6.8, -4.6], [-6.8, 5.2], [6.6, 6.2], [0.2, -6.4],
-    [-3.4, 6.6], [7.2, 1.6], [-8.2, -0.6],
+    [-6.8, 5.2], [8.6, 6.6], [0.2, -6.4],
+    [-3.4, 6.6], [8.4, 1.4], [-8.2, -0.6],
   ];
   const vasi = new THREE.InstancedMesh(
     new THREE.CylinderGeometry(0.26, 0.19, 0.42, 12), mat.vaso, puntiPianta.length);
@@ -1121,15 +1343,19 @@ export function creaScena(contenitore, opzioni = {}) {
       // Dentro l'inquadratura ci vanno anche il caffe' e il relax: se
       // restano fuori, un agente che va in pausa esce dal campo e
       // sembra sparito.
-      const punti = messi.concat(Object.values(POSTI).map(p => [p.x, p.z]));
+      const punti = messi
+        .concat(Object.values(POSTI).map(p => [p.x, p.z]))
+        .concat(ALBERI);
       const xs = punti.map(m => m[0]), zs = punti.map(m => m[1]);
       const minX = Math.min(...xs), maxX = Math.max(...xs);
       const minZ = Math.min(...zs), maxZ = Math.max(...zs);
       AREA = {
         x: (minX + maxX) / 2, z: (minZ + maxZ) / 2,
-        mezzaX: (maxX - minX) / 2 + 1.2,
-        mezzaZ: (maxZ - minZ) / 2 + 1.2,
-        alto: 2.2,
+        // Il margine era 1.2 e teneva fuori le sedie del tavolo lungo e la
+        // cima delle palme: la stanza finiva tagliata ai bordi.
+        mezzaX: (maxX - minX) / 2 + 1.7,
+        mezzaZ: (maxZ - minZ) / 2 + 1.7,
+        alto: 2.7,
       };
       bersaglio.set(AREA.x, 0.6, AREA.z);
       // Due passate: si inquadra, si centra, e si rimisura perche'
@@ -1749,11 +1975,13 @@ export function creaScena(contenitore, opzioni = {}) {
   function postoSdraiato() {
     const ry = mobiliRelax.rotation.y;
     return {
-      dove: mobiliRelax.localToWorld(new THREE.Vector3(1.0, 0, 0)),
+      // Dentro la mezzaluna, lungo il lato dritto: e' li' che ci sta un
+      // corpo disteso.
+      dove: mobiliRelax.localToWorld(new THREE.Vector3(1.05, 0, 0.5)),
       // Il corpo si stende lungo il divano: la testa verso l'altro
       // bracciolo. L'angolo lo ricavo dal mobile, cosi' se il divano si
       // gira un giorno, chi ci dorme si gira con lui.
-      sdraio: { y: Math.atan2(-Math.cos(ry), Math.sin(ry)), altezza: 0.69 },
+      sdraio: { y: Math.atan2(-Math.cos(ry), Math.sin(ry)), altezza: 0.70 },
     };
   }
 
