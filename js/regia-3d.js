@@ -364,23 +364,98 @@ export function creaScena(contenitore, opzioni = {}) {
   const ufficio = new THREE.Group();
   scena.add(ufficio);
 
-  const pavimento = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), mat.pavimento);
+  // La stanza e' una stanza, non un pavimento infinito.
+  //
+  // Prima il pavimento era trenta metri per trenta e i muri stavano a
+  // quindici: fuori campo, sempre. Si vedeva una distesa chiara con dei
+  // mobili in mezzo, e niente diceva dove finisse. Una scatola aperta —
+  // il pavimento, due muri vicini, e il bordo spesso sotto, come una casa
+  // di bambole — racconta un ufficio in un colpo d'occhio.
+  //
+  // I muri sono piani a faccia singola: girandoci intorno spariscono da
+  // soli invece di tagliare la vista, che e' esattamente quello che serve
+  // quando la camera gira da sola nella vetrina.
+  const MURO = 10.2;        // dove stanno i due muri
+  const LATO = 21;          // quanto e' larga la lastra del pavimento
+
+  const pavimento = new THREE.Mesh(new THREE.PlaneGeometry(LATO, LATO), mat.pavimento);
   pavimento.rotation.x = -Math.PI / 2;
   pavimento.receiveShadow = !movimentoRidotto;
   ufficio.add(pavimento);
 
+  // Il bordo sotto: da' spessore alla lastra e stacca la stanza dal fondo.
+  const lastra = new THREE.Mesh(new THREE.BoxGeometry(LATO, 0.42, LATO),
+    new THREE.MeshLambertMaterial({ color: 0xe6e1d5 }));
+  lastra.position.y = -0.21;
+  ufficio.add(lastra);
+
   // Fughe del pavimento: una griglia leggera, non un reticolo tecnico.
-  const griglia = new THREE.GridHelper(30, 30, 0xe2ddd1, 0xe9e5db);
+  const griglia = new THREE.GridHelper(LATO, LATO, 0xe2ddd1, 0xe9e5db);
   griglia.position.y = 0.002;
   ufficio.add(griglia);
 
-  // Due muri, appena accennati: chiudono la stanza senza chiudere la vista.
-  for (const [w, h, x, y, z, ry] of [[30, 5.5, 0, 2.75, -15, 0], [30, 5.5, -15, 2.75, 0, Math.PI / 2]]) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat.muro);
-    m.position.set(x, y, z); m.rotation.y = ry;
+  const ALTO_MURO = 3.4;
+  for (const [x, z, ry] of [[0, -MURO, 0], [-MURO, 0, Math.PI / 2]]) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(LATO, ALTO_MURO), mat.muro);
+    m.position.set(x, ALTO_MURO / 2, z); m.rotation.y = ry;
     m.receiveShadow = !movimentoRidotto;
     ufficio.add(m);
+    // Battiscopa: senza, il muro e il pavimento sono due bianchi che si
+    // toccano e l'angolo della stanza non si vede.
+    const battiscopa = new THREE.Mesh(new THREE.BoxGeometry(LATO, 0.14, 0.05), mat.divisorio);
+    battiscopa.position.set(x, 0.07, z); battiscopa.rotation.y = ry;
+    ufficio.add(battiscopa);
   }
+
+  /** Qualcosa appeso al muro: una finestra chiara o un pannello scuro. */
+  function alMuro(larghezza, altezza, materiale, lungoIlMuro, altezzaDaTerra, quale) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(larghezza, altezza), materiale);
+    if (quale === 'fondo') m.position.set(lungoIlMuro, altezzaDaTerra, -MURO + 0.02);
+    else { m.position.set(-MURO + 0.02, altezzaDaTerra, lungoIlMuro); m.rotation.y = Math.PI / 2; }
+    ufficio.add(m);
+    return m;
+  }
+
+  // Le finestre guardano il tramonto di Dubai: il loro colore lo decide
+  // l'ora, come le lampade.
+  const CIELO    = new THREE.Color(0xdcebf4);   // mezzogiorno
+  const TRAMONTO = new THREE.Color(0xf0b473);   // il tramonto di Dubai
+  const NOTTE    = new THREE.Color(0x2e3a52);
+  const matFinestra = new THREE.MeshBasicMaterial({ color: TRAMONTO.clone() });
+  const matTelaio   = new THREE.MeshLambertMaterial({ color: 0xd9d3c4 });
+  const finestre = [];
+  /** Di quanto staccare dal muro, per non sovrapporre due piani identici. */
+  const stacca = (m, quale, quanto) => {
+    if (quale === 'fondo') m.position.z += quanto; else m.position.x += quanto;
+  };
+  // Spaziate perche' non si tocchino: lo schermo del brand sta nel vuoto
+  // fra la seconda e la terza finestra del muro di fondo.
+  for (const [quale, dove] of [['fondo', -6.4], ['fondo', -1.8], ['fondo', 7.4],
+                               ['lato', -4.4], ['lato', 2.2], ['lato', 7.4]]) {
+    alMuro(3.0, 1.75, matTelaio, dove, 2.0, quale);
+    const vetro = alMuro(2.8, 1.55, matFinestra.clone(), dove, 2.0, quale);
+    stacca(vetro, quale, 0.012);
+    finestre.push(vetro);
+  }
+
+  // Lo schermo del brand, come quello appeso nella sala riunioni vera.
+  const schermoMuro = alMuro(3.4, 1.95,
+    new THREE.MeshLambertMaterial({ color: 0x1c2029 }), 3.2, 2.05, 'fondo');
+  stacca(schermoMuro, 'fondo', 0.012);
+  const logo = new THREE.Mesh(new THREE.CircleGeometry(0.46, 28),
+    new THREE.MeshBasicMaterial({ color: 0xb5ff00 }));
+  logo.position.set(3.2, 2.05, -MURO + 0.05);
+  ufficio.add(logo);
+
+  /** Il colore del cielo fuori, all'ora che e' adesso a Dubai. */
+  function coloraFinestre() {
+    const giorno = Math.min(1, Math.max(0, condizioniLuce.giorno));
+    const cielo = giorno > 0.45
+      ? TRAMONTO.clone().lerp(CIELO, (giorno - 0.45) / 0.55)
+      : NOTTE.clone().lerp(TRAMONTO, giorno / 0.45);
+    for (const f of finestre) f.material.color.copy(cielo);
+  }
+  coloraFinestre();
 
   // Tappeti di zona: dicono dove finisce una zona e comincia l'altra.
   for (const [chiave, z] of Object.entries(ZONE)) {
@@ -1825,7 +1900,14 @@ export function creaScena(contenitore, opzioni = {}) {
     const t = orologio.elapsedTime;
 
     // La luce di Dubai si ricalcola ogni mezzo minuto, non ogni fotogramma.
-    if (t - ultimaLuce > 30) { condizioniLuce = aggiornaLuce(); ultimaLuce = t; }
+    if (t - ultimaLuce > 30) {
+      condizioniLuce = aggiornaLuce();
+      ultimaLuce = t;
+      // Anche le finestre seguono l'ora di Dubai: cielo chiaro di giorno,
+      // arancione al tramonto, blu di notte. E' la stessa cosa che fanno
+      // le lampade, e insieme dicono che ora e' senza scriverlo.
+      coloraFinestre();
+    }
     // Le lampade salgono man mano che cala la luce da fuori: alle sei di
     // sera sono gia' accese a meta', a mezzanotte al massimo.
     const accese = 1.25 * (1 - Math.min(1, condizioniLuce.giorno / 0.45));
