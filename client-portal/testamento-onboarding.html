@@ -334,27 +334,51 @@ let clientName = '', statoRiga = 'draft', mirror = false, bozzaCreata = false;
 // ritrova quello che aveva scritto, e nel browser come rete di sicurezza se
 // l'indirizzo viene perso. Senza token non si legge e non si scrive niente.
 const LS_TOKEN = 'indubai_will_onboarding_token';
+const tokenValido = t => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t || '');
+const nuovoToken = () => (crypto.randomUUID ? crypto.randomUUID()
+  : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    }));
+
+// Due modi di arrivare qui, e vanno tenuti separati.
+//
+// 1. Con ?t= nell'indirizzo: e' il link personale che lo studio genera dalla
+//    scheda di un cliente. Si usa quel token e basta. NON si memorizza nel
+//    browser: altrimenti chi dallo studio apre il link di un cliente per
+//    controllarlo si ritroverebbe quella compilazione anche aprendo il link
+//    generico.
+//
+// 2. Senza ?t=: e' il link generico, lo stesso per tutti. Il token nasce qui,
+//    resta nel browser di chi compila e NON viene scritto nell'indirizzo.
+//    Prima lo scrivevo, per far ritrovare la compilazione riaprendo il link:
+//    ma cosi' il link generico si legava al primo che lo apriva, e chi lo
+//    copiava dalla barra del browser mandava ai clienti un link gia'
+//    occupato, con dentro i dati di un altro.
+let daLink = false;
 function prendiToken() {
-  const url = new URL(location.href);
-  let t = url.searchParams.get('t');
-  if (!/^[0-9a-f-]{36}$/i.test(t || '')) {
-    try { t = localStorage.getItem(LS_TOKEN); } catch (e) { t = null; }
-  }
-  if (!/^[0-9a-f-]{36}$/i.test(t || '')) {
-    t = (crypto.randomUUID ? crypto.randomUUID()
-         : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-             const r = Math.random() * 16 | 0;
-             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-           }));
-  }
-  try { localStorage.setItem(LS_TOKEN, t); } catch (e) {}
-  if (url.searchParams.get('t') !== t) {
-    url.searchParams.set('t', t);
-    history.replaceState(null, '', url.toString());
+  const dallIndirizzo = new URL(location.href).searchParams.get('t');
+  if (tokenValido(dallIndirizzo)) { daLink = true; return dallIndirizzo; }
+  let t = null;
+  try { t = localStorage.getItem(LS_TOKEN); } catch (e) {}
+  if (!tokenValido(t)) {
+    t = nuovoToken();
+    try { localStorage.setItem(LS_TOKEN, t); } catch (e) {}
   }
   return t;
 }
 const TOKEN = prendiToken();
+
+// Chi usa il link generico su un computer gia' usato da qualcun altro deve
+// poter ripartire da zero, invece di trovarsi davanti i dati di un estraneo.
+function ricominciaDaCapo() {
+  if (!confirm('Vuoi iniziare una compilazione nuova? Quella aperta su questo computer resta salva, ma non la vedrai piu\' da qui.')) return;
+  try {
+    localStorage.setItem(LS_TOKEN, nuovoToken());
+    localStorage.removeItem(LS);
+  } catch (e) {}
+  location.replace(location.pathname);
+}
 
 // Le tre funzioni che il database espone a chi non ha un accesso.
 async function rpc(nome, args) {
@@ -812,6 +836,16 @@ async function avvio() {
     bozzaCreata = true;
     const p = w.payload || {};
     D = p.D || {}; RIP = p.RIP || {}; CHK = p.CHK || {}; ALG = p.ALG || {};
+  }
+
+  // Dal link generico si riprende la compilazione lasciata a meta' su questo
+  // browser. Se chi apre non e' la stessa persona, deve poterlo dire.
+  if (!daLink && w && Object.keys(D).length) {
+    avviso.innerHTML = '<div class="help">'
+      + 'Riprendi la compilazione lasciata a met&agrave; su questo dispositivo'
+      + (D.nome ? ', a nome <b>' + esc(D.nome) + '</b>' : '') + '.<br>'
+      + 'Non sei tu? <a href="#" onclick="ricominciaDaCapo();return false" style="color:inherit">'
+      + 'Inizia una compilazione nuova</a>.</div>';
   }
 
   // Se il database è vuoto ma il browser ha una bozza più ricca, si riprende
