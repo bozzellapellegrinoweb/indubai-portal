@@ -71,7 +71,19 @@ Deno.serve(async (req: Request) => {
     });
     const esito = await r.json().catch(() => ({}));
     if (!r.ok || esito?.ok === false) {
-      throw new Error(esito?.error ?? `Il motore ha risposto ${r.status}.`);
+      const motivo = esito?.error ?? `Il motore ha risposto ${r.status}.`;
+      // Un invio che non parte deve lasciare una traccia come quello che
+      // parte. Ieri il registro mostrava la generazione e nient'altro, e
+      // da fuori "non e' partita" e "non ha mai provato" erano la stessa
+      // cosa: senza questa riga non si puo' sapere quale delle due.
+      if (azione === "invia") {
+        try {
+          await clientDaAmbiente().log("smm_newsletter_invia_fallita", {
+            oggetto: corpo?.contenuto?.subject ?? null, motivo,
+          }, chi);
+        } catch { /* il registro non deve nascondere l'errore vero */ }
+      }
+      throw new Error(motivo);
     }
 
     if (azione === "invia" || azione === "genera") {

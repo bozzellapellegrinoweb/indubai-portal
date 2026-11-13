@@ -1694,6 +1694,8 @@
     // si vede nemmeno, perche' sta nel blocco "Spedire" che si disegna
     // solo quando una bozza c'e'. Quattro-dieci secondi per niente.
     const destinatari = bozza?.destinatari ?? dati?.destinatari;
+    const perche = bozza?.destinatari_errore ?? dati?.destinatari_errore ?? null;
+    const ghl = dati?.ghl ?? null;
     const cfg = dati?.configurazione || {};
     const manca = [];
     if (cfg.anthropic === false) manca.push('ANTHROPIC_API_KEY');
@@ -1704,6 +1706,11 @@
     const controllo = bozza?.controllo;
 
     return `
+      ${ghl && ghl.ok === false ? `<div class="rg-voce rg-nl-allarme">
+         <b>GoHighLevel non risponde.</b> ${esc(ghl.messaggio || '')}
+         <div class="rg-voce-fonte">Finch&eacute; resta cos&igrave; non si conta e non si spedisce:
+           scrivere la newsletter funziona lo stesso.</div>
+       </div>` : ''}
       ${manca.length ? `<div class="rg-voce"><b>Non si pu&ograve; lavorare:</b> al motore
          ${manca.length === 1 ? 'manca' : 'mancano'} ${manca.map(x => `<code>${esc(x)}</code>`).join(' e ')}.</div>` : ''}
 
@@ -1740,15 +1747,32 @@
           </div>` : ''}
 
         <div class="rg-sez">Spedire</div>
+        ${bozza?.erroreInvio ? `<div class="rg-voce rg-nl-allarme">
+           <b>L'invio non &egrave; partito.</b> ${esc(bozza.erroreInvio)}
+           <div class="rg-voce-fonte">La bozza &egrave; ancora qui: quando il motivo &egrave;
+             risolto si riprova senza riscriverla.</div>
+         </div>` : ''}
         <div class="rg-voce">
           ${destinatari === null || destinatari === undefined
-            ? 'Non riesco a contare i destinatari: controlla la chiave di GoHighLevel.'
+            ? `Non sono riuscito a contarli.${perche ? ` ${esc(perche)}` : ''}
+               Puoi ricontarli, oppure spedire lo stesso: l'elenco vero lo
+               rifa' GoHighLevel al momento dell'invio, e se non risponde
+               l'invio si ferma e te lo dice.`
+            : destinatari === 0
+            ? 'Con i tag della newsletter non risulta <b>nessun contatto</b>. '
+              + 'O i tag su GoHighLevel sono scritti diversamente, o quelle liste sono vuote.'
             : `Va a <b>${destinatari}</b> ${destinatari === 1 ? 'persona' : 'persone'}, quelle con i tag della newsletter.`}
           <b> Non si annulla.</b>
           <div class="rg-voce-azioni">
+            <!-- Il tasto non si spegne per un numero che non si conosce.
+                 Spegnerlo in silenzio e' quello che e' successo ieri: una
+                 newsletter scritta, il tasto grigio, e nessuna spiegazione
+                 che valesse qualcosa. Si spegne solo se al motore manca una
+                 chiave, perche' li' non c'e' niente da tentare. -->
             <button class="btn btn-accent btn-sm" data-nl-invia="1"
-              ${manca.length || !destinatari ? 'disabled' : ''}>
-              Spedisci a ${destinatari ?? '—'}</button>
+              ${manca.length ? 'disabled' : ''}>
+              ${destinatari ? `Spedisci a ${destinatari}` : 'Spedisci'}</button>
+            <button class="btn btn-ghost btn-sm" data-nl-conta="1">Ricontali</button>
             <button class="btn btn-ghost btn-sm" data-nl-scarta="1">Butta la bozza</button>
           </div>
         </div>` : ''}
@@ -1804,12 +1828,39 @@
 
     corpo.querySelector('[data-nl-scarta]')?.addEventListener('click', () => apriNewsletter(dati, null));
 
+    corpo.querySelector('[data-nl-conta]')?.addEventListener('click', async (ev) => {
+      const b = ev.currentTarget;
+      b.disabled = true;
+      b.textContent = 'Li sto contando…';
+      try {
+        const r = await D.newsletter('destinatari');
+        // Il numero appartiene alla bozza che si sta guardando: si
+        // riattacca li', non all'elenco, che vive per tutta la sessione.
+        await apriNewsletter(dati, {
+          ...(bozza || {}),
+          destinatari: r.destinatari,
+          destinatari_errore: r.destinatari_errore ?? null,
+        });
+        window.ui.showToast(r.destinatari === null
+          ? 'Non sono riuscito a contarli.'
+          : `Sono ${r.destinatari}.`, r.destinatari === null ? 'error' : 'success');
+      } catch (e) {
+        b.disabled = false;
+        b.textContent = 'Ricontali';
+        window.ui.showToast(pulisciErrore(e.message), 'error');
+      }
+    });
+
     corpo.querySelector('[data-nl-invia]')?.addEventListener('click', async (ev) => {
       const quanti = bozza?.destinatari ?? dati?.destinatari;
       // Una conferma che dice il numero e l'oggetto: "sei sicuro?" non
-      // informa nessuno.
+      // informa nessuno. E se il numero non lo so, lo dico: "a undefined
+      // persone" e' peggio che non dirlo.
+      const aChi = (quanti === null || quanti === undefined)
+        ? 'a tutti i contatti con i tag della newsletter (non sono riuscito a contarli)'
+        : `a ${quanti} ${quanti === 1 ? 'persona' : 'persone'}`;
       if (!window.confirm(
-        `Spedire "${bozza?.contenuto?.subject || ''}" a ${quanti} persone?\n\n` +
+        `Spedire "${bozza?.contenuto?.subject || ''}" ${aChi}?\n\n` +
         `Parte subito e non si annulla.`)) return;
       ev.currentTarget.disabled = true;
       ev.currentTarget.textContent = 'Sto spedendo…';
@@ -1818,8 +1869,11 @@
         window.ui.showToast(esito.messaggio || 'Partita.', 'success');
         await apriNewsletter({ ...dati, storico: esito.storico || dati.storico }, null);
       } catch (e) {
+        // L'errore vero, non un toast che sparisce dopo tre secondi: una
+        // spedizione che non parte e' la cosa che si deve poter leggere
+        // con calma e riportare.
         window.ui.showToast(pulisciErrore(e.message), 'error');
-        await apriNewsletter(dati, bozza);
+        await apriNewsletter(dati, { ...(bozza || {}), erroreInvio: pulisciErrore(e.message) });
       }
     });
   }
