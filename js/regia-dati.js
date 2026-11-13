@@ -200,7 +200,10 @@
       const a = stato.agenti.find(x => x.id === j.agent_id);
       voci.push({
         tipo: 'domanda', id: j.id, agente: a,
-        titolo: `${a?.nome || 'Un agente'} ha una domanda`,
+        // Il mestiere fra parentesi, se c'e': "Piccolo ha una domanda"
+        // da solo non dice di cosa si parla.
+        titolo: a?.ruolo ? `${a.nome} (${a.ruolo}) ha una domanda`
+                         : `${a?.nome || 'Un agente'} ha una domanda`,
         testo: j.domanda || j.titolo, azione: 'Rispondi',
       });
     }

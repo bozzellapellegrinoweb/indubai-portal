@@ -139,6 +139,24 @@ e verifica proprio questo. I muri sono piani a faccia singola di
 proposito: quando la camera gira dietro spariscono invece di tagliare la
 vista.
 
+### Il nome e il mestiere sono due cose diverse
+
+Gli agenti si chiamano Vegeta, Bulma, Gohan, Trunks, Goku, Piccolo, Crilin e
+Whis. In `smm_agents` sono due colonne: `nome` e' la persona, `ruolo` e' cosa
+fa. Prima coincidevano — si chiamavano "Direttore", "Copywriter" — e bastava
+scrivere il nome.
+
+Adesso non basta piu': dove c'era il solo nome vanno tutti e due. Cartellino
+nella stanza, fumetto, fascia laterale, «Tocca a te», tendina di chi fa una
+riga del piano. «Piccolo ha una domanda» non dice di cosa si parla, e il
+mestiere dipinto sul monitor non salva niente: alla scala di resa e' alto tre
+pixel.
+
+Chi aggiunge un agente scrive tutti e due, e aggiorna anche
+`tests/banco/stub-regia-dati.js`. Una finta col nome vecchio e' la trappola
+del mestiere di `tests/banco/LEGGIMI.md`: il banco direbbe che la stanza
+scrive "Direttore" mentre il portale scrive "Vegeta".
+
 La **vetrina** (tasto V) e' la Regia da appendere a uno schermo in
 ufficio: niente linguette ne' filtri, schermo intero vero, camera che gira
 piano. Non e' la modalita' di lavoro, che e' lo **schermo intero** (tasto

@@ -25,6 +25,9 @@ export interface Contesto {
   jobId: string;
   agentId: string | null;
   agentSlug: string;
+  /** Come si chiama: finisce nei titoli che legge il manager, dove
+   *  "Richiesta da copywriter" diceva lo slug invece della persona. */
+  agentNome: string;
   contentId: string | null;
   /** popolato dagli strumenti: il worker lo legge dopo il giro */
   effetti: {
@@ -225,7 +228,7 @@ const coinvolgiAgente: Strumento = {
       brand_id: ctx.brandId, agent_id: ag.id, parent_job_id: ctx.jobId,
       content_id: input.content_id || ctx.contentId || null,
       tipo: "agente",
-      titolo: `Richiesta da ${ctx.agentSlug}`,
+      titolo: `Richiesta da ${ctx.agentNome || ctx.agentSlug}`,
       richiesta: input.richiesta,
       priorita: 60,
     });
@@ -408,7 +411,7 @@ const cervelloProponi: Strumento = {
   async esegui(input, ctx) {
     await ctx.db.insert("smm_brain", {
       brand_id: ctx.brandId, tipo: input.tipo, testo: input.testo,
-      fonte: input.fonte || `Proposta da ${ctx.agentSlug}`,
+      fonte: input.fonte || `Proposta da ${ctx.agentNome || ctx.agentSlug}`,
       tags: Array.isArray(input.tags) ? input.tags : [],
       peso: 50, confermata: false,
     });

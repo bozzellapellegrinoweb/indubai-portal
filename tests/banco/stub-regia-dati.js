@@ -3,15 +3,20 @@
   const CID = 'f62b1e44-eca0-4fc7-94ab-16c45815d262';
   const U = 'https://res.cloudinary.com/djn4uyihl/raw/upload/v1794433967/indubai-smm/story_' + CID;
 
+  // I nomi sono quelli veri in smm_agents dal 14 novembre 2026
+  // (20261114_smm_nomi_agenti.sql). Qui dentro restavano le etichette
+  // vecchie, e il banco avrebbe continuato a dire che la stanza scrive
+  // "Direttore" mentre il portale scrive "Vegeta": la trappola del
+  // mestiere di LEGGIMI.md.
   const agenti = [
-    ['6782e953-9f4a-44f6-b458-5a59426a10bd','direttore','Direttore','Direttore',0,'direzione',-3.2,0],
-    ['2852685a-1f46-4adb-b91b-c973ae23bf83','stratega','Stratega editoriale','Stratega',1,'studio',-1.2,-2.4],
-    ['9931c699-ddf4-44fa-b771-6ad40c145e05','copywriter','Copywriter','Copywriter',2,'studio',1.2,-2.4],
-    ['969122a5-fa1a-4a46-b640-a49effd7ed45','grafico','Grafico','Grafico',3,'studio',3.2,-2.4],
-    ['98d4d107-b28b-4398-a930-e4ea9fd8935c','video','Video','Video',4,'montaggio',-2,2.6],
-    ['1b4526dc-492f-4295-b795-d67d50cee28a','revisore','Revisore di conformita','Revisore',5,'revisione',3.4,2.6],
-    ['79d4f1f3-a11e-41f6-b683-99b0f7f92c72','pubblicatore','Pubblicatore','Pubblicatore',6,'uscita',0.6,4.8],
-    ['d44e9f8d-831b-4466-8acd-3e7c5f0ad9d0','analista','Analista','Analista',7,'uscita',2.6,4.8],
+    ['6782e953-9f4a-44f6-b458-5a59426a10bd','direttore','Vegeta','Direttore',0,'direzione',-3.2,0],
+    ['2852685a-1f46-4adb-b91b-c973ae23bf83','stratega','Bulma','Stratega',1,'studio',-1.2,-2.4],
+    ['9931c699-ddf4-44fa-b771-6ad40c145e05','copywriter','Gohan','Copywriter',2,'studio',1.2,-2.4],
+    ['969122a5-fa1a-4a46-b640-a49effd7ed45','grafico','Trunks','Grafico',3,'studio',3.2,-2.4],
+    ['98d4d107-b28b-4398-a930-e4ea9fd8935c','video','Goku','Video',4,'montaggio',-2,2.6],
+    ['1b4526dc-492f-4295-b795-d67d50cee28a','revisore','Piccolo','Revisore',5,'revisione',3.4,2.6],
+    ['79d4f1f3-a11e-41f6-b683-99b0f7f92c72','pubblicatore','Crilin','Pubblicatore',6,'uscita',0.6,4.8],
+    ['d44e9f8d-831b-4466-8acd-3e7c5f0ad9d0','analista','Whis','Analista',7,'uscita',2.6,4.8],
   ].map(([id, slug, nome, ruolo, ordine, zona, x, z]) => ({
     id, slug, nome, ruolo, ordine, zona, posizione: { x, z },
     colore: ({'direttore':'#2563a8','stratega':'#7c3aed','copywriter':'#16a34a','grafico':'#d97706','video':'#db2777','revisore':'#dc2626','pubblicatore':'#0369a1','analista':'#6b7280'})[slug],
@@ -145,7 +150,7 @@
     // finta che non somiglia all'originale fa cercare il guasto nel posto
     // sbagliato.
     toccaATe: () => [{ tipo: 'domanda', id: 'j2', agente: agenti[5],
-                       titolo: 'Revisore di conformita ha una domanda',
+                       titolo: 'Piccolo (Revisore) ha una domanda',
                        testo: 'Posso dire che il Fisco vede il conto, o e troppo netto?',
                        azione: 'Rispondi' }],
     contenuto: async () => contenuto,

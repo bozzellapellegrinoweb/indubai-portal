@@ -168,9 +168,14 @@ Sono trigger, così valgono su qualunque percorso di scrittura.
 
 ## Gli agenti
 
-Dati in `smm_agents`, aggiungibili da interfaccia. Partenza: Direttore,
-Stratega editoriale, Copywriter, Grafico, Video, Revisore di conformità,
-Pubblicatore, Analista. Zone: studio, montaggio, uscita, direzione, revisione.
+Dati in `smm_agents`, aggiungibili da interfaccia. Ognuno ha un **nome** e un
+**mestiere**, e sono due colonne diverse: `nome` è la persona, `ruolo` è cosa
+fa. Dal 14 novembre 2026 i nomi vengono da Dragon Ball — Vegeta (Direttore),
+Bulma (Stratega), Gohan (Copywriter), Trunks (Grafico), Goku (Video), Piccolo
+(Revisore), Crilin (Pubblicatore), Whis (Analista) — e compaiono sempre
+insieme al mestiere: nel cartellino dentro la stanza, nel fumetto, nella
+fascia laterale, in «Tocca a te». Da soli non direbbero chi fa cosa.
+Zone: studio, montaggio, uscita, direzione, revisione.
 
 Ogni agente = system prompt + modello + strumenti + recupero dal Cervello
 **per rilevanza** (ricerca full-text italiana con pesi, non tutto il Cervello

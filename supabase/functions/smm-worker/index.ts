@@ -94,6 +94,11 @@ COME FUNZIONA QUESTO POSTO
 Lavori nella Regia social di ${brand.nome}, dentro il portale InDubai. Il
 social media manager ti vede lavorare e legge quello che scrivi.
 
+Ti chiami ${agente.nome} e fai il ${agente.ruolo}: e' quello che c'e'
+scritto sul cartellino sopra la tua scrivania, e il manager ti chiama
+cosi'. Anche i colleghi hanno un nome, non solo un mestiere: chiamali per
+nome quando parli di loro o li coinvolgi.
+
 Il Cervello condiviso e' la memoria del brand: regole, note delle revisioni,
 studi, specifiche di design. Cercalo con cervello_cerca prima di produrre
 qualcosa. Le voci marcate VINCOLANTE non si discutono e non si aggirano: se
@@ -136,7 +141,7 @@ async function eseguiLavoroAgente(
 
   const ctx: Contesto = {
     db, brandId: job.brand_id, jobId: job.id,
-    agentId: agente.id, agentSlug: agente.slug,
+    agentId: agente.id, agentSlug: agente.slug, agentNome: agente.nome,
     contentId: job.content_id,
     effetti: { figli: [] },
   };

@@ -81,7 +81,7 @@ const POSA = {
  * vedere da sei metri di distanza, senza leggere niente.
  */
 const POSTI = {
-  caffe:    { x:  6.3, z: -2.0, nome: 'Caffe' },
+  caffe:    { x:  6.3, z: -2.0, nome: 'Caffe\u0300' },
   relax:    { x: -6.3, z:  2.4, nome: 'Relax' },
   riunioni: { x:  5.4, z:  5.0, nome: 'Riunioni' },
 };
@@ -550,10 +550,10 @@ export function creaScena(contenitore, opzioni = {}) {
     g.position.set(cx, 0, cz);
     g.rotation.y = -Math.PI / 2.6;     // rivolto verso il centro della stanza
 
-    const tappeto = new THREE.Mesh(new THREE.CircleGeometry(2.3, 36), mat.tappetoCaldo);
-    tappeto.rotation.x = -Math.PI / 2;
-    tappeto.position.y = 0.006;
-    g.add(tappeto);
+    // Lo stesso tappeto bordato delle zone di lavoro: un cerchio crema su
+    // pavimento crema non si vedeva, e senza tappeto quell'angolo era un
+    // mobile appoggiato sul pavimento invece che un'area.
+    tappetoDiZona(cx, cz, 4.4, 3.4, g.rotation.y);
 
     const bancone = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.92, 0.62), mat.legno);
     bancone.position.set(0, 0.46, -0.5);
@@ -612,10 +612,7 @@ export function creaScena(contenitore, opzioni = {}) {
     g.position.set(cx, 0, cz);
     g.rotation.y = Math.PI / 2.4;
 
-    const tappeto = new THREE.Mesh(new THREE.CircleGeometry(2.6, 36), mat.tappetoCaldo);
-    tappeto.rotation.x = -Math.PI / 2;
-    tappeto.position.y = 0.006;
-    g.add(tappeto);
+    tappetoDiZona(cx, cz, 5.0, 4.2, g.rotation.y);
 
     // Il divano e' curvo, come quello della reference: una mezzaluna
     // bianca. Era un parallelepipedo, e un parallelepipedo in mezzo a una
@@ -1326,16 +1323,18 @@ export function creaScena(contenitore, opzioni = {}) {
         // cioe' il peggio dei due mondi, visto che lo schermo mostra la
         // miniatura vera del lavoro in corso.
         //
-        // Lo schermo sta davanti alla persona, quindi si vede solo da
-        // dietro le sue spalle: e' anche l'inquadratura del riferimento,
-        // la scrivania vista da dietro con il monitor acceso davanti.
-        // Quindi le persone danno le spalle alla posizione di riposo della
-        // camera, con una variazione per agente perche' non sembrino una
-        // fila di comparse. Chi vuole vedere le facce gira intorno:
-        // l'orbita arriva dall'altra parte.
+        // Di tre quarti, non di spalle.
+        //
+        // Prima davano le spalle esatte alla camera di riposo, perche' lo
+        // schermo sta davanti a loro e si voleva vedere il monitor acceso.
+        // Il prezzo era che del corpo si vedeva solo la nuca: con lo
+        // schienale della sedia di mezzo, un gesto delle braccia non
+        // arrivava a chi guarda. Ruotandoli di cinquanta gradi si vedono
+        // il profilo, le spalle e le mani, e il monitor resta comunque
+        // visibile di taglio. Chi vuole la faccia intera gira intorno.
         const h = impronta(agente.slug || agente.nome || String(i));
-        const variazione = ((h % 100) / 100 - 0.5) * 0.7;   // circa ±20 gradi
-        const rotazione = orbitaRiposo.theta + variazione;
+        const variazione = ((h % 100) / 100 - 0.5) * 0.6;   // circa ±17 gradi
+        const rotazione = orbitaRiposo.theta + 0.88 + variazione;
         avatarPerAgente.set(agente.id, creaAvatar(agente, x, z, rotazione));
         messi.push([x, z]);
       });
@@ -1689,19 +1688,20 @@ export function creaScena(contenitore, opzioni = {}) {
 
   /**
    * Aggiorna cosa dicono i fumetti.
-   * @param {Array} voci [{agentId, nome, testo, azione, onAzione, urgente}]
+   * @param {Array} voci [{agentId, nome, ruolo, testo, azione, onAzione, urgente}]
    */
   function aggiornaFumetti(voci) {
     const visti = new Set();
     for (const v of voci) {
       visti.add(v.agentId);
       const f = fumettoDi(v.agentId);
-      if (f.testo !== v.testo || f.azione !== v.azione || f.nome !== v.nome) {
-        f.testo = v.testo; f.azione = v.azione; f.nome = v.nome;
+      const intestazione = v.ruolo ? v.nome + ' \u00b7 ' + v.ruolo : v.nome;
+      if (f.testo !== v.testo || f.azione !== v.azione || f.nome !== intestazione) {
+        f.testo = v.testo; f.azione = v.azione; f.nome = intestazione;
         f.el.innerHTML = '';
         const nome = document.createElement('div');
         nome.className = 'rf-nome';
-        nome.textContent = v.nome;
+        nome.textContent = intestazione;
         const testo = document.createElement('div');
         testo.className = 'rf-testo';
         testo.textContent = v.testo;
@@ -1734,10 +1734,12 @@ export function creaScena(contenitore, opzioni = {}) {
     const el = document.createElement('div');
     el.className = 'regia-targa';
     el.innerHTML = '<span class="rt-pallino"></span>'
-                 + '<span class="rt-nome"></span><span class="rt-che"></span>';
+                 + '<span class="rt-nome"></span><span class="rt-ruolo"></span>'
+                 + '<span class="rt-che"></span>';
     livello.appendChild(el);
     const t = { el, pallino: el.querySelector('.rt-pallino'),
-                nome: el.querySelector('.rt-nome'), che: el.querySelector('.rt-che') };
+                nome: el.querySelector('.rt-nome'), ruolo: el.querySelector('.rt-ruolo'),
+                che: el.querySelector('.rt-che') };
     targhe.set(id, t);
     return t;
   }
@@ -1785,7 +1787,11 @@ export function creaScena(contenitore, opzioni = {}) {
       vettore.project(camera);
       if (vettore.z > 1) { t.el.style.display = 'none'; continue; }
       const p = POSA[a.posa] || POSA.libero;
+      // Nome e mestiere insieme. Da quando gli agenti si chiamano Vegeta e
+      // Bulma il nome da solo non dice piu' chi fa cosa, e il mestiere
+      // dipinto sul monitor, alla scala di resa, e' alto tre pixel.
       if (t.nome.textContent !== (a.agente.nome || '')) t.nome.textContent = a.agente.nome || '';
+      if (t.ruolo.textContent !== (a.agente.ruolo || '')) t.ruolo.textContent = a.agente.ruolo || '';
       if (t.che.textContent !== p.etichetta) t.che.textContent = p.etichetta;
       t.pallino.style.background = '#' + p.colore.toString(16).padStart(6, '0');
       t.el.style.display = '';
@@ -1817,19 +1823,26 @@ export function creaScena(contenitore, opzioni = {}) {
       if (!avatarPerAgente.has(id)) { t.el.remove(); targhe.delete(id); }
     }
 
-    // I nomi delle zone, sul pavimento. Solo quelle che hanno qualcuno
-    // dentro: una zona vuota con il cartello e' un posto che non esiste.
+    // I nomi delle zone, sul pavimento. Per le zone di lavoro solo quelle
+    // che hanno qualcuno dentro: una zona vuota col cartello e' un posto
+    // che non esiste. I posti fissi — caffe', relax, riunioni — invece
+    // stanno sempre scritti: sono mobili, non squadre, e senza il nome
+    // non si capisce che quell'angolo con un divano e' l'area relax.
     const abitate = new Set();
     for (const a of avatarPerAgente.values()) {
       if (a.gruppo.visible && a.agente.zona) abitate.add(a.agente.zona);
     }
-    for (const [chiave, z] of Object.entries(ZONE)) {
+    const daScrivere = Object.entries(ZONE).map(([k, z]) => [k, z, abitate.has(k)])
+      .concat(Object.entries(POSTI).map(([k, z]) => ['posto-' + k, z, true]));
+    for (const [chiave, z, mostra] of daScrivere) {
       const el = targaZonaDi(chiave, z.nome);
-      if (!abitate.has(chiave)) { el.style.display = 'none'; continue; }
-      // Spostato in fuori dal centro della stanza, cosi' il cartello non
-      // finisce sopra le teste di chi ci lavora.
+      if (!mostra) { el.style.display = 'none'; continue; }
+      // Le zone di lavoro: il cartello si sposta in fuori, cosi' non
+      // finisce sopra le teste di chi ci lavora. I posti fissi: il
+      // cartello sta davanti al mobile, dove il pavimento e' libero.
       const lungo = Math.hypot(z.x, z.z) || 1;
-      vettore.set(z.x + (z.x / lungo) * 2.1, 0.02, z.z + (z.z / lungo) * 2.1);
+      const fuori = chiave.startsWith('posto-') ? -2.0 : 2.1;
+      vettore.set(z.x + (z.x / lungo) * fuori, 0.02, z.z + (z.z / lungo) * fuori);
       vettore.project(camera);
       if (vettore.z > 1) { el.style.display = 'none'; continue; }
       el.style.display = '';
@@ -2304,86 +2317,112 @@ export function creaScena(contenitore, opzioni = {}) {
           a.testa.rotation.y *= 0.88;
           a.persona.rotation.z = 0;
 
+        } else if (a.giro) {
+          // In giro: la posa la decidono il cammino e l'arrivo, qui si
+          // mette solo il riposo da cui partono.
+          //
+          // Prima il repertorio della scrivania girava anche mentre uno
+          // camminava: ogni fotogramma scriveva una posa da seduto e
+          // subito dopo il blocco del passo ci mescolava l'oscillazione
+          // delle braccia. Due comandi contrari sessanta volte al
+          // secondo — ed e' da li' che venivano i gesti scomposti.
+          sx.spalla.rotation.x = -0.12; sx.spalla.rotation.z =  0.14;
+          dx.spalla.rotation.x = -0.12; dx.spalla.rotation.z = -0.14;
+          sx.gomito.rotation.x = -0.26;
+          dx.gomito.rotation.x = -0.26;
+          a.testa.rotation.x = 0;
+          a.busto.rotation.x = -0.1;
+          a.persona.rotation.z = 0;
+
         } else {
           // ── in pausa, alla scrivania ──
           //
-          // Qui prima c'era una posa sola: braccia rilassate e la testa che
-          // gira. Cinque agenti liberi su otto, tutti identici e immobili
-          // per minuti interi — e le uscite verso il caffe' o il divano
-          // sono rade di proposito, quindi la stanza stava ferma quasi
-          // sempre. Adesso c'e' un piccolo repertorio: nessuna di queste
-          // pose dice niente sul lavoro, dicono solo che li' c'e' una
-          // persona e non un manichino.
+          // Un piccolo repertorio al posto di una posa sola. Le mani
+          // restano sempre dove le terrebbe una persona seduta — sul
+          // piano, in grembo, al viso — perche' un braccio che finisce
+          // per aria o dentro il bracciolo si vede subito, anche da
+          // lontano, e sembra un guasto.
           if (!a.ozio || t > a.ozio.fino) {
             const scelte = [
-              ['guarda',     6, 12],
-              ['stiracchia', 2.5, 2],
-              ['indietro',   7, 10],
+              ['guarda',     7, 11],
+              ['stiracchia', 3, 2],
+              ['indietro',   8, 10],
               ['telefono',   9, 10],
-              ['pensa',      6, 7],
-              ['guarda',     6, 10],
+              ['pensa',      7, 8],
+              ['guarda',     7, 10],
             ];
             const [tipo, base, extra] = scelte[Math.floor(Math.random() * scelte.length)];
             a.ozio = { tipo, fino: t + base + Math.random() * extra };
           }
-          // Le pose non si sostituiscono di scatto: ogni articolazione
-          // insegue il valore nuovo. Senza, il passaggio da una posa
-          // all'altra sembra un salto del video.
-          const verso = (nodo, campo, meta, quanto = 5) => {
-            nodo.rotation[campo] += (meta - nodo.rotation[campo]) * Math.min(1, dt * quanto);
+
+          // Una velocita' sola per tutte le articolazioni: se ognuna
+          // arriva per conto suo il corpo sembra montato male. E' lenta
+          // di proposito — un gesto di una persona seduta non scatta.
+          const verso = (nodo, campo, meta) => {
+            nodo.rotation[campo] += (meta - nodo.rotation[campo]) * Math.min(1, dt * 3.5);
           };
+          // Mezzo grado di differenza fra destra e sinistra: due braccia
+          // identiche al millimetro sono la cosa che fa sembrare finto
+          // tutto il resto.
+          const asim = a.fase % 1 * 0.06;
 
           const posa = {
+            // Seduto comodo, avambracci appoggiati al piano: e' la posa
+            // di chi e' alla scrivania e non sta scrivendo.
             guarda: () => {
-              verso(sx.spalla, 'x', -0.12); verso(sx.spalla, 'z',  0.2);
-              verso(dx.spalla, 'x', -0.12); verso(dx.spalla, 'z', -0.2);
-              verso(sx.gomito, 'x', -0.3);  verso(dx.gomito, 'x', -0.3);
-              verso(a.testa, 'x', -0.03);
-              verso(a.testa, 'y', Math.sin(a.fase * 0.45) * 0.45, 2);
+              verso(sx.spalla, 'x', -0.46); verso(sx.spalla, 'z',  0.14 + asim);
+              verso(dx.spalla, 'x', -0.44); verso(dx.spalla, 'z', -0.14);
+              verso(sx.gomito, 'x', -0.92); verso(dx.gomito, 'x', -0.96);
+              verso(a.testa, 'x', -0.02);
+              verso(a.testa, 'y', Math.sin(a.fase * 0.4) * 0.38);
               verso(a.busto, 'x', -0.1);
             },
-            // Si stiracchia: braccia in alto e indietro, testa all'insu'.
+            // Si stiracchia: braccia in alto, una appena piu' su
+            // dell'altra, testa all'insu'.
             stiracchia: () => {
-              const su = Math.sin(Math.min(Math.PI, Math.max(0, a.ozio.fino - t) * 1.3));
-              verso(sx.spalla, 'x', -0.12 - 2.6 * su, 8);
-              verso(dx.spalla, 'x', -0.12 - 2.6 * su, 8);
-              verso(sx.spalla, 'z',  0.2 + 0.25 * su, 8);
-              verso(dx.spalla, 'z', -0.2 - 0.25 * su, 8);
-              verso(sx.gomito, 'x', -0.3 + 0.2 * su, 8);
-              verso(dx.gomito, 'x', -0.3 + 0.2 * su, 8);
-              verso(a.testa, 'x', -0.03 - 0.3 * su, 8);
+              const su = Math.sin(Math.min(Math.PI, Math.max(0, a.ozio.fino - t) * 1.1));
+              verso(sx.spalla, 'x', -0.46 - 1.75 * su);
+              verso(dx.spalla, 'x', -0.44 - 1.9 * su);
+              verso(sx.spalla, 'z',  0.14 + 0.3 * su);
+              verso(dx.spalla, 'z', -0.14 - 0.34 * su);
+              verso(sx.gomito, 'x', -0.92 + 0.75 * su);
+              verso(dx.gomito, 'x', -0.96 + 0.8 * su);
+              verso(a.testa, 'x', -0.02 - 0.22 * su);
               verso(a.testa, 'y', 0);
-              verso(a.busto, 'x', -0.1 - 0.12 * su, 8);
+              verso(a.busto, 'x', -0.1 - 0.1 * su);
             },
-            // Appoggiato allo schienale, mani dietro la nuca.
+            // Appoggiato allo schienale, avambracci sui braccioli. Era a
+            // mani dietro la nuca, con le spalle aperte di cinquanta
+            // gradi: da sopra sembrava un uccello.
             indietro: () => {
-              verso(sx.spalla, 'x', -2.25); verso(sx.spalla, 'z',  0.85);
-              verso(dx.spalla, 'x', -2.25); verso(dx.spalla, 'z', -0.85);
-              verso(sx.gomito, 'x', -2.1);  verso(dx.gomito, 'x', -2.1);
-              verso(a.testa, 'x', -0.12);
-              verso(a.testa, 'y', Math.sin(a.fase * 0.3) * 0.18, 2);
-              verso(a.busto, 'x', 0.06);
+              verso(sx.spalla, 'x', -0.2);  verso(sx.spalla, 'z',  0.3 + asim);
+              verso(dx.spalla, 'x', -0.22); verso(dx.spalla, 'z', -0.3);
+              verso(sx.gomito, 'x', -0.55); verso(dx.gomito, 'x', -0.6);
+              verso(a.testa, 'x', -0.16);
+              verso(a.testa, 'y', Math.sin(a.fase * 0.26) * 0.16);
+              verso(a.busto, 'x', 0.1);
             },
-            // Guarda il telefono: mani davanti, testa china, pollice che
-            // scorre.
+            // Guarda il telefono: mani davanti, all'altezza del petto,
+            // testa china. Il pollice che scorre e' l'unica cosa che si
+            // muove.
             telefono: () => {
-              verso(sx.spalla, 'x', -0.78); verso(sx.spalla, 'z',  0.26);
-              verso(dx.spalla, 'x', -0.78); verso(dx.spalla, 'z', -0.26);
-              verso(sx.gomito, 'x', -1.32 + Math.sin(a.fase * 2.6) * 0.04, 9);
-              verso(dx.gomito, 'x', -1.32);
-              verso(a.testa, 'x', 0.34);
-              verso(a.testa, 'y', 0);
-              verso(a.busto, 'x', 0.02);
+              verso(sx.spalla, 'x', -0.72); verso(sx.spalla, 'z',  0.22);
+              verso(dx.spalla, 'x', -0.74); verso(dx.spalla, 'z', -0.2);
+              verso(sx.gomito, 'x', -1.38 + Math.sin(a.fase * 2.4) * 0.035);
+              verso(dx.gomito, 'x', -1.34);
+              verso(a.testa, 'x', 0.3);
+              verso(a.testa, 'y', 0.04);
+              verso(a.busto, 'x', 0.0);
             },
-            // Mano sul mento, testa inclinata.
+            // Mano destra al mento, sinistra appoggiata al piano.
             pensa: () => {
-              verso(sx.spalla, 'x', -0.35); verso(sx.spalla, 'z',  0.18);
-              verso(dx.spalla, 'x', -1.5);  verso(dx.spalla, 'z', -0.1);
-              verso(sx.gomito, 'x', -1.1);
-              verso(dx.gomito, 'x', -1.75);
-              verso(a.testa, 'x', 0.08);
-              verso(a.testa, 'y', 0.2 + Math.sin(a.fase * 0.25) * 0.1, 2);
-              verso(a.busto, 'x', -0.05);
+              verso(sx.spalla, 'x', -0.5);  verso(sx.spalla, 'z',  0.16);
+              verso(dx.spalla, 'x', -1.1);  verso(dx.spalla, 'z', -0.14);
+              verso(sx.gomito, 'x', -0.95);
+              verso(dx.gomito, 'x', -1.95);
+              verso(a.testa, 'x', 0.06);
+              verso(a.testa, 'y', 0.18 + Math.sin(a.fase * 0.22) * 0.08);
+              verso(a.busto, 'x', -0.06);
             },
           };
           (posa[a.ozio.tipo] || posa.guarda)();
@@ -2693,6 +2732,20 @@ export function creaScena(contenitore, opzioni = {}) {
       if (a) inquadra(new THREE.Vector3(a.base.x, 1.0, a.base.z), 13);
     },
     zone: ZONE,
+    /**
+     * Mette tutti quelli fermi in una posa precisa.
+     *
+     * Serve al banco: i gesti si possono giudicare solo guardandoli, e
+     * aspettare che capitino da soli rende il controllo irripetibile.
+     * Non cambia niente di quello che gli agenti decidono: la posa
+     * successiva se la scelgono come sempre.
+     */
+    forzaOzio: (tipo, quanto = 30) => {
+      for (const a of avatarPerAgente.values()) {
+        if (a.giro || a.posa !== 'libero') continue;
+        a.ozio = { tipo, fino: tempoScena + quanto };
+      }
+    },
     /** Dove guarda la camera adesso: serve al banco per dire se gira. */
     dovEGuarda: () => ({
       theta: +orbita.theta.toFixed(4), raggio: +orbita.raggio.toFixed(2),
@@ -2710,7 +2763,7 @@ export function creaScena(contenitore, opzioni = {}) {
     dovEsono: () => [...avatarPerAgente.values()].map((a) => {
       const m = a.persona.getWorldPosition(new THREE.Vector3());
       return {
-        id: a.agente.id, chi: a.agente.nome, posa: a.posa,
+        id: a.agente.id, chi: a.agente.nome, mestiere: a.agente.ruolo, posa: a.posa,
         x: +a.persona.position.x.toFixed(2),
         z: +a.persona.position.z.toFixed(2),
         // In coordinate del mondo: servono per inquadrare e per sapere se

@@ -260,7 +260,7 @@
       if (!d?.lavoro) continue;
       const urgente = d.posa === 'mano_alzata';
       voci.push({
-        agentId: a.id, nome: a.nome, urgente,
+        agentId: a.id, nome: a.nome, ruolo: a.ruolo, urgente,
         testo: urgente
           ? (d.lavoro.domanda || 'Ha bisogno di una risposta')
           : (d.lavoro.attivita || testoAttivita(d.lavoro)),
@@ -1647,7 +1647,7 @@
             ${ritratto(a.colore)}
           </span>
           <span class="rg-tess-corpo">
-            <span class="rg-tess-nome">${esc(a.nome)}</span>
+            <span class="rg-tess-nome">${esc(a.nome)}<span class="rg-tess-ruolo">${esc(a.ruolo || '')}</span></span>
             <span class="rg-tess-che">${esc(che)}</span>
           </span>
         </button>`;
@@ -2243,7 +2243,7 @@
       <label class="rg-campo"><span>Chi li fa</span>
         <select id="rg-p-agente">
           <option value="">lo decide il Direttore</option>
-          ${agenti.map(a => `<option value="${a.id}" ${r?.agente_id === a.id ? 'selected' : ''}>${esc(a.nome)}</option>`).join('')}
+          ${agenti.map(a => `<option value="${a.id}" ${r?.agente_id === a.id ? 'selected' : ''}>${esc(a.nome)} \u2014 ${esc(a.ruolo)}</option>`).join('')}
         </select></label>
 
       <div class="rg-campo"><span>Che giorni</span>
