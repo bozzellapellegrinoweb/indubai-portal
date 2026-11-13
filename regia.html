@@ -441,6 +441,16 @@
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px;
       display:block; }
 
+    /* I diciotto tag con il loro conteggio: serve a vedere a colpo
+       d'occhio se e' GoHighLevel che non risponde o se sono i nomi delle
+       liste a non corrispondere. Due guasti diversi, due rimedi diversi. */
+    .rg-nl-tag { display:flex; flex-wrap:wrap; gap:5px; }
+    .rg-nl-uno { font-size:11.5px; border:1px solid var(--border); border-radius:7px;
+      padding:3px 7px; background:var(--surface2); color:var(--text-muted); }
+    .rg-nl-uno b { color:var(--text); }
+    .rg-nl-uno.vuoto { opacity:.55; }
+    .rg-nl-uno.male { border-color:var(--danger); color:var(--danger); }
+
     /* ── Guardare un contenuto prende tutta la pagina ────── */
     /* Il pannello laterale va bene per una scheda agente o per il
        Cervello, che sono brevi. Per la revisione no: e' l'unica schermata

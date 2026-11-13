@@ -1777,6 +1777,15 @@
           </div>` : ''}
 
         <div class="rg-sez">Spedire</div>
+        ${bozza?.perTag ? `<div class="rg-voce">
+           <div class="rg-voce-fonte" style="margin-bottom:6px">Contati tag per tag su GoHighLevel:</div>
+           <div class="rg-nl-tag">${Object.entries(bozza.perTag).map(([t, n]) =>
+             `<span class="rg-nl-uno ${n === null ? 'male' : n === 0 ? 'vuoto' : ''}">`
+             + `${esc(t)} <b>${n === null ? '?' : n}</b></span>`).join('')}</div>
+           <div class="rg-voce-fonte" style="margin-top:6px">Un tag a zero vuol dire che su
+             GoHighLevel quella lista &egrave; vuota, o che il nome &egrave; scritto
+             diversamente. Un punto interrogativo vuol dire che GoHighLevel non ha risposto.</div>
+         </div>` : ''}
         ${bozza?.erroreInvio ? `<div class="rg-voce rg-nl-allarme">
            <b>L'invio non &egrave; partito.</b> ${esc(bozza.erroreInvio)}
            <div class="rg-voce-fonte">La bozza &egrave; ancora qui: quando il motivo &egrave;
@@ -1870,6 +1879,7 @@
           ...(bozza || {}),
           destinatari: r.destinatari,
           destinatari_errore: r.destinatari_errore ?? null,
+          perTag: r.per_tag ?? null,
         });
         window.ui.showToast(r.destinatari === null
           ? 'Non sono riuscito a contarli.'
