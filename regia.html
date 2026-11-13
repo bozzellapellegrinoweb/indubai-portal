@@ -441,6 +441,40 @@
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px;
       display:block; }
 
+    /* ── Guardare un contenuto prende tutta la pagina ────── */
+    /* Il pannello laterale va bene per una scheda agente o per il
+       Cervello, che sono brevi. Per la revisione no: e' l'unica schermata
+       in cui il social media manager fa il suo mestiere, e il materiale e'
+       un video 9:16. In 480 pixel di larghezza quel video diventa alto 791
+       — a 1440x900 il 95 per cento dell'altezza visibile — e tutto il
+       resto, linguette delle slide comprese, finisce sotto. Nel frattempo
+       due terzi di schermo restano spenti dietro il velo.
+       Qui il contenuto si apre su tutta la pagina, in due colonne: a
+       sinistra quello che si guarda, a destra quello che si legge e si
+       scrive, e i tasti in fondo, sempre al loro posto. */
+    .rg-pannello.piena { left:0; width:auto; border-left:0; }
+    .rg-pannello.piena .rg-pan-testa { padding:14px 24px; }
+    .rg-pannello.piena .rg-pan-corpo {
+      display:grid; gap:24px; align-items:start;
+      grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
+      padding:18px 24px 24px; width:100%; max-width:1560px; margin:0 auto; }
+    /* La colonna del video resta ferma mentre si scorrono le note: si
+       guarda e si commenta nello stesso momento, che e' il lavoro. */
+    .rg-pannello.piena .rg-col-media { position:sticky; top:0; }
+    .rg-pannello.piena .rg-lettore video,
+    .rg-pannello.piena .rg-lettore img { max-height:min(72vh, 800px); }
+    @media (max-width:1040px) {
+      .rg-pannello.piena .rg-pan-corpo { grid-template-columns:1fr; }
+      .rg-pannello.piena .rg-col-media { position:static; }
+    }
+    /* display:flex batte l'attributo hidden. E' la quinta volta in questo
+       file: la riga va scritta insieme alla regola, non dopo. */
+    .rg-pan-azioni { display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+      padding:12px 24px; border-top:1.5px solid var(--border);
+      background:var(--surface); }
+    .rg-pan-azioni[hidden] { display:none; }
+    .rg-pan-azioni .rg-spazio { flex:1 1 auto; }
+
     /* ── Lettore delle revisioni ─────────────────────────── */
     .rg-lettore { border:1.5px solid var(--border); border-radius:12px; overflow:hidden;
                   background:var(--surface2); }
@@ -811,6 +845,10 @@
     <button class="btn btn-ghost btn-sm" id="rg-pan-chiudi" aria-label="Chiudi il pannello">✕</button>
   </div>
   <div class="rg-pan-corpo" id="rg-pan-corpo"></div>
+  <!-- I tasti che decidono stanno qui, non in mezzo al testo: in un
+       pannello alto 1380 pixel "e' a posto cosi'" e "butta" finivano sotto
+       due schermate di scroll, dopo un video che non ci stava. -->
+  <div class="rg-pan-azioni" id="rg-pan-azioni" hidden></div>
   <div class="rg-pan-piede" id="rg-pan-piede" hidden>
     <textarea id="rg-pan-testo" rows="1" placeholder="Scrivi…" aria-label="Messaggio"></textarea>
     <button class="btn btn-accent btn-sm" id="rg-pan-invia">Invia</button>

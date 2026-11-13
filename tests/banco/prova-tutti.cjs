@@ -56,6 +56,38 @@ const VISTE = [['Calendario','[data-vista="calendario"]'], ['Risultati','[data-v
   conta(`pannello Contenuto (tasto Butta: ${butta ? 'c\'e\'' : 'MANCA'})`);
   if (!butta) ko++;
 
+  // ── Tutta la pagina, non mezza ─────────────────────────
+  // Il pannello della revisione era una striscia da 480 pixel: il video
+  // 9:16 non ci stava e i due tasti che decidono finivano sotto due
+  // schermate di scroll. Questi tre controlli sono quelli che lo dicono.
+  const piena = await page.evaluate(() => {
+    const pan = document.getElementById('rg-pannello');
+    const r = pan.getBoundingClientRect();
+    const corpo = document.getElementById('rg-pan-corpo');
+    const visibile = (id) => {
+      const e = document.getElementById(id);
+      if (!e) return null;
+      const b = e.getBoundingClientRect();
+      return b.height > 0 && b.y >= 0 && b.bottom <= window.innerHeight;
+    };
+    return {
+      quantoSchermo: +(r.width / window.innerWidth).toFixed(2),
+      colonne: getComputedStyle(corpo).gridTemplateColumns.split(' ').length,
+      approva: visibile('rg-a-posto'),
+      butta: visibile('rg-butta'),
+    };
+  });
+  if (piena.quantoSchermo < 0.99) {
+    ko++; console.log(`  KO  il contenuto non prende tutta la pagina: ${piena.quantoSchermo}`);
+  } else if (piena.colonne !== 2) {
+    ko++; console.log(`  KO  il contenuto non e' a due colonne: ${piena.colonne}`);
+  } else if (!piena.approva || !piena.butta) {
+    ko++; console.log(`  KO  i tasti che decidono non si vedono senza scorrere: `
+      + `approva=${piena.approva} butta=${piena.butta}`);
+  } else {
+    console.log('  ok  il contenuto prende tutta la pagina, a due colonne, coi tasti in vista');
+  }
+
   // ── Dove esce ──────────────────────────────────────────
   // Si vede dove andra' a finire, e si puo' cambiare. La colonna
   // piattaforme e' rimasta morta per mesi proprio perche' nessuna

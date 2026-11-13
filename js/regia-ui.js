@@ -361,10 +361,16 @@
   }
 
   // ── Il pannello laterale ──────────────────────────────────
-  function apriPannello(titolo, sotto, html, { conPiede = false, placeholder = 'Scrivi…' } = {}) {
+  function apriPannello(titolo, sotto, html,
+                       { conPiede = false, placeholder = 'Scrivi…', piena = false } = {}) {
     $('rg-pan-titolo').textContent = titolo;
     $('rg-pan-sotto').textContent = sotto || '';
     $('rg-pan-corpo').innerHTML = html;
+    $('rg-pannello').classList.toggle('piena', piena);
+    // Le azioni le riempie chi le vuole, dopo: qui si azzerano, cosi' non
+    // restano quelle del pannello di prima.
+    $('rg-pan-azioni').innerHTML = '';
+    $('rg-pan-azioni').hidden = true;
     $('rg-pan-piede').hidden = !conPiede;
     $('rg-pan-testo').placeholder = placeholder;
     $('rg-pan-testo').value = '';
@@ -560,7 +566,9 @@
   async function apriContenuto(contentId) {
     ui.pannello = { tipo: 'contenuto', id: contentId };
     ui.slideScelta = 0;
-    apriPannello('Contenuto', '', '<div class="rg-vuoto-tocca">Carico…</div>');
+    // Il contenuto si apre su tutta la pagina: e' l'unica schermata in cui
+    // si fa il mestiere, e il materiale e' un video verticale.
+    apriPannello('Contenuto', '', '<div class="rg-vuoto-tocca">Carico…</div>', { piena: true });
 
     const [c, versioni, note, media] = await Promise.all([
       D.contenuto(contentId), D.versioni(contentId), D.note(contentId), D.mediaDi(contentId),
@@ -590,7 +598,12 @@
       (c.pillar ? ` <span class="rg-pillola">${esc(c.pillar)}</span>` : '');
 
     const violazioni = c.revisore_note?.violazioni || [];
+    // Due colonne: a sinistra quello che si guarda, a destra quello che si
+    // legge e si scrive. Nella vista piena stanno affiancate, nel pannello
+    // stretto una sotto l'altra — stesso DOM, stessi agganci.
+    const vista = [];
     const html = [];
+    const azioni = [];
 
     // ── il verdetto del Revisore, se ha qualcosa da dire ──
     if (violazioni.length) {
@@ -614,24 +627,29 @@
     }
 
     // ── il lettore ──
-    html.push('<div class="rg-sez">Anteprima</div>');
-    html.push(lettore(c, media));
+    vista.push('<div class="rg-sez" style="margin-top:0">Anteprima</div>');
+    vista.push(lettore(c, media));
 
     // ── le note, agganciate ──
-    html.push('<div class="rg-sez">Note</div>');
-    html.push(`<div style="display:flex;gap:7px;margin-bottom:9px;flex-wrap:wrap">
+    // Raccolte a parte e messe in fondo: si leggono il testo e le
+    // piattaforme, poi si commenta. Prima "Nessuna nota" era la prima
+    // cosa scritta nella colonna, sopra il contenuto da giudicare.
+    const noteHtml = [];
+    noteHtml.push('<div class="rg-sez">Note</div>');
+    azioni.push(`
       <button class="btn btn-ghost btn-sm" id="rg-aggiungi-nota">Aggiungi la nota</button>
       <button class="btn btn-ghost btn-sm" id="rg-carica-media">Carica un file</button>
       ${['carosello', 'reel', 'storia', 'post'].includes(c.tipo)
         ? `<button class="btn btn-ghost btn-sm" id="rg-rendi">${media.length ? 'Rifai le immagini' : 'Prepara le immagini'}</button>` : ''}
-      ${c.stato === 'da_approvare'
-        ? '<button class="btn btn-accent btn-sm" id="rg-a-posto">È a posto così</button>' : ''}
+      <div class="rg-spazio"></div>
       ${c.stato === 'respinto'
         ? '<button class="btn btn-ghost btn-sm" id="rg-rimanda">Rimanda a chi l\'ha scritto</button>' : ''}
       ${c.stato !== 'pubblicato' && c.stato !== 'scartato'
         ? '<button class="btn btn-ghost btn-sm rg-butta" id="rg-butta">Butta</button>' : ''}
-    </div>`);
-    html.push(note.length
+      ${c.stato === 'da_approvare'
+        ? '<button class="btn btn-accent btn-sm" id="rg-a-posto">È a posto così</button>' : ''}
+    `);
+    noteHtml.push(note.length
       ? note.map(n => `<div class="rg-nota ${n.risolta ? 'risolta' : ''}">
             <div class="rg-nota-ancora">${esc(descriviAncora(n.ancora))}</div>
             ${esc(n.testo)}
@@ -641,8 +659,8 @@
 
     // ── i file caricati ──
     if (media.length) {
-      html.push('<div class="rg-sez">File</div>');
-      html.push(media.map(m => `<div class="rg-voce">
+      vista.push('<div class="rg-sez">File</div>');
+      vista.push(media.map(m => `<div class="rg-voce">
         <b>${esc(m.nome_file || m.path.split('/').pop())}</b>
         <div class="rg-voce-fonte">${esc(m.ruolo)} · ${esc(m.mime || '')}${
           Number(m.bytes) > 0 ? ' · ' + pesoLeggibile(m.bytes) : ''}</div>
@@ -685,8 +703,15 @@
         <div>${esc(c.errore_pubblicazione)}</div></div>`);
     }
 
-    corpoPannello().innerHTML = html.join('');
+    html.push(...noteHtml);
+
+    corpoPannello().innerHTML =
+      `<div class="rg-col-media">${vista.join('')}</div>`
+      + `<div class="rg-col-lato">${html.join('')}</div>`;
     $('rg-pan-piede').hidden = true;
+    const piede = $('rg-pan-azioni');
+    piede.innerHTML = azioni.join('');
+    piede.hidden = false;
 
     // ── agganci ──
     $('rg-piat')?.addEventListener('click', (ev) => {
