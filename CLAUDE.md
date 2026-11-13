@@ -109,6 +109,31 @@ controlli nell'interfaccia ma trigger su `smm_contents`, e vanno lasciate li':
 Spostarne una in JavaScript vuol dire toglierla: gli agenti scrivono dal
 server, non dal browser.
 
+### La stanza non deve raccontare cose false
+
+Nella scena 3D gli agenti camminano, prendono il caffe', si sdraiano in
+pausa e si parlano. E' la parte che si vede da lontano, e per questo e'
+anche quella che puo' mentire piu' facilmente: un agente che si alza
+mentre sta lavorando dice a chi passa che non sta lavorando.
+
+Quindi il movimento segue lo stato vero e non il caso:
+
+- chi ha `posa` `lavora`, `mano_alzata` o `spento` **resta al suo posto**;
+- si alza solo chi e' libero, e per un motivo che esiste — una
+  collaborazione vera fra i lavori aperti, o una pausa;
+- mai piu' di due in piedi insieme: con otto che si alzano a turno il
+  movimento c'e' sempre e smette di dire qualcosa.
+
+`tests/banco/prova-movimento.cjs` guarda la stanza per due minuti e mezzo
+e verifica proprio questo. I muri sono piani a faccia singola di
+proposito: quando la camera gira dietro spariscono invece di tagliare la
+vista.
+
+La **vetrina** (tasto V) e' la Regia da appendere a uno schermo in
+ufficio: niente linguette ne' filtri, schermo intero vero, camera che gira
+piano. Non e' la modalita' di lavoro, che e' lo **schermo intero** (tasto
+F) e nasconde solo il menu del portale.
+
 ### Dove esce un contenuto non si scrive nel codice
 
 Le piattaforme stanno in `smm_contents.piattaforme`, con un predefinito che
