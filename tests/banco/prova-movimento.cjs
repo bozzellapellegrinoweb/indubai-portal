@@ -29,7 +29,10 @@ const FERMI = ['lavora', 'mano_alzata', 'spento'];
 // e' un guasto. Tre persone in piedi su otto non sono un corteo.
 const IN_PIEDI_MAX = 3;
 const FUORI_MAX = 4;
-const MURO = 11;          // oltre questo non c'e' piu' pavimento
+// La lastra del pavimento e' 19.2 per 19.2 attorno all'origine: oltre
+// 9.6 non c'e' piu' niente sotto i piedi. Era 11 quando la stanza era
+// 21, e un tetto piu' largo del pavimento non e' un tetto.
+const MURO = 9.6;         // oltre questo non c'e' piu' pavimento
 
 let falliti = 0;
 const dice = (ok, che, extra = '') => {

@@ -801,10 +801,21 @@ test('un carosello non conta nella riga delle storie', () => {
   eq(settimana('usciti'), '0', 'usciti');
 });
 
+// Le settimane vanno da lunedi' a domenica (date_trunc('week') di
+// Postgres, ora di Dubai). Qui c'era `now() - interval '8 days'`, che cade
+// nella settimana scorsa solo da martedi' in poi: di lunedi' sono due
+// settimane indietro e il test falliva. Un test che passa sei giorni su
+// sette e' peggio di un test che non c'e': la prima volta si va a cercare
+// il guasto nella funzione, che e' giusta. Adesso il momento si ancora al
+// confine della settimana, non a un numero di giorni.
+const DENTRO_LA_SCORSA =
+  `((date_trunc('week', now() at time zone 'Asia/Dubai') - interval '3 days')`
+  + ` at time zone 'Asia/Dubai')`;
+
 test('la settimana scorsa si guarda indietro, non si perde', () => {
   pulisciUscite();
-  uscita({ pubblicato: `now() - interval '8 days'`, stato: 'pubblicato',
-           creato: `now() - interval '8 days'` });
+  uscita({ pubblicato: DENTRO_LA_SCORSA, stato: 'pubblicato',
+           creato: DENTRO_LA_SCORSA });
   eq(comeUno(MANAGER, `select usciti from smm_piano_settimana('${BRAND}', -1) where id = '${PIANO}'`), '1',
      'usciti la settimana scorsa');
 });

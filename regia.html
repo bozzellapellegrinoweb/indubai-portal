@@ -223,7 +223,12 @@
        premerlo. */
     .rf-nome  { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
                 color:var(--text-muted); }
-    .rf-testo { font-size:13px; font-weight:600; line-height:1.35; margin-top:1px; }
+    /* Stesso tetto, per lo stesso motivo: un fumetto alto quanto la
+       stanza non e' un fumetto, e' un velo. Il testo intero si legge
+       premendo il tasto. */
+    .rf-testo { font-size:13px; font-weight:600; line-height:1.35; margin-top:1px;
+      display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:5;
+      overflow:hidden; }
     .rf-azione { margin-top:7px; border:0; border-radius:8px; background:var(--primary);
                  color:#fff; font:inherit; font-size:12.5px; font-weight:800; padding:7px 14px;
                  cursor:pointer; }
@@ -314,7 +319,17 @@
     .rg-tocca { margin-bottom:14px; border:1.5px solid var(--border); border-radius:13px;
                 background:var(--surface); padding:11px 13px; }
     .rg-tocca-testa { font-size:11px; font-weight:800; text-transform:uppercase;
-                      letter-spacing:.06em; color:var(--text-muted); margin-bottom:9px; }
+                      letter-spacing:.06em; color:var(--text-muted); margin-bottom:9px;
+                      display:flex; align-items:center; gap:8px; }
+    /* "Altre 11": la striscia sta su una riga e questo e' il modo di
+       vedere il resto. Sta in testa e non in fondo perche' in fondo
+       sarebbe sotto la piega quando serve. */
+    .rg-tocca-apri { margin-left:auto; border:1px solid var(--border);
+      background:var(--surface2); color:var(--text-muted); border-radius:999px;
+      font:inherit; font-size:10.5px; font-weight:800; text-transform:uppercase;
+      letter-spacing:.06em; padding:3px 10px; cursor:pointer; }
+    .rg-tocca-apri:hover { border-color:var(--text-muted); color:var(--text); }
+    .rg-tocca-apri[hidden] { display:none; }
     /* Era display:flex con overflow-x:auto e tessere da 214 pixel: con una
        cosa da fare la striscia restava vuota per l'ottanta per cento della
        larghezza, e con otto si scorreva in orizzontale il cuore della
@@ -343,8 +358,15 @@
     .rg-tessera:only-child { flex-direction:row; align-items:center; gap:13px; }
     .rg-tessera:only-child .rg-tessera-testo { flex:1 1 auto; }
     .rg-tessera:only-child > .btn { align-self:center; margin-left:auto; }
-    .rg-tessera-titolo { font-size:13px; font-weight:800; line-height:1.25; }
-    .rg-tessera-testo  { font-size:12px; color:var(--text-muted); line-height:1.4; }
+    /* Il tetto alle righe: la domanda del Grafico era lunga una pagina e
+       la sua tessera misurava 322 pixel da sola. Il testo intero sta nel
+       pannello, che e' dove si risponde. */
+    .rg-tessera-titolo { font-size:13px; font-weight:800; line-height:1.25;
+      display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+      overflow:hidden; }
+    .rg-tessera-testo  { font-size:12px; color:var(--text-muted); line-height:1.4;
+      display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3;
+      overflow:hidden; }
     .rg-vuoto-tocca { font-size:12.5px; color:var(--text-muted); }
 
     /* ── Solo social: la pagina si concentra ─────────────── */
@@ -823,7 +845,8 @@
              chiede un'azione era l'ultima che si vedeva. La stanza e' lo
              stato, questa e' la lista delle cose da fare. -->
         <div class="rg-tocca" id="rg-tocca-guscio">
-          <div class="rg-tocca-testa">Tocca a te<span class="rg-conta" id="rg-tocca-conta" hidden>0</span></div>
+          <div class="rg-tocca-testa">Tocca a te<span class="rg-conta" id="rg-tocca-conta" hidden>0</span>
+            <button type="button" class="rg-tocca-apri" id="rg-tocca-apri" hidden></button></div>
           <div class="rg-tocca-righe" id="rg-tocca"></div>
         </div>
 

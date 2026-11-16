@@ -343,11 +343,14 @@
     $('rg-tocca-guscio')?.classList.toggle('piena', voci.length > 0);
 
     if (!voci.length) {
+      ui.toccaAperta = false;
+      const apriVuoto = $('rg-tocca-apri');
+      if (apriVuoto) apriVuoto.hidden = true;
       c.innerHTML = '<div class="rg-vuoto-tocca">Niente in attesa di te. '
         + 'Se la settimana e&#768; coperta va bene cosi&#768;: il piano lo vedi in <b>Direzione</b>.</div>';
       return;
     }
-    c.innerHTML = voci.map(v => {
+    const tessera = (v) => {
       const classe = v.tipo === 'domanda' || v.tipo === 'respinto' ? 'urgente'
                    : v.tipo === 'cervello' ? 'cervello' : '';
       const attr = v.tipo === 'domanda'      ? `data-rispondi="${v.id}"`
@@ -359,10 +362,52 @@
         <div class="rg-tessera-testo">${esc(v.testo)}</div>
         <button class="btn btn-accent btn-sm" ${attr}>${esc(v.azione)}</button>
       </div>`;
-    }).join('');
+    };
+
+    // ── Una riga, non tre ───────────────────────────────────
+    //
+    // Diciotto cose in attesa mandavano la striscia a tre righe: 550
+    // pixel di tessere, la stanza schiacciata al suo minimo di 360 e la
+    // pagina che scorreva. E' una giornata di lavoro normale, non un
+    // caso limite: i contenuti pronti si accumulano.
+    //
+    // Quindi la striscia mostra quante ne stanno in una riga — le prime,
+    // che sono le urgenti perche' l'ordine lo decide toccaATe() — e dice
+    // quante restano. Le altre sono a un tasto, non perse: il numero in
+    // testa e' sempre il totale.
+    //
+    // Quante ne stanno lo dice la griglia stessa: si disegnano tutte, si
+    // legge quante colonne ha fatto auto-fit a questa larghezza, e se
+    // serve si ridisegna tagliato. Contarle a mano vorrebbe dire
+    // ricopiare qui il minmax del foglio di stile, e le due copie
+    // divergerebbero al primo ritocco.
+    c.innerHTML = voci.map(tessera).join('');
+    const colonne = colonneDi(c);
+    const nascoste = voci.length - colonne;
+    if (!ui.toccaAperta && nascoste > 0) {
+      c.innerHTML = voci.slice(0, colonne).map(tessera).join('');
+    }
+    const apri = $('rg-tocca-apri');
+    if (apri) {
+      apri.hidden = nascoste <= 0;
+      apri.textContent = ui.toccaAperta
+        ? 'Mostra solo le prime'
+        : `Altre ${nascoste}`;
+    }
     // La striscia cambia altezza quando le tessere vanno a capo: la scena
     // prende quello che resta e deve ricontarlo.
     requestAnimationFrame(misuraSopra);
+  }
+
+  /**
+   * Quante colonne ha disegnato una griglia auto-fit, adesso.
+   * Firefox e Chrome rispondono con le larghezze calcolate, una per
+   * traccia: le tracce vuote di auto-fit valgono 0px e non compaiono.
+   */
+  function colonneDi(el) {
+    const t = getComputedStyle(el).gridTemplateColumns;
+    if (!t || t === 'none') return 1;
+    return Math.max(1, t.trim().split(/\s+/).length);
   }
 
   // ── Il pannello laterale ──────────────────────────────────
@@ -2691,6 +2736,10 @@
     $('rg-btn-newsletter')?.addEventListener('click', () => apriNewsletter());
     $('rg-interruttore').addEventListener('click', () => cambiaInterruttore());
     $('rg-fermo-riparti').addEventListener('click', () => cambiaInterruttore(false));
+    $('rg-tocca-apri')?.addEventListener('click', () => {
+      ui.toccaAperta = !ui.toccaAperta;
+      disegnaTocca();
+    });
     $('rg-pan-chiudi').addEventListener('click', chiudiPannello);
     $('rg-velo').addEventListener('click', chiudiPannello);
     $('rg-modale-chiudi').addEventListener('click', chiudiModale);
@@ -2762,7 +2811,9 @@
     // errore di lettura non la cancella.
     if (concentratoRicordato()) concentrato(true, false);
     requestAnimationFrame(misuraSopra);
-    window.addEventListener('resize', misuraSopra);
+    // Allargando o stringendo la finestra la griglia cambia numero di
+    // colonne, e quante tessere stanno in una riga cambia con lei.
+    window.addEventListener('resize', () => { misuraSopra(); disegnaTocca(); });
     // Il pannello si aggancia anche al tasto Guarda dentro un fumetto 3D.
     avvia();
   });

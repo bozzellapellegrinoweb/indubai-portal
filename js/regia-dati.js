@@ -207,12 +207,6 @@
         testo: j.domanda || j.titolo, azione: 'Rispondi',
       });
     }
-    for (const c of stato.contenuti.filter(x => x.stato === 'da_approvare')) {
-      voci.push({
-        tipo: 'approvazione', id: c.id,
-        titolo: c.titolo, testo: 'Pronto da approvare', azione: 'Guarda',
-      });
-    }
     for (const c of stato.contenuti.filter(x => x.stato === 'respinto')) {
       const n = c.revisore_note?.violazioni?.length || 0;
       voci.push({
@@ -238,6 +232,17 @@
         tipo: 'cervello', id: 'cervello',
         titolo: 'Note nuove nel Cervello',
         testo: `${stato.cervelloContatori.daConfermare} da confermare`, azione: 'Apri',
+      });
+    }
+    // I contenuti pronti vanno in fondo, e non e' un dettaglio: sono i
+    // piu' numerosi e i meno urgenti. Stando per primi spingevano in
+    // coda — fuori dalla striscia, a volte fuori dalla schermata — una
+    // domanda ferma e tre contenuti bloccati dal Revisore. Una coda di
+    // cose da guardare non puo' nascondere qualcuno che aspetta.
+    for (const c of stato.contenuti.filter(x => x.stato === 'da_approvare')) {
+      voci.push({
+        tipo: 'approvazione', id: c.id,
+        titolo: c.titolo, testo: 'Pronto da approvare', azione: 'Guarda',
       });
     }
     return voci;

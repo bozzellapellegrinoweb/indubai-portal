@@ -139,6 +139,36 @@ e verifica proprio questo. I muri sono piani a faccia singola di
 proposito: quando la camera gira dietro spariscono invece di tagliare la
 vista.
 
+### «Tocca a te» non puo' crescere all'infinito
+
+La striscia in cima alla Regia e' la lista delle cose che aspettano una
+persona. Il 16 novembre erano diciotto — una domanda, tre contenuti fermati
+dal Revisore, la settimana scoperta, tredici pronti da approvare — e la
+griglia andava a tre righe: 550 pixel di tessere, la stanza schiacciata al
+suo minimo di 360 e la pagina che scorreva. Diciotto cose da fare non sono
+un difetto: sono una giornata normale, e i contenuti pronti si accumulano
+da soli.
+
+Quindi:
+
+- la striscia mostra **quante ne stanno in una riga**, e dice quante
+  restano («Altre 12»), che e' un tasto, non una perdita. Quante ne stanno
+  lo chiede alla griglia (`gridTemplateColumns`), non a una copia del
+  `minmax` del foglio di stile: due copie divergono al primo ritocco;
+- l'ordine lo decide `toccaATe()` in `js/regia-dati.js`, e i contenuti
+  **pronti da approvare vanno in fondo**: sono i piu' numerosi e i meno
+  urgenti, e stando per primi nascondevano chi aspetta una risposta;
+- titolo e testo delle tessere hanno un tetto di righe, e cosi' il testo
+  dei fumetti nella stanza. Una domanda lunga una pagina si legge nel
+  pannello, che e' dove si risponde: in una tessera faceva 322 pixel, in un
+  fumetto copriva la stanza.
+
+`tests/banco/prova-pieno.cjs` tiene fermo il contratto su uno schermo da
+scrivania, con la giornata piena accesa da
+`window.__BANCO_GIORNATA = 'piena'` (i dati stanno nello stub, non nel
+test). Verifica anche che nessun cartellino finisca sotto un fumetto: i
+cartellini si posizionano **dopo**, proprio per potersi scansare.
+
 ### Il nome e il mestiere sono due cose diverse
 
 Gli agenti si chiamano Vegeta, Bulma, Gohan, Trunks, Goku, Piccolo, Crilin e

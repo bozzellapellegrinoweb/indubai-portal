@@ -388,8 +388,14 @@ export function creaScena(contenitore, opzioni = {}) {
   // I muri sono piani a faccia singola: girandoci intorno spariscono da
   // soli invece di tagliare la vista, che e' esattamente quello che serve
   // quando la camera gira da sola nella vetrina.
-  const MURO = 10.2;        // dove stanno i due muri
-  const LATO = 21;          // quanto e' larga la lastra del pavimento
+  // Erano 10.2 e 21: 441 metri quadri per otto persone, e si vedeva. Fra
+  // il bordo dei tappeti e il bordo della lastra restava una fascia di
+  // pavimento nudo larga due metri su ogni lato, e da lontano quella
+  // fascia e' meta' di quello che si guarda. La stanza non si puo'
+  // stringere oltre: le finestre del muro di fondo arrivano a 8.9, il
+  // tappeto del caffe' a 8.5, quello del relax a -8.8.
+  const MURO = 9.3;         // dove stanno i due muri
+  const LATO = 19.2;        // quanto e' larga la lastra del pavimento
 
   const pavimento = new THREE.Mesh(new THREE.PlaneGeometry(LATO, LATO), mat.pavimento);
   pavimento.rotation.x = -Math.PI / 2;
@@ -1804,21 +1810,7 @@ export function creaScena(contenitore, opzioni = {}) {
         h: (t.el.offsetHeight || 22) * scala,
       });
     }
-    // Chi sta davanti tiene il suo posto, chi sta dietro scende quel tanto
-    // che basta. Le misure sono rese, non di layout: e' lo stesso errore
-    // che faceva sbagliare bersaglio alla correzione dei fumetti.
-    cartelli.sort((a, b) => a.y - b.y);
-    for (let i = 0; i < cartelli.length; i++) {
-      const c = cartelli[i];
-      for (let j = 0; j < i; j++) {
-        const d = cartelli[j];
-        const vicinoX = Math.abs(c.x - d.x) < (c.w + d.w) / 2 - 8;
-        if (vicinoX && c.y < d.y + d.h + 3 && c.y + c.h > d.y) c.y = d.y + d.h + 3;
-      }
-      c.t.el.style.transform =
-        `translate(${c.x.toFixed(1)}px, ${c.y.toFixed(1)}px) `
-        + `scale(${scala.toFixed(3)}) translate(-50%, 0)`;
-    }
+    // I cartellini si sistemano in fondo, dopo i fumetti: vedi sotto.
     for (const [id, t] of targhe) {
       if (!avatarPerAgente.has(id)) { t.el.remove(); targhe.delete(id); }
     }
@@ -1919,6 +1911,41 @@ export function creaScena(contenitore, opzioni = {}) {
         `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) `
         + `scale(${scala.toFixed(3)}) translate(-50%, -100%)`;
       p.f.el.style.zIndex = String(1000 - Math.round(p.z * 500));
+    }
+
+    // ── E adesso i cartellini ───────────────────────────────
+    //
+    // Stavano qui sopra, prima dei fumetti, e si scansavano solo fra
+    // loro: "Bulma \u00b7 Stratega" finiva mezzo sotto il fumetto del
+    // Revisore, e mezzo nome non dice niente. Il fumetto e' piu'
+    // importante — ha dentro una domanda e un tasto — quindi e' il
+    // cartellino a doversi spostare, e per spostarsi deve sapere dove e'
+    // finito il fumetto. Da qui si sa.
+    //
+    // Il fumetto ha l'aggancio in basso (translate -50%,-100%): occupa
+    // da y - h a y. Il cartellino ce l'ha in alto: da y a y + h.
+    cartelli.sort((a, b) => a.y - b.y);
+    for (let i = 0; i < cartelli.length; i++) {
+      const c = cartelli[i];
+      // Sotto i fumetti, non dentro.
+      for (const q of piazzati) {
+        if (Math.abs(c.x - q.x) >= (c.w + q.w) / 2 - 8) continue;
+        if (c.y >= q.y || c.y + c.h <= q.y - q.h) continue;
+        c.y = q.y + 4;
+      }
+      // E non uno sull'altro.
+      for (let j = 0; j < i; j++) {
+        const d = cartelli[j];
+        const vicinoX = Math.abs(c.x - d.x) < (c.w + d.w) / 2 - 8;
+        if (vicinoX && c.y < d.y + d.h + 3 && c.y + c.h > d.y) c.y = d.y + d.h + 3;
+      }
+      // Dentro l'inquadratura: spinto in basso da un fumetto alto, un
+      // cartellino poteva finire sotto il bordo della scena.
+      c.y = Math.min(c.y, r.height - c.h - 4);
+      c.x = Math.min(Math.max(c.x, c.w / 2 + 4), r.width - c.w / 2 - 4);
+      c.t.el.style.transform =
+        `translate(${c.x.toFixed(1)}px, ${c.y.toFixed(1)}px) `
+        + `scale(${scala.toFixed(3)}) translate(-50%, 0)`;
     }
   }
 

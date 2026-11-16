@@ -94,6 +94,63 @@
     profilo: { id: 'u-prova', role: 'admin' }, caricato: true,
   };
 
+  // ── Le due giornate ──────────────────────────────────────
+  // La forma e' quella vera di D.toccaATe() in js/regia-dati.js.
+  //
+  // "normale" e' una cosa sola da fare. "piena" e' il 16 novembre 2026
+  // sullo schermo di Pellegrino: una domanda lunghissima, tredici
+  // contenuti pronti, tre fermati dal Revisore e la settimana scoperta.
+  // Diciotto tessere mandavano la striscia a tre righe e la stanza a
+  // trecento pixel. Si cambia la striscia, non il numero: diciotto cose
+  // da fare sono un fatto, non un difetto.
+  const giornataNormale = [{ tipo: 'domanda', id: 'j2', agente: agenti[5],
+                             titolo: 'Piccolo (Revisore) ha una domanda',
+                             testo: 'Posso dire che il Fisco vede il conto, o e troppo netto?',
+                             azione: 'Rispondi' }];
+
+  const titoliPronti = [
+    'Free zone non vuol dire zero tasse: le condizioni del QFZP',
+    'Residenza, non capitale: Italia, UK, Malta ed Emirati a confronto',
+    'Storia 7: rientri frequenti in Italia, dal 2024 basta la presenza',
+    'Storia 3: la notizia della settimana, residenza non capitale',
+    'Storia 2: i tre criteri della residenza fiscale italiana',
+    'Storia 5: CRS, Emirati e Italia si parlano dal 2018',
+    'Storia 4: free zone non vuol dire zero automatico',
+    'Dal 2024 basta la presenza: perche i rientri in Italia contano',
+    'Storia 1: Corporate Tax al 9% sopra 375.000 AED',
+    'Reel: free zone non vuol dire zero tasse',
+    'Reel: residenza, non capitale',
+    'Reel - Monaco o Dubai? Cosa decide davvero la residenza fiscale',
+    'Storia 6: la convenzione Italia-Emirati, in ordine',
+  ];
+  const titoliFermi = [
+    'Reel: residenza, non capitale - Italia, UK, Malta ed Emirati a confronto',
+    'Reel: residenza, non capitale - Italia, UK, Malta ed Emirati a confronto (2)',
+    'Reel - Residenza, non capitale: Italia ed Emirati a confronto',
+  ];
+  const giornataPiena = [
+    { tipo: 'domanda', id: 'j2', agente: agenti[3],
+      titolo: 'Trunks (Grafico) ha una domanda',
+      testo: 'Due titoli superano le lunghezze massime e romperebbero '
+           + 'l\'impaginazione: la copertina ha 11 parole (massimo 10) e il titolo '
+           + 'della slide finale ne ha 10 (massimo 8). Ti propongo tagli minimi: '
+           + 'copertina "Vivi a Dubai. Per il fisco potresti vivere in Italia" '
+           + '(tolgo "ancora") e slide finale "Trasferirsi davvero: nella vita, non '
+           + 'solo sulla carta". Inoltre il formato carosello non ha una riga '
+           + 'separata per l\'invito: unisco "Scrivici in DM" al testo dell\'ultima '
+           + 'slide come "Rientri spesso e temi che la tua posizione non regga? '
+           + 'Scrivici in DM." (12 parole, il massimo). Vanno bene cosi o '
+           + 'preferisci altre formulazioni?',
+      azione: 'Rispondi' },
+    ...titoliFermi.map((t, i) => ({ tipo: 'respinto', id: 'r' + i, titolo: t,
+      testo: 'Il Revisore ha trovato ' + (i === 0 ? '3 problemi' : '4 problemi'),
+      azione: 'Leggi' })),
+    { tipo: 'piano', id: 'piano', titolo: 'La settimana non è coperta',
+      testo: 'Mancano 2 caroselli', azione: 'Lancia' },
+    ...titoliPronti.map((t, i) => ({ tipo: 'approvazione', id: 'c' + i, titolo: t,
+      testo: 'Pronto da approvare', azione: 'Guarda' })),
+  ];
+
   const ascoltatori = new Set();
   const nulla = async () => {};
   const vuoto = async () => [];
@@ -149,10 +206,7 @@
     // prodotto. E' la trappola del mestiere scritta in LEGGIMI.md: una
     // finta che non somiglia all'originale fa cercare il guasto nel posto
     // sbagliato.
-    toccaATe: () => [{ tipo: 'domanda', id: 'j2', agente: agenti[5],
-                       titolo: 'Piccolo (Revisore) ha una domanda',
-                       testo: 'Posso dire che il Fisco vede il conto, o e troppo netto?',
-                       azione: 'Rispondi' }],
+    toccaATe: () => (window.__BANCO_GIORNATA === 'piena' ? giornataPiena : giornataNormale),
     contenuto: async () => contenuto,
     versioni: vuoto, note: vuoto, messaggiDi: vuoto,
     lavoriDi: async (id) => lavori.filter(j => j.content_id === id),
