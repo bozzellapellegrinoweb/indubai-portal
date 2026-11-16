@@ -122,6 +122,44 @@ const VISTE = [['Calendario','[data-vista="calendario"]'], ['Risultati','[data-v
     ko++; console.log(`  KO  il clic non ha aggiunto LinkedIn: ${dopo.join(', ')}`);
   } else console.log(`  ok  si puo' cambiare (${dopo.join(', ')})`);
 
+  // ── Quando esce: l'ora predefinita si vede e si cambia ──
+  // Approvare vuol dire programmare, e il manager deve poter sapere a che
+  // ora esce senza aprire il database.
+  await page.click('#rg-pan-chiudi').catch(() => {});
+  await page.waitForTimeout(400);
+  await page.click('#rg-btn-direzione');
+  await page.waitForTimeout(1200);
+  const quando = await page.evaluate(() => {
+    const corpo = document.querySelector('#rg-pan-corpo');
+    const campo = document.querySelector('#rg-ora-uscita');
+    return {
+      sezione: /Quando esce/.test(corpo?.textContent || ''),
+      ora: campo?.value || null,
+      italia: /in Italia/.test(corpo?.textContent || ''),
+      tasto: !!document.querySelector('[data-ora-salva]'),
+    };
+  });
+  if (!quando.sezione || !quando.ora || !quando.tasto) {
+    ko++; console.log(`  KO  quando esce: ${JSON.stringify(quando)}`);
+  } else {
+    console.log(`  ok  quando esce (alle ${quando.ora} di Dubai`
+      + `${quando.italia ? ', con l\'ora italiana' : ''})`);
+  }
+
+  // E la riga di piano ha il campo dell'ora: era una colonna che nessuna
+  // schermata scriveva, cioe' una colonna morta.
+  // La seconda riga del banco ha ora 08:30: si apre e si rilegge, cosi' il
+  // controllo dice che il campo e' collegato al dato e non solo che c'e'.
+  await page.locator('[data-piano-modifica]').nth(1).click().catch(() => {});
+  await page.waitForTimeout(900);
+  const oraRiga = await page.evaluate(() => {
+    const campo = document.querySelector('#rg-p-ora');
+    return campo ? { c: true, valore: campo.value } : { c: false };
+  });
+  if (!oraRiga.c || oraRiga.valore !== '08:30') {
+    ko++; console.log(`  KO  l'ora della riga di piano: ${JSON.stringify(oraRiga)}`);
+  } else console.log(`  ok  la riga di piano rilegge la sua ora (${oraRiga.valore})`);
+
   await b.close();
   console.log(ko ? `\n${ko} pannelli con problemi\n` : '\nTutti i pannelli si aprono puliti.\n');
   process.exit(ko ? 1 : 0);

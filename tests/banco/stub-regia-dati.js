@@ -88,8 +88,12 @@
     contenutiExtra: altri,
     brand: { id: BRAND, nome: 'InDubai', cta_default: 'Approfondisci su InDubai.it', sito: 'InDubai.it' },
     agenti, lavori, contenuti: [contenuto, ...altri],
+    // ora_uscita c'e' davvero in smm_settings dal 16 novembre 2026: senza,
+    // il banco proverebbe la schermata con un'impostazione che nel portale
+    // esiste e qui no.
     impostazioni: { brand_id: BRAND, stop_tutto: false, budget_giorno_usd: 10,
-                    speso_oggi_usd: 0.4798, speso_oggi_data: '2026-11-12', piano_automatico: true },
+                    speso_oggi_usd: 0.4798, speso_oggi_data: '2026-11-12',
+                    piano_automatico: true, ora_uscita: '21:00:00' },
     piano: [], cervelloContatori: { regola: 51, nota: 3, studio: 0, design: 2, daConfermare: 1 },
     profilo: { id: 'u-prova', role: 'admin' }, caricato: true,
   };
@@ -214,8 +218,10 @@
     plurale: (t, n) => (n === 1 ? t : t),
     piano: async () => ([
       { id:'p1', nome:'Storie quotidiane', tipo:'storia', quanti_a_settimana:7, attivo:true,
+        giorni:[], ora:null,
         usciti:1, in_calendario:1, in_lavorazione:5, mancanti:0 },
       { id:'p2', nome:'Caroselli dalle notizie', tipo:'carosello', quanti_a_settimana:3, attivo:true,
+        giorni:[2,4], ora:'08:30:00',
         usciti:0, in_calendario:0, in_lavorazione:1, mancanti:2 },
     ]), risultati: vuoto, cervelloCerca: vuoto, cervelloDaConfermare: vuoto,
     avatar: async () => ({ ok: true, foto: [], attive: 0, da_vedere: 0, massimo_per_volta: 8 }),

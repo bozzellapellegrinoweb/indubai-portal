@@ -122,6 +122,7 @@ try {
   // lavoro con pg_cron: sul banco quell'estensione non c'e', e si prende
   // solo la funzione, che e' la parte da provare.
   psql(DB, ['-f', join(ROOT, 'tests/smm/11_fermi_senza_estensioni.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261116_smm_programma_da_solo.sql')]);
 } catch (e) {
   console.error('Le migrazioni non si applicano:\n' + (e.stderr || e.stdout || e.message));
   process.exit(1);
@@ -700,14 +701,18 @@ test('un contenuto attraversa tutti i passaggi, e nessuno si puo saltare', () =>
   mustFail(`update smm_contents set stato = 'programmato' where id = '${c}'`,
            'approvazione umana registrata');
 
-  // 8. il manager approva, con la sua firma
+  // 8. il manager approva, con la sua firma — e approvare vuol dire
+  //    programmare: il contenuto va in calendario da solo, con una data.
+  //    Prima restava in "approvato" e bisognava trascinarlo a mano.
   come(MANAGER, `update smm_contents set stato = 'approvato',
                    approvato_da = '${MANAGER}', approvato_at = now() where id = '${c}'`);
-  eq(one(`select stato from smm_contents where id = '${c}'`), 'approvato', 'approvato');
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'in_calendario', 'in calendario');
+  vero(one(`select slot_at is not null from smm_contents where id = '${c}'`),
+       'con una data di uscita');
 
-  // 9. trascinato nel calendario
-  come(MANAGER, `update smm_contents set slot_at = now() + interval '2 days',
-                   stato = 'in_calendario' where id = '${c}'`);
+  // 9. si puo comunque spostare a mano
+  come(MANAGER, `update smm_contents set slot_at = now() + interval '2 days'
+                 where id = '${c}'`);
 
   // 10. arrivata l'ora, il cron mette in coda la pubblicazione
   psql(DB, ['-c', `update smm_contents set slot_at = now() - interval '1 minute'
@@ -1732,6 +1737,201 @@ test('un contenuto gia passato dal Revisore non si riprende', () => {
 });
 
 // ============================================================
+gruppo('Approvare vuol dire programmare');
+
+// Il manager approvava e poi doveva trascinare il contenuto su un giorno
+// del calendario perche' uscisse. Due gesti per una decisione sola, e il
+// secondo si dimentica: in produzione c'erano quattro contenuti approvati
+// e mai programmati. Adesso l'approvazione mette anche la data, e dove la
+// mette lo dice il piano.
+//
+// Si prova sul tipo 'post', che nel piano di partenza non c'e': cosi' le
+// righe del seed non si intromettono e ogni prova scrive il suo piano.
+
+function pulisciProgrammati() {
+  psql(DB, ['-c', `delete from smm_contents where tipo = 'post'`]);
+  psql(DB, ['-c', `delete from smm_piano where tipo = 'post'`]);
+}
+
+function rigaPiano(opts = {}) {
+  const { giorni = '{}', ora = 'null', pillar = '{}' } = opts;
+  return one(`insert into smm_piano (brand_id, nome, tipo, quanti_a_settimana, giorni, ora, pillar)
+              values ('${BRAND}', 'Prova programmazione', 'post', 3,
+                      '${giorni}'::int[], ${ora}, '${pillar}'::text[])
+              returning id`);
+}
+
+/** Un contenuto gia' passato dal Revisore, pronto per l'approvazione. */
+function daApprovare(opts = {}) {
+  const { pillar = null, categoria = 'normativa', sensibile = false } = opts;
+  const id = one(`
+    insert into smm_contents (brand_id, titolo, tipo, pillar, categoria, sensibile,
+                              stato, caption, created_by)
+    values ('${BRAND}', 'Un post da programmare', 'post',
+            ${pillar ? `'${pillar}'` : 'null'}, '${categoria}', ${sensibile},
+            'in_lavorazione', 'Consulenza fiscale e societaria a Dubai.', '${MANAGER}')
+    returning id`);
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true, revisore_at = now()
+                   where id = '${id}'`]);
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${id}'`]);
+  return id;
+}
+
+const approva = (id) => come(MANAGER,
+  `update smm_contents set stato = 'approvato',
+     approvato_da = '${MANAGER}', approvato_at = now() where id = '${id}'`);
+
+/** Un pezzo dell'uscita di un contenuto, letta nel fuso di Dubai. */
+const quando = (id, pezzo) => one(
+  `select ${pezzo} from (select slot_at at time zone 'Asia/Dubai' as d
+                           from smm_contents where id = '${id}') x`);
+
+test('approvare mette la data e porta in calendario', () => {
+  pulisciProgrammati();
+  rigaPiano();
+  const c = daApprovare();
+  approva(c);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'in_calendario', 'stato');
+  vero(one(`select slot_at is not null from smm_contents where id = '${c}'`), 'ha una data');
+  vero(one(`select slot_at > now() from smm_contents where id = '${c}'`), 'ed e nel futuro');
+  pulisciProgrammati();
+});
+
+test('la data rispetta i giorni scelti nel piano', () => {
+  pulisciProgrammati();
+  rigaPiano({ giorni: '{3}' });          // solo il mercoledi
+  const c = daApprovare();
+  approva(c);
+  eq(quando(c, `extract(isodow from d)::int`), '3', 'mercoledi');
+  pulisciProgrammati();
+});
+
+test("e l'ora scritta nel piano", () => {
+  pulisciProgrammati();
+  rigaPiano({ ora: `'07:30'` });
+  const c = daApprovare();
+  approva(c);
+  eq(quando(c, `d::time`), '07:30:00', 'ora di Dubai');
+  pulisciProgrammati();
+});
+
+test('senza ora nel piano vale quella del brand', () => {
+  pulisciProgrammati();
+  psql(DB, ['-c', `update smm_settings set ora_uscita = '16:45' where brand_id = '${BRAND}'`]);
+  rigaPiano();
+  const c = daApprovare();
+  approva(c);
+  eq(quando(c, `d::time`), '16:45:00', 'ora del brand');
+  psql(DB, ['-c', `update smm_settings set ora_uscita = '21:00' where brand_id = '${BRAND}'`]);
+  pulisciProgrammati();
+});
+
+test('due contenuti dello stesso tipo non escono lo stesso giorno', () => {
+  pulisciProgrammati();
+  rigaPiano();
+  approva(daApprovare());
+  approva(daApprovare());
+  approva(daApprovare());
+  const giorni = q(`select distinct (slot_at at time zone 'Asia/Dubai')::date
+                      from smm_contents where tipo = 'post'`).length;
+  eq(String(giorni), '3', 'giorni diversi');
+  pulisciProgrammati();
+});
+
+test('se l ora di oggi e passata si parte dal giorno dopo', () => {
+  pulisciProgrammati();
+  // Un minuto fa, nel fuso di Dubai: oggi quell'ora non c'e' piu'.
+  rigaPiano({ ora: `((now() at time zone 'Asia/Dubai') - interval '1 minute')::time` });
+  const c = daApprovare();
+  approva(c);
+  vero(one(`select slot_at > now() from smm_contents where id = '${c}'`), 'nel futuro');
+  pulisciProgrammati();
+});
+
+test('togliere dal calendario non lo riprogramma da solo', () => {
+  pulisciProgrammati();
+  rigaPiano();
+  const c = daApprovare();
+  approva(c);
+  // E' quello che fa il manager togliendolo dal calendario.
+  come(MANAGER, `update smm_contents set slot_at = null, stato = 'approvato'
+                 where id = '${c}'`);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'approvato', 'resta approvato');
+  vero(one(`select slot_at is null from smm_contents where id = '${c}'`), 'senza data');
+  pulisciProgrammati();
+});
+
+test('su una categoria sensibile aspetta la seconda firma', () => {
+  pulisciProgrammati();
+  psql(DB, ['-c', `update smm_settings set doppia_approvazione = true where brand_id = '${BRAND}'`]);
+  rigaPiano();
+  const c = daApprovare({ categoria: 'fiscale' });   // categoria sensibile
+  approva(c);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'approvato',
+     'non programmato senza la seconda firma');
+  vero(one(`select slot_at is null from smm_contents where id = '${c}'`), 'senza data');
+
+  come(ADMIN, `update smm_contents set approvato_admin_da = '${ADMIN}',
+                 approvato_admin_at = now() where id = '${c}'`);
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'in_calendario',
+     'con la seconda firma va in calendario');
+  vero(one(`select slot_at is not null from smm_contents where id = '${c}'`), 'con la data');
+  psql(DB, ['-c', `update smm_settings set doppia_approvazione = false where brand_id = '${BRAND}'`]);
+  pulisciProgrammati();
+});
+
+// Questo test tiene in piedi il nome del trigger.
+//
+// trg_smm_zz_programma cambia stato da "approvato" a "in_calendario", e i
+// presidi che guardano new.stato — che si chiamano tutti trg_smm_guard_* —
+// devono girare prima. Postgres li esegue in ordine di nome: un trigger
+// chiamato trg_smm_calendario verrebbe prima delle guardie, e il controllo
+// sui termini vietati non vedrebbe piu' "approvato". Passerebbe tutto, in
+// silenzio. Provato: con quel nome questo test fallisce.
+test('i termini vietati fermano l approvazione anche adesso che programma da sola', () => {
+  pulisciProgrammati();
+  rigaPiano();
+  const c = daApprovare();
+  psql(DB, ['-c', `update smm_contents
+                      set caption = 'Il nostro studio legale ti segue passo passo.'
+                    where id = '${c}'`]);
+  comeFallisce(MANAGER,
+    `update smm_contents set stato = 'approvato',
+       approvato_da = '${MANAGER}', approvato_at = now() where id = '${c}'`,
+    'Termini vietati');
+  eq(one(`select stato from smm_contents where id = '${c}'`), 'da_approvare', 'fermo dov era');
+  pulisciProgrammati();
+});
+
+test('senza il via libera del Revisore non si programma', () => {
+  pulisciProgrammati();
+  rigaPiano();
+  const c = one(`
+    insert into smm_contents (brand_id, titolo, tipo, stato, created_by)
+    values ('${BRAND}', 'Mai passato dal Revisore', 'post', 'in_lavorazione', '${MANAGER}')
+    returning id`);
+  comeFallisce(MANAGER,
+    `update smm_contents set stato = 'approvato',
+       approvato_da = '${MANAGER}', approvato_at = now() where id = '${c}'`,
+    'Revisore di conformit');
+  vero(one(`select slot_at is null from smm_contents where id = '${c}'`), 'senza data');
+  pulisciProgrammati();
+});
+
+test('arrivata l ora, il cron lo mette in coda', () => {
+  pulisciProgrammati();
+  rigaPiano();
+  const c = daApprovare();
+  approva(c);
+  psql(DB, ['-c', `update smm_contents set slot_at = now() - interval '1 minute'
+                   where id = '${c}'`]);
+  vero(Number(one(`select smm_programmati_in_scadenza()`)) >= 1, 'messo in coda');
+  eq(one(`select count(*) from smm_jobs where content_id = '${c}' and tipo = 'pubblicazione'`),
+     '1', 'lavoro di pubblicazione');
+  pulisciProgrammati();
+});
+
+// ============================================================
 gruppo('Reversibilita');
 
 test('la migrazione di rollback riporta il database come prima', () => {
@@ -1741,6 +1941,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261116_smm_programma_da_solo_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261114_smm_riprendi_fermi_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_icone_slide_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_reel_e_piattaforme_down.sql')]);

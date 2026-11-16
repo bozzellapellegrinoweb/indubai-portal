@@ -1116,14 +1116,56 @@
     }
   }
 
+  /**
+   * "giovedi 19 novembre alle 21:00": l'uscita di un contenuto.
+   * Sempre nel fuso di Dubai, perche' e' quello in cui il manager ragiona
+   * e quello in cui sono scritte le ore del piano.
+   */
+  function quandoEsce(slot) {
+    if (!slot) return null;
+    const d = new Date(slot);
+    if (isNaN(d)) return null;
+    const giorno = d.toLocaleDateString('it-IT',
+      { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Dubai' });
+    const ora = d.toLocaleTimeString('it-IT',
+      { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' });
+    return `${giorno} alle ${ora}`;
+  }
+
+  /**
+   * Che ora e' in Italia quando a Dubai sono le hh:mm.
+   *
+   * Non e' una sottrazione fissa: Dubai sta sempre a UTC+4, l'Italia passa
+   * da +1 a +2 in primavera. Si costruisce la data vera e si lascia
+   * convertire al browser, cosi' d'estate il numero cambia da solo.
+   */
+  function oraInItalia(hhmm) {
+    if (!/^\d{2}:\d{2}$/.test(hhmm || '')) return null;
+    const oggi = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Dubai' });
+    const d = new Date(`${oggi}T${hhmm}:00+04:00`);
+    if (isNaN(d)) return null;
+    return d.toLocaleTimeString('it-IT',
+      { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' });
+  }
+
   function dopoAprovazione(c) {
     const passi = [];
-    if (!c.slot_at) passi.push('Trascinalo su un giorno nel Calendario per decidere quando esce.');
-    else passi.push(`Esce il ${window.ui.formatDate(c.slot_at)} alle ${new Date(c.slot_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' })}, ora di Dubai.`);
     const doppia = D.stato.impostazioni?.doppia_approvazione;
     const sensibile = c.sensibile ||
       (D.stato.impostazioni?.categorie_sensibili || []).includes(c.categoria);
-    if (doppia && sensibile && !c.approvato_admin_da) {
+    const aspettaAdmin = doppia && sensibile && !c.approvato_admin_da;
+
+    // Approvare vuol dire programmare: la data c'e' quasi sempre. Resta
+    // senza in due casi, e sono due frasi diverse — "trascinalo" a chi lo
+    // ha tolto dal calendario apposta non serve a niente.
+    if (c.slot_at) {
+      passi.push(`Esce ${quandoEsce(c.slot_at)}, ora di Dubai.`);
+    } else if (aspettaAdmin) {
+      passi.push('Appena l\'amministratore conferma, prende da solo il primo giorno libero del piano.');
+    } else {
+      passi.push('Non ha una data: trascinalo su un giorno nel Calendario.');
+    }
+    if (aspettaAdmin) {
       passi.push('Questa categoria è sensibile: serve anche la conferma dell\'amministratore prima dell\'uscita.');
     }
     const dove = (c.piattaforme || []).length
@@ -1149,7 +1191,18 @@
   async function approvaContenuto(c) {
     try {
       await D.approva(c.id);
-      window.ui.showToast('Approvato.', 'success');
+      // D.approva ha gia' riletto tutto: la data la mette il database, non
+      // si puo' indovinare qui. Dirla subito e' il punto di tutto il
+      // cambiamento — se il messaggio dicesse solo "Approvato", il manager
+      // andrebbe lo stesso a controllare il calendario.
+      const dopo = D.stato.contenuti.find(x => x.id === c.id);
+      const uscita = quandoEsce(dopo?.slot_at);
+      window.ui.showToast(
+        uscita ? `Approvato. Esce ${uscita}.`
+               : dopo?.stato === 'approvato'
+                 ? 'Approvato. Prende una data appena l\'amministratore conferma.'
+                 : 'Approvato.',
+        'success');
       apriContenuto(c.id);
     } catch (e) {
       // Il messaggio del database e' scritto per una persona: si mostra.
@@ -2141,6 +2194,8 @@
     const s = D.stato.impostazioni || {};
     const spesoOggi = Number(s.speso_oggi_usd || 0);
     const budget = Number(s.budget_giorno_usd || 0);
+    const oraUscita = String(s.ora_uscita || '21:00').slice(0, 5);
+    const oraIt = oraInItalia(oraUscita);
 
     const corpo = righe.length
       ? righe.map(rigaPianoHtml).join('')
@@ -2170,6 +2225,21 @@
         </div>
       </div>
 
+      <div class="rg-sez">Quando esce</div>
+      <div class="rg-voce">
+        Quando approvi un contenuto, prende da solo il primo giorno libero
+        del piano: non c&#39;e&#768; piu&#768; niente da trascinare.
+        Chi non ha un&#39;ora sulla sua riga esce alle <b>${esc(oraUscita)}</b>
+        di Dubai${oraIt ? `, le ${esc(oraIt)} in Italia` : ''}.
+        <div class="rg-voce-azioni">
+          <input type="time" id="rg-ora-uscita" value="${esc(oraUscita)}"
+            style="font:inherit;padding:5px 8px;border:1.5px solid var(--border);border-radius:9px">
+          <button class="btn btn-ghost btn-sm" data-ora-salva="1">Cambia l&#39;ora</button>
+        </div>
+        <div class="rg-voce-fonte">Un contenuto per giorno e per tipo: il piano chiede
+          una storia al giorno, e due storie lo stesso giorno non sono il piano.</div>
+      </div>
+
       <div class="rg-sez">Spesa</div>
       <div class="rg-voce">
         Oggi gli agenti hanno speso <b>${spesoOggi.toFixed(2)} $</b>
@@ -2180,6 +2250,22 @@
 
     corpoPannello().querySelector('[data-piano-nuovo]')
       ?.addEventListener('click', () => formaRigaPiano(null));
+    corpoPannello().querySelector('[data-ora-salva]')
+      ?.addEventListener('click', async (ev) => {
+        const valore = document.getElementById('rg-ora-uscita')?.value;
+        if (!valore) { window.ui.showToast('Serve un\'ora.', 'error'); return; }
+        ev.currentTarget.disabled = true;
+        try {
+          await D.salvaImpostazioni({ ora_uscita: valore });
+          const it = oraInItalia(valore);
+          window.ui.showToast(`Da adesso escono alle ${valore} di Dubai`
+            + (it ? `, le ${it} in Italia.` : '.'), 'success');
+          await apriDirezione();
+        } catch (e) {
+          window.ui.showToast(pulisciErrore(e.message), 'error');
+          ev.currentTarget.disabled = false;
+        }
+      });
     corpoPannello().querySelector('[data-piano-auto]')
       ?.addEventListener('click', async (ev) => {
         const verso = ev.currentTarget.dataset.pianoAuto === '1';
@@ -2297,7 +2383,11 @@
             <button type="button" class="rg-zona" data-g="${n}"
               aria-pressed="${(r?.giorni || []).map(Number).includes(n)}">${et}</button>`).join('')}
         </div>
-        <div class="rg-campo-aiuto">Nessuno selezionato: li distribuisce il Direttore.</div></div>
+        <div class="rg-campo-aiuto">Nessuno selezionato: va bene qualunque giorno.</div></div>
+
+      <label class="rg-campo"><span>A che ora</span>
+        <input id="rg-p-ora" type="time" value="${esc((r?.ora || '').slice(0, 5))}">
+        <div class="rg-campo-aiuto">Ora di Dubai. Vuoto: vale l&#39;ora predefinita, che si cambia qui nella Direzione.</div></label>
 
       <label class="rg-campo"><span>Pillar, se vuoi vincolarlo</span>
         <input id="rg-p-pillar" value="${esc((r?.pillar || []).join(', '))}"
@@ -2319,6 +2409,7 @@
             quanti_a_settimana: Math.max(0, Number($('rg-p-quanti').value) || 0),
             agente_id: $('rg-p-agente').value || null,
             giorni,
+            ora: $('rg-p-ora').value || null,
             pillar: $('rg-p-pillar').value.split(',').map(x => x.trim()).filter(Boolean),
             come: $('rg-p-come').value.trim() || null,
           };

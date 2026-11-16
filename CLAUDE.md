@@ -139,6 +139,45 @@ e verifica proprio questo. I muri sono piani a faccia singola di
 proposito: quando la camera gira dietro spariscono invece di tagliare la
 vista.
 
+### Approvare vuol dire programmare
+
+Non esiste piu' il gesto «e adesso trascinalo nel calendario». Quando il
+manager approva, il contenuto prende da solo una data e passa in
+`in_calendario`; da li' lo pubblica il cron come prima.
+
+La data la decide il piano, perche' e' il piano che sa queste cose:
+
+- i **giorni** sono quelli di `smm_piano.giorni` (vuoto = tutti);
+- l'**ora** e' `smm_piano.ora`, se no `smm_settings.ora_uscita`, se no le
+  21:00 di Dubai — le 18:00 in Italia, che e' il pubblico;
+- un giorno e' libero se non c'e' gia' un altro contenuto **dello stesso
+  tipo** in calendario: il piano chiede una storia al giorno, e due storie
+  lo stesso giorno non sono il piano;
+- mai nel passato, e mai entro dieci minuti: il cron gira ogni cinque e
+  deve restare il tempo di cambiare idea.
+
+Tutto resta spostabile a mano, e **togliere un contenuto dal calendario non
+lo riprogramma**: il trigger non riparte quando lo stato torna ad
+«approvato» venendo da «in_calendario», altrimenti non si potrebbe piu'
+toglierlo.
+
+Due cose da non rompere:
+
+1. il trigger si chiama `trg_smm_zz_programma` e il nome conta. Postgres
+   esegue i trigger in ordine di nome, questo cambia `stato`, e i presidi
+   che leggono `new.stato` si chiamano tutti `trg_smm_guard_*`: un nome che
+   viene prima della «g» salterebbe il controllo sui termini vietati, in
+   silenzio. C'e' un test che lo prova davvero — rinominando il trigger,
+   fallisce;
+2. un contenuto in «approvato» **con** una data non esce:
+   `smm_programmati_in_scadenza` pretende `in_calendario`. Era uno dei due
+   modi di restare fermi, ed e' successo.
+
+I test sono in `tests/smm.test.mjs`, gruppo «Approvare vuol dire
+programmare»: undici prove, fra cui l'ordine dei trigger e la seconda firma
+sulle categorie sensibili, che aspetta l'amministratore prima di dare una
+data.
+
 ### «Tocca a te» non puo' crescere all'infinito
 
 La striscia in cima alla Regia e' la lista delle cose che aspettano una
