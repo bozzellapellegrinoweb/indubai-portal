@@ -12,8 +12,9 @@ import { toolVisible, domainsFor, tablesFor, SCOPES, DOMAINS, TABLES, domainVisi
 import { dataTools } from './_mcp-tools-data.js';
 import { bizToolsPart1 } from './_mcp-tools-biz.js';
 import { bizToolsPart2 } from './_mcp-tools-biz2.js';
+import { smmToolsPart } from './_mcp-tools-smm.js';
 
-export const ALL_TOOLS = [...dataTools, ...bizToolsPart1, ...bizToolsPart2];
+export const ALL_TOOLS = [...dataTools, ...bizToolsPart1, ...bizToolsPart2, ...smmToolsPart];
 
 const BY_NAME = new Map(ALL_TOOLS.map(t => [t.name, t]));
 

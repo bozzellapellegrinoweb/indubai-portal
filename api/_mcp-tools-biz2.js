@@ -1416,7 +1416,7 @@ const searchTools = [
     domain: 'core',
     title: 'Ricerca globale',
     description:
-      'Cerca un testo in tutto il portale: clienti, task, lead, documenti, ambassador, bacheca. '
+      'Cerca un testo in tutto il portale: clienti, task, lead, documenti, ambassador, bacheca, contenuti social. '
       + 'Interroga solo le aree che il ruolo della sessione puo\' vedere.',
     inputSchema: {
       type: 'object',
@@ -1475,6 +1475,12 @@ const searchTools = [
           select: 'id,vendor,amount,currency,expense_date,status,client_id',
           or: `vendor.ilike.*${t}*,note.ilike.*${t}*`, limit: n,
         }).then(r => { if (r?.length) out.spese = r; }));
+      }
+      if (can(ctx, 'smm')) {
+        jobs.push(sbSelect('smm_contents', {
+          select: 'id,titolo,tipo,stato,categoria,created_at',
+          or: `titolo.ilike.*${t}*,caption.ilike.*${t}*,pillar.ilike.*${t}*`, limit: n,
+        }).then(r => { if (r?.length) out.contenuti_social = r; }).catch(() => {}));
       }
       await Promise.all(jobs);
       const totale = Object.values(out).reduce((s, v) => s + v.length, 0);

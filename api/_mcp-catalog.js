@@ -38,6 +38,7 @@ export const DOMAINS = {
   ambassador:     { label: 'Programma ambassador',    pages: ['ambassadors'],  admin: true },
   users:          { label: 'Utenti e permessi',       pages: ['users'],        admin: true },
   admin:          { label: 'Amministrazione MCP',     pages: ['mcp'],          admin: true },
+  smm:            { label: 'Regia Social',            pages: ['regia'] },
 };
 
 // ── Scope: "MCP dedicati per ruolo" senza duplicare il server ───────────────
@@ -76,6 +77,10 @@ export const SCOPES = {
   ops: {
     label: 'Operativo: task, bacheca, notifiche',
     domains: ['core', 'data', 'tasks', 'board', 'notify', 'documents', 'clients', 'reports'],
+  },
+  smm: {
+    label: 'Regia Social: contenuti, agenti, piano',
+    domains: ['core', 'data', 'smm', 'notify', 'reports'],
   },
 };
 
@@ -134,6 +139,20 @@ export const TABLES = {
   ambassador_referrals:      { domain: 'ambassador',     write: true },
   ambassador_commissions:    { domain: 'ambassador',     write: true },
   ambassador_services:       { domain: 'ambassador',     write: true },
+
+  // Social (Regia)
+  smm_brands:              { domain: 'smm',            write: false },
+  smm_agents:              { domain: 'smm',            write: false },
+  smm_contents:            { domain: 'smm',            write: true },
+  smm_content_versions:    { domain: 'smm',            write: false },
+  smm_notes:               { domain: 'smm',            write: true },
+  smm_messages:            { domain: 'smm',            write: false },
+  smm_brain:               { domain: 'smm',            write: false },
+  smm_media:               { domain: 'smm',            write: false },
+  smm_jobs:                { domain: 'smm',            write: false },
+  smm_results:             { domain: 'smm',            write: false },
+  smm_piano:               { domain: 'smm',            write: true },
+  smm_settings:            { domain: 'smm',            write: false },
 
   // Lettura sola: privilegi e audit.
   // app_config non compare di proposito: contiene il segreto condiviso
