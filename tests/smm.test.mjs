@@ -123,6 +123,7 @@ try {
   // solo la funzione, che e' la parte da provare.
   psql(DB, ['-f', join(ROOT, 'tests/smm/11_fermi_senza_estensioni.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261116_smm_programma_da_solo.sql')]);
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261116_smm_tipi_fermi.sql')]);
 } catch (e) {
   console.error('Le migrazioni non si applicano:\n' + (e.stderr || e.stdout || e.message));
   process.exit(1);
@@ -1932,6 +1933,129 @@ test('arrivata l ora, il cron lo mette in coda', () => {
 });
 
 // ============================================================
+gruppo('Un tipo di contenuto si puo fermare');
+
+// "Blocca la programmazione e la creazione di reel: non mi piace come
+// vengono realizzati". E' una decisione editoriale, e le decisioni
+// editoriali cambiano: l'interruttore sta in smm_settings.tipi_fermi, non
+// nel codice. Qui si prova il meccanismo, non la posizione in cui si trova
+// oggi — quella sta in 20261116_smm_reel_in_pausa.sql, che il banco non
+// rigioca apposta.
+
+const fermaTipi = (tipi) => psql(DB, ['-c',
+  `update smm_settings set tipi_fermi = '{${tipi.join(',')}}'::text[]
+    where brand_id = '${BRAND}'`]);
+
+function unReel(stato = 'in_lavorazione') {
+  const id = one(`
+    insert into smm_contents (brand_id, titolo, tipo, stato, caption, created_by)
+    values ('${BRAND}', 'Un reel da fermare', 'reel', 'in_lavorazione',
+            'Consulenza fiscale e societaria a Dubai.', '${MANAGER}')
+    returning id`);
+  psql(DB, ['-c', `update smm_contents set revisore_ok = true, revisore_at = now()
+                   where id = '${id}'`]);
+  if (stato !== 'in_lavorazione') {
+    psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${id}'`]);
+  }
+  return id;
+}
+
+const approvaReel = (id) => come(MANAGER,
+  `update smm_contents set stato = 'approvato',
+     approvato_da = '${MANAGER}', approvato_at = now() where id = '${id}'`);
+
+function pulisciFermi2() {
+  psql(DB, ['-c', `delete from smm_jobs where content_id in
+                     (select id from smm_contents where tipo = 'reel')`]);
+  psql(DB, ['-c', `delete from smm_contents where tipo = 'reel'`]);
+  fermaTipi([]);
+}
+
+test('un tipo fermo non prende la data quando si approva', () => {
+  pulisciFermi2();
+  fermaTipi(['reel']);
+  const r = unReel('da_approvare');
+  approvaReel(r);
+  eq(one(`select stato from smm_contents where id = '${r}'`), 'approvato', 'resta approvato');
+  vero(one(`select slot_at is null from smm_contents where id = '${r}'`), 'senza data');
+  pulisciFermi2();
+});
+
+test('ma si approva lo stesso: fermo non vuol dire rotto', () => {
+  pulisciFermi2();
+  fermaTipi(['reel']);
+  const r = unReel('da_approvare');
+  approvaReel(r);
+  vero(one(`select approvato_at is not null from smm_contents where id = '${r}'`),
+       'la firma resta registrata');
+  pulisciFermi2();
+});
+
+test('un tipo fermo non esce, neanche se era gia in calendario', () => {
+  pulisciFermi2();
+  // Prima si programma col tipo libero, come era successo davvero.
+  const r = unReel('da_approvare');
+  approvaReel(r);
+  eq(one(`select stato from smm_contents where id = '${r}'`), 'in_calendario', 'programmato');
+  psql(DB, ['-c', `update smm_contents set slot_at = now() - interval '1 minute'
+                   where id = '${r}'`]);
+  // Poi arriva la pausa: l'ora e' passata, ma non deve uscire.
+  fermaTipi(['reel']);
+  eq(one(`select smm_programmati_in_scadenza()`), '0', 'nessuna uscita messa in coda');
+  eq(one(`select count(*) from smm_jobs where content_id = '${r}'
+            and tipo = 'pubblicazione'`), '0', 'nessun lavoro di pubblicazione');
+  pulisciFermi2();
+});
+
+test('gli altri tipi continuano a uscire', () => {
+  pulisciFermi2();
+  fermaTipi(['reel']);
+  const s = one(`
+    insert into smm_contents (brand_id, titolo, tipo, stato, revisore_ok, revisore_at,
+                              approvato_da, approvato_at, slot_at, created_by)
+    values ('${BRAND}', 'Una storia che esce lo stesso', 'storia', 'in_calendario',
+            true, now(), '${MANAGER}', now(), now() - interval '1 minute', '${MANAGER}')
+    returning id`);
+  vero(Number(one(`select smm_programmati_in_scadenza()`)) >= 1, 'la storia esce');
+  eq(one(`select count(*) from smm_jobs where content_id = '${s}'
+            and tipo = 'pubblicazione'`), '1', 'lavoro di pubblicazione');
+  psql(DB, ['-c', `delete from smm_jobs where content_id = '${s}'`]);
+  psql(DB, ['-c', `delete from smm_contents where id = '${s}'`]);
+  pulisciFermi2();
+});
+
+test('tolta la pausa, approvare torna a dare la data', () => {
+  pulisciFermi2();
+  fermaTipi(['reel']);
+  const r = unReel('da_approvare');
+  approvaReel(r);
+  vero(one(`select slot_at is null from smm_contents where id = '${r}'`), 'fermo: senza data');
+
+  fermaTipi([]);
+  // Si riapprova: lo stato torna indietro e poi avanti, come farebbe il
+  // manager dal pannello.
+  psql(DB, ['-c', `update smm_contents set stato = 'da_approvare' where id = '${r}'`]);
+  approvaReel(r);
+  eq(one(`select stato from smm_contents where id = '${r}'`), 'in_calendario', 'riparte');
+  vero(one(`select slot_at is not null from smm_contents where id = '${r}'`), 'con la data');
+  pulisciFermi2();
+});
+
+test('fermare un tipo non tocca i contenuti gia usciti', () => {
+  pulisciFermi2();
+  const r = one(`
+    insert into smm_contents (brand_id, titolo, tipo, stato, revisore_ok, revisore_at,
+                              approvato_da, approvato_at, slot_at, pubblicato_at, created_by)
+    values ('${BRAND}', 'Un reel gia uscito', 'reel', 'pubblicato',
+            true, now(), '${MANAGER}', now(), now() - interval '2 days',
+            now() - interval '2 days', '${MANAGER}')
+    returning id`);
+  fermaTipi(['reel']);
+  eq(one(`select stato from smm_contents where id = '${r}'`), 'pubblicato', 'resta pubblicato');
+  pulisciFermi2();
+});
+
+// ============================================================
 gruppo('Reversibilita');
 
 test('la migrazione di rollback riporta il database come prima', () => {
@@ -1941,6 +2065,7 @@ test('la migrazione di rollback riporta il database come prima', () => {
   // Il rollback e' in due file, come le migrazioni: prima la pianificazione,
   // poi lo schema. Il down del cron gira anche senza pg_cron installato,
   // perche' la chiamata a unschedule e' dentro un blocco che ingoia l'errore.
+  psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261116_smm_tipi_fermi_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261116_smm_programma_da_solo_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261114_smm_riprendi_fermi_down.sql')]);
   psql(DB, ['-f', join(ROOT, 'supabase/migrations/20261113_smm_icone_slide_down.sql')]);

@@ -93,7 +93,7 @@
     // esiste e qui no.
     impostazioni: { brand_id: BRAND, stop_tutto: false, budget_giorno_usd: 10,
                     speso_oggi_usd: 0.4798, speso_oggi_data: '2026-11-12',
-                    piano_automatico: true, ora_uscita: '21:00:00' },
+                    piano_automatico: true, ora_uscita: '21:00:00', tipi_fermi: [] },
     piano: [], cervelloContatori: { regola: 51, nota: 3, studio: 0, design: 2, daConfermare: 1 },
     profilo: { id: 'u-prova', role: 'admin' }, caricato: true,
   };

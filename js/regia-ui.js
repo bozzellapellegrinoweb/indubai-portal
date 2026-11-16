@@ -1148,6 +1148,11 @@
       { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' });
   }
 
+  /** I tipi in pausa: non prendono una data e non escono. */
+  const tipiFermi = () => D.stato.impostazioni?.tipi_fermi || [];
+  const tipoFermo = (tipo) => tipiFermi().includes(tipo);
+  const nomeTipo = (tipo) => (TIPI.find(t => t[0] === tipo) || [, tipo])[1];
+
   function dopoAprovazione(c) {
     const passi = [];
     const doppia = D.stato.impostazioni?.doppia_approvazione;
@@ -1160,6 +1165,10 @@
     // ha tolto dal calendario apposta non serve a niente.
     if (c.slot_at) {
       passi.push(`Esce ${quandoEsce(c.slot_at)}, ora di Dubai.`);
+    } else if (tipoFermo(c.tipo)) {
+      passi.push(`I contenuti di tipo «${nomeTipo(c.tipo).toLowerCase()}» sono fermi: `
+        + 'questo resta approvato, non prende una data e non esce. '
+        + 'Si rimettono in moto dalla Direzione.');
     } else if (aspettaAdmin) {
       passi.push('Appena l\'amministratore conferma, prende da solo il primo giorno libero del piano.');
     } else {
@@ -1199,9 +1208,11 @@
       const uscita = quandoEsce(dopo?.slot_at);
       window.ui.showToast(
         uscita ? `Approvato. Esce ${uscita}.`
-               : dopo?.stato === 'approvato'
-                 ? 'Approvato. Prende una data appena l\'amministratore conferma.'
-                 : 'Approvato.',
+               : tipoFermo(c.tipo)
+                 ? `Approvato, ma i ${nomeTipo(c.tipo).toLowerCase()} sono fermi: non esce.`
+                 : dopo?.stato === 'approvato'
+                   ? 'Approvato. Prende una data appena l\'amministratore conferma.'
+                   : 'Approvato.',
         'success');
       apriContenuto(c.id);
     } catch (e) {
@@ -2196,6 +2207,7 @@
     const budget = Number(s.budget_giorno_usd || 0);
     const oraUscita = String(s.ora_uscita || '21:00').slice(0, 5);
     const oraIt = oraInItalia(oraUscita);
+    const fermi = tipiFermi();
 
     const corpo = righe.length
       ? righe.map(rigaPianoHtml).join('')
@@ -2240,6 +2252,22 @@
           una storia al giorno, e due storie lo stesso giorno non sono il piano.</div>
       </div>
 
+      <div class="rg-sez">Che cosa e&#768; fermo</div>
+      <div class="rg-voce">
+        ${fermi.length
+          ? `Sono fermi: <b>${esc(fermi.map(t => nomeTipo(t).toLowerCase()).join(', '))}</b>.
+             Si approvano ancora, ma non prendono una data e non escono —
+             neanche quelli che erano gia&#768; in calendario.`
+          : 'Non c&#39;e&#768; niente di fermo: tutto quello che approvi prende una data ed esce.'}
+        <div class="rg-voce-azioni" id="rg-fermi">
+          ${TIPI.map(([k, et]) => `
+            <button type="button" class="rg-zona" data-fermo="${k}"
+              aria-pressed="${fermi.includes(k)}">${et}</button>`).join('')}
+        </div>
+        <div class="rg-voce-fonte">Premuto = fermo. Fermare un tipo non butta niente:
+          i contenuti restano dove sono e ripartono da li&#768;.</div>
+      </div>
+
       <div class="rg-sez">Spesa</div>
       <div class="rg-voce">
         Oggi gli agenti hanno speso <b>${spesoOggi.toFixed(2)} $</b>
@@ -2250,6 +2278,25 @@
 
     corpoPannello().querySelector('[data-piano-nuovo]')
       ?.addEventListener('click', () => formaRigaPiano(null));
+    corpoPannello().querySelector('#rg-fermi')?.addEventListener('click', async (ev) => {
+      const b = ev.target.closest('[data-fermo]');
+      if (!b) return;
+      const quali = new Set(tipiFermi());
+      if (quali.has(b.dataset.fermo)) quali.delete(b.dataset.fermo);
+      else quali.add(b.dataset.fermo);
+      b.disabled = true;
+      try {
+        await D.salvaImpostazioni({ tipi_fermi: [...quali] });
+        const et = nomeTipo(b.dataset.fermo).toLowerCase();
+        window.ui.showToast(quali.has(b.dataset.fermo)
+          ? `I ${et} sono fermi: non prendono una data e non escono.`
+          : `I ${et} ripartono: da adesso approvarli vuol dire programmarli.`, 'success');
+        await apriDirezione();
+      } catch (e) {
+        window.ui.showToast(pulisciErrore(e.message), 'error');
+        b.disabled = false;
+      }
+    });
     corpoPannello().querySelector('[data-ora-salva]')
       ?.addEventListener('click', async (ev) => {
         const valore = document.getElementById('rg-ora-uscita')?.value;

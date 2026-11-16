@@ -146,6 +146,24 @@ const VISTE = [['Calendario','[data-vista="calendario"]'], ['Risultati','[data-v
       + `${quando.italia ? ', con l\'ora italiana' : ''})`);
   }
 
+  // Che cosa e' fermo: l'interruttore per tipo deve esserci e dire come sta.
+  const fermi = await page.evaluate(() => {
+    const corpo = document.querySelector('#rg-pan-corpo');
+    const tasti = [...document.querySelectorAll('[data-fermo]')];
+    return {
+      sezione: /Che cosa e/.test(corpo?.textContent || ''),
+      quanti: tasti.length,
+      premuti: tasti.filter(b => b.getAttribute('aria-pressed') === 'true')
+                    .map(b => b.dataset.fermo),
+    };
+  });
+  if (!fermi.sezione || fermi.quanti !== 4) {
+    ko++; console.log(`  KO  che cosa e' fermo: ${JSON.stringify(fermi)}`);
+  } else {
+    console.log(`  ok  si puo' fermare un tipo (${fermi.quanti} tasti, `
+      + `fermi adesso: ${fermi.premuti.join(', ') || 'nessuno'})`);
+  }
+
   // E la riga di piano ha il campo dell'ora: era una colonna che nessuna
   // schermata scriveva, cioe' una colonna morta.
   // La seconda riga del banco ha ora 08:30: si apre e si rilegge, cosi' il

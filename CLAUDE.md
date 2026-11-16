@@ -178,6 +178,29 @@ programmare»: undici prove, fra cui l'ordine dei trigger e la seconda firma
 sulle categorie sensibili, che aspetta l'amministratore prima di dare una
 data.
 
+### Un tipo di contenuto si puo' fermare
+
+`smm_settings.tipi_fermi` e' la lista dei tipi in pausa. Un tipo in pausa si
+approva ancora — la firma resta registrata — ma **non prende una data** e
+**non esce**, neanche se in calendario c'era gia' finito prima della pausa.
+Fermare la creazione non e' una terza regola: e' la riga di piano in pausa,
+piu' l'agente che lo produce spento.
+
+Non si cabla mai un tipo nel codice. Il 16 novembre si sono fermati i reel
+perche' il manager non era contento di come venivano realizzati, e fra una
+settimana torneranno fatti in un altro modo: una decisione del genere e' la
+posizione di un interruttore, non una riga di `if`.
+
+Per questo la decisione sta in un file suo — `20261116_smm_reel_in_pausa.sql`
+— che **il banco di prova non rigioca**. Il meccanismo sta in
+`20261116_smm_tipi_fermi.sql` e quello si', si rigioca. Mettere la decisione
+dentro la migrazione del meccanismo ha rotto quattro test al primo
+tentativo, ed era il sintomo giusto: ogni ambiente nuovo sarebbe nato coi
+reel spenti per sempre, e i test avrebbero provato il piano editoriale di
+InDubai invece del motore.
+
+La si cambia dalla Direzione, con i tasti sotto «Che cosa e' fermo».
+
 ### «Tocca a te» non puo' crescere all'infinito
 
 La striscia in cima alla Regia e' la lista delle cose che aspettano una
