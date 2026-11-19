@@ -116,6 +116,15 @@ node tests/mcp.test.mjs   # test del registro e dei permessi
 
 ---
 
+## Proposte con firma
+
+Dalla scheda cliente (tab **Proposte**) si carica il PDF di una proposta: il cliente
+la apre dal link `/p/<token>` con il proprio numero e un codice, la legge con
+filigrana e la firma; l'admin controfirma e il PDF finale finisce in Documenti.
+Attivazione, tabelle, variabili d'ambiente e costi dei codici: **[PROPOSTE.md](PROPOSTE.md)**.
+
+---
+
 ## Rigenera il seed (dopo aggiornamenti Excel)
 
 ```bash

@@ -1,5 +1,4 @@
-const SUPABASE_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAzMjA1MSwiZXhwIjoyMDg3NjA4MDUxfQ.oEzS7iIAiRW3pYjL-TwXtY4ZOwKwh4L8JZZ6Ztq6RgQ';
+import { SUPABASE_URL, SERVICE_KEY, requireRole } from './_auth.js';
 const PORTAL_URL = 'https://portal.indubai.it/client-portal/login.html';
 const APP_STORE_URL = 'https://apps.apple.com/ae/app/indubai-portal/id6760120859';
 
@@ -78,6 +77,10 @@ const SB_HEADERS = {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Prima non c'era nessun controllo: chiunque poteva creare accessi cliente.
+  const auth = await requireRole(req, 'staff');
+  if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
   const { email, password, client_id, company_name } = req.body;
   if (!email || !password || !client_id) return res.status(400).json({ error: 'Missing fields' });
