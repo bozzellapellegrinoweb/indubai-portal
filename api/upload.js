@@ -4,26 +4,20 @@
  * Riceve il file come base64 nel body JSON, lo carica con service key.
  */
 
-const SUPABASE_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAzMjA1MSwiZXhwIjoyMDg3NjA4MDUxfQ.oEzS7iIAiRW3pYjL-TwXtY4ZOwKwh4L8JZZ6Ztq6RgQ';
+import { SUPABASE_URL, SERVICE_KEY, verifiedUser } from './_auth.js';
 
-function decodeJWT(token) {
-  try {
-    const payload = token.split('.')[1];
-    return JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
-  } catch { return null; }
-}
+
 
 export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  // Auth
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  const decoded = decodeJWT(token);
-  if (!decoded?.sub) return res.status(401).json({ error: 'Invalid token' });
+  // Auth: token verificato da Supabase, non solo decodificato.
+  if (!SERVICE_KEY) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY non configurata' });
+  const user = await verifiedUser(req);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  const decoded = { sub: user.id };
 
   const { fileName, fileBase64, contentType } = req.body;
   if (!fileName || !fileBase64) return res.status(400).json({ error: 'fileName and fileBase64 required' });

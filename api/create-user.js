@@ -1,8 +1,10 @@
-const SUPABASE_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAzMjA1MSwiZXhwIjoyMDg3NjA4MDUxfQ.oEzS7iIAiRW3pYjL-TwXtY4ZOwKwh4L8JZZ6Ztq6RgQ';
+import { SUPABASE_URL, SERVICE_KEY, requireRole } from './_auth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  // Prima non c'era nessun controllo: chiunque poteva creare un utente admin.
+  const auth = await requireRole(req, 'admin');
+  if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
   const { email, password, full_name, role } = req.body;
   if (!email || !password || !full_name) return res.status(400).json({ error: 'Missing fields' });
