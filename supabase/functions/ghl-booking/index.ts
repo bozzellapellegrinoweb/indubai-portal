@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Token GHL solo dai secret delle Edge Function (prima era scritto qui).
-const GHL_TOKEN = Deno.env.get("GHL_API_TOKEN") || "";
+const GHL_TOKEN = "pit-98c12ff9-94f7-46fe-93fc-7ba94db1c6e5";
 const CALENDAR_ID = "CChGNv3OYX4rFHzx2UMI";
 const LOCATION_ID = "KzCZHYcMDxOZMD7KBuZV";
 const GHL_BASE = "https://services.leadconnectorhq.com";
