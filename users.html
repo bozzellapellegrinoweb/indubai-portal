@@ -120,6 +120,17 @@
         </select>
       </div>
       <div class="form-group">
+        <label class="form-label">Clienti che vede</label>
+        <select class="form-control" id="u-clienti">
+          <option value="all">Tutti i clienti dello studio</option>
+          <option value="assigned">Solo quelli che gli assegno</option>
+        </select>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
+          Con &ldquo;solo quelli assegnati&rdquo; la persona vede e modifica soltanto i clienti
+          con lei come referente. Il referente si imposta da <strong>Clienti</strong>.
+        </div>
+      </div>
+      <div class="form-group">
         <label class="form-label">Dati finanziari</label>
         <select class="form-control" id="u-fin">
           <option value="si">Vede fatturato, incassi ed estratti conto</option>
@@ -188,7 +199,7 @@ async function loadUsers() {
   try {
     // Gli ambassador si gestiscono da ADMIN → Ambassador, i clienti dalla loro
     // scheda: qui restano solo gli utenti interni.
-    const profiles = await sb.db.getStaffProfiles({ columns: 'id,full_name,role,created_at,tasks_scope,can_see_financials', order: 'created_at.asc' }) || [];
+    const profiles = await sb.db.getStaffProfiles({ columns: 'id,full_name,role,created_at,tasks_scope,clients_scope,can_see_financials', order: 'created_at.asc' }) || [];
     const myId = sb.getCurrentProfile()?.id;
     document.getElementById('users-list').innerHTML = profiles.map(p => `
       <div class="user-card">
@@ -199,6 +210,7 @@ async function loadUsers() {
         </div>
         <span class="role-badge rb-${p.role}">${ROLE_LABELS[p.role]||p.role}</span>
         ${p.tasks_scope === 'own' ? '<span class="perm-chip">solo i suoi task</span>' : ''}
+        ${p.clients_scope === 'assigned' ? '<span class="perm-chip">solo i suoi clienti</span>' : ''}
         ${p.can_see_financials === false ? '<span class="perm-chip">niente fatturato</span>' : ''}
         <button class="btn btn-ghost btn-sm" onclick='openEdit(${JSON.stringify(p).replace(/'/g, "&apos;")})'><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg> Modifica</button>
         ${p.id !== myId ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="deleteUser('${p.id}','${ui.escapeHtml(p.full_name)}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>` : ''}
@@ -230,6 +242,7 @@ function openEdit(u) {
   document.getElementById('u-name').value = u.full_name || '';
   document.getElementById('u-role').value = u.role;
   document.getElementById('u-tasks').value = u.tasks_scope || 'all';
+  document.getElementById('u-clienti').value = u.clients_scope || 'all';
   document.getElementById('u-fin').value = u.can_see_financials === false ? 'no' : 'si';
   document.getElementById('email-group').style.display = 'none';
   document.getElementById('pwd-group').style.display = 'none';
@@ -252,6 +265,7 @@ async function saveUser() {
         full_name: document.getElementById('u-name').value.trim(),
         role: document.getElementById('u-role').value,
         tasks_scope: document.getElementById('u-tasks').value,
+        clients_scope: document.getElementById('u-clienti').value,
         can_see_financials: document.getElementById('u-fin').value === 'si',
       });
       // Le regole del database possono rifiutare la modifica senza dare

@@ -38,6 +38,10 @@
           <option value="in_sospeso">In Sospeso</option>
           <option value="off">Solo Clienti Off</option>
         </select>
+        <select class="form-control" id="filter-referente" style="width:auto;display:none">
+          <option value="">Tutti i referenti</option>
+          <option value="nessuno">Senza referente</option>
+        </select>
         <button class="btn btn-accent" id="btn-add">+ Nuovo Cliente</button>
       </div>
     </div>
@@ -49,6 +53,7 @@
             <thead>
               <tr>
                 <th>Azienda</th>
+                <th>Referente</th>
                 <th>General Manager</th>
                 <th>Partner</th>
                 <th>Conti Bancari</th>
@@ -60,7 +65,7 @@
               </tr>
             </thead>
             <tbody id="clients-tbody">
-              <tr><td colspan="9"><div class="loading-overlay"><div class="spinner"></div></div></td></tr>
+              <tr><td colspan="10"><div class="loading-overlay"><div class="spinner"></div></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -195,14 +200,71 @@ function orderClients(list) {
   return active.concat(off);
 }
 
+// ── Referente del cliente ────────────────────────────────────
+// La colonna clients.assigned_to esiste gia' e le policy la applicano: chi ha
+// "clients_scope = assigned" vede e modifica solo i clienti con se' come
+// referente. Qui si aggiunge il modo di assegnarli, che mancava: finora la
+// colonna si poteva riempire solo dal database.
+let staff = [];
+let sonoAdmin = false;
+
+async function caricaStaff() {
+  sonoAdmin = sb.getCurrentProfile()?.role === 'admin';
+  // L'elenco serve a tutti, non solo all'admin: senza, chi non e' admin
+  // leggerebbe "—" al posto del nome del referente. Cambiare il referente e
+  // filtrare per referente restano riservati all'admin.
+  try {
+    staff = await sb.db.getStaffProfiles({ columns: 'id,full_name,role' }) || [];
+  } catch (e) { staff = []; }
+  if (!sonoAdmin) return;
+  const sel = document.getElementById('filter-referente');
+  sel.insertAdjacentHTML('beforeend',
+    staff.map(p => `<option value="${p.id}">${ui.escapeHtml(p.full_name)}</option>`).join(''));
+  sel.style.display = '';
+}
+
+const nomeStaff = id => (staff.find(p => p.id === id) || {}).full_name || '';
+
+function cellaReferente(c) {
+  if (!sonoAdmin) {
+    const nome = nomeStaff(c.assigned_to);
+    return nome
+      ? `<span style="font-size:13px">${ui.escapeHtml(nome)}</span>`
+      : '<span style="color:var(--text-muted)">—</span>';
+  }
+  const opzioni = '<option value="">— Nessuno —</option>' + staff.map(p =>
+    `<option value="${p.id}"${p.id === c.assigned_to ? ' selected' : ''}>${ui.escapeHtml(p.full_name)}</option>`).join('');
+  return `<select class="form-control" style="width:auto;min-width:130px;font-size:12px;padding:4px 8px"
+                  onchange="assegnaCliente('${c.id}', this.value, this)">${opzioni}</select>`;
+}
+
+async function assegnaCliente(clientId, profileId, sel) {
+  const prima = sel.dataset.prima || '';
+  sel.disabled = true;
+  try {
+    const righe = await sb.db.update('clients', `id=eq.${clientId}`, { assigned_to: profileId || null });
+    // Le policy possono rifiutare senza dare errore: PostgREST risponde 200
+    // con zero righe. Senza questo controllo diremmo "fatto" a vuoto.
+    if (!righe || !righe.length) throw new Error('il database ha rifiutato la modifica');
+    const c = allClients.find(x => x.id === clientId);
+    if (c) c.assigned_to = profileId || null;
+    sel.dataset.prima = profileId || '';
+    ui.showToast(profileId ? 'Referente: ' + nomeStaff(profileId) : 'Referente tolto', 'success');
+  } catch (e) {
+    sel.value = prima;
+    ui.showToast('Non assegnato: ' + (e.message || e), 'error');
+  } finally { sel.disabled = false; }
+}
+
 async function loadClients() {
   try {
     // activeOnly:false → include anche i clienti archiviati/non più in gestione
+    await caricaStaff();
     allClients = orderClients(await sb.db.getClients({ activeOnly: false }));
     renderClients(getFilteredClients());
   } catch(e) {
     document.getElementById('clients-tbody').innerHTML =
-      `<tr><td colspan="9"><div class="alert alert-danger" style="margin:16px">${e.message}</div></td></tr>`;
+      `<tr><td colspan="10"><div class="alert alert-danger" style="margin:16px">${e.message}</div></td></tr>`;
   }
 }
 
@@ -223,7 +285,7 @@ function renderClients(clients) {
 
   if (!total) {
     document.getElementById('clients-tbody').innerHTML =
-      `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div><h3>Nessun cliente trovato</h3></div></td></tr>`;
+      `<tr><td colspan="10"><div class="empty-state"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div><h3>Nessun cliente trovato</h3></div></td></tr>`;
     document.getElementById('pagination').style.display = 'none';
     return;
   }
@@ -233,13 +295,14 @@ function renderClients(clients) {
     const off = c.is_active === false;
     // Intestazione della sezione "CLIENTI OFF" prima del primo cliente archiviato
     const divider = (absIdx === firstOffIdx)
-      ? `<tr class="section-divider"><td colspan="9" style="background:var(--surface-2,#1a1d23);padding:10px 16px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);border-top:2px solid var(--border)">Clienti Off · Non più in gestione (${offCount})</td></tr>`
+      ? `<tr class="section-divider"><td colspan="10" style="background:var(--surface-2,#1a1d23);padding:10px 16px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);border-top:2px solid var(--border)">Clienti Off · Non più in gestione (${offCount})</td></tr>`
       : '';
     return `${divider}
     <tr${off ? ' style="opacity:.62"' : ''}>
       <td>
         <div class="td-company">${ui.escapeHtml(c.company_name)}${off ? ' <span class="badge" style="background:#3f3f46;color:#e4e4e7;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;vertical-align:middle">OFF</span>' : ''}</div>
       </td>
+      <td>${cellaReferente(c)}</td>
       <td style="font-size:13px">${c.general_manager ? ui.escapeHtml(c.general_manager) : (c.contact_name ? '<span style="color:var(--text-muted);font-size:12px">'+ui.escapeHtml(c.contact_name)+'</span>' : '—')}</td>
       <td>${ui.partnerLabel(c.accounting_partner)}</td>
       <td style="font-size:12px">${(c.bank_accounts || []).join(', ') || '—'}</td>
@@ -296,6 +359,7 @@ function goPage(p) {
 function getFilteredClients() {
   const q = document.getElementById('search').value.toLowerCase();
   const partner = document.getElementById('filter-partner').value;
+  const referente = document.getElementById('filter-referente').value;
   let filtered = allClients;
   if (q) filtered = filtered.filter(c =>
     (c.company_name || '').toLowerCase().includes(q) ||
@@ -303,6 +367,8 @@ function getFilteredClients() {
   );
   if (partner === 'off') filtered = filtered.filter(c => c.is_active === false);
   else if (partner) filtered = filtered.filter(c => c.accounting_partner === partner);
+  if (referente === 'nessuno') filtered = filtered.filter(c => !c.assigned_to);
+  else if (referente) filtered = filtered.filter(c => c.assigned_to === referente);
   // Mantiene gli attivi in alto e i "clienti off" in fondo anche dopo la ricerca/filtro
   return orderClients(filtered);
 }
@@ -314,6 +380,7 @@ function applyFilters() {
 
 document.getElementById('search').addEventListener('input', applyFilters);
 document.getElementById('filter-partner').addEventListener('change', applyFilters);
+document.getElementById('filter-referente').addEventListener('change', applyFilters);
 
 // Add client
 document.getElementById('btn-add').addEventListener('click', () => {
