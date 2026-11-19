@@ -1,6 +1,4 @@
-const SUPABASE_URL = 'https://gvdoqcgkzbziqufahhxh.supabase.co';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMzIwNTEsImV4cCI6MjA4NzYwODA1MX0.I0hB8POnRunvGyr7XXItp8E5H70i0slG-pqxqzCOBOg';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2ZG9xY2dremJ6aXF1ZmFoaHhoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjAzMjA1MSwiZXhwIjoyMDg3NjA4MDUxfQ.oEzS7iIAiRW3pYjL-TwXtY4ZOwKwh4L8JZZ6Ztq6RgQ';
+import { SUPABASE_URL, SERVICE_KEY, ANON_KEY, verifiedUser } from './_auth.js';
 
 // Le note arrivano dal dipendente e finiscono in un'email HTML: vanno filtrate.
 function esc(v) {
@@ -9,26 +7,46 @@ function esc(v) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Verifica il token presso GoTrue e restituisce l'id dell'utente autenticato.
-// Prima l'id veniva preso decodificando il payload del JWT senza controllarne la
-// firma: bastava inviare un token costruito a mano con il `sub` di un admin per
-// approvare, rifiutare o eliminare qualunque richiesta di ferie.
-async function getVerifiedUserId(token) {
+// Indirizzo aggiuntivo per le notifiche ferie, oltre alla casella con cui
+// l'admin accede al portale. Storicamente era l'unico destinatario, cablato
+// nel codice; resta come default per non perdere la casella gia' in uso.
+const EXTRA_NOTIFY_EMAILS = (process.env.LEAVE_NOTIFY_EMAIL ?? 'bozzellapellegrino@gmail.com')
+  .split(',').map(e => e.trim()).filter(Boolean);
+
+// Destinatari delle notifiche "nuova richiesta": tutti i profili admin.
+// Restituisce i profile_id (per la notifica in-app) e le email risolte da
+// auth.users, unite a EXTRA_NOTIFY_EMAILS e deduplicate.
+async function getAdminRecipients() {
+  const ids = [];
   try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` }
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?role=eq.admin&select=id`, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
     });
-    if (!res.ok) {
-      console.error('[getVerifiedUserId] token rifiutato:', res.status);
-      return null;
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows)) ids.push(...rows.map(r => r.id));
+    } else {
+      console.error('[getAdminRecipients] query profiles fallita:', res.status);
     }
-    const user = await res.json();
-    return user?.id || null;
   } catch (e) {
-    console.error('[getVerifiedUserId] error:', e.message);
-    return null;
+    console.error('[getAdminRecipients] error:', e.message);
   }
+  if (!ids.length) console.error('[getAdminRecipients] nessun profilo admin trovato');
+
+  const emails = await Promise.all(ids.map(async id => {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
+      });
+      if (!r.ok) return null;
+      return (await r.json())?.email || null;
+    } catch { return null; }
+  }));
+
+  const to = [...new Set([...emails, ...EXTRA_NOTIFY_EMAILS].filter(Boolean).map(e => e.toLowerCase()))];
+  return { ids, to };
 }
+
 
 async function getUserRole(userId, callerToken) {
   // Strategy 1: service key (bypasses RLS)
@@ -63,17 +81,17 @@ async function getUserRole(userId, callerToken) {
     }
   }
 
-  // Strategy 3: fallback — l'utente è un dipendente noto ma non riusciamo a
-  // leggerne il ruolo. Restituiamo 'staff' (NON admin): può creare richieste
-  // per se stesso, ma non approvare/rifiutare/eliminare quelle degli altri.
-  // Prima qui si restituiva 'admin', il che dava poteri di approvazione a
-  // qualunque dipendente ogni volta che le due query sopra fallivano.
+  // Strategy 3: check employees table (any employee → treat as admin for this small team)
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/employees?profile_id=eq.${userId}&select=id`, {
       headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
     });
     if (res.ok) {
       const emps = await res.json();
+      // 'staff', non 'admin': puo' creare richieste per se', non approvare
+      // quelle degli altri. Prima qui si restituiva 'admin', il che dava
+      // poteri di approvazione a ogni dipendente quando le query sopra
+      // fallivano.
       if (Array.isArray(emps) && emps.length > 0) return 'staff';
     }
   } catch (e) {
@@ -81,52 +99,6 @@ async function getUserRole(userId, callerToken) {
   }
 
   return null;
-}
-
-// Indirizzo aggiuntivo per le notifiche ferie, oltre alla casella con cui
-// l'admin accede al portale. Storicamente era l'unico destinatario, cablato
-// nel codice; resta come default per non perdere la casella già in uso.
-// Impostare LEAVE_NOTIFY_EMAIL (anche come lista separata da virgole) per
-// cambiarlo, o a stringa vuota per non usarne nessuno.
-const EXTRA_NOTIFY_EMAILS = (process.env.LEAVE_NOTIFY_EMAIL ?? 'bozzellapellegrino@gmail.com')
-  .split(',').map(e => e.trim()).filter(Boolean);
-
-// Destinatari delle notifiche "nuova richiesta": tutti i profili admin.
-// Restituisce sia i profile_id (per la notifica in-app) sia gli indirizzi
-// email risolti da auth.users, uniti a EXTRA_NOTIFY_EMAILS e deduplicati.
-async function getAdminRecipients() {
-  const ids = [];
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?role=eq.admin&select=id`, {
-      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
-    });
-    if (res.ok) {
-      const rows = await res.json();
-      if (Array.isArray(rows)) ids.push(...rows.map(r => r.id));
-    } else {
-      console.error('[getAdminRecipients] query profiles fallita:', res.status);
-    }
-  } catch (e) {
-    console.error('[getAdminRecipients] error:', e.message);
-  }
-  if (!ids.length) console.error('[getAdminRecipients] nessun profilo admin trovato');
-
-  const emails = await Promise.all(ids.map(async id => {
-    try {
-      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, {
-        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
-      });
-      if (!r.ok) return null;
-      return (await r.json())?.email || null;
-    } catch { return null; }
-  }));
-
-  const to = [...new Set(
-    [...emails, ...EXTRA_NOTIFY_EMAILS]
-      .filter(Boolean)
-      .map(e => e.toLowerCase())
-  )];
-  return { ids, to };
 }
 
 async function getEmployeeForUser(userId) {
@@ -140,10 +112,11 @@ async function getEmployeeForUser(userId) {
 export default async function handler(req, res) {
   // Auth check
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-
-  const callerId = await getVerifiedUserId(token);
-  if (!callerId) return res.status(401).json({ error: 'Invalid token' });
+  if (!SERVICE_KEY) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY non configurata' });
+  // Token verificato da Supabase, non solo decodificato.
+  const caller = await verifiedUser(req);
+  if (!caller) return res.status(401).json({ error: 'Unauthorized' });
+  const callerId = caller.id;
 
   const headers = {
     apikey: SERVICE_KEY,
@@ -190,7 +163,9 @@ export default async function handler(req, res) {
     if (!r.ok) return res.status(r.status).json(data);
 
     // Invia email agli admin quando qualcuno crea una richiesta: l'unico che
-    // non la riceve e' l'admin stesso, che non ha bisogno di avvisarsi.
+    // non la riceve e' l'admin stesso. La condizione non e' `!isAdmin` per
+    // caso: quando isAdmin includeva 'senior', le richieste di Mercedes e
+    // Martina non generavano nessuna email.
     if (role !== 'admin') {
       try {
         const empRes = await fetch(`${SUPABASE_URL}/rest/v1/employees?id=eq.${body.employee_id}&select=id,profile:profiles(full_name)`, { headers });
@@ -213,12 +188,10 @@ export default async function handler(req, res) {
             <a href="https://portal.indubai.it/ferie.html" style="background:#1a2744;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">Approva o Rifiuta</a>
           </p>`;
         const { ids: adminIds, to } = await getAdminRecipients();
-        if (!to.length) {
-          console.error('[leave-requests] nessun destinatario per la richiesta', row?.id);
-        }
+        if (!to.length) console.error('[leave-requests] nessun destinatario per la richiesta', row?.id);
 
         await Promise.all([
-          // Email agli admin (un solo invio, destinatari deduplicati)
+          // Email agli admin: un solo invio, destinatari deduplicati
           ...(to.length ? [fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
             method: 'POST',
             headers: { ...headers, 'Content-Type': 'application/json' },
