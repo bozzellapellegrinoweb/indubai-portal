@@ -1217,3 +1217,12 @@ html, body {
     max-width: 100% !important;
   }
 }
+
+/* ── Dati economici nascosti ──────────────────────────────────
+   Il marcatore lo mette js/app.js quando chi guarda non deve vedere
+   fatturato, incassi e costi: il ruolo 'commerciale', o chiunque abbia
+   can_see_financials = false. Serve a non mostrare colonne che
+   resterebbero vuote: a proteggere il dato sono le policy del database,
+   non questa riga di CSS. */
+body.no-financials .col-fin,
+body.no-financials .fin-only { display: none !important; }

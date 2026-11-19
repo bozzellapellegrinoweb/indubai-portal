@@ -107,6 +107,7 @@
         <select class="form-control" id="u-role">
           <option value="collaborator">Collaboratore</option>
           <option value="junior">Contabilità Junior</option>
+          <option value="commerciale">Commerciale</option>
           <option value="senior">Contabilità Senior</option>
           <option value="mini_admin">Mini Admin</option>
           <option value="admin">Admin</option>
@@ -183,8 +184,8 @@
 <script src="/js/i18n.js"></script>
 <script>
 let editingId = null;
-const ROLE_LABELS = {admin:'Admin', mini_admin:'Mini Admin', senior:'Contabilità Senior', junior:'Contabilità Junior', collaborator:'Collaboratore', staff:'Staff', smm:'Social Media Manager'};
-const ROLE_COLORS = {admin:'#14161a', mini_admin:'#47ee74', senior:'#2563a8', junior:'#6b7280', collaborator:'#059669', staff:'#9ca3af', smm:'#7c3aed'};
+const ROLE_LABELS = {admin:'Admin', mini_admin:'Mini Admin', senior:'Contabilità Senior', junior:'Contabilità Junior', collaborator:'Collaboratore', commerciale:'Commerciale', staff:'Staff', smm:'Social Media Manager'};
+const ROLE_COLORS = {admin:'#14161a', mini_admin:'#47ee74', senior:'#2563a8', junior:'#6b7280', collaborator:'#059669', commerciale:'#c2410c', staff:'#9ca3af', smm:'#7c3aed'};
 
 async function init() {
   await sb.requireAuth();
@@ -394,7 +395,7 @@ async function changePassword() {
 }
 
 // ── Permissions Management ────────────────────────────────────
-const MANAGEABLE_ROLES = ['senior','junior','mini_admin','collaborator','smm'];
+const MANAGEABLE_ROLES = ['senior','junior','mini_admin','collaborator','commerciale','smm'];
 const ALL_PAGES = [
   { section:'OVERVIEW', pages: [
     { id:'index',      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>', label:'Dashboard' },

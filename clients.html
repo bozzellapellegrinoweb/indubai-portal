@@ -57,7 +57,7 @@
                 <th>General Manager</th>
                 <th>Partner</th>
                 <th>Conti Bancari</th>
-                <th>Abbonamento</th>
+                <th class="col-fin">Abbonamento</th>
                 <th>CT Scadenza</th>
                 <th>Lic. Aziendale</th>
                 <th>VAT</th>
@@ -306,7 +306,7 @@ function renderClients(clients) {
       <td style="font-size:13px">${c.general_manager ? ui.escapeHtml(c.general_manager) : (c.contact_name ? '<span style="color:var(--text-muted);font-size:12px">'+ui.escapeHtml(c.contact_name)+'</span>' : '—')}</td>
       <td>${ui.partnerLabel(c.accounting_partner)}</td>
       <td style="font-size:12px">${(c.bank_accounts || []).join(', ') || '—'}</td>
-      <td>
+      <td class="col-fin">
         ${c.service_cost ? `<strong>${ui.formatAED(c.service_cost)}</strong>` : '—'}
         ${c.subscription_day ? `<div style="font-size:11px;color:var(--text-muted)">Giorno ${c.subscription_day}</div>` : ''}
       </td>
