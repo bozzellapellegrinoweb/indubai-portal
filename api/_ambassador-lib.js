@@ -3,8 +3,18 @@
  * I file che iniziano con "_" non vengono esposti come function da Vercel.
  */
 
-import { SUPABASE_URL, SERVICE_KEY, requireRole } from './_auth.js';
+import { SUPABASE_URL, SERVICE_KEY, requireRole, serviceKeyProblem } from './_auth.js';
 export { SUPABASE_URL, SERVICE_KEY };
+
+/**
+ * Con una chiave sbagliata Postgres risponde «permission denied for table
+ * ambassadors», che manda a cercare il problema nei permessi del database
+ * invece che nella configurazione. Meglio fermarsi prima e dirlo.
+ */
+function assertServiceKey() {
+  const problema = serviceKeyProblem();
+  if (problema) throw new Error(problema);
+}
 
 // Casella che riceve le richieste di consulenza dal form ambassador.
 export const SEGRETERIA_EMAIL = process.env.SEGRETERIA_EMAIL || 'segreteria@indubai.it';
@@ -24,12 +34,14 @@ export const SB_HEADERS = {
 // ── REST helpers (service role: bypassano RLS) ──────────────────────────────
 
 export async function sbSelect(table, query) {
+  assertServiceKey();
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: SB_HEADERS });
   if (!res.ok) throw new Error(`${table}: ${await res.text()}`);
   return res.json();
 }
 
 export async function sbInsert(table, row) {
+  assertServiceKey();
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
     headers: { ...SB_HEADERS, Prefer: 'return=representation' },
@@ -41,6 +53,7 @@ export async function sbInsert(table, row) {
 }
 
 export async function sbUpdate(table, query, patch) {
+  assertServiceKey();
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
     method: 'PATCH',
     headers: { ...SB_HEADERS, Prefer: 'return=representation' },
