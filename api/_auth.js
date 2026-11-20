@@ -24,8 +24,20 @@ export const SB_HEADERS = {
  * chiave sbagliata": nel secondo caso Supabase risponde con un criptico
  * «permission denied for table ...» che non lascia capire dov'e' il problema.
  */
+/**
+ * Supabase ha due formati di chiave:
+ *  - storico: un JWT con dentro "role" ("service_role" oppure "anon")
+ *  - nuovo:   sb_secret_... (equivalente a service_role) e
+ *             sb_publishable_... (equivalente ad anon)
+ * Qui si riconosce il formato per distinguere "variabile non impostata" da
+ * "impostata con la chiave pubblica": nel secondo caso Supabase risponde con un
+ * criptico «permission denied for table ...» che manda a cercare il problema
+ * nei permessi del database invece che nella configurazione.
+ */
 export const SERVICE_KEY_ROLE = (() => {
   if (!SERVICE_KEY) return null;
+  if (SERVICE_KEY.startsWith('sb_secret_')) return 'service_role';
+  if (SERVICE_KEY.startsWith('sb_publishable_')) return 'publishable';
   try {
     return JSON.parse(Buffer.from(SERVICE_KEY.split('.')[1], 'base64').toString()).role || null;
   } catch { return null; }
@@ -33,23 +45,25 @@ export const SERVICE_KEY_ROLE = (() => {
 
 export const SERVICE_KEY_OK = SERVICE_KEY_ROLE === 'service_role';
 
-/** Messaggio da mostrare quando la chiave manca o non e' quella di servizio. */
+/**
+ * Messaggio da mostrare quando la chiave manca o e' palesemente quella
+ * pubblica. Un formato che non si sa leggere NON viene bloccato: meglio
+ * lasciar decidere Supabase che impedire una configurazione valida solo
+ * perche' il formato e' nuovo.
+ */
 export function serviceKeyProblem() {
   if (!SERVICE_KEY) {
     return 'SUPABASE_SERVICE_ROLE_KEY non configurata nelle variabili d\'ambiente di Vercel.';
   }
-  if (!SERVICE_KEY_OK) {
-    return 'SUPABASE_SERVICE_ROLE_KEY contiene una chiave con ruolo '
-         + `"${SERVICE_KEY_ROLE || 'sconosciuto'}" invece di "service_role": `
-         + 'su Vercel e\' stata impostata la chiave sbagliata. '
-         + 'La trovi in Supabase → Project Settings → API → service_role.';
+  if (SERVICE_KEY_ROLE === 'publishable' || SERVICE_KEY_ROLE === 'anon') {
+    return 'SUPABASE_SERVICE_ROLE_KEY contiene la chiave PUBBLICA del progetto '
+         + `(${SERVICE_KEY_ROLE === 'anon' ? 'anon' : 'sb_publishable_...'}) invece di quella di servizio. `
+         + 'In Supabase → Project Settings → API prendi la chiave "service_role" '
+         + '(oppure "sb_secret_..." se usi il nuovo formato).';
   }
   return null;
 }
 
-export const STAFF_ROLES = ['admin', 'senior', 'mini_admin', 'junior', 'staff', 'collaborator', 'commerciale'];
-
-/** Risponde 500 se la chiave non e' configurata. Ritorna true se si puo' proseguire. */
 export function ensureConfigured(res) {
   const problema = serviceKeyProblem();
   if (!problema) return true;
