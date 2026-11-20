@@ -161,9 +161,16 @@
   if (!CODE) { fail('Link non valido. Chiedi il link corretto a chi te l\'ha inviato.'); return; }
 
   fetch('/api/ambassador-lead?code=' + encodeURIComponent(CODE))
-    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
     .then(function (res) {
-      if (!res.ok) { fail(res.d.error || 'Link non valido.'); return; }
+      if (!res.ok) {
+        // 404 = codice inesistente, ed è utile dirlo. Qualunque altro errore è
+        // un guasto nostro: chi apre il link non deve leggerne i dettagli.
+        fail(res.status === 404
+          ? (res.d.error || 'Link non valido.')
+          : 'Il modulo non è raggiungibile in questo momento. Riprova fra poco, oppure scrivi a segreteria@indubai.it.');
+        return;
+      }
 
       var chip = document.createElement('div');
       chip.className = 'ref-chip';
