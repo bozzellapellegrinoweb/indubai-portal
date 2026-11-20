@@ -18,12 +18,43 @@ export const SB_HEADERS = {
   'Content-Type': 'application/json',
 };
 
+/**
+ * Ruolo dichiarato dalla chiave configurata ('service_role', 'anon', ...).
+ * Serve a distinguere "variabile non impostata" da "variabile impostata con la
+ * chiave sbagliata": nel secondo caso Supabase risponde con un criptico
+ * «permission denied for table ...» che non lascia capire dov'e' il problema.
+ */
+export const SERVICE_KEY_ROLE = (() => {
+  if (!SERVICE_KEY) return null;
+  try {
+    return JSON.parse(Buffer.from(SERVICE_KEY.split('.')[1], 'base64').toString()).role || null;
+  } catch { return null; }
+})();
+
+export const SERVICE_KEY_OK = SERVICE_KEY_ROLE === 'service_role';
+
+/** Messaggio da mostrare quando la chiave manca o non e' quella di servizio. */
+export function serviceKeyProblem() {
+  if (!SERVICE_KEY) {
+    return 'SUPABASE_SERVICE_ROLE_KEY non configurata nelle variabili d\'ambiente di Vercel.';
+  }
+  if (!SERVICE_KEY_OK) {
+    return 'SUPABASE_SERVICE_ROLE_KEY contiene una chiave con ruolo '
+         + `"${SERVICE_KEY_ROLE || 'sconosciuto'}" invece di "service_role": `
+         + 'su Vercel e\' stata impostata la chiave sbagliata. '
+         + 'La trovi in Supabase → Project Settings → API → service_role.';
+  }
+  return null;
+}
+
 export const STAFF_ROLES = ['admin', 'senior', 'mini_admin', 'junior', 'staff', 'collaborator', 'commerciale'];
 
 /** Risponde 500 se la chiave non e' configurata. Ritorna true se si puo' proseguire. */
 export function ensureConfigured(res) {
-  if (SERVICE_KEY) return true;
-  res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY non configurata nelle variabili d\'ambiente di Vercel' });
+  const problema = serviceKeyProblem();
+  if (!problema) return true;
+  console.error('[config]', problema);
+  res.status(500).json({ error: problema });
   return false;
 }
 
