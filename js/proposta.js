@@ -13,7 +13,7 @@
   const I18N = {
     it: {
       phone_title: 'Apri la tua proposta',
-      phone_lead: 'Inserisci l\'indirizzo email che ti abbiamo comunicato. Ti mandiamo un codice di accesso a sei cifre.',
+      phone_lead: 'Inserisci l\'indirizzo email dove riceverai il codice OTP di accesso a sei cifre.',
       phone_label: 'Indirizzo email',
       phone_btn: 'Ricevi il codice',
       privacy: 'Privacy: per proteggere il documento usiamo il tuo indirizzo email, l\'indirizzo IP, il tipo di dispositivo e la data e l\'ora di ogni accesso. Li conserva PB TAX International Tax Consultants FZCO solo come prova di consegna e di firma della proposta, per il tempo previsto dalla legge. Puoi chiedere informazioni o la cancellazione scrivendo a info@indubai.it.',
@@ -46,7 +46,7 @@
     },
     en: {
       phone_title: 'Open your proposal',
-      phone_lead: 'Enter the email address we sent the proposal to. We will send you a six-digit access code.',
+      phone_lead: 'Enter the email address where you will receive your six-digit OTP access code.',
       phone_label: 'Email address',
       phone_btn: 'Get the code',
       privacy: 'Privacy: to protect the document we use your email address, IP address, device type and the date and time of each access. PB TAX International Tax Consultants FZCO keeps them only as evidence of delivery and signature of the proposal, for the period required by law. For information or deletion write to info@indubai.it.',
