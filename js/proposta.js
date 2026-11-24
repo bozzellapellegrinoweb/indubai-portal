@@ -13,15 +13,15 @@
   const I18N = {
     it: {
       phone_title: 'Apri la tua proposta',
-      phone_lead: 'Inserisci il numero di telefono che ci hai comunicato. Ti mandiamo un codice di accesso a sei cifre.',
-      phone_label: 'Numero di telefono, con prefisso internazionale',
+      phone_lead: 'Inserisci l\'indirizzo email che ti abbiamo comunicato. Ti mandiamo un codice di accesso a sei cifre.',
+      phone_label: 'Indirizzo email',
       phone_btn: 'Ricevi il codice',
-      privacy: 'Privacy: per proteggere il documento usiamo il tuo numero di telefono, l\'indirizzo IP, il tipo di dispositivo e la data e l\'ora di ogni accesso. Li conserva PB TAX International Tax Consultants FZCO solo come prova di consegna e di firma della proposta, per il tempo previsto dalla legge. Puoi chiedere informazioni o la cancellazione scrivendo a info@indubai.it.',
+      privacy: 'Privacy: per proteggere il documento usiamo il tuo indirizzo email, l\'indirizzo IP, il tipo di dispositivo e la data e l\'ora di ogni accesso. Li conserva PB TAX International Tax Consultants FZCO solo come prova di consegna e di firma della proposta, per il tempo previsto dalla legge. Puoi chiedere informazioni o la cancellazione scrivendo a info@indubai.it.',
       code_title: 'Inserisci il codice',
-      code_lead: 'Se il numero è registrato su questa proposta, ti abbiamo appena inviato un codice di sei cifre via email. Vale 10 minuti.',
+      code_lead: 'Se l\'email è registrata su questa proposta, ti abbiamo appena inviato un codice di sei cifre. Vale 10 minuti.',
       code_btn: 'Apri la proposta',
       resend: 'Invia un nuovo codice', resend_wait: 'Nuovo codice tra {s} s',
-      change_number: 'Cambia numero',
+      change_number: 'Cambia email',
       sign_cta: 'Accetto e firmo',
       sign_title: 'Firma la proposta',
       sign_typed: 'Scrivi', sign_drawn: 'Disegna',
@@ -38,23 +38,23 @@
       state_expired: ['Proposta scaduta', 'Il link è scaduto. Scrivici e ti mandiamo una proposta aggiornata.'],
       state_revoked: ['Link non più attivo', 'Questo link è stato disattivato. Scrivici per ricevere quello nuovo.'],
       state_completed: ['Proposta completata', 'La proposta è firmata e controfirmata. Il documento finale ti è arrivato per email.'],
-      session_expired: 'Sessione scaduta dopo 30 minuti di inattività. Inserisci di nuovo il numero.',
-      bad_phone: 'Inserisci il numero con il prefisso internazionale, per esempio +971 50 123 4567.',
+      session_expired: 'Sessione scaduta dopo 30 minuti di inattività. Inserisci di nuovo l\'email.',
+      bad_phone: 'Inserisci un indirizzo email valido.',
       need_sig: 'Scrivi nome e cognome oppure disegna la firma.',
       generic: 'Qualcosa non ha funzionato. Riprova.',
       loading_page: 'Caricamento…',
     },
     en: {
       phone_title: 'Open your proposal',
-      phone_lead: 'Enter the phone number you gave us. We will send you a six-digit access code.',
-      phone_label: 'Phone number, with international prefix',
+      phone_lead: 'Enter the email address we sent the proposal to. We will send you a six-digit access code.',
+      phone_label: 'Email address',
       phone_btn: 'Get the code',
-      privacy: 'Privacy: to protect the document we use your phone number, IP address, device type and the date and time of each access. PB TAX International Tax Consultants FZCO keeps them only as evidence of delivery and signature of the proposal, for the period required by law. For information or deletion write to info@indubai.it.',
+      privacy: 'Privacy: to protect the document we use your email address, IP address, device type and the date and time of each access. PB TAX International Tax Consultants FZCO keeps them only as evidence of delivery and signature of the proposal, for the period required by law. For information or deletion write to info@indubai.it.',
       code_title: 'Enter the code',
-      code_lead: 'If the number is registered on this proposal, we have just sent you a six-digit code by email. It is valid for 10 minutes.',
+      code_lead: 'If the email is registered on this proposal, we have just sent you a six-digit code. It is valid for 10 minutes.',
       code_btn: 'Open the proposal',
       resend: 'Send a new code', resend_wait: 'New code in {s} s',
-      change_number: 'Change number',
+      change_number: 'Change email',
       sign_cta: 'I accept and sign',
       sign_title: 'Sign the proposal',
       sign_typed: 'Type', sign_drawn: 'Draw',
@@ -71,8 +71,8 @@
       state_expired: ['Proposal expired', 'This link has expired. Write to us and we will send an updated proposal.'],
       state_revoked: ['Link no longer active', 'This link has been disabled. Write to us to receive the new one.'],
       state_completed: ['Proposal completed', 'The proposal is signed and countersigned. The final document was sent to you by email.'],
-      session_expired: 'Session expired after 30 minutes of inactivity. Enter your number again.',
-      bad_phone: 'Enter the number with the international prefix, e.g. +971 50 123 4567.',
+      session_expired: 'Session expired after 30 minutes of inactivity. Enter your email again.',
+      bad_phone: 'Please enter a valid email address.',
       need_sig: 'Type your full name or draw your signature.',
       generic: 'Something went wrong. Please try again.',
       loading_page: 'Loading…',
@@ -145,29 +145,28 @@
     show('v-state');
   }
 
-  // ── 1. Numero ──────────────────────────────────────────────
-  let phone = '';
+  // ── 1. Email ───────────────────────────────────────────────
+  let email = '';
   let resendAt = 0, resendTimer = null;
 
-  function normalize(v) {
-    let s = String(v || '').replace(/[\s().\-/]/g, '');
-    if (s.startsWith('00')) s = '+' + s.slice(2);
-    return /^\+[1-9][0-9]{6,14}$/.test(s) ? s : null;
+  function normalizeEmail(v) {
+    const s = String(v || '').trim().toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s) ? s : null;
   }
 
   async function requestCode() {
-    const d = await api('request_code', { phone, locale: lang });
+    const d = await api('request_code', { email, locale: lang });
     resendAt = Date.now() + (d.retry_after || 60) * 1000;
     updateResend();
   }
 
   $('f-phone').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const p = normalize($('phone').value);
-    if (!p) return msg('phone-msg', t('bad_phone'));
+    const em = normalizeEmail($('email').value);
+    if (!em) return msg('phone-msg', t('bad_phone'));
     msg('phone-msg', ''); $('phone-btn').disabled = true;
     try {
-      phone = p; await requestCode();
+      email = em; await requestCode();
       $('code-lead').textContent = t('code_lead');
       $('code').value = ''; msg('code-msg', '');
       show('v-code'); $('code').focus();
@@ -189,7 +188,7 @@
   $('resend').addEventListener('click', async () => {
     try { await requestCode(); msg('code-msg', ''); } catch (err) { msg('code-msg', err.message); }
   });
-  $('change').addEventListener('click', () => { show('v-phone'); $('phone').focus(); });
+  $('change').addEventListener('click', () => { show('v-phone'); $('email').focus(); });
 
   // ── 2. Codice ──────────────────────────────────────────────
   $('code').addEventListener('input', (e) => {
@@ -202,7 +201,7 @@
     if (code.length !== 6) return;
     $('code-btn').disabled = true; msg('code-msg', '');
     try {
-      const d = await api('verify_code', { phone, code });
+      const d = await api('verify_code', { email, code });
       saveSession(d.session_token);
       openDoc(d);
     } catch (err) {
@@ -277,7 +276,7 @@
   function onSessionError(e) {
     if (e && (e.status === 401)) {
       saveSession(''); view = null; stopHeartbeat();
-      show('v-phone'); msg('phone-msg', t('session_expired'), 'warn');
+      show('v-phone'); msg('phone-msg', t('session_expired'), 'warn'); $('email').focus();
     } else if (e && e.status === 410) { stopHeartbeat(); showState(e.code); }
   }
 
@@ -296,7 +295,7 @@
 
   $('logout').addEventListener('click', async () => {
     try { await api('logout'); } catch (_) {}
-    saveSession(''); view = null; stopHeartbeat(); show('v-phone');
+    saveSession(''); view = null; stopHeartbeat(); show('v-phone'); $('email').focus();
   });
 
   // ── 4. Firma ───────────────────────────────────────────────

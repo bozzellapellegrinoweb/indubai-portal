@@ -26,7 +26,7 @@ import {
   OTP_TTL_MIN, SERVICE_KEY, SESSION_ABSOLUTE_HOURS, SESSION_IDLE_MIN, SUPABASE_URL,
 } from '../_shared/proposals/env.ts';
 import { b64Decode, hmacHex, randomSixDigits, randomToken, sha256Hex, timingSafeEqual } from '../_shared/proposals/crypto.ts';
-import { CORS, dubaiTime, formatAmount, HttpError, json, maskPhone, normalizePhone, reqCtx, type ReqCtx } from '../_shared/proposals/util.ts';
+import { CORS, dubaiTime, formatAmount, HttpError, json, maskPhone, reqCtx, type ReqCtx } from '../_shared/proposals/util.ts';
 import { logEvent } from '../_shared/proposals/events.ts';
 import { notifyStaff } from '../_shared/proposals/notify.ts';
 import { getOtpProvider } from '../_shared/proposals/otp.ts';
@@ -38,9 +38,20 @@ const sb = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: fal
 // deno-lint-ignore no-explicit-any
 type Row = Record<string, any>;
 
-// Risposta identica per numero registrato e non registrato: da fuori non si
-// scopre quali numeri sono sul link.
+// Risposta identica per email registrata e non registrata: da fuori non si
+// scopre quali indirizzi sono sul link.
 const GENERIC_SENT = { ok: true, message: 'code_sent_if_registered' };
+
+function maskEmail(e: string): string {
+  const [user, domain] = e.split('@');
+  if (!domain) return '***';
+  return (user || '').slice(0, 2) + '***@' + domain;
+}
+
+function normalizeEmail(v: unknown): string | null {
+  const s = String(v || '').trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s) ? s : null;
+}
 
 const isExpired = (p: Row) => new Date(p.expires_at).getTime() < Date.now();
 
@@ -143,12 +154,12 @@ async function actRequestCode(b: Row, ctx: ReqCtx) {
   if (!p || state !== 'ok') throw new HttpError(410, state, 'Link non attivo');
   await rateLimitIp(p, ctx);
 
-  const phone = normalizePhone(b.phone);
-  if (!phone) throw new HttpError(400, 'bad_phone', 'Inserisci il numero con il prefisso internazionale (es. +971...)');
+  const email = normalizeEmail(b.email);
+  if (!email) throw new HttpError(400, 'bad_email', 'Inserisci un indirizzo email valido');
 
-  const { data: r } = await sb.from('proposal_recipients').select('*').eq('proposal_id', p.id).eq('phone_e164', phone).maybeSingle();
+  const { data: r } = await sb.from('proposal_recipients').select('*').eq('proposal_id', p.id).eq('email', email).maybeSingle();
   if (!r) {
-    await logEvent(sb, { proposal_id: p.id, client_id: p.client_id, event_type: 'otp_unknown_number', actor_type: 'recipient', ctx, details: { phone_masked: maskPhone(phone) } });
+    await logEvent(sb, { proposal_id: p.id, client_id: p.client_id, event_type: 'otp_unknown_number', actor_type: 'recipient', ctx, details: { email_masked: maskEmail(email) } });
     return GENERIC_SENT;
   }
 
@@ -197,12 +208,12 @@ async function actVerifyCode(b: Row, ctx: ReqCtx) {
   const state = linkState(p);
   if (!p || state !== 'ok') throw new HttpError(410, state, 'Link non attivo');
   await rateLimitIp(p, ctx);
-  const phone = normalizePhone(b.phone);
+  const email = normalizeEmail(b.email);
   const code = String(b.code || '').replace(/\D/g, '');
   const bad = () => new HttpError(400, 'invalid_code', 'Codice non valido o scaduto');
-  if (!phone || code.length !== 6) throw bad();
+  if (!email || code.length !== 6) throw bad();
 
-  const { data: r } = await sb.from('proposal_recipients').select('*').eq('proposal_id', p.id).eq('phone_e164', phone).maybeSingle();
+  const { data: r } = await sb.from('proposal_recipients').select('*').eq('proposal_id', p.id).eq('email', email).maybeSingle();
   if (!r) throw bad();
   const { data: otp } = await sb.from('proposal_otp_codes').select('*')
     .eq('recipient_id', r.id).is('consumed_at', null).is('invalidated_at', null)
