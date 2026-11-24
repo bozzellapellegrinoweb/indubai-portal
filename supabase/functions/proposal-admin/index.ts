@@ -417,6 +417,7 @@ async function actCountersign(c: Caller, b: Row, ctx: ReqCtx) {
   const counterImg = await download(counterSig.signature_path);
   let logo: Uint8Array | null = null;
   if (BRAND.logoUrl) { try { const r = await fetch(BRAND.logoUrl); if (r.ok) logo = new Uint8Array(await r.arrayBuffer()); } catch { /* */ } }
+  const { data: signerDataRow } = await sb.from('proposal_signer_data').select('tipo, dati').eq('proposal_id', p.id).eq('recipient_id', clientSig.recipient_id).maybeSingle();
   const { data: events } = await sb.from('proposal_events').select('created_at, event_type, details, hash').eq('proposal_id', p.id).order('id');
   const it = p.locale !== 'en';
 
@@ -439,6 +440,7 @@ async function actCountersign(c: Caller, b: Row, ctx: ReqCtx) {
     events: (events || []) as FinalEvent[],
     eventsChainHead: events?.length ? events[events.length - 1].hash : null,
     logoPng: logo,
+    signerData: signerDataRow ? { tipo: signerDataRow.tipo, dati: signerDataRow.dati as Record<string, string> } : null,
   });
   const finalSha = await sha256Hex(finalPdf);
   const finalPath = `${p.id}/final.pdf`;

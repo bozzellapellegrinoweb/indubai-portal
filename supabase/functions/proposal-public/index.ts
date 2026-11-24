@@ -390,6 +390,30 @@ async function actSign(req: Request, ctx: ReqCtx, b: Row) {
   }).eq('id', p.id).in('status', ['sent', 'opened']);
   if (pErr) console.error('[sign] update proposta', pErr.message);
 
+  // Salva dati firmatario e aggiorna profilo cliente
+  if (b.signer_data && typeof b.signer_data === 'object') {
+    const sd = b.signer_data as Record<string, string>;
+    const tipo = sd.tipo === 'aziendale' ? 'aziendale' : 'personale';
+    const { tipo: _t, ...dati } = sd;
+    await sb.from('proposal_signer_data').upsert(
+      { proposal_id: p.id, recipient_id: r.id, tipo, dati },
+      { onConflict: 'proposal_id,recipient_id' }
+    );
+    if (p.client_id) {
+      try {
+        const { data: cl } = await sb.from('clients').select('contact_name,general_manager').eq('id', p.client_id).maybeSingle();
+        const upd: Record<string, string> = {};
+        if (tipo === 'personale' && sd.nome && sd.cognome && cl && !cl.contact_name)
+          upd.contact_name = `${sd.nome} ${sd.cognome}`;
+        if (tipo === 'aziendale' && sd.responsabile_nome && cl) {
+          if (!cl.contact_name) upd.contact_name = `${sd.responsabile_nome} ${sd.responsabile_cognome || ''}`.trim();
+          if (!cl.general_manager) upd.general_manager = `${sd.responsabile_nome} ${sd.responsabile_cognome || ''}`.trim();
+        }
+        if (Object.keys(upd).length > 0) await sb.from('clients').update(upd).eq('id', p.client_id);
+      } catch { /* non blocca la firma */ }
+    }
+  }
+
   await logEvent(sb, {
     proposal_id: p.id, client_id: p.client_id, event_type: 'signed', actor_type: 'recipient', recipient_id: r.id, session_id: s.id, ctx,
     details: { method, document_sha256: p.original_pdf_sha256, pages_sha256: p.pages_sha256, signature_sha256: sigSha, verified_phone: r.phone_e164, consent_version: CONSENT_VERSION },

@@ -36,6 +36,7 @@ export interface FinalPdfInput {
   events: { created_at: string; event_type: string; details: Record<string, unknown> }[];
   eventsChainHead: string | null;
   logoPng?: Uint8Array | null;
+  signerData?: { tipo: string; dati: Record<string, string> } | null;
 }
 
 const GREEN = rgb(0x47 / 255, 0xee / 255, 0x74 / 255);
@@ -218,6 +219,30 @@ export async function buildFinalPdf(input: FinalPdfInput): Promise<Uint8Array> {
   if (input.proposal.pages_sha256) row(c, L('SHA-256 pagine mostrate', 'SHA-256 displayed pages'), input.proposal.pages_sha256);
   if (input.proposal.sent_at) row(c, L('Inviata', 'Sent'), `${dubaiTime(input.proposal.sent_at)} · UTC ${utcIso(input.proposal.sent_at)}`);
   if (input.proposal.first_opened_at) row(c, L('Prima apertura', 'First opened'), `${dubaiTime(input.proposal.first_opened_at)} · UTC ${utcIso(input.proposal.first_opened_at)}`);
+
+  if (input.signerData) {
+    const sd = input.signerData;
+    heading(c, L('Dati del firmatario', 'Signer details'));
+    if (sd.tipo === 'personale') {
+      row(c, L('Tipo', 'Type'), L('Persona fisica', 'Individual'));
+      if (sd.dati.nome || sd.dati.cognome) row(c, L('Nome e cognome', 'Full name'), `${sd.dati.nome || ''} ${sd.dati.cognome || ''}`.trim());
+      if (sd.dati.via) row(c, L('Via', 'Street'), sd.dati.via);
+      if (sd.dati.citta) row(c, L('Città', 'City'), sd.dati.citta);
+      if (sd.dati.passaporto) row(c, L('Passaporto', 'Passport'), sd.dati.passaporto);
+      if (sd.dati.passaporto_scadenza) row(c, L('Scadenza passaporto', 'Passport expiry'), sd.dati.passaporto_scadenza);
+    } else {
+      row(c, L('Tipo', 'Type'), L('Persona giuridica', 'Company'));
+      if (sd.dati.nome_azienda) row(c, L('Ragione sociale', 'Company name'), sd.dati.nome_azienda);
+      if (sd.dati.partita_iva) row(c, L('P.IVA / VAT', 'VAT number'), sd.dati.partita_iva);
+      if (sd.dati.sede_legale) row(c, L('Sede legale', 'Registered address'), sd.dati.sede_legale);
+      const respNome = `${sd.dati.responsabile_nome || ''} ${sd.dati.responsabile_cognome || ''}`.trim();
+      if (respNome) row(c, L('Responsabile legale', 'Legal representative'), respNome);
+      if (sd.dati.responsabile_via) row(c, L('Via (resp.)', 'Street (rep.)'), sd.dati.responsabile_via);
+      if (sd.dati.responsabile_citta) row(c, L('Città (resp.)', 'City (rep.)'), sd.dati.responsabile_citta);
+      if (sd.dati.responsabile_passaporto) row(c, L('Passaporto (resp.)', 'Passport (rep.)'), sd.dati.responsabile_passaporto);
+      if (sd.dati.responsabile_passaporto_scadenza) row(c, L('Scadenza (resp.)', 'Expiry (rep.)'), sd.dati.responsabile_passaporto_scadenza);
+    }
+  }
 
   for (const s of input.signatures) {
     heading(c, s.kind === 'client' ? L('Firma del cliente', 'Client signature') : L('Controfirma', 'Countersignature'));

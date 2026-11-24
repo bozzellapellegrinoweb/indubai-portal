@@ -32,7 +32,7 @@ p{margin:0}
 .mut{color:var(--mut)}
 .small{font-size:.85rem}
 label{display:flex;flex-direction:column;gap:6px;font-weight:500;font-size:.92rem}
-input[type=tel],input[type=text],input[type=email]{font:inherit;font-size:1.1rem;color:var(--fg);background:var(--inp);border:1px solid var(--line);border-radius:14px;padding:13px 14px;width:100%}
+input[type=tel],input[type=text],input[type=email],input[type=date]{font:inherit;font-size:1.1rem;color:var(--fg);background:var(--inp);border:1px solid var(--line);border-radius:14px;padding:13px 14px;width:100%}
 input.code{font-size:1.8rem;letter-spacing:.4em;text-align:center;font-weight:700}
 input:focus,button:focus-visible,canvas:focus-visible{outline:2px solid var(--pop);outline-offset:1px}
 .btn{border:0;background:var(--btn);color:var(--btnfg);padding:14px 22px;border-radius:99px;font:inherit;font-weight:700;cursor:pointer;width:100%;font-size:1rem}
@@ -123,6 +123,33 @@ input:focus,button:focus-visible,canvas:focus-visible{outline:2px solid var(--po
     <div id="sign-cta" class="sticky hid"><button class="btn" id="open-sign" data-t="sign_cta"></button></div>
 
     <div id="sign-box" class="card hid">
+      <!-- Dati firmatario -->
+      <h2 data-t="signer_title"></h2>
+      <div class="tabs" id="tipo-tabs">
+        <button type="button" id="tipo-pers" class="on" data-t="tipo_pers"></button>
+        <button type="button" id="tipo-az" data-t="tipo_az"></button>
+      </div>
+      <div id="fields-pers" style="display:flex;flex-direction:column;gap:14px">
+        <label><span data-t="f_nome"></span><input type="text" id="sd-nome" autocomplete="given-name"></label>
+        <label><span data-t="f_cognome"></span><input type="text" id="sd-cognome" autocomplete="family-name"></label>
+        <label><span data-t="f_via"></span><input type="text" id="sd-via" autocomplete="street-address"></label>
+        <label><span data-t="f_citta"></span><input type="text" id="sd-citta" autocomplete="address-level2"></label>
+        <label><span data-t="f_pass"></span><input type="text" id="sd-pass" autocomplete="off" inputmode="text"></label>
+        <label><span data-t="f_pass_scad"></span><input type="date" id="sd-pass-scad"></label>
+      </div>
+      <div id="fields-az" style="display:none;flex-direction:column;gap:14px">
+        <label><span data-t="f_az_nome"></span><input type="text" id="sd-az-nome" autocomplete="organization"></label>
+        <label><span data-t="f_piva"></span><input type="text" id="sd-piva" autocomplete="off"></label>
+        <label><span data-t="f_sede"></span><input type="text" id="sd-sede" autocomplete="off"></label>
+        <label><span data-t="f_resp_nome"></span><input type="text" id="sd-resp-nome"></label>
+        <label><span data-t="f_resp_cog"></span><input type="text" id="sd-resp-cog"></label>
+        <label><span data-t="f_via"></span><input type="text" id="sd-resp-via" autocomplete="street-address"></label>
+        <label><span data-t="f_citta"></span><input type="text" id="sd-resp-citta" autocomplete="address-level2"></label>
+        <label><span data-t="f_pass"></span><input type="text" id="sd-resp-pass" autocomplete="off"></label>
+        <label><span data-t="f_pass_scad"></span><input type="date" id="sd-resp-pass-scad"></label>
+      </div>
+      <div style="border-top:1px solid var(--line);margin:4px 0"></div>
+      <!-- Firma -->
       <h2 data-t="sign_title"></h2>
       <div class="tabs"><button type="button" data-m="typed" class="on" data-t="sign_typed"></button><button type="button" data-m="drawn" data-t="sign_drawn"></button></div>
       <div id="m-typed">
@@ -141,6 +168,6 @@ input:focus,button:focus-visible,canvas:focus-visible{outline:2px solid var(--po
     <div class="foot"><span data-t="foot"></span> · <button class="link" id="logout" data-t="logout"></button></div>
   </section>
 </div>
-<script src="/js/proposta.js?v=20261124d"></script>
+<script src="/js/proposta.js?v=20261124e"></script>
 </body>
 </html>

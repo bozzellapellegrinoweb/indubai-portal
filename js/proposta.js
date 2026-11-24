@@ -39,6 +39,20 @@
       state_expired: ['Proposta scaduta', 'Il link è scaduto. Scrivici e ti mandiamo una proposta aggiornata.'],
       state_revoked: ['Link non più attivo', 'Questo link è stato disattivato. Scrivici per ricevere quello nuovo.'],
       state_completed: ['Proposta completata', 'La proposta è firmata e controfirmata. Il documento finale ti è arrivato per email.'],
+      signer_title: 'Dati del firmatario',
+      tipo_pers: 'A nome personale',
+      tipo_az: 'A nome aziendale',
+      f_nome: 'Nome',
+      f_cognome: 'Cognome',
+      f_via: 'Via e numero civico',
+      f_citta: 'Città',
+      f_pass: 'N° passaporto',
+      f_pass_scad: 'Scadenza passaporto',
+      f_az_nome: 'Nome azienda',
+      f_piva: 'Partita IVA',
+      f_sede: 'Sede legale',
+      f_resp_nome: 'Responsabile legale — Nome',
+      f_resp_cog: 'Responsabile legale — Cognome',
       session_expired: 'Sessione scaduta dopo 30 minuti di inattività. Inserisci di nuovo l\'email.',
       bad_phone: 'Inserisci un indirizzo email valido.',
       need_sig: 'Scrivi nome e cognome oppure disegna la firma.',
@@ -72,6 +86,20 @@
       state_expired: ['Proposal expired', 'This link has expired. Write to us and we will send an updated proposal.'],
       state_revoked: ['Link no longer active', 'This link has been disabled. Write to us to receive the new one.'],
       state_completed: ['Proposal completed', 'The proposal is signed and countersigned. The final document was sent to you by email.'],
+      signer_title: 'Signer details',
+      tipo_pers: 'Personal capacity',
+      tipo_az: 'On behalf of a company',
+      f_nome: 'First name',
+      f_cognome: 'Last name',
+      f_via: 'Street address',
+      f_citta: 'City',
+      f_pass: 'Passport number',
+      f_pass_scad: 'Passport expiry',
+      f_az_nome: 'Company name',
+      f_piva: 'VAT / Company number',
+      f_sede: 'Registered office',
+      f_resp_nome: 'Legal representative — First name',
+      f_resp_cog: 'Legal representative — Last name',
       session_expired: 'Session expired after 30 minutes of inactivity. Enter your email again.',
       bad_phone: 'Please enter a valid email address.',
       need_sig: 'Type your full name or draw your signature.',
@@ -303,6 +331,37 @@
   });
 
   // ── 4. Firma ───────────────────────────────────────────────
+  // Dati firmatario
+  let tipoFirma = 'personale';
+  document.querySelectorAll('#tipo-tabs button').forEach((b) => b.addEventListener('click', () => {
+    tipoFirma = b.id === 'tipo-az' ? 'aziendale' : 'personale';
+    document.querySelectorAll('#tipo-tabs button').forEach((x) => x.classList.toggle('on', x === b));
+    $('fields-pers').style.display = tipoFirma === 'personale' ? 'flex' : 'none';
+    $('fields-az').style.display = tipoFirma === 'aziendale' ? 'flex' : 'none';
+    validate();
+  }));
+  document.querySelectorAll('#fields-pers input, #fields-az input').forEach((el) => el.addEventListener('input', validate));
+
+  function signerDataReady() {
+    const ids = tipoFirma === 'personale'
+      ? ['sd-nome', 'sd-cognome', 'sd-via', 'sd-citta', 'sd-pass', 'sd-pass-scad']
+      : ['sd-az-nome', 'sd-piva', 'sd-sede', 'sd-resp-nome', 'sd-resp-cog', 'sd-resp-via', 'sd-resp-citta', 'sd-resp-pass', 'sd-resp-pass-scad'];
+    return ids.every((id) => $(id) && $(id).value.trim().length > 0);
+  }
+
+  function getSignerData() {
+    if (tipoFirma === 'personale') {
+      return { tipo: 'personale', nome: $('sd-nome').value.trim(), cognome: $('sd-cognome').value.trim(),
+        via: $('sd-via').value.trim(), citta: $('sd-citta').value.trim(),
+        passaporto: $('sd-pass').value.trim(), passaporto_scadenza: $('sd-pass-scad').value };
+    }
+    return { tipo: 'aziendale', nome_azienda: $('sd-az-nome').value.trim(), partita_iva: $('sd-piva').value.trim(),
+      sede_legale: $('sd-sede').value.trim(), responsabile_nome: $('sd-resp-nome').value.trim(),
+      responsabile_cognome: $('sd-resp-cog').value.trim(), responsabile_via: $('sd-resp-via').value.trim(),
+      responsabile_citta: $('sd-resp-citta').value.trim(), responsabile_passaporto: $('sd-resp-pass').value.trim(),
+      responsabile_passaporto_scadenza: $('sd-resp-pass-scad').value };
+  }
+
   let method = 'typed';
   $('open-sign').addEventListener('click', () => {
     $('sign-box').classList.remove('hid'); $('sign-cta').classList.add('hid');
@@ -346,7 +405,7 @@
   function sigReady() {
     return method === 'typed' ? $('typed-name').value.trim().length >= 3 : !!(pad && pad.strokes > 15);
   }
-  function validate() { $('sign-btn').disabled = !($('consent').checked && sigReady()); }
+  function validate() { $('sign-btn').disabled = !($('consent').checked && sigReady() && signerDataReady()); }
 
   $('sign-btn').addEventListener('click', async () => {
     if (!sigReady()) return msg('sign-msg', t('need_sig'));
@@ -355,6 +414,7 @@
       const body = { method, consent: $('consent').checked };
       if (method === 'typed') body.typed_name = $('typed-name').value.trim();
       else body.drawn_png = $('pad').toDataURL('image/png').split(',')[1];
+      body.signer_data = getSignerData();
       await api('sign', body);
       $('sign-box').classList.add('hid');
       view = await api('view');
