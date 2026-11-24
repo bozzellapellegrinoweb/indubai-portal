@@ -773,6 +773,21 @@
     $('rg-carica-media')?.addEventListener('click', () => caricaSuContenuto(c));
     $('rg-rendi')?.addEventListener('click', () => rendiContenuto(c));
     $('rg-a-posto')?.addEventListener('click', () => approvaContenuto(c));
+    $('rg-approva-admin')?.addEventListener('click', async () => {
+      try {
+        await D.approvaComeAdmin(c.id);
+        window.ui.showToast('Confermato come amministratore.', 'success');
+        apriContenuto(c.id);
+      } catch (e) { window.ui.showToast(pulisciErrore(e.message), 'error'); }
+    });
+    $('rg-pubblica-ora')?.addEventListener('click', async () => {
+      if (!window.confirm('Pubblicare subito? Esce a momenti su tutte le piattaforme previste.')) return;
+      try {
+        const r = await D.pubblicaSubito(c.id);
+        window.ui.showToast(r?.messaggio || 'In coda: esce a momenti.', 'success');
+        apriContenuto(c.id);
+      } catch (e) { window.ui.showToast(pulisciErrore(e.message), 'error'); }
+    });
     $('rg-rimanda')?.addEventListener('click', () => {
       // Un contenuto fermato dal Revisore non si approva scavalcandolo: si
       // rimanda indietro con l'indicazione di cosa cambiare.
@@ -1194,6 +1209,8 @@
       </ul>
       ${doppia && sensibile && !c.approvato_admin_da && window.sb?.isAdmin?.()
         ? `<button class="btn btn-accent btn-sm" style="margin-top:9px" id="rg-approva-admin">Confermo come amministratore</button>` : ''}
+      ${c.revisore_ok && c.approvato_da && c.stato !== 'pubblicato'
+        ? `<button class="btn btn-sm" style="margin-top:9px;margin-left:6px;background:#e65100;color:#fff;border:none" id="rg-pubblica-ora">Pubblica ora</button>` : ''}
     </div>`;
   }
 

@@ -393,6 +393,13 @@
     return d;
   }
 
+  async function pubblicaSubito(contentId) {
+    const d = await rpc('smm_pubblica_ora', { p_content: contentId });
+    if (d && d.ok === false) throw new Error(d.errore || 'Non è andata.');
+    await carica();
+    return d;
+  }
+
   /**
    * Quali social sono davvero collegati su GoHighLevel.
    *
@@ -924,7 +931,7 @@
     lavoroVivoDi, posaDi, collaborazioni, riepilogo, toccaATe,
     scriviAlDirettore, scriviAdAgente, rispondiAlLavoro, messaggiDi, lavoriDi,
     contenuto, versioni, note, mediaDi, aggiungiNota, risolviNota,
-    approva, approvaComeAdmin, rimandaIndietro, spostaInCalendario, pubblicaOra,
+    approva, approvaComeAdmin, rimandaIndietro, spostaInCalendario, pubblicaOra, pubblicaSubito,
     cervelloCerca, cervelloDaConfermare, cervelloConferma, cervelloScarta, cervelloAggiungi,
     nuovaReference, risultati, salvaRisultato, salvaImpostazioni,
     plurale, piano, nuovaRigaPiano, salvaRigaPiano, eliminaRigaPiano, lanciaQuelloCheManca,
