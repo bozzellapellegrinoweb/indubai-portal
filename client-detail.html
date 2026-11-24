@@ -429,6 +429,13 @@ if (!puoVedereTestamento) {
   });
 }
 
+const puoVedereProposte = !window.canSeePage || window.canSeePage('proposte');
+if (!puoVedereProposte) {
+  document.addEventListener('DOMContentLoaded', () => {
+    ['tab-btn-proposte', 'tab-proposte'].forEach(id => document.getElementById(id)?.remove());
+  });
+}
+
 // Si arriva qui anche da un elenco (per esempio /testamento.html), che indica
 // quale scheda aprire. Il bottone puo' non esserci: se il permesso manca, e'
 // stato rimosso, e allora resta la scheda Info.

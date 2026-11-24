@@ -53,8 +53,14 @@ async function authenticate(req: Request): Promise<Caller> {
   return { userId: data.user.id, role, name: prof?.full_name || data.user.email || 'Staff', email: data.user.email || null };
 }
 
+const PROPOSAL_ROLES = ['admin', 'senior', 'mini_admin', 'commerciale'];
+
+function requireProposalAccess(c: Caller) {
+  if (!PROPOSAL_ROLES.includes(c.role)) throw new HttpError(403, 'forbidden', 'Non hai il permesso di gestire le proposte');
+}
+
 function requireAdmin(c: Caller) {
-  if (c.role !== 'admin') throw new HttpError(403, 'forbidden', 'Solo l\'admin può gestire le proposte');
+  if (c.role !== 'admin') throw new HttpError(403, 'forbidden', 'Solo l\'admin può eseguire questa operazione');
 }
 
 const linkFor = (token: string) => `${PORTAL_URL}/p/${token}`;
@@ -172,11 +178,11 @@ function cleanRecipients(raw: unknown) {
 async function actConfig(c: Caller) {
   const { data } = await sb.from('proposal_countersigners').select('display_name, role_title, updated_at').eq('user_id', c.userId).maybeSingle();
   const provider = getOtpProvider(sb).name;
-  return { otp_provider: provider, recipients_need_email: provider === 'email', countersignature: data || null, is_admin: c.role === 'admin' };
+  return { otp_provider: provider, recipients_need_email: provider === 'email', countersignature: data || null, is_admin: PROPOSAL_ROLES.includes(c.role) };
 }
 
 async function actCreate(c: Caller, b: Row, ctx: ReqCtx) {
-  requireAdmin(c);
+  requireProposalAccess(c);
   const clientId = String(b.client_id || '');
   const { data: client } = await sb.from('clients').select('id, company_name').eq('id', clientId).maybeSingle();
   if (!client) throw new HttpError(404, 'not_found', 'Cliente non trovato');
@@ -234,7 +240,7 @@ async function actCreate(c: Caller, b: Row, ctx: ReqCtx) {
 }
 
 async function actAddPage(c: Caller, b: Row) {
-  requireAdmin(c);
+  requireProposalAccess(c);
   const p = await loadProposal(b.id);
   if (p.status !== 'draft') throw new HttpError(409, 'conflict', 'Le pagine si caricano solo in bozza');
   const n = Math.round(Number(b.n));
@@ -253,7 +259,7 @@ async function actAddPage(c: Caller, b: Row) {
 }
 
 async function actPublish(c: Caller, b: Row, ctx: ReqCtx) {
-  requireAdmin(c);
+  requireProposalAccess(c);
   const p = await loadProposal(b.id);
   if (p.status !== 'draft') throw new HttpError(409, 'conflict', 'Proposta già pubblicata');
   const pages: Row[] = Array.isArray(p.pages) ? p.pages : [];
@@ -280,7 +286,7 @@ async function actPublish(c: Caller, b: Row, ctx: ReqCtx) {
 }
 
 async function actDeleteDraft(c: Caller, b: Row) {
-  requireAdmin(c);
+  requireProposalAccess(c);
   const p = await loadProposal(b.id);
   if (p.status !== 'draft') throw new HttpError(409, 'conflict', 'Solo le bozze si eliminano');
   const paths = [p.original_pdf_path, ...((p.pages || []) as Row[]).map((x) => x.path)];
@@ -291,7 +297,7 @@ async function actDeleteDraft(c: Caller, b: Row) {
 }
 
 async function actLink(c: Caller, b: Row, ctx: ReqCtx) {
-  requireAdmin(c);
+  requireProposalAccess(c);
   const p = await loadProposal(b.id);
   if (p.status === 'draft') throw new HttpError(409, 'conflict', 'Proposta non ancora pubblicata');
   const token = await decryptString(LINK_KEY, p.link_token_enc);
@@ -300,7 +306,7 @@ async function actLink(c: Caller, b: Row, ctx: ReqCtx) {
 }
 
 async function actRevoke(c: Caller, b: Row, ctx: ReqCtx) {
-  requireAdmin(c);
+  requireProposalAccess(c);
   const p = await loadProposal(b.id);
   if (!['sent', 'opened'].includes(p.status)) throw new HttpError(409, 'conflict', 'Si revocano solo proposte inviate o aperte, non ancora firmate');
   const { error } = await sb.from('proposals').update({ status: 'revoked', revoked_at: new Date().toISOString() }).eq('id', p.id);
@@ -311,7 +317,7 @@ async function actRevoke(c: Caller, b: Row, ctx: ReqCtx) {
 }
 
 async function actExtend(c: Caller, b: Row, ctx: ReqCtx) {
-  requireAdmin(c);
+  requireProposalAccess(c);
   const p = await loadProposal(b.id);
   if (!['sent', 'opened'].includes(p.status)) throw new HttpError(409, 'conflict', 'Si proroga solo una proposta attiva e non firmata');
   const days = Math.round(Number(b.days));
@@ -326,7 +332,7 @@ async function actExtend(c: Caller, b: Row, ctx: ReqCtx) {
 }
 
 async function actRegenerate(c: Caller, b: Row, ctx: ReqCtx) {
-  requireAdmin(c);
+  requireProposalAccess(c);
   const p = await loadProposal(b.id);
   if (!['sent', 'opened'].includes(p.status)) throw new HttpError(409, 'conflict', 'Il link si rigenera solo su una proposta attiva e non firmata');
   const token = randomToken(32);

@@ -31,18 +31,18 @@
 
   const ROLE_PAGES_DEFAULT = {
     admin:        null,   // null = all pages
-    senior:       ['index','tasks','pipeline','clients','testamento','zoho-setup','zoho-vat','onboarding','statements',
+    senior:       ['index','tasks','pipeline','clients','proposte','testamento','zoho-setup','zoho-vat','onboarding','statements',
                    'payments','reconciliation','expenses','bilanci','ferie','vat','corp-tax','affinitas',
                    'vat-partner','pw','documents','search','news','notifiche','broadcast','bacheca'],
     junior:       ['index','tasks','pipeline','clients','testamento','zoho-setup','zoho-vat','onboarding','statements','reconciliation','expenses','ferie','vat','corp-tax','affinitas','vat-partner','pw','documents','search','news','notifiche','reports','lead-analytics'],
-    mini_admin:   ['index','tasks','pipeline','clients','testamento','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
+    mini_admin:   ['index','tasks','pipeline','clients','proposte','testamento','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
     collaborator: ['index','tasks','pipeline','clients','testamento','expenses','documents','search','news','notifiche','broadcast','bacheca','affinitas','vat-partner','pw'],
     // Il commerciale lavora i clienti che gli assegni e le sue task. Niente
     // pipeline (vedrebbe le trattative altrui), niente pagine economiche
     // (abbonamenti, bilanci, riconciliazione, estratti, report). Che non veda
     // i numeri non lo decide questo elenco: lo decidono le policy, tramite
     // sees_financials(), che esclude questo ruolo per definizione.
-    commerciale:  ['index','tasks','clients','testamento','documents','search','news','notifiche'],
+    commerciale:  ['index','tasks','clients','proposte','testamento','documents','search','news','notifiche'],
     // Il social media manager vede la Regia e nient'altro. Niente 'index':
     // la dashboard mostra clienti e incassi, che non sono affari suoi, e il
     // redirect qui sotto lo porta direttamente sulla Regia.
