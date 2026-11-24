@@ -424,7 +424,7 @@ function renderAdmin() {
     const name = emp.profile?.full_name?.split(' ')[0] || '—';
     const annualDays = emp.annual_leave_days || 30;
     const accrued = computeAccrued(emp.start_date, annualDays);
-    const used = usedDays(emp.id, null, emp.start_date);
+    const used = usedDays(emp.id, 'ferie', emp.start_date);
     const credits = holidayCredits(emp.id, emp.start_date);
     const balance = Math.round((accrued - used + credits) * 100) / 100;
     empKpiHtml += `
@@ -459,12 +459,12 @@ function renderAdmin() {
     const name = emp.profile?.full_name || '—';
     const annualDays = emp.annual_leave_days || 30;
     const accrued = computeAccrued(emp.start_date, annualDays);
-    const used = usedDays(emp.id, null, emp.start_date);
+    const usedFerie = usedDays(emp.id, 'ferie', emp.start_date);
+    const used = usedFerie;
     const credits = holidayCredits(emp.id, emp.start_date);
     const balance = Math.round((accrued - used + credits) * 100) / 100;
     const pct = accrued > 0 ? Math.min(100, Math.round((used/accrued)*100)) : 0;
     const barCls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : '';
-    const usedFerie = usedDays(emp.id, 'ferie', emp.start_date);
     const usedPerm  = usedDays(emp.id, 'permesso', emp.start_date);
     const usedMal   = usedDays(emp.id, 'malattia', emp.start_date);
     const startStr  = emp.start_date ? fmt(emp.start_date) : '—';
@@ -572,7 +572,7 @@ function renderEmployee() {
 
   const annualDays = myEmployee.annual_leave_days || 30;
   const accrued = computeAccrued(myEmployee.start_date, annualDays);
-  const used    = usedDays(myEmployee.id, null, myEmployee.start_date);
+  const used    = usedDays(myEmployee.id, 'ferie', myEmployee.start_date);
   const credits = holidayCredits(myEmployee.id, myEmployee.start_date);
   const balance = Math.round((accrued - used + credits) * 100) / 100;
   const pct     = accrued > 0 ? Math.min(100, Math.round((used/accrued)*100)) : 0;
