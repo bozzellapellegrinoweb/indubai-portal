@@ -9,6 +9,7 @@
   const token = (location.pathname.match(/\/p\/([A-Za-z0-9_-]{40,64})/) || [])[1]
     || new URLSearchParams(location.search).get('t') || '';
   const SKEY = 'pbtax_proposal_session_' + token.slice(0, 12);
+  const EKEY = 'pbtax_proposal_otp_' + token.slice(0, 12);
 
   const I18N = {
     it: {
@@ -113,6 +114,8 @@
   let session = '';
   try { session = sessionStorage.getItem(SKEY) || ''; } catch (_) {}
   const saveSession = (s) => { session = s; try { s ? sessionStorage.setItem(SKEY, s) : sessionStorage.removeItem(SKEY); } catch (_) {} };
+  const saveOtpState = (em) => { try { em ? sessionStorage.setItem(EKEY, JSON.stringify({ email: em, sentAt: Date.now() })) : sessionStorage.removeItem(EKEY); } catch (_) {} };
+  const loadOtpState = () => { try { const v = JSON.parse(sessionStorage.getItem(EKEY) || 'null'); return v && v.email && (Date.now() - v.sentAt < 11 * 60 * 1000) ? v : null; } catch (_) { return null; } };
 
   async function api(action, body = {}) {
     const r = await fetch(FN, {
@@ -167,6 +170,7 @@
     msg('phone-msg', ''); $('phone-btn').disabled = true;
     try {
       email = em; await requestCode();
+      saveOtpState(em);
       $('code-lead').textContent = t('code_lead');
       $('code').value = ''; msg('code-msg', '');
       show('v-code'); $('code').focus();
@@ -188,7 +192,7 @@
   $('resend').addEventListener('click', async () => {
     try { await requestCode(); msg('code-msg', ''); } catch (err) { msg('code-msg', err.message); }
   });
-  $('change').addEventListener('click', () => { show('v-phone'); $('email').focus(); });
+  $('change').addEventListener('click', () => { saveOtpState(null); show('v-phone'); $('email').focus(); });
 
   // ── 2. Codice ──────────────────────────────────────────────
   $('code').addEventListener('input', (e) => {
@@ -275,7 +279,7 @@
 
   function onSessionError(e) {
     if (e && (e.status === 401)) {
-      saveSession(''); view = null; stopHeartbeat();
+      saveSession(''); saveOtpState(null); view = null; stopHeartbeat();
       show('v-phone'); msg('phone-msg', t('session_expired'), 'warn'); $('email').focus();
     } else if (e && e.status === 410) { stopHeartbeat(); showState(e.code); }
   }
@@ -295,7 +299,7 @@
 
   $('logout').addEventListener('click', async () => {
     try { await api('logout'); } catch (_) {}
-    saveSession(''); view = null; stopHeartbeat(); show('v-phone'); $('email').focus();
+    saveSession(''); saveOtpState(null); view = null; stopHeartbeat(); show('v-phone'); $('email').focus();
   });
 
   // ── 4. Firma ───────────────────────────────────────────────
@@ -390,7 +394,18 @@
       try { chosen = localStorage.getItem('pbtax_lang'); } catch (_) {}
       if (!chosen && info.locale) { lang = info.locale; applyLang(); }
       if (info.state !== 'ok') return showState(info.state);
-      show('v-phone');
+      const saved = loadOtpState();
+      if (saved) {
+        email = saved.email;
+        resendAt = saved.sentAt + 60 * 1000;
+        $('email').value = saved.email;
+        $('code-lead').textContent = t('code_lead');
+        $('code').value = ''; msg('code-msg', '');
+        updateResend();
+        show('v-code');
+      } else {
+        show('v-phone');
+      }
     } catch (_) { showState('invalid'); }
   })();
 })();

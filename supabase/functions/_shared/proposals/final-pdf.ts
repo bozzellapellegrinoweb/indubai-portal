@@ -84,17 +84,26 @@ async function letterhead(doc: PDFDocument, fonts: Omit<Pen, 'page' | 'y'>, titl
   const { width, height } = page.getSize();
   let y = height - M;
   if (logo) {
+    let logoDrawn = false;
     try {
       const img = await doc.embedPng(logo);
-      const h = 34, w = (img.width / img.height) * h;
+      const h = 60, w = Math.min((img.width / img.height) * h, page.getSize().width - 2 * M);
       page.drawImage(img, { x: M, y: y - h + 6, width: w, height: h });
-      y -= h + 4;
-    } catch { /* logo non valido: resta l'intestazione testuale */ }
+      y -= h + 8;
+      logoDrawn = true;
+    } catch { /* logo non valido: usa intestazione testuale */ }
+    if (!logoDrawn) {
+      page.drawText(BRAND.short, { x: M, y: y - 14, size: 18, font: fonts.bold, color: INK });
+      page.drawText(safe(fonts.regular, BRAND.name.toUpperCase()), { x: M, y: y - 28, size: 7.5, font: fonts.bold, color: MUTED });
+      page.drawText(safe(fonts.regular, BRAND.address), { x: M, y: y - 39, size: 7.5, font: fonts.regular, color: MUTED });
+      y -= 50;
+    }
+  } else {
+    page.drawText(BRAND.short, { x: M, y: y - 14, size: 18, font: fonts.bold, color: INK });
+    page.drawText(safe(fonts.regular, BRAND.name.toUpperCase()), { x: M, y: y - 28, size: 7.5, font: fonts.bold, color: MUTED });
+    page.drawText(safe(fonts.regular, BRAND.address), { x: M, y: y - 39, size: 7.5, font: fonts.regular, color: MUTED });
+    y -= 50;
   }
-  page.drawText(BRAND.short, { x: M, y: y - 14, size: 18, font: fonts.bold, color: INK });
-  page.drawText(safe(fonts.regular, BRAND.name.toUpperCase()), { x: M, y: y - 28, size: 7.5, font: fonts.bold, color: MUTED });
-  page.drawText(safe(fonts.regular, BRAND.address), { x: M, y: y - 39, size: 7.5, font: fonts.regular, color: MUTED });
-  y -= 50;
   page.drawRectangle({ x: M, y, width: width - 2 * M, height: 3, color: GREEN });
   y -= 30;
   page.drawText(safe(fonts.bold, title), { x: M, y, size: 15, font: fonts.bold, color: INK });
