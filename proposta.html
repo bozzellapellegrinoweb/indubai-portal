@@ -20,9 +20,8 @@ body{background:var(--bg);color:var(--fg);font:16px/1.55 'DM Sans',system-ui,san
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 input,textarea{-webkit-user-select:text;user-select:text}
 .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-header.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:12px;border-bottom:4px solid var(--pop)}
-.brand b{display:block;font-size:1.5rem;letter-spacing:-.02em;line-height:1}
-.brand span{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:700}
+header.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:12px;border-bottom:4px solid var(--pop)}
+.brand img{display:block;max-height:80px;max-width:340px;width:100%;object-fit:contain;object-position:left}
 .lang{display:flex;gap:4px}
 .lang button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:99px;padding:5px 10px;font:inherit;font-size:.8rem;cursor:pointer}
 .lang button.on{background:var(--pop);color:var(--popink);border-color:var(--pop);font-weight:700}
@@ -69,7 +68,7 @@ input:focus,button:focus-visible,canvas:focus-visible{outline:2px solid var(--po
 <body oncontextmenu="return false">
 <div class="wrap">
   <header class="top">
-    <div class="brand"><b>PB TAX</b><span>International Tax Consultants FZCO</span></div>
+    <div class="brand"><img src="/img/letterhead-pbtax.png" alt="PB TAX International Tax Consultants FZCO"></div>
     <div class="lang"><button data-lang="it">IT</button><button data-lang="en">EN</button></div>
   </header>
 
@@ -142,6 +141,6 @@ input:focus,button:focus-visible,canvas:focus-visible{outline:2px solid var(--po
     <div class="foot"><span data-t="foot"></span> · <button class="link" id="logout" data-t="logout"></button></div>
   </section>
 </div>
-<script src="/js/proposta.js"></script>
+<script src="/js/proposta.js?v=20261124"></script>
 </body>
 </html>
